@@ -3,7 +3,15 @@
 ## Сейчас
 Активная задача: [S1-001](tasks/S1-001-first-source.md) — **implemented, tested locally**
 (2026-09-24), ждёт отдельного review и принятия владельцем: риск высокий (права источника).
-Live-источник выключен: политика himalayas = pending/enabled=false, все права unknown.
+
+**Политика himalayas: матрица прав утверждена владельцем 2026-09-24** (review живых
+страниц API/ToS). `status: approved`, `enabled: false` — активация отдельной задачей
+live-адаптера. Разрешено: fetch/cache/store_full_text/store_excerpt/derive_fields/
+publish_excerpt (атрибуция+backlink обязательны). Запрещено: publish_full_text,
+process_with_ml, send_to_ai_provider, train_model, direct_apply, send_email,
+index_web_page, syndicate_google_jobs, bulk_export. apply_route=source_required,
+retention 720ч + expiryDate, polling ≥86400с, terms_hash зафиксирован
+(sha256 himalayas.app/terms на 2026-09-24), valid_until 2026-12-23 (повторный review).
 
 **Результат S1-001:** настоящий доменный контракт (`src/domain/source-contracts.ts`,
 SourcePolicy/JobSnapshot по 03_DOMAIN_CONTRACTS.schema.json, ручные валидаторы без
@@ -37,6 +45,23 @@ review), хранение snapshots в PostgreSQL (контрактный сто
 ## Следующий шаг
 Владелец: review S1-001 diff + решение по политике himalayas (approve/purpose/review).
 После approve — отдельная задача live-адаптера (fetch, polling, БД-хранение).
+
+### Факты review himalayas (собраны 2026-09-24 с живых страниц, владельцем поручено)
+- API (himalayas.app/api, /docs/remote-jobs-api, openapi.json): бесплатный, без ключа;
+  cursor ≤20, обновление 24ч, 429 → ждать ~60с, s-maxage=86400; кэширование на своём
+  бэкенде прямо поощряется; обязательная атрибуция (link back + mention as source);
+  applicationLink можно показывать с кредитом источника; запрет синдикации на
+  сторонние сайты (Jooble/Neuvoo/Google Jobs/LinkedIn); locationRestrictions пустой =
+  worldwide; pubDate/expiryDate в схеме Unix-мс, в прозе ISO — противоречие,
+  живой smoke-тест при адаптере обязателен.
+- ToS сайта: широкий запрет automated data gathering «without prior written approval»;
+  механизма атрибуции вместо разрешения нет. Напряжение с API-документацией;
+  письменный канал обеих страниц — hi@himalayas.app (он же для повышенных лимитов).
+- Рекомендация владельцу: до approve — запросить письменное подтверждение (вариант 2);
+  либо approve по API-условиям с матрицей: fetch/cache/store/derive/publish_excerpt
+  allowed (атрибуция+backlink), publish_full_text/direct_apply/ML/AI/email/seo/syndicate/
+  train/bulk denied, apply_route=source_required, retention 720ч + expiryDate,
+  polling 86400с. Решение и approve — только владелец.
 
 ## Фактические результаты S0-001 (2026-09-24, Node v26.7.0, npm 12.0.2, Windows)
 

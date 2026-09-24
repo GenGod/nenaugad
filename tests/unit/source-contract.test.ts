@@ -30,12 +30,29 @@ function importOnce(records: readonly unknown[], store: SnapshotStore = emptySna
 test("acceptance 1: source policy fixes purpose, restrictions and owner review", () => {
   assert.equal(isSourcePolicy(himalayasCandidatePolicy), true);
   assert.equal(isSourcePolicy(atlasFixturesPolicy), true);
-  assert.equal(himalayasCandidatePolicy.status, "pending");
+  // Owner approved the permission matrix on 2026-09-24 after a live review;
+  // activation is deliberately separate from approval.
+  assert.equal(himalayasCandidatePolicy.status, "approved");
   assert.equal(himalayasCandidatePolicy.enabled, false);
-  assert.equal(himalayasCandidatePolicy.reviewed_at, null);
-  assert.equal(himalayasCandidatePolicy.approved_by, null);
+  assert.equal(himalayasCandidatePolicy.reviewed_at !== null, true);
+  assert.equal(himalayasCandidatePolicy.approved_by, "owner");
+  assert.equal(himalayasCandidatePolicy.terms_hash !== null, true);
+  assert.equal(himalayasCandidatePolicy.valid_until, "2026-12-23T00:00:00.000Z");
   assert.equal(himalayasCandidatePolicy.terms_urls.length > 0, true);
-  // Nothing is fetchable or publishable before review: unknown blocks.
+  // Approved matrix: API-documented reuse with attribution is allowed;
+  // full-text republication, ML/AI, direct apply and syndication are denied.
+  for (const permission of ["fetch", "cache", "store_full_text", "store_excerpt",
+    "derive_fields", "publish_excerpt"] as const) {
+    assert.equal(himalayasCandidatePolicy.permissions[permission], "allowed", permission);
+  }
+  for (const permission of ["publish_full_text", "process_with_ml", "send_to_ai_provider",
+    "send_email", "index_web_page", "syndicate_google_jobs", "train_model",
+    "direct_apply", "bulk_export"] as const) {
+    assert.equal(himalayasCandidatePolicy.permissions[permission], "denied", permission);
+  }
+  assert.equal(himalayasCandidatePolicy.apply_route, "source_required");
+  assert.equal(himalayasCandidatePolicy.max_retention_hours, 720);
+  // Approval alone activates nothing: while disabled every permission stays denied.
   assert.equal(permissionFor(himalayasCandidatePolicy, "fetch", NOW), "denied");
   assert.equal(permissionFor(himalayasCandidatePolicy, "publish_excerpt", NOW), "denied");
   assert.equal(permissionFor(atlasFixturesPolicy, "publish_excerpt", NOW), "allowed");
