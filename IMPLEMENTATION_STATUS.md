@@ -1,25 +1,42 @@
 # Nenaugad — status (ex-Atlas Starter)
 
 ## Сейчас
-Проект переименован владельцем из Atlas в **Nenaugad** (2026-09-24): package name,
-compose-проект/контейнер, имя CI, UI-строки и проза живых документов. Сохранены:
-имя дизайн-языка Atlas 1.1 и его артефакты, исходники `Reference/` и `docs/solo/context/`,
-исторические `reports/`, внутренние контракты данных (`atlas-fixtures`, `atlas_demo_jobs`,
-`atlas_starter*`, `ATLAS_ENV`) — их переименование требует сброса схемы/тома БД.
+Активная задача: [S1-001](tasks/S1-001-first-source.md) — **implemented, tested locally**
+(2026-09-24), ждёт отдельного review и принятия владельцем: риск высокий (права источника).
+Live-источник выключен: политика himalayas = pending/enabled=false, все права unknown.
 
-Активная задача: [S0-001](tasks/S0-001-install-and-verify.md) — **accepted владельцем 2026-09-24**.
-Следующая задача назначается владельцем; кандидат — [S1-001](tasks/S1-001-first-source.md)
-(до owner-approval источника допустимы только контрактные фикстуры адаптера).
+**Результат S1-001:** настоящий доменный контракт (`src/domain/source-contracts.ts`,
+SourcePolicy/JobSnapshot по 03_DOMAIN_CONTRACTS.schema.json, ручные валидаторы без
+сторонних зависимостей), исполняемая политика источников (`src/server/source-policies.ts`),
+контрактная фикстура будущего Himalayas-адаптера с детерминированным маппером
+(`src/server/import/himalayas-fixture.ts`: секунды/миллисекунды, пустые locations =
+worldwide только без противоречия тексту, зарплата без выдуманной валюты), идемпотентный
+пайплайн импорта (`src/server/import/pipeline.ts`: дедуп по ID, content-hash, version+1
+только при смене смысла, 429/5xx/неполный снимок не закрывают записи, stale после двух
+полных проходов с интервалом ≥24ч, конечный retry) и UI-проекция с гейтами
+(`src/domain/snapshot-projection.ts`). Сетевого транспорта в src/ нет (guardrails).
 
-Toolchain по решению владельца переведён на Node 26 (2026-09-24):
-`.nvmrc` = 26.7.0, `engines` дополнен линией `^26.0.0`.
+Проверено: 39/39 unit (9 новых по 7 пунктам приёмки S1), lint+tsc (49 файлов), build,
+24/24 e2e, 3/3 test:db. Цикл ремонта: 1/2 (запись задним числом о дефекте классификации,
+исправленном до завершения исходной реализации — см. tasks/current.json).
 
-Git-репозиторий инициализирован владельцем-одобренным шагом (2026-09-24):
-branch `main`, initial commit `f1f2ab7` (231 файл, включая настоящий
-`package-lock.json`; `.env`/`.mimosa/`/артефакты сборки — в .gitignore).
-Pre-commit хук Mimosa не завершил полный аудит (library_source limit,
-callgraph partial): заявлять безопасность проекта нельзя — нужен отдельный
-полный скан по решению владельца.
+**Не сделано сознательно:** live fetch Himalayas (нужен owner-approval политики и отдельный
+review), хранение snapshots в PostgreSQL (контрактный стор в памяти/фикстурах; схема БД не
+менялась), показ карточек himalayas в UI (источник не одобрен — contribute 0 карточек,
+моков нет).
+
+## Решения владельца
+- Node 26 (2026-09-24): `.nvmrc` = 26.7.0, `engines` +`^26.0.0`.
+- Переименование Atlas → Nenaugad (2026-09-24): package, compose-проект, CI, UI, проза.
+  Сохранены артефакты дизайн-языка Atlas 1.1, Reference/, docs/solo/context/, reports/
+  и контракты данных (atlas-fixtures, atlas_demo_jobs, atlas_starter*, ATLAS_ENV).
+- S0-001 принят 2026-09-24; git init, ветка main, коммиты f1f2ab7, 7c5a404.
+- Mimosa pre-commit полный аудит не завершил (library_source limit, callgraph partial):
+  безопасность проекта не заявляется.
+
+## Следующий шаг
+Владелец: review S1-001 diff + решение по политике himalayas (approve/purpose/review).
+После approve — отдельная задача live-адаптера (fetch, polling, БД-хранение).
 
 ## Фактические результаты S0-001 (2026-09-24, Node v26.7.0, npm 12.0.2, Windows)
 
@@ -62,15 +79,18 @@ E2E «keyboard reaches skip link and labeled search» падал: ожидани
 - Проверка postgres-режима веб-приложения (`DATA_BACKEND=postgres` в dev) — осознанный
   шаг владельца по README; квалифицировано интеграционными тестами test:db.
 - WCAG-аудит, pen test, нагрузка, restore, npm-registry digest verification — не выполнялись.
-- AI/live sources/uploads выключены; сетевых AI-вызовов нет; secret-коммитов нет (git-репозиторий не инициализирован, коммитов не было).
+- AI/live sources/uploads выключены; сетевых AI-вызовов нет. Git инициализирован
+  2026-09-24 (main, коммиты f1f2ab7, 7c5a404); после S1-001 новых коммитов нет —
+  изменения S1 ждут review владельца.
 - Расход coding-host: unknown.
 
 ## Откат
 `docker compose stop db` выполнен. Удалить последствия: удалить `node_modules/`,
 `.next/`, `package-lock.json`, `.env`; `docker compose down -v` — только по решению владельца.
 
-## Следующая небольшая задача
-[S1-001](tasks/S1-001-first-source.md): один одобренный источник → сохранение → каталог.
+## После приятия S1-001
+Live-адаптер Himalayas (после approve политики: fetch, polling, БД-хранение snapshots)
+или S2 — ручной профиль → объяснимый подбор → сохранение (по решению владельца).
 
 | Область | Код | Фактическая проверка |
 |---|---|---|
@@ -78,7 +98,9 @@ E2E «keyboard reaches skip link and labeled search» падал: ожидани
 | Nenaugad UI / Next pages и routes | Implemented | build + 24/24 Playwright E2E |
 | PostgreSQL migrate/seed/repository | Implemented | migrate/seed x2, 3/3 integration |
 | Playwright-сценарии | Implemented | Реальный Next, 320/390/1440 |
+| Доменные контракты SourcePolicy/JobSnapshot, импорт, проекция (S1) | Implemented | 9/9 новых unit по приёмке S1 |
+| Live-адаптер источника (fetch/polling/БД) | Not implemented | Требует approve политики + review |
 | Runtime AI | Not implemented | Disabled gate, не генератор |
 | Auth, profile, upload, letters | Not implemented | Не принимать реальные данные |
-| Budget ledger / worker / реальный source | Not implemented | Обязательны до активации |
+| Budget ledger / worker | Not implemented | Обязательны до активации |
 | Production / beta | Blocked | Требуют решения владельца |
