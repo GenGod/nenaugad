@@ -1,88 +1,92 @@
-// CONTRACT FIXTURE for the future Himalayas adapter.
-// These records are synthetic: they were never fetched from
-// https://himalayas.app/jobs/api and contain no real employers or vacancies.
-// The live adapter (network transport) is a separate high-risk task that
-// requires owner review of the source policy first; S1-001 ships the
-// deterministic mapping and its tests only.
+// Himalayas adapter mapping + a clearly-labelled CONTRACT FIXTURE.
+// Live-feed facts verified against https://himalayas.app/jobs/api on
+// 2026-09-24 (owner-directed smoke, limit=2): guid is the full listing URL,
+// pubDate/expiryDate are Unix SECONDS (the OpenAPI "ms" claim is wrong),
+// excerpt is a separate field, totalCount ~100k, locationRestrictions may be
+// empty (= source-defined worldwide, still checked against the text).
+// The fixture records below are synthetic: no real employers or vacancies.
 import type {
-  Geography, JobSnapshot, Workplace, Evidence,
+  Geography, JobSnapshot, Workplace, Evidence, Schedule,
 } from "../../domain/source-contracts.ts";
 
 export class AdapterInputError extends Error {
   constructor(code: string) { super(code); }
 }
 
-// Minimal shape the fixture uses from the documented public API fields.
 export type HimalayasRawRecord = Readonly<{
   guid: string;
   title: string;
+  excerpt?: string | null;
   companyName: string;
-  companyDomain?: string | null;
-  descriptionHtml: string;
-  arrangement: "remote" | "hybrid" | "onsite" | "unknown";
-  permanentRemote: boolean | null;
-  pubDateEpoch: number;
-  locations: readonly string[];
-  salary?: Readonly<{
-    min: number | null; max: number | null;
-    currency: string | null; period: "annual" | "hourly";
-  }> | null;
-  sourceUrl: string;
-  applyUrl?: string | null;
+  employmentType?: string | null;
+  description: string;
+  pubDate: number;
+  expiryDate?: number | null;
+  locationRestrictions: readonly (string | Readonly<{ alpha2?: string; name?: string }>)[];
+  timezoneRestrictions?: readonly number[];
+  minSalary?: number | null;
+  maxSalary?: number | null;
+  salaryPeriod?: string | null;
+  currency?: string | null;
+  applicationLink?: string | null;
 }>;
 
 export const himalayasContractFixture: readonly HimalayasRawRecord[] = [
   {
-    guid: "fixture-h-001",
+    guid: "https://himalayas.app/jobs/fixture-h-001",
     title: "Platform Engineer (synthetic fixture)",
+    excerpt: "Synthetic fixture: fully remote permanent platform role.",
     companyName: "Northwind Fixtures",
-    companyDomain: "northwind-fixtures.example",
-    descriptionHtml:
+    employmentType: "Full Time",
+    description:
       "<p>Synthetic contract fixture. Fully remote permanent position. " +
       "We maintain a multi-region platform and review pull requests asynchronously.</p>",
-    arrangement: "remote",
-    permanentRemote: true,
-    pubDateEpoch: 1750000000, // seconds — the mapper must not read this as milliseconds
-    locations: [], // source-defined worldwide, still checked against the text
-    salary: { min: 110000, max: 140000, currency: "USD", period: "annual" },
-    sourceUrl: "https://himalayas.app/jobs/fixture-h-001",
-    applyUrl: null,
+    pubDate: 1750000000, // seconds — verified live unit; auto-detected anyway
+    expiryDate: 1810000000,
+    locationRestrictions: [],
+    timezoneRestrictions: [],
+    minSalary: 110000, maxSalary: 140000,
+    salaryPeriod: "annual", currency: "USD",
+    applicationLink: null,
   },
   {
-    guid: "fixture-h-002",
+    guid: "https://himalayas.app/jobs/fixture-h-002",
     title: "Data Analyst (synthetic fixture)",
+    excerpt: "Synthetic fixture: remote analyst role for DE/NL.",
     companyName: "Cobalt Fixtures",
-    companyDomain: "cobalt-fixtures.example",
-    descriptionHtml:
+    employmentType: "Contractor",
+    description:
       "<p>Synthetic contract fixture. Permanent remote role. " +
       "Applicants must be based in Germany or the Netherlands.</p>",
-    arrangement: "remote",
-    permanentRemote: true,
-    pubDateEpoch: 1750086400000, // milliseconds for the same day: unit must be detected
-    locations: [],
-    salary: { min: 60000, max: 75000, currency: "EUR", period: "annual" },
-    sourceUrl: "https://himalayas.app/jobs/fixture-h-002",
-    applyUrl: "https://cobalt-fixtures.example/careers/fixture-h-002",
+    pubDate: 1750086400000, // milliseconds — unit detection must still work
+    expiryDate: null,
+    locationRestrictions: [],
+    timezoneRestrictions: [2],
+    minSalary: 60, maxSalary: 75,
+    salaryPeriod: "hourly", currency: "EUR",
+    applicationLink: "https://himalayas.app/jobs/fixture-h-002",
   },
   {
-    guid: "fixture-h-003",
+    guid: "https://himalayas.app/jobs/fixture-h-003",
     title: "Office-leaning Engineer (synthetic fixture)",
+    excerpt: "Synthetic fixture: tagged remote but office-leaning.",
     companyName: "Harbor Fixtures",
-    companyDomain: null,
-    descriptionHtml:
+    employmentType: null,
+    description:
       "<p>Synthetic contract fixture. Tagged remote, but the team works " +
       "two days per week in our Berlin office.</p>",
-    arrangement: "remote",
-    permanentRemote: null,
-    pubDateEpoch: 1750172800,
-    locations: ["Germany"],
-    salary: null,
-    sourceUrl: "https://himalayas.app/jobs/fixture-h-003",
-    applyUrl: null,
+    pubDate: 1750172800,
+    expiryDate: null,
+    locationRestrictions: [{ alpha2: "DE", name: "Germany" }],
+    timezoneRestrictions: [],
+    minSalary: null, maxSalary: null,
+    salaryPeriod: null, currency: null,
+    applicationLink: null,
   },
 ];
 
-const RESTRICTED_COUNTRY_PATTERN = /must be based in ([A-Z][a-z]+)(?: or (?:the )?([A-Z][a-z]+))?/u;
+const RESTRICTED_COUNTRY_PATTERN =
+  /must be based in ([A-Z][a-z]+)(?: or (?:the )?([A-Z][a-z]+))?/u;
 const COUNTRY_ISO: Readonly<Record<string, string>> = {
   Germany: "DE", Netherlands: "NL", France: "FR",
   "United States": "US", Japan: "JP", Poland: "PL", Spain: "ES",
@@ -91,6 +95,22 @@ const OFFICE_MARKERS = [
   /days? per week in (?:our |the )?[a-z]+\s+office/iu,
   /in[- ]person \d+ days?/iu,
 ] as const;
+const TEMPORARY_MARKERS = [
+  /remote until .{0,40}office/iu,
+  /temporarily remote/iu,
+] as const;
+const EMPLOYMENT_TYPE_MAP: Readonly<Record<string, string>> = {
+  "Full Time": "employment_full_time",
+  "Part Time": "employment_part_time",
+  Contractor: "contractor",
+  Freelance: "freelance",
+  Intern: "internship",
+  Temporary: "temporary",
+};
+const SALARY_PERIOD_MAP: Readonly<Record<string, string>> = {
+  hourly: "hourly", weekly: "weekly", fortnightly: "fortnightly",
+  monthly: "monthly", annual: "annual",
+};
 
 function decodeEntities(text: string): string {
   return text
@@ -100,21 +120,37 @@ function decodeEntities(text: string): string {
     .replace(/&gt;/gu, ">");
 }
 
-export function descriptionToText(descriptionHtml: string): string {
+export function descriptionToText(html: string): string {
   return decodeEntities(
-    descriptionHtml.replace(/<\/?(p|br|li|ul|ol|strong|em|b|i)[^>]*>/giu, ""),
+    html.replace(/<\/?(p|br|li|ul|ol|strong|em|b|i|a)[^>]*>/giu, ""),
   ).replace(/\s+/gu, " ").trim();
 }
 
 function epochToIsoDateTime(epoch: number): string {
-  // Himalayas documentation examples mix seconds and milliseconds; an adapter
-  // must detect the unit, never guess. Ambiguous magnitude is rejected.
+  // The live feed uses seconds; older docs claim ms or ISO. The adapter
+  // detects the unit and rejects ambiguous magnitudes instead of guessing.
   if (!Number.isSafeInteger(epoch) || epoch <= 0) {
     throw new AdapterInputError("INVALID_PUB_DATE");
   }
   if (epoch >= 1e12) return new Date(epoch).toISOString();
   if (epoch <= 1e11) return new Date(epoch * 1000).toISOString();
   throw new AdapterInputError("AMBIGUOUS_PUB_DATE_UNIT");
+}
+
+function listingSlug(guid: string): { id: string; sourceUrl: string } {
+  let url: URL;
+  try {
+    url = new URL(guid);
+  } catch {
+    throw new AdapterInputError("INVALID_GUID");
+  }
+  if (url.protocol !== "https:" || url.host !== "himalayas.app" ||
+    url.port !== "" || url.username !== "" || url.password !== "") {
+    throw new AdapterInputError("INVALID_GUID_HOST");
+  }
+  const slug = url.pathname.replace(/^\/+|\/+$/gu, "").replace(/\//gu, "-");
+  if (!/^[a-z0-9-]{1,120}$/u.test(slug)) throw new AdapterInputError("INVALID_GUID_SLUG");
+  return { id: `himalayas:${slug}`, sourceUrl: guid };
 }
 
 function detectRestrictedCountries(text: string): { countries: string[]; quote: string } | null {
@@ -127,36 +163,36 @@ function detectRestrictedCountries(text: string): { countries: string[]; quote: 
   return countries.length > 0 ? { countries, quote: match[0] } : null;
 }
 
-function hasOfficeMarker(text: string): boolean {
-  return OFFICE_MARKERS.some(marker => marker.test(text));
+function normalizeLocations(raw: HimalayasRawRecord["locationRestrictions"]): string[] {
+  return raw.map(entry =>
+    typeof entry === "string" ? entry : (entry.name ?? entry.alpha2 ?? ""),
+  ).filter(name => name.length > 0);
 }
 
-function firstOfficeMarkerSource(text: string): string | null {
-  return OFFICE_MARKERS.find(marker => marker.test(text))?.source ?? null;
-}
-
-function geographyFor(raw: HimalayasRawRecord, text: string, evidenceId: string): {
+function geographyFor(raw: HimalayasRawRecord, text: string, evidenceId: string, recordId: string): {
   geography: Geography; conflict: string | null; evidence: Evidence;
 } {
   const restriction = detectRestrictedCountries(text);
+  const locations = normalizeLocations(raw.locationRestrictions);
   // Empty locations is a source-defined worldwide assertion — it survives only
   // when the description text does not contradict it (spec 5.2, SP section 2).
   if (!restriction) {
     return {
       geography: {
-        scope: raw.locations.length === 0 ? "worldwide" : "restricted",
+        scope: locations.length === 0 ? "worldwide" : "restricted",
         allowed_countries: [],
         excluded_countries: [],
-        allowed_subdivisions: raw.locations.length === 0 ? [] : [...raw.locations],
-        region_text: raw.locations.length === 0 ? null : raw.locations.join(", "),
+        allowed_subdivisions: locations,
+        region_text: locations.length === 0 ? null : locations.join(", "),
         exhaustive: true,
         evidence_ids: [evidenceId],
       },
       conflict: null,
       evidence: {
         id: evidenceId, origin_type: "job_source",
-        origin_id: `himalayas:${raw.guid}`, origin_version: 1,
-        field_path: "locations", quote: null, method: "source_field", confidence: 1,
+        origin_id: recordId, origin_version: 1,
+        field_path: "locationRestrictions", quote: null,
+        method: "source_field", confidence: 1,
       },
     };
   }
@@ -173,104 +209,157 @@ function geographyFor(raw: HimalayasRawRecord, text: string, evidenceId: string)
     conflict: "geography-source-vs-text",
     evidence: {
       id: evidenceId, origin_type: "job_source",
-      origin_id: `himalayas:${raw.guid}`, origin_version: 1,
-      field_path: "locations", quote: restriction.quote, method: "rule", confidence: 0.9,
+      origin_id: recordId, origin_version: 1,
+      field_path: "locationRestrictions", quote: restriction.quote,
+      method: "rule", confidence: 0.9,
     },
   };
 }
 
-function workplaceFor(raw: HimalayasRawRecord, text: string, evidenceId: string): {
+function workplaceFor(raw: HimalayasRawRecord, text: string, evidenceId: string, recordId: string): {
   workplace: Workplace; conflict: string | null; evidence: Evidence;
 } {
-  const officeConflict = raw.arrangement === "remote" && hasOfficeMarker(text);
-  const verificationState = officeConflict ? "conflicting"
-    : raw.arrangement === "unknown" ? "unknown" : "confirmed";
+  // The feed is a remote-only jobs board: an authoritative structured signal
+  // for workplace.type=remote (spec 10.2). Office markers in the text still
+  // win and quarantine the record; temporary markers downgrade permanence.
+  const officeConflict = OFFICE_MARKERS.some(marker => marker.test(text));
+  const temporary = TEMPORARY_MARKERS.some(marker => marker.test(text));
   return {
     workplace: {
-      type: raw.arrangement,
-      permanence: raw.permanentRemote === true ? "permanent"
-        : raw.permanentRemote === false ? "temporary" : "unknown",
+      type: "remote",
+      permanence: officeConflict ? "unknown" : temporary ? "temporary" : "permanent",
       mandatory_onsite: officeConflict ? "required" : "not_stated",
       mandatory_travel: "not_stated",
       optional_offsites: null,
-      verification_state: verificationState,
+      verification_state: officeConflict ? "conflicting" : "confirmed",
       evidence_ids: [evidenceId],
     },
     conflict: officeConflict ? "remote-tag-vs-office-text" : null,
     evidence: {
       id: evidenceId, origin_type: "job_source",
-      origin_id: `himalayas:${raw.guid}`, origin_version: 1,
-      field_path: "arrangement",
-      quote: officeConflict ? firstOfficeMarkerSource(text) : null,
-      method: "source_field", confidence: 1,
+      origin_id: recordId, origin_version: 1,
+      field_path: "board:remote-only-feed",
+      quote: officeConflict
+        ? (OFFICE_MARKERS.find(marker => marker.test(text))?.source ?? null)
+        : "remote-only jobs feed",
+      method: "rule", confidence: officeConflict ? 1 : 0.9,
     },
   };
 }
 
+function scheduleFor(raw: HimalayasRawRecord): Schedule {
+  // Live contract (verified 2026-09-24): timezoneRestrictions are numeric UTC
+  // offsets in hours (fractional .25/.5/.75 allowed), despite the OpenAPI
+  // claiming strings. A set spanning -11..14 means no restriction is stated.
+  const rawZones = raw.timezoneRestrictions ?? [];
+  const offsets = rawZones
+    .map(zone => parseZoneHours(zone))
+    .filter(offset => offset !== null);
+  const explicit = offsets.length > 0;
+  const unrestricted = explicit && Math.min(...offsets) <= -660 && Math.max(...offsets) >= 840;
+  const stated = explicit && !unrestricted;
+  return {
+    status: stated ? "explicit" : "not_stated",
+    timezone: null,
+    zone_semantics: stated ? "fixed_utc_offset" : rawZones.length > 0 ? "ambiguous" : "not_stated",
+    mode: stated ? "within_offset_set" : "not_stated",
+    local_windows: [],
+    required_overlap_minutes: null,
+    accepted_utc_offsets_minutes: stated ? offsets : [],
+    original_text: stated ? JSON.stringify(rawZones) : null,
+    evidence_ids: [],
+  };
+}
+
+function parseZoneHours(zone: number): number | null {
+  if (typeof zone !== "number" || !Number.isFinite(zone)) return null;
+  const minutes = Math.round(zone * 60);
+  if (Math.abs(zone * 60 - minutes) > 1e-9) return null;
+  return minutes >= -840 && minutes <= 840 ? minutes : null;
+}
+
+function employmentTypesFor(raw: HimalayasRawRecord): string[] {
+  const mapped = raw.employmentType ? EMPLOYMENT_TYPE_MAP[raw.employmentType] : undefined;
+  return [mapped ?? "unknown"];
+}
+
+function validHttpUrlOrNull(value: string | null): string | null {
+  if (value === null || value === "") return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 export function mapHimalayasRecord(raw: HimalayasRawRecord, fetchedAt: string): JobSnapshot {
-  if (!/^[A-Za-z0-9-]{1,100}$/u.test(raw.guid)) throw new AdapterInputError("INVALID_GUID");
-  const text = descriptionToText(raw.descriptionHtml);
+  const { id, sourceUrl } = listingSlug(raw.guid);
+  const text = descriptionToText(raw.description);
   if (text.length === 0) throw new AdapterInputError("EMPTY_DESCRIPTION");
-  const geo = geographyFor(raw, text, `ev:${raw.guid}:geo`);
-  const workplace = workplaceFor(raw, text, `ev:${raw.guid}:workplace`);
-  const salaryOriginal = raw.salary && (raw.salary.min !== null || raw.salary.max !== null)
-    ? `${raw.salary.min ?? "?"}–${raw.salary.max ?? "?"} ${raw.salary.currency ?? "?"} / ${raw.salary.period}`
+  if (typeof raw.title !== "string" || raw.title.length === 0) {
+    throw new AdapterInputError("EMPTY_TITLE");
+  }
+  const evidenceText = `${text} ${raw.excerpt ?? ""}`;
+  const geo = geographyFor(raw, evidenceText, `ev:${id}:geo`, id);
+  const workplace = workplaceFor(raw, evidenceText, `ev:${id}:workplace`, id);
+  const salaryKnown = raw.minSalary != null || raw.maxSalary != null;
+  const period = raw.salaryPeriod ? SALARY_PERIOD_MAP[raw.salaryPeriod] : undefined;
+  const salaryOriginal = salaryKnown
+    ? `${raw.minSalary ?? "?"}–${raw.maxSalary ?? "?"} ${raw.currency ?? "?"} / ${period ?? "unknown"}`
     : null;
   const conflicts = [geo.conflict, workplace.conflict].filter((c): c is string => c !== null);
+  const applyUrl = validHttpUrlOrNull(raw.applicationLink ?? null);
   return {
     kind: "job_snapshot",
     schema_version: "1.0.0",
-    id: `himalayas:${raw.guid}`,
+    id,
     version: 1,
-    source_record_id: `himalayas:${raw.guid}`,
+    source_record_id: id,
     title: raw.title,
     company_name: raw.companyName,
-    company_domain: raw.companyDomain ?? null,
-    source_url: raw.sourceUrl,
-    apply_url: raw.applyUrl ?? null,
+    company_domain: null,
+    source_url: sourceUrl,
+    apply_url: applyUrl,
     description_text: text,
     description_language: "en",
     workplace: workplace.workplace,
     hiring_options: [{
-      id: `opt:${raw.guid}:1`,
+      id: `opt:${id}:1`,
       geography: geo.geography,
-      employment_types: ["unknown"],
+      employment_types: employmentTypesFor(raw) as JobSnapshot["hiring_options"][number]["employment_types"],
       authorization: {
         requirement: "none_stated", authorization_type: "none_stated",
         any_of_countries: [], original_text: null, evidence_ids: [],
       },
-      schedule: {
-        status: "not_stated", timezone: null, zone_semantics: "not_stated",
-        mode: "not_stated", local_windows: [], required_overlap_minutes: null,
-        accepted_utc_offsets_minutes: [], original_text: null, evidence_ids: [],
-      },
+      schedule: scheduleFor(raw),
       evidence_ids: [geo.evidence.id],
     }],
     requirements: [],
     compensation: {
-      ranges: raw.salary ? [{
-        min: raw.salary.min === null ? null : String(raw.salary.min),
-        max: raw.salary.max === null ? null : String(raw.salary.max),
-        currency: raw.salary.currency,
-        period: raw.salary.period === "annual" ? "annual" : "hourly",
+      ranges: salaryKnown ? [{
+        min: raw.minSalary == null ? null : String(raw.minSalary),
+        max: raw.maxSalary == null ? null : String(raw.maxSalary),
+        currency: raw.currency ?? null,
+        period: (period ?? "unknown") as "hourly" | "annual",
         tax_basis: "unknown", component: "unknown",
         applicable_countries: [], hours_per_week: null, paid_weeks_per_year: null,
-        evidence_ids: [`ev:${raw.guid}:comp`],
+        evidence_ids: [`ev:${id}:comp`],
       }] : [],
       original_text: salaryOriginal,
-      evidence_ids: raw.salary ? [`ev:${raw.guid}:comp`] : [],
+      evidence_ids: salaryKnown ? [`ev:${id}:comp`] : [],
     },
     dates: {
-      source_published_at: epochToIsoDateTime(raw.pubDateEpoch),
+      source_published_at: epochToIsoDateTime(raw.pubDate),
       fetched_at: fetchedAt,
       last_seen_at: fetchedAt,
-      expires_at: null,
+      expires_at: raw.expiryDate ? epochToIsoDateTime(raw.expiryDate) : null,
     },
     lifecycle: "active",
     conflicts,
-    evidence: [geo.evidence, workplace.evidence, ...(raw.salary ? [{
-      id: `ev:${raw.guid}:comp`, origin_type: "job_source" as const,
-      origin_id: `himalayas:${raw.guid}`, origin_version: 1,
+    evidence: [geo.evidence, workplace.evidence, ...(salaryKnown ? [{
+      id: `ev:${id}:comp`, origin_type: "job_source" as const,
+      origin_id: id, origin_version: 1,
       field_path: "salary", quote: salaryOriginal, method: "source_field" as const,
       confidence: 1,
     }] : [])],

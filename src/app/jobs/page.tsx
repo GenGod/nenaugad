@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { parseCatalogQuery } from "../../domain/job.ts";
 import { readCatalog } from "../../server/catalog-service.ts";
+import { readSnapshotCards } from "../../server/snapshot-catalog-service.ts";
 import { JobCard } from "../../components/job-card.tsx";
+import { SnapshotCard } from "../../components/snapshot-card.tsx";
 
 export const metadata: Metadata = { title: "Вакансии" };
 export const dynamic = "force-dynamic";
@@ -27,6 +29,9 @@ export default async function Jobs({ searchParams }: { searchParams: Promise<Sea
       <p>Проверьте подключение к локальной базе, миграцию и seed. Демо-данные не подставляются вместо ошибки.</p>
       <Link className="button secondary" href="/jobs">Повторить чтение</Link></section>;
   }
+  // External source section: renders nothing while the source policy is
+  // disabled; a storage failure degrades visibly without faking emptiness.
+  const snapshots = await readSnapshotCards();
   return <>
     <section className="page-heading">
       <div><p className="eyebrow">Открытый каталог / демо</p><h1>Возможности уже здесь.</h1>
@@ -58,6 +63,17 @@ export default async function Jobs({ searchParams }: { searchParams: Promise<Sea
           <p>Попробуйте React, SQL или Designer. Страны и удалённый формат не изменяются автоматически.</p>
           <Link className="text-link" href="/jobs">Показать весь демо-каталог</Link>
         </div> : result.items.map(job => <JobCard key={job.id} job={job} />)}
+        {snapshots.cards.length > 0 && <>
+          <div className="result-header">
+            <h2>Источник Himalayas</h2>
+            <span className="muted">Фрагменты с атрибуцией · без оценки совместимости</span>
+          </div>
+          {snapshots.cards.map(card => <SnapshotCard key={card.id} card={card} />)}
+        </>}
+        {snapshots.unavailable && <div className="empty-state">
+          <h2>Раздел Himalayas временно недоступен</h2>
+          <p>Локальная база снапшотов не ответила. Основной каталог выше не подменён этим состоянием.</p>
+        </div>}
       </section>
     </div>
   </>;

@@ -1,15 +1,15 @@
 {
-  "task_id": "S1-001",
-  "file": "tasks/S1-001-first-source.md",
-  "status": "accepted",
+  "task_id": "S1-002",
+  "file": "tasks/S1-002-himalayas-live-adapter.md",
+  "status": "in_progress",
   "repair_cycles_used": 1,
   "max_repair_cycles": 2,
   "hypotheses": [
     {
-      "text": "Back-filled record: initial S1-001 bring-up had three failing check runs fixed before the implementation was declared complete. (1) classifySnapshot excluded any snapshot with non-empty conflicts[]; per spec 10.2/10.3 only unresolved remote-format contradictions quarantine a record — a geography source-vs-text conflict resolved to the narrower evidenced reading stays catalogable. (2) country regex missed 'the Netherlands' article. (3) mechanical: unused import, TS2790 delete, Number.isSafeInteger non-narrowing. All fixed; 39/39 unit, check/build/e2e/test:db green.",
-      "recorded_at": "2026-09-24T18:27:55.533Z"
+      "text": "Back-filled record: S1-002 bring-up fixes before implementation was declared complete. (1) live smoke revealed timezoneRestrictions are numeric UTC hours (OpenAPI wrongly says strings) and full -11..14 span means no restriction — mapper rewritten to live contract; (2) fixture expiryDate was in the past, exposing a memory-vs-postgres retention parity gap (expires_at rule) — fixture future-dated and memory impl aligned; (3) mechanical: test used pre-rename field pubDateEpoch, URL-encoded cursor assertion, unused var, TS narrowing/import-type issues. Verified: 44/44 unit, 6/6 integration on test DB, check/build, smoke contract_ok on live records, CLI refusal exit 1 while disabled, e2e 24/24.",
+      "recorded_at": "2026-09-24T19:07:22.341Z"
     }
   ],
   "coding_host_spend": "unknown",
-  "note": "Owner assigned S1-001 after accepting S0 (2026-09-24). S0 history is in git."
+  "note": "Owner assigned S1-002 (live adapter) after accepting S1-001. Activation (enabled=true) stays a separate owner decision."
 }

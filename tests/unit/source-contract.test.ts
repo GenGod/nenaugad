@@ -72,7 +72,7 @@ test("acceptance 2: real contract validated and fixture is explicitly labelled",
   // Stable IDs across independent mappings of the same raw records.
   const again = mapHimalayasFixture(DAY_LATER);
   assert.deepEqual(snapshots.map(s => s.id), again.map(s => s.id));
-  assert.equal(snapshots[0]?.id, "himalayas:fixture-h-001");
+  assert.equal(snapshots[0]?.id, "himalayas:jobs-fixture-h-001");
   // The fixture is synthetic by construction (companies/markers).
   assert.equal(himalayasContractFixture.every(r => r.companyName.endsWith("Fixtures")), true);
   assert.equal(snapshots.every(s => s.title.includes("synthetic fixture")), true);
@@ -92,20 +92,20 @@ test("acceptance 2: epoch seconds and milliseconds are detected, ambiguity rejec
   assert.equal(fromSeconds, "2025-06-15T15:06:40.000Z");
   assert.equal(fromMillis, "2025-06-16T15:06:40.000Z");
   assert.throws(
-    () => mapHimalayasRecord({ ...seconds!, pubDateEpoch: 175000000000 }, NOW),
+    () => mapHimalayasRecord({ ...seconds!, pubDate: 175000000000 }, NOW),
     AdapterInputError,
   );
 });
 
 test("acceptance 4: empty locations is worldwide only without a text contradiction", () => {
   const snapshots = mapHimalayasFixture(NOW);
-  const worldwide = snapshots.find(s => s.id === "himalayas:fixture-h-001")!;
+  const worldwide = snapshots.find(s => s.id === "himalayas:jobs-fixture-h-001")!;
   assert.equal(worldwide.hiring_options[0]?.geography.scope, "worldwide");
   assert.equal(worldwide.hiring_options[0]?.geography.allowed_countries.length, 0);
   assert.equal(worldwide.conflicts.length, 0);
   // Source said worldwide, text says Germany/Netherlands: the narrower,
   // evidenced reading wins and the contradiction is recorded, not hidden.
-  const restricted = snapshots.find(s => s.id === "himalayas:fixture-h-002")!;
+  const restricted = snapshots.find(s => s.id === "himalayas:jobs-fixture-h-002")!;
   assert.equal(restricted.hiring_options[0]?.geography.scope, "restricted");
   assert.deepEqual(restricted.hiring_options[0]?.geography.allowed_countries, ["DE", "NL"]);
   assert.equal(restricted.conflicts.includes("geography-source-vs-text"), true);
@@ -113,7 +113,7 @@ test("acceptance 4: empty locations is worldwide only without a text contradicti
 
 test("acceptance 4: remote-tag vs office text is conflicting, unknown stays unknown", () => {
   const snapshots = mapHimalayasFixture(NOW);
-  const officeLean = snapshots.find(s => s.id === "himalayas:fixture-h-003")!;
+  const officeLean = snapshots.find(s => s.id === "himalayas:jobs-fixture-h-003")!;
   assert.equal(officeLean.workplace.verification_state, "conflicting");
   assert.equal(officeLean.workplace.mandatory_onsite, "required");
   assert.equal(classifySnapshot(officeLean), "excluded");
@@ -140,11 +140,11 @@ test("acceptance 3: repeated import creates no duplicate and no semantic rewrite
   }
   // A changed description bumps the version and keeps provenance dates.
   const changed = mapHimalayasFixture(TWO_DAYS_LATER).map(s =>
-    s.id === "himalayas:fixture-h-001"
+    s.id === "himalayas:jobs-fixture-h-001"
       ? { ...s, description_text: `${s.description_text} Updated requirements.` }
       : s);
   const third = importOnce(changed, second.store, TWO_DAYS_LATER);
-  const updated = third.store.records["himalayas:fixture-h-001"]!;
+  const updated = third.store.records["himalayas:jobs-fixture-h-001"]!;
   assert.equal(updated.snapshot.version, 2);
   assert.equal(updated.firstSeenAt, NOW);
   assert.equal(updated.snapshot.description_text.includes("Updated requirements."), true);
@@ -174,17 +174,17 @@ test("acceptance 6: 429/5xx and incomplete snapshots never close or stale record
     store: seeded, outcome: okPartial([snapshots[0]!]), attempt: 1, maxAttempts: 3, now: DAY_LATER,
   });
   assert.equal(partial.result, "partial");
-  assert.equal(partial.store.records["himalayas:fixture-h-002"]!.fullPassMisses, 0);
-  assert.equal(partial.store.records["himalayas:fixture-h-002"]!.snapshot.lifecycle, "active");
+  assert.equal(partial.store.records["himalayas:jobs-fixture-h-002"]!.fullPassMisses, 0);
+  assert.equal(partial.store.records["himalayas:jobs-fixture-h-002"]!.snapshot.lifecycle, "active");
   // Full passes < 24h apart do not accumulate misses either.
   const quick = importOnce([snapshots[0]!], seeded, "2026-09-24T18:00:00.000Z");
-  assert.equal(quick.store.records["himalayas:fixture-h-002"]!.fullPassMisses, 0);
+  assert.equal(quick.store.records["himalayas:jobs-fixture-h-002"]!.fullPassMisses, 0);
   // Two complete passes with a >=24h gap stale the absent record, never close it.
   const missedOnce = importOnce([snapshots[0]!], seeded, DAY_LATER);
-  assert.equal(missedOnce.store.records["himalayas:fixture-h-002"]!.fullPassMisses, 1);
-  assert.equal(missedOnce.store.records["himalayas:fixture-h-002"]!.snapshot.lifecycle, "active");
+  assert.equal(missedOnce.store.records["himalayas:jobs-fixture-h-002"]!.fullPassMisses, 1);
+  assert.equal(missedOnce.store.records["himalayas:jobs-fixture-h-002"]!.snapshot.lifecycle, "active");
   const missedTwice = importOnce([snapshots[0]!], missedOnce.store, TWO_DAYS_LATER);
-  const absent = missedTwice.store.records["himalayas:fixture-h-002"]!;
+  const absent = missedTwice.store.records["himalayas:jobs-fixture-h-002"]!;
   assert.equal(absent.fullPassMisses, 2);
   assert.equal(absent.snapshot.lifecycle, "stale");
   // Retry is finite: an attempt beyond the budget changes nothing.
@@ -197,7 +197,7 @@ test("acceptance 6: 429/5xx and incomplete snapshots never close or stale record
 
 test("acceptance 5: the card carries source, dates and a policy-approved apply route", () => {
   const store = importOnce(mapHimalayasFixture(NOW)).store;
-  const stored = store.records["himalayas:fixture-h-002"]!;
+  const stored = store.records["himalayas:jobs-fixture-h-002"]!;
   const card = projectCard(stored, himalayasCandidatePolicy);
   assert.equal(card.source.displayName, "Himalayas");
   assert.equal(card.source.attributionRequired, true);
@@ -205,7 +205,7 @@ test("acceptance 5: the card carries source, dates and a policy-approved apply r
   assert.equal(card.publishedAt, "2025-06-16T15:06:40.000Z");
   assert.equal(card.lastSeenAt, NOW);
   assert.equal(card.firstSeenAt, NOW);
-  assert.equal(card.salaryOriginalText, "60000–75000 EUR / annual");
+  assert.equal(card.salaryOriginalText, "60–75 EUR / hourly");
   // apply_route is unknown for the pending source: the safe fallback is the
   // source board, never a guessed direct link.
   assert.equal(card.apply.kind, "source_board");
@@ -250,6 +250,6 @@ test("acceptance 7: a disabled or unapproved source publishes nothing, no mocks"
     store, getPolicy: id => (id === "himalayas" ? approved : getSourcePolicy(id)), now: NOW,
   });
   assert.deepEqual(cards.map(c => c.id).sort(),
-    ["himalayas:fixture-h-001", "himalayas:fixture-h-002"]);
+    ["himalayas:jobs-fixture-h-001", "himalayas:jobs-fixture-h-002"]);
   assert.equal(cards.every(c => c.visibility === "main_catalog"), true);
 });

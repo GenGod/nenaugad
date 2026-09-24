@@ -1,10 +1,32 @@
 # Nenaugad — status (ex-Atlas Starter)
 
 ## Сейчас
-Активная задача: [S1-001](tasks/S1-001-first-source.md) — **accepted владельцем 2026-09-24**
-(«принимаю», после утверждения матрицы прав himalayas). Следующую задачу назначает владелец:
-кандидаты — live-адаптер himalayas (высокий риск, отдельный review до включения) или
-S2 (ручной профиль → объяснимый подбор → сохранение).
+Активная задача: [S1-002](tasks/S1-002-himalayas-live-adapter.md) — **implemented,
+tested locally** (2026-09-24), ждёт review и решения владельца об активации
+(`enabled: true`). Рабочее дерево содержит незакоммиченный diff S1-002.
+
+**Что реализовано:** закреплённый транспорт `src/server/import/fetcher.ts`
+(единственный файл в guardrail-allowlist: pinned host, opaque-cursor валидация,
+`redirect:"error"`, таймаут, лимит размера, 429/5xx классификация); live-адаптер
+cursor-walk с бюджетом страниц и чекпоинтом (`himalayas-adapter.ts`, отказ при
+disabled, poll-гейт ≥24ч, неудачный прогон не расходует окно); миграция 0002
+(`job_snapshots` с CHECK контракта + `import_state`); PostgreSQL-хранение с
+retention (720ч + expires_at − 7д); CLI `npm run import:himalayas` (отказ exit 1
+пока источник выключен) и `npm run smoke:himalayas`; read-путь карточек с
+атрибуцией/backlink только при включённой политике; UI-секция каталога «тёмная»
+до активации. Маппер переписан под живой контракт (guid=URL→стабильный ID,
+Unix-секунды, excerpt отдельно, numeric timezone hours, полный диапазон = нет
+ограничения).
+
+**Проверено:** 44/44 unit, 6/6 integration (test DB: идемпотентность, чекпоинт,
+CHECK-ограничения, retention), check/build, smoke **contract_ok** на реальных
+записях API, отказ CLI без сети, e2e 24/24 без регресса. Цикл ремонта 1/2
+(задним числом, см. current.json).
+
+**Активация (решение владельца):** review diff → `enabled: true` в политике →
+`npm run smoke:himalayas` → `npm run import:himalayas` (по умолчанию 25 страниц,
+~500 записей; полный фид ~100k — бюджетными прогонами) → обновить e2e-счётчик
+каталога. Откат: `enabled: false` без правки UI; таблицы 0002 остаются.
 
 **Политика himalayas: матрица прав утверждена владельцем 2026-09-24** (review живых
 страниц API/ToS). `status: approved`, `enabled: false` — активация отдельной задачей
