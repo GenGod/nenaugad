@@ -1,0 +1,214 @@
+{
+  "method": "WCAG relative luminance / sRGB",
+  "scope": "Palette pairs only; not a full rendered UI or WCAG audit",
+  "pairs": [
+    {
+      "foreground_token": "ink",
+      "foreground": "#202840",
+      "background_token": "paper",
+      "background": "#F7F5F0",
+      "minimum": 4.5,
+      "ratio": 13.39438276725049,
+      "pass": true
+    },
+    {
+      "foreground_token": "ink",
+      "foreground": "#202840",
+      "background_token": "white",
+      "background": "#FFFFFF",
+      "minimum": 4.5,
+      "ratio": 14.593822184122812,
+      "pass": true
+    },
+    {
+      "foreground_token": "ink",
+      "foreground": "#202840",
+      "background_token": "fog",
+      "background": "#EFEEE8",
+      "minimum": 4.5,
+      "ratio": 12.554299256631205,
+      "pass": true
+    },
+    {
+      "foreground_token": "slate",
+      "foreground": "#566074",
+      "background_token": "paper",
+      "background": "#F7F5F0",
+      "minimum": 4.5,
+      "ratio": 5.803642804541931,
+      "pass": true
+    },
+    {
+      "foreground_token": "slate",
+      "foreground": "#566074",
+      "background_token": "white",
+      "background": "#FFFFFF",
+      "minimum": 4.5,
+      "ratio": 6.3233470762635875,
+      "pass": true
+    },
+    {
+      "foreground_token": "slate",
+      "foreground": "#566074",
+      "background_token": "fog",
+      "background": "#EFEEE8",
+      "minimum": 4.5,
+      "ratio": 5.439643603806775,
+      "pass": true
+    },
+    {
+      "foreground_token": "muted",
+      "foreground": "#626B7D",
+      "background_token": "paper",
+      "background": "#F7F5F0",
+      "minimum": 4.5,
+      "ratio": 4.918673842958687,
+      "pass": true
+    },
+    {
+      "foreground_token": "muted",
+      "foreground": "#626B7D",
+      "background_token": "white",
+      "background": "#FFFFFF",
+      "minimum": 4.5,
+      "ratio": 5.359130965059771,
+      "pass": true
+    },
+    {
+      "foreground_token": "muted",
+      "foreground": "#626B7D",
+      "background_token": "fog",
+      "background": "#EFEEE8",
+      "minimum": 4.5,
+      "ratio": 4.610179090987955,
+      "pass": true
+    },
+    {
+      "foreground_token": "blue600",
+      "foreground": "#3456D1",
+      "background_token": "paper",
+      "background": "#F7F5F0",
+      "minimum": 4.5,
+      "ratio": 5.672477972363177,
+      "pass": true
+    },
+    {
+      "foreground_token": "blue600",
+      "foreground": "#3456D1",
+      "background_token": "white",
+      "background": "#FFFFFF",
+      "minimum": 4.5,
+      "ratio": 6.180436703244587,
+      "pass": true
+    },
+    {
+      "foreground_token": "blue600",
+      "foreground": "#3456D1",
+      "background_token": "fog",
+      "background": "#EFEEE8",
+      "minimum": 4.5,
+      "ratio": 5.3167053106631705,
+      "pass": true
+    },
+    {
+      "foreground_token": "white",
+      "foreground": "#FFFFFF",
+      "background_token": "blue600",
+      "background": "#3456D1",
+      "minimum": 4.5,
+      "ratio": 6.180436703244587,
+      "pass": true
+    },
+    {
+      "foreground_token": "white",
+      "foreground": "#FFFFFF",
+      "background_token": "blue700",
+      "background": "#2944AC",
+      "minimum": 4.5,
+      "ratio": 8.343783705667532,
+      "pass": true
+    },
+    {
+      "foreground_token": "white",
+      "foreground": "#FFFFFF",
+      "background_token": "blue800",
+      "background": "#223991",
+      "minimum": 4.5,
+      "ratio": 10.183625326608638,
+      "pass": true
+    },
+    {
+      "foreground_token": "green700",
+      "foreground": "#24654F",
+      "background_token": "green50",
+      "background": "#EAF4EE",
+      "minimum": 4.5,
+      "ratio": 6.123643630516742,
+      "pass": true
+    },
+    {
+      "foreground_token": "amber800",
+      "foreground": "#885619",
+      "background_token": "amber50",
+      "background": "#FFF3DF",
+      "minimum": 4.5,
+      "ratio": 5.642032569581888,
+      "pass": true
+    },
+    {
+      "foreground_token": "red700",
+      "foreground": "#A63738",
+      "background_token": "red50",
+      "background": "#FCEDED",
+      "minimum": 4.5,
+      "ratio": 5.7289219742994595,
+      "pass": true
+    },
+    {
+      "foreground_token": "grey700",
+      "foreground": "#586477",
+      "background_token": "grey50",
+      "background": "#EEF0F4",
+      "minimum": 4.5,
+      "ratio": 5.252507638095164,
+      "pass": true
+    },
+    {
+      "foreground_token": "control",
+      "foreground": "#7A8191",
+      "background_token": "white",
+      "background": "#FFFFFF",
+      "minimum": 3,
+      "ratio": 3.9058979481469223,
+      "pass": true
+    },
+    {
+      "foreground_token": "control",
+      "foreground": "#7A8191",
+      "background_token": "paper",
+      "background": "#F7F5F0",
+      "minimum": 3,
+      "ratio": 3.5848793761661693,
+      "pass": true
+    },
+    {
+      "foreground_token": "blue600",
+      "foreground": "#3456D1",
+      "background_token": "white",
+      "background": "#FFFFFF",
+      "minimum": 3,
+      "ratio": 6.180436703244587,
+      "pass": true
+    },
+    {
+      "foreground_token": "blue600",
+      "foreground": "#3456D1",
+      "background_token": "paper",
+      "background": "#F7F5F0",
+      "minimum": 3,
+      "ratio": 5.672477972363177,
+      "pass": true
+    }
+  ],
+  "pass": true
+}

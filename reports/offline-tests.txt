@@ -1,0 +1,214 @@
+
+> atlas-starter@0.1.0 check:offline
+> npm run tokens:check && npm run guardrails && npm test
+
+
+> atlas-starter@0.1.0 tokens:check
+> node scripts/tokens.mjs --check
+
+Atlas token aliases match (100).
+
+> atlas-starter@0.1.0 guardrails
+> node scripts/guardrails.mjs
+
+Starter static guardrails passed. This is not an isolation or security audit.
+
+> atlas-starter@0.1.0 test
+> node --experimental-strip-types --test tests/unit/*.test.ts
+
+TAP version 13
+# (node:1897) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: all eight fixtures satisfy the starter contract
+ok 1 - all eight fixtures satisfy the starter contract
+  ---
+  duration_ms: 1.531762
+  type: 'test'
+  ...
+# Subtest: catalog contains four active fully remote examples, not all seed records
+ok 2 - catalog contains four active fully remote examples, not all seed records
+  ---
+  duration_ms: 9.015687
+  type: 'test'
+  ...
+# Subtest: SP-T06 hybrid records are excluded
+ok 3 - SP-T06 hybrid records are excluded
+  ---
+  duration_ms: 0.180362
+  type: 'test'
+  ...
+# Subtest: SP-T06 a remote tag cannot override mandatory attendance
+ok 4 - SP-T06 a remote tag cannot override mandatory attendance
+  ---
+  duration_ms: 1.091206
+  type: 'test'
+  ...
+# Subtest: temporary remote is excluded
+ok 5 - temporary remote is excluded
+  ---
+  duration_ms: 0.323548
+  type: 'test'
+  ...
+# Subtest: conflicting source evidence is excluded
+ok 6 - conflicting source evidence is excluded
+  ---
+  duration_ms: 0.140131
+  type: 'test'
+  ...
+# Subtest: a positive remote assertion needs evidence
+ok 7 - a positive remote assertion needs evidence
+  ---
+  duration_ms: 0.163737
+  type: 'test'
+  ...
+# Subtest: not-stated attendance does not negate explicit permanent remote
+ok 8 - not-stated attendance does not negate explicit permanent remote
+  ---
+  duration_ms: 0.152841
+  type: 'test'
+  ...
+# Subtest: unknown attendance is not silently approved
+ok 9 - unknown attendance is not silently approved
+  ---
+  duration_ms: 0.379964
+  type: 'test'
+  ...
+# Subtest: closed and stale records are excluded
+ok 10 - closed and stale records are excluded
+  ---
+  duration_ms: 0.392843
+  type: 'test'
+  ...
+# Subtest: SP-T07 unknown geography remains unknown, not worldwide or excluded
+ok 11 - SP-T07 unknown geography remains unknown, not worldwide or excluded
+  ---
+  duration_ms: 0.370339
+  type: 'test'
+  ...
+# Subtest: US-only remote appears in public catalog without personal eligibility
+ok 12 - US-only remote appears in public catalog without personal eligibility
+  ---
+  duration_ms: 0.204499
+  type: 'test'
+  ...
+# Subtest: case-insensitive search does not resurrect excluded records
+ok 13 - case-insensitive search does not resurrect excluded records
+  ---
+  duration_ms: 0.147532
+  type: 'test'
+  ...
+# Subtest: multiple search terms are AND, not hidden broadening
+ok 14 - multiple search terms are AND, not hidden broadening
+  ---
+  duration_ms: 0.150737
+  type: 'test'
+  ...
+# Subtest: empty results are explicit
+ok 15 - empty results are explicit
+  ---
+  duration_ms: 0.224929
+  type: 'test'
+  ...
+# Subtest: pagination is stable and does not mutate source data
+ok 16 - pagination is stable and does not mutate source data
+  ---
+  duration_ms: 1.294955
+  type: 'test'
+  ...
+# Subtest: query rejects oversize, duplicates, unsupported keys and invalid bounds
+ok 17 - query rejects oversize, duplicates, unsupported keys and invalid bounds
+  ---
+  duration_ms: 0.876213
+  type: 'test'
+  ...
+# Subtest: query accepts boundary values and trims input
+ok 18 - query accepts boundary values and trims input
+  ---
+  duration_ms: 0.154463
+  type: 'test'
+  ...
+# Subtest: unknown external records are not accepted as starter data
+ok 19 - unknown external records are not accepted as starter data
+  ---
+  duration_ms: 0.15887
+  type: 'test'
+  ...
+# Subtest: repository returns defensive copies
+ok 20 - repository returns defensive copies
+  ---
+  duration_ms: 0.49668
+  type: 'test'
+  ...
+# (node:1898) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: starter defaults to fixture/local with all live features disabled
+ok 21 - starter defaults to fixture/local with all live features disabled
+  ---
+  duration_ms: 1.602058
+  type: 'test'
+  ...
+# Subtest: production cannot be enabled through one environment switch
+ok 22 - production cannot be enabled through one environment switch
+  ---
+  duration_ms: 0.323538
+  type: 'test'
+  ...
+# Subtest: live AI, live sources and uploads fail closed, including malformed flags
+ok 23 - live AI, live sources and uploads fail closed, including malformed flags
+  ---
+  duration_ms: 0.276457
+  type: 'test'
+  ...
+# Subtest: postgres can be selected, but never as a silent fallback
+ok 24 - postgres can be selected, but never as a silent fallback
+  ---
+  duration_ms: 0.19213
+  type: 'test'
+  ...
+# Subtest: SP-T03 only synthetic catalog display is permitted
+ok 25 - SP-T03 only synthetic catalog display is permitted
+  ---
+  duration_ms: 0.147392
+  type: 'test'
+  ...
+# Subtest: generation refuses without making a paid or fake call
+ok 26 - generation refuses without making a paid or fake call
+  ---
+  duration_ms: 0.316978
+  type: 'test'
+  ...
+# Subtest: database scripts reject remote hosts and unsafe options
+ok 27 - database scripts reject remote hosts and unsafe options
+  ---
+  duration_ms: 0.411031
+  type: 'test'
+  ...
+# Subtest: integration tests require a dedicated exact test database
+ok 28 - integration tests require a dedicated exact test database
+  ---
+  duration_ms: 0.143867
+  type: 'test'
+  ...
+# Subtest: errors do not disclose connection strings or passwords
+ok 29 - errors do not disclose connection strings or passwords
+  ---
+  duration_ms: 1.378671
+  type: 'test'
+  ...
+# (node:1899) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: task repair counter persists across processes and blocks a third cycle
+ok 30 - task repair counter persists across processes and blocks a third cycle
+  ---
+  duration_ms: 131.621853
+  type: 'test'
+  ...
+1..30
+# tests 30
+# suites 0
+# pass 30
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 234.669901

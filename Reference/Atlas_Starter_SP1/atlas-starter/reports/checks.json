@@ -1,0 +1,76 @@
+{
+  "created_at": "2026-09-23T13:10:07.559421+00:00",
+  "artifact": "Atlas Starter 0.1 / SP 1.0",
+  "environment": {
+    "node": "22.16.0",
+    "npm": "10.9.2",
+    "local_typescript": "5.8.3"
+  },
+  "checks": {
+    "offline": {
+      "status": "passed",
+      "tests": 30,
+      "failures": 0,
+      "skipped": 0,
+      "command": "npm run check:offline"
+    },
+    "core_typecheck": {
+      "status": "passed",
+      "scope": "tsconfig.core.json only; available TS 5.8.3 / Node types"
+    },
+    "syntax": {
+      "status": "passed",
+      "files": 36,
+      "scope": "transpile diagnostics only"
+    },
+    "static_layout": {
+      "status": "passed",
+      "cases": 15,
+      "scope": "QA-only JSX serialization + CSS; NOT Next/React/E2E"
+    },
+    "setup_idempotence": {
+      "status": "passed"
+    },
+    "npm_resolution": {
+      "status": "blocked",
+      "reason": "registry DNS EAI_AGAIN"
+    },
+    "package_lock": {
+      "status": "not_created",
+      "reason": "No actual package resolution"
+    },
+    "next_build": {
+      "status": "not_run"
+    },
+    "full_typecheck": {
+      "status": "not_run"
+    },
+    "biome": {
+      "status": "not_run"
+    },
+    "postgres": {
+      "status": "not_run"
+    },
+    "playwright_next_e2e": {
+      "status": "not_run"
+    },
+    "live_sources": {
+      "status": "not_implemented"
+    },
+    "live_ai": {
+      "status": "not_implemented"
+    },
+    "auth_cv_budget_ledger": {
+      "status": "not_implemented"
+    },
+    "owner_acceptance": {
+      "status": "pending"
+    }
+  },
+  "costs": {
+    "product_inference_calls": 0,
+    "paid_provider_calls": 0,
+    "coding_host_spend": "unknown"
+  },
+  "production": "blocked"
+}

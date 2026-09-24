@@ -1,0 +1,134 @@
+{
+  "nav.jobs": {
+    "ru": "Вакансии",
+    "en": "Jobs"
+  },
+  "nav.saved": {
+    "ru": "Сохранённое",
+    "en": "Saved"
+  },
+  "nav.profile": {
+    "ru": "Профиль",
+    "en": "Profile"
+  },
+  "hero.title": {
+    "ru": "Работа, которая совпадает с жизнью.",
+    "en": "Work that fits your life."
+  },
+  "hero.action": {
+    "ru": "Подобрать по резюме",
+    "en": "Match my resume"
+  },
+  "hero.secondary": {
+    "ru": "Смотреть вакансии",
+    "en": "Browse jobs"
+  },
+  "eligibility.pass": {
+    "ru": "Условия совпадают",
+    "en": "Published conditions match"
+  },
+  "eligibility.unknown": {
+    "ru": "Нужно уточнить",
+    "en": "Needs clarification"
+  },
+  "eligibility.fail": {
+    "ru": "Есть несовместимость",
+    "en": "A condition does not match"
+  },
+  "eligibility.scope": {
+    "ru": "По опубликованным условиям и подтверждённому профилю. Не гарантия найма.",
+    "en": "Based on published conditions and your confirmed profile. Not a hiring guarantee."
+  },
+  "evidence.action": {
+    "ru": "Показать основание",
+    "en": "Show evidence"
+  },
+  "evidence.missing": {
+    "ru": "Не опубликовано",
+    "en": "Not published"
+  },
+  "skill.unconfirmed": {
+    "ru": "Не подтверждено в резюме",
+    "en": "Not confirmed in your resume"
+  },
+  "apply.action": {
+    "ru": "Перейти к отклику",
+    "en": "Go to application"
+  },
+  "apply.disclaimer": {
+    "ru": "Откроется сайт источника. Резюме не отправляется автоматически.",
+    "en": "Opens the source website. Your resume is not sent automatically."
+  },
+  "apply.opened": {
+    "ru": "Открыта страница отклика",
+    "en": "Application page opened"
+  },
+  "apply.confirm": {
+    "ru": "Удалось отправить отклик?",
+    "en": "Did you submit an application?"
+  },
+  "save.action": {
+    "ru": "Сохранить",
+    "en": "Save"
+  },
+  "save.done": {
+    "ru": "Сохранено",
+    "en": "Saved"
+  },
+  "save.remove": {
+    "ru": "Убрать из сохранённого",
+    "en": "Remove from saved"
+  },
+  "filter.apply": {
+    "ru": "Применить фильтры",
+    "en": "Apply filters"
+  },
+  "filter.cancel": {
+    "ru": "Отмена",
+    "en": "Cancel"
+  },
+  "empty.title": {
+    "ru": "Пока нет совпадений",
+    "en": "No matches yet"
+  },
+  "empty.body": {
+    "ru": "Не будем менять ваши условия без разрешения. Посмотрите вакансии, где нужно уточнение.",
+    "en": "We will not change your preferences without permission. Review roles that need clarification."
+  },
+  "salary.unknown": {
+    "ru": "Зарплата не опубликована",
+    "en": "Salary not published"
+  },
+  "job.closed": {
+    "ru": "Вакансия закрыта",
+    "en": "Job closed"
+  },
+  "job.stale": {
+    "ru": "Давно не подтверждалась",
+    "en": "Not recently confirmed"
+  },
+  "profile.changed": {
+    "ru": "Условия изменены. Нужен новый расчёт.",
+    "en": "Preferences changed. Matches need recalculation."
+  },
+  "parser.failed": {
+    "ru": "Не удалось извлечь текст. Вставьте его или заполните профиль вручную.",
+    "en": "We could not extract the text. Paste it or create your profile manually."
+  },
+  "source.degraded": {
+    "ru": "Часть источников временно недоступна. Уже найденные вакансии доступны.",
+    "en": "Some sources are temporarily unavailable. Previously found jobs remain available."
+  },
+  "privacy.not_sent": {
+    "ru": "Резюме не отправляется работодателям автоматически.",
+    "en": "Your resume is not automatically sent to employers."
+  },
+  "demo.notice": {
+    "ru": "Демонстрационные данные. Это не реальные вакансии.",
+    "en": "Demo data. These are not real job listings."
+  },
+  "delete.profile": {
+    "ru": "Удалить профиль и данные из резюме",
+    "en": "Delete profile and resume-derived data"
+  }
+}

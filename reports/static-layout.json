@@ -1,0 +1,82 @@
+{
+  "scope": "static JSX serialization and CSS only; NOT React/Next/E2E",
+  "cases": [
+    {
+      "screen": "detail",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "screen": "home",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "screen": "jobs",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "screen": "status",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "screen": "unknown",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "screen": "detail",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "screen": "home",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "screen": "jobs",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "screen": "status",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "screen": "unknown",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "screen": "detail",
+      "width": 320,
+      "overflow": false
+    },
+    {
+      "screen": "home",
+      "width": 320,
+      "overflow": false
+    },
+    {
+      "screen": "jobs",
+      "width": 320,
+      "overflow": false
+    },
+    {
+      "screen": "status",
+      "width": 320,
+      "overflow": false
+    },
+    {
+      "screen": "unknown",
+      "width": 320,
+      "overflow": false
+    }
+  ],
+  "passed": 15,
+  "failed": 0
+}

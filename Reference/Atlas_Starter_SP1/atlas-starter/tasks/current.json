@@ -1,0 +1,10 @@
+{
+  "task_id": "S0-001",
+  "file": "tasks/S0-001-install-and-verify.md",
+  "status": "ready",
+  "repair_cycles_used": 0,
+  "max_repair_cycles": 2,
+  "hypotheses": [],
+  "coding_host_spend": "unknown",
+  "note": "No reset command. New session must keep this task's counter."
+}

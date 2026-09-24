@@ -1,0 +1,557 @@
+{
+  "version": "1.1",
+  "note": "implemented = UI prototype only, not production readiness; specified = contract only",
+  "components": [
+    {
+      "id": "AT-01",
+      "name": "Button",
+      "layer": "foundation",
+      "implementation": "implemented",
+      "props": [
+        "variant",
+        "size",
+        "disabled",
+        "busy"
+      ],
+      "states": [
+        "default",
+        "hover",
+        "pressed",
+        "focus",
+        "disabled",
+        "busy"
+      ],
+      "accessibility": "Native button; min target 44/48; reason for disabled"
+    },
+    {
+      "id": "AT-02",
+      "name": "Link",
+      "layer": "foundation",
+      "implementation": "implemented",
+      "props": [
+        "href",
+        "external"
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "visited"
+      ],
+      "accessibility": "Native anchor; external destination explained"
+    },
+    {
+      "id": "AT-03",
+      "name": "IconButton",
+      "layer": "foundation",
+      "implementation": "implemented",
+      "props": [
+        "icon",
+        "label",
+        "pressed"
+      ],
+      "states": [
+        "default",
+        "focus",
+        "pressed"
+      ],
+      "accessibility": "Accessible name; 44/48 target"
+    },
+    {
+      "id": "AT-04",
+      "name": "TextField",
+      "layer": "foundation",
+      "implementation": "implemented",
+      "props": [
+        "label",
+        "value",
+        "helper",
+        "error"
+      ],
+      "states": [
+        "default",
+        "focus",
+        "error",
+        "disabled"
+      ],
+      "accessibility": "Permanent label; describedby; preserve value"
+    },
+    {
+      "id": "AT-05",
+      "name": "Select",
+      "layer": "foundation",
+      "implementation": "implemented",
+      "props": [
+        "label",
+        "options",
+        "value"
+      ],
+      "states": [
+        "default",
+        "focus",
+        "error"
+      ],
+      "accessibility": "Native select in prototype"
+    },
+    {
+      "id": "AT-06",
+      "name": "Combobox",
+      "layer": "foundation",
+      "implementation": "specified",
+      "props": [
+        "options",
+        "query",
+        "selected"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "selected"
+      ],
+      "accessibility": "APG combobox; production implementation needed"
+    },
+    {
+      "id": "AT-07",
+      "name": "Checkbox",
+      "layer": "foundation",
+      "implementation": "implemented",
+      "props": [
+        "label",
+        "checked"
+      ],
+      "states": [
+        "default",
+        "checked",
+        "focus"
+      ],
+      "accessibility": "Native input and label"
+    },
+    {
+      "id": "AT-08",
+      "name": "RadioGroup",
+      "layer": "foundation",
+      "implementation": "specified",
+      "props": [
+        "legend",
+        "options",
+        "value"
+      ],
+      "states": [
+        "default",
+        "selected",
+        "error"
+      ],
+      "accessibility": "fieldset + legend"
+    },
+    {
+      "id": "AT-09",
+      "name": "Switch",
+      "layer": "foundation",
+      "implementation": "specified",
+      "props": [
+        "label",
+        "checked"
+      ],
+      "states": [
+        "on",
+        "off",
+        "busy"
+      ],
+      "accessibility": "Immediate binary action only"
+    },
+    {
+      "id": "AT-10",
+      "name": "Chip",
+      "layer": "foundation",
+      "implementation": "implemented",
+      "props": [
+        "text",
+        "removable"
+      ],
+      "states": [
+        "default",
+        "selected"
+      ],
+      "accessibility": "Informational badges not interactive"
+    },
+    {
+      "id": "AT-11",
+      "name": "Tabs",
+      "layer": "foundation",
+      "implementation": "implemented",
+      "props": [
+        "value",
+        "items"
+      ],
+      "states": [
+        "active",
+        "inactive",
+        "focus"
+      ],
+      "accessibility": "Roving tabindex; arrows Home End"
+    },
+    {
+      "id": "AT-12",
+      "name": "Dialog",
+      "layer": "foundation",
+      "implementation": "implemented",
+      "props": [
+        "title",
+        "content",
+        "actions"
+      ],
+      "states": [
+        "open",
+        "closed"
+      ],
+      "accessibility": "Native dialog; Escape; focus restore"
+    },
+    {
+      "id": "AT-13",
+      "name": "Sheet",
+      "layer": "foundation",
+      "implementation": "implemented",
+      "props": [
+        "title",
+        "content",
+        "actions"
+      ],
+      "states": [
+        "open",
+        "closed"
+      ],
+      "accessibility": "Responsive dialog layout, same semantics"
+    },
+    {
+      "id": "AT-14",
+      "name": "Toast",
+      "layer": "foundation",
+      "implementation": "implemented",
+      "props": [
+        "message"
+      ],
+      "states": [
+        "visible",
+        "hidden"
+      ],
+      "accessibility": "role=status; no critical errors"
+    },
+    {
+      "id": "AT-15",
+      "name": "Disclosure",
+      "layer": "foundation",
+      "implementation": "implemented",
+      "props": [
+        "label",
+        "content"
+      ],
+      "states": [
+        "expanded",
+        "collapsed"
+      ],
+      "accessibility": "Native details summary"
+    },
+    {
+      "id": "AT-16",
+      "name": "ErrorSummary",
+      "layer": "foundation",
+      "implementation": "specified",
+      "props": [
+        "errors"
+      ],
+      "states": [
+        "visible"
+      ],
+      "accessibility": "Focus summary; links to invalid fields"
+    },
+    {
+      "id": "AT-17",
+      "name": "StatusBadge",
+      "layer": "domain",
+      "implementation": "implemented",
+      "props": [
+        "outcome",
+        "label"
+      ],
+      "states": [
+        "pass",
+        "unknown",
+        "fail",
+        "neutral"
+      ],
+      "accessibility": "Icon + label; never color-only"
+    },
+    {
+      "id": "AT-18",
+      "name": "JobCard",
+      "layer": "domain",
+      "implementation": "implemented",
+      "props": [
+        "job",
+        "eligibility",
+        "saved"
+      ],
+      "states": [
+        "eligible",
+        "needs_review",
+        "closed"
+      ],
+      "accessibility": "Separate title-link and save button"
+    },
+    {
+      "id": "AT-19",
+      "name": "ConditionMap",
+      "layer": "domain",
+      "implementation": "implemented",
+      "props": [
+        "rules",
+        "evidence"
+      ],
+      "states": [
+        "pass",
+        "unknown",
+        "fail"
+      ],
+      "accessibility": "Critical uncertainty visible before expanding"
+    },
+    {
+      "id": "AT-20",
+      "name": "EvidenceNote",
+      "layer": "domain",
+      "implementation": "implemented",
+      "props": [
+        "quote",
+        "source",
+        "version"
+      ],
+      "states": [
+        "expanded",
+        "collapsed"
+      ],
+      "accessibility": "Quote linked to real evidence in production"
+    },
+    {
+      "id": "AT-21",
+      "name": "ContextStrip",
+      "layer": "domain",
+      "implementation": "implemented",
+      "props": [
+        "profileSummary"
+      ],
+      "states": [
+        "confirmed",
+        "draft"
+      ],
+      "accessibility": "Only user-confirmed preferences"
+    },
+    {
+      "id": "AT-22",
+      "name": "SalaryValue",
+      "layer": "domain",
+      "implementation": "implemented",
+      "props": [
+        "range",
+        "currency",
+        "basis",
+        "period"
+      ],
+      "states": [
+        "known",
+        "unpublished"
+      ],
+      "accessibility": "No inferred zero or annualization"
+    },
+    {
+      "id": "AT-23",
+      "name": "SourceLine",
+      "layer": "domain",
+      "implementation": "implemented",
+      "props": [
+        "source",
+        "checkedAt",
+        "publishedAt"
+      ],
+      "states": [
+        "fresh",
+        "stale"
+      ],
+      "accessibility": "Attribution not hidden"
+    },
+    {
+      "id": "AT-24",
+      "name": "OverlapBand",
+      "layer": "domain",
+      "implementation": "implemented",
+      "props": [
+        "intervals",
+        "minOverlap",
+        "required"
+      ],
+      "states": [
+        "sufficient",
+        "unknown"
+      ],
+      "accessibility": "Text equivalent; synthetic verified schedule"
+    },
+    {
+      "id": "AT-25",
+      "name": "SavedItem",
+      "layer": "domain",
+      "implementation": "implemented",
+      "props": [
+        "job",
+        "userStatus"
+      ],
+      "states": [
+        "saved",
+        "planned",
+        "applied",
+        "closed"
+      ],
+      "accessibility": "Apply navigation must not set applied"
+    },
+    {
+      "id": "AT-26",
+      "name": "UploadZone",
+      "layer": "domain",
+      "implementation": "specified",
+      "props": [
+        "file",
+        "limit",
+        "consent"
+      ],
+      "states": [
+        "empty",
+        "selected",
+        "parsing",
+        "error"
+      ],
+      "accessibility": "No real uploads in UI-kit"
+    },
+    {
+      "id": "AT-27",
+      "name": "ProfileReview",
+      "layer": "domain",
+      "implementation": "prototype",
+      "props": [
+        "fields",
+        "evidence",
+        "confirm"
+      ],
+      "states": [
+        "draft",
+        "confirmed"
+      ],
+      "accessibility": "Demo form; no parser or matching"
+    },
+    {
+      "id": "AT-28",
+      "name": "FilterPanel",
+      "layer": "pattern",
+      "implementation": "implemented",
+      "props": [
+        "draft",
+        "applied"
+      ],
+      "states": [
+        "open",
+        "dirty",
+        "applied",
+        "cancelled"
+      ],
+      "accessibility": "Cancel discards draft; Apply announces count"
+    },
+    {
+      "id": "AT-29",
+      "name": "EmptyState",
+      "layer": "pattern",
+      "implementation": "implemented",
+      "props": [
+        "reason",
+        "nextAction"
+      ],
+      "states": [
+        "empty"
+      ],
+      "accessibility": "Never relax employer constraints"
+    },
+    {
+      "id": "AT-30",
+      "name": "ServiceBanner",
+      "layer": "pattern",
+      "implementation": "implemented",
+      "props": [
+        "severity",
+        "message"
+      ],
+      "states": [
+        "degraded",
+        "offline",
+        "stale"
+      ],
+      "accessibility": "Persistent context message"
+    },
+    {
+      "id": "AT-31",
+      "name": "Skeleton",
+      "layer": "pattern",
+      "implementation": "implemented",
+      "props": [
+        "shape"
+      ],
+      "states": [
+        "loading"
+      ],
+      "accessibility": "No fake percent; reduced motion"
+    },
+    {
+      "id": "AT-32",
+      "name": "DeleteFlow",
+      "layer": "pattern",
+      "implementation": "specified",
+      "props": [
+        "scope",
+        "consequences"
+      ],
+      "states": [
+        "confirm",
+        "pending",
+        "done",
+        "error"
+      ],
+      "accessibility": "Separate file/profile/account scopes"
+    },
+    {
+      "id": "AT-33",
+      "name": "MobileNavigation",
+      "layer": "pattern",
+      "implementation": "implemented",
+      "props": [
+        "active"
+      ],
+      "states": [
+        "default",
+        "detailHidden"
+      ],
+      "accessibility": "Does not coexist with detail apply bar"
+    },
+    {
+      "id": "AT-34",
+      "name": "AdminSourceTable",
+      "layer": "pattern",
+      "implementation": "specified",
+      "props": [
+        "source",
+        "technicalStatus",
+        "rights"
+      ],
+      "states": [
+        "healthy",
+        "paused",
+        "unapproved"
+      ],
+      "accessibility": "Technical health separate from legal approval"
+    }
+  ]
+}

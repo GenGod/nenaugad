@@ -1,0 +1,6 @@
+Command: node <preinstalled-typescript>/bin/tsc -p tsconfig.core.json
+         --typeRoots <preinstalled-node-types>
+Exit code: 0
+Compiler: TypeScript 5.8.3
+Scope: src/domain, src/data, selected pure config/policy/fixture modules and unit tests.
+No Next.js, React, pg or full project typecheck was performed.

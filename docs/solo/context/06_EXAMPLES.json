@@ -1,0 +1,450 @@
+{
+  "notice": "All examples are synthetic and concern no real candidate, employer, vacancy or source permission.",
+  "schema_version": "1.0.0",
+  "examples": [
+    {
+      "kind": "job_snapshot",
+      "schema_version": "1.0.0",
+      "id": "job_demo_001",
+      "version": 1,
+      "source_record_id": "fixture:001",
+      "title": "Senior Frontend Engineer",
+      "company_name": "Synthetic Example Ltd",
+      "company_domain": "example.invalid",
+      "source_url": "https://example.invalid/jobs/001",
+      "apply_url": "https://example.invalid/apply/001",
+      "description_text": "Permanent fully remote contractor role, worldwide. No mandatory travel or office visits. React required. USD 70000-100000 annual gross base compensation.",
+      "description_language": "en",
+      "workplace": {
+        "type": "remote",
+        "permanence": "permanent",
+        "mandatory_onsite": "explicitly_not_required",
+        "mandatory_travel": "explicitly_not_required",
+        "optional_offsites": null,
+        "verification_state": "confirmed",
+        "evidence_ids": [
+          "j1"
+        ]
+      },
+      "hiring_options": [
+        {
+          "id": "opt_1",
+          "geography": {
+            "scope": "worldwide",
+            "allowed_countries": [],
+            "excluded_countries": [],
+            "allowed_subdivisions": [],
+            "region_text": null,
+            "exhaustive": true,
+            "evidence_ids": [
+              "j1"
+            ]
+          },
+          "employment_types": [
+            "contractor"
+          ],
+          "authorization": {
+            "requirement": "none_stated",
+            "authorization_type": "none_stated",
+            "any_of_countries": [],
+            "original_text": null,
+            "evidence_ids": []
+          },
+          "schedule": {
+            "status": "not_stated",
+            "timezone": null,
+            "zone_semantics": "not_stated",
+            "mode": "not_stated",
+            "local_windows": [],
+            "required_overlap_minutes": null,
+            "accepted_utc_offsets_minutes": [],
+            "original_text": null,
+            "evidence_ids": []
+          },
+          "evidence_ids": [
+            "j1"
+          ]
+        }
+      ],
+      "requirements": [
+        {
+          "id": "req_react",
+          "category": "skill",
+          "strength": "must",
+          "expression": {
+            "op": "atom",
+            "attribute": "skill.react",
+            "operator": "present",
+            "value": true
+          },
+          "original_text": "React required.",
+          "evidence_ids": [
+            "j2"
+          ]
+        }
+      ],
+      "compensation": {
+        "ranges": [
+          {
+            "min": "70000",
+            "max": "100000",
+            "currency": "USD",
+            "period": "annual",
+            "tax_basis": "gross",
+            "component": "base",
+            "applicable_countries": [],
+            "hours_per_week": null,
+            "paid_weeks_per_year": null,
+            "evidence_ids": [
+              "j3"
+            ]
+          }
+        ],
+        "original_text": "USD 70000-100000 annual gross base compensation.",
+        "evidence_ids": [
+          "j3"
+        ]
+      },
+      "dates": {
+        "source_published_at": "2026-09-23T08:00:00Z",
+        "fetched_at": "2026-09-23T08:00:00Z",
+        "last_seen_at": "2026-09-23T08:00:00Z",
+        "expires_at": null
+      },
+      "lifecycle": "active",
+      "conflicts": [],
+      "evidence": [
+        {
+          "id": "j1",
+          "origin_type": "job_source",
+          "origin_id": "fixture:001",
+          "origin_version": 1,
+          "field_path": "description_text",
+          "quote": "Permanent fully remote contractor role, worldwide. No mandatory travel or office visits.",
+          "method": "source_field",
+          "confidence": 1
+        },
+        {
+          "id": "j2",
+          "origin_type": "job_source",
+          "origin_id": "fixture:001",
+          "origin_version": 1,
+          "field_path": "description_text",
+          "quote": "React required.",
+          "method": "source_field",
+          "confidence": 1
+        },
+        {
+          "id": "j3",
+          "origin_type": "job_source",
+          "origin_id": "fixture:001",
+          "origin_version": 1,
+          "field_path": "description_text",
+          "quote": "USD 70000-100000 annual gross base compensation.",
+          "method": "source_field",
+          "confidence": 1
+        }
+      ]
+    },
+    {
+      "kind": "candidate_profile",
+      "schema_version": "1.0.0",
+      "id": "candidate_demo",
+      "version": 1,
+      "owner_id": "user_demo",
+      "state": "confirmed",
+      "residence_country": "GE",
+      "timezone": "Asia/Tbilisi",
+      "skills": [
+        {
+          "skill_id": "react",
+          "name": "React",
+          "status": "confirmed_present",
+          "first_used": null,
+          "last_used": null,
+          "evidence_ids": [
+            "c1"
+          ]
+        }
+      ],
+      "experience": [],
+      "languages": [],
+      "education": [],
+      "certifications": [],
+      "authorizations": [],
+      "warnings": [
+        "Skill duration not provided."
+      ],
+      "evidence": [
+        {
+          "id": "c1",
+          "origin_type": "user_confirmation",
+          "origin_id": "confirmation_demo",
+          "origin_version": 1,
+          "field_path": "skills.react",
+          "quote": "I confirm professional React experience.",
+          "method": "user_confirmed",
+          "confidence": 1
+        },
+        {
+          "id": "c2",
+          "origin_type": "user_confirmation",
+          "origin_id": "confirmation_demo",
+          "origin_version": 1,
+          "field_path": "residence_country",
+          "quote": "My work location is Georgia, country code GE.",
+          "method": "user_confirmed",
+          "confidence": 1
+        }
+      ]
+    },
+    {
+      "kind": "search_profile",
+      "schema_version": "1.0.0",
+      "id": "search_demo",
+      "version": 1,
+      "owner_id": "user_demo",
+      "candidate_profile_id": "candidate_demo",
+      "candidate_profile_version": 1,
+      "target_roles": [
+        "Frontend Engineer"
+      ],
+      "seniority_preferences": [
+        "senior"
+      ],
+      "employment_types": [
+        "contractor"
+      ],
+      "availability": {
+        "timezone": "Asia/Tbilisi",
+        "local_windows": [
+          {
+            "weekdays": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "start": "12:00",
+            "end": "21:00",
+            "crosses_midnight": false
+          }
+        ]
+      },
+      "zero_mandatory_attendance": true,
+      "allow_relocation": false,
+      "minimum_compensation": {
+        "amount": "80000",
+        "currency": "USD",
+        "period": "annual",
+        "tax_basis": "gross",
+        "component": "base",
+        "hard": true
+      },
+      "excluded_companies": [],
+      "excluded_industries": [],
+      "show_needs_review": true
+    },
+    {
+      "kind": "eligibility_evaluation",
+      "schema_version": "1.0.0",
+      "id": "elig_demo",
+      "version": 1,
+      "owner_id": "user_demo",
+      "candidate_profile_id": "candidate_demo",
+      "candidate_profile_version": 1,
+      "search_profile_id": "search_demo",
+      "search_profile_version": 1,
+      "job_id": "job_demo_001",
+      "job_version": 1,
+      "policy_version": "elig-v1",
+      "source_policy_generation": 1,
+      "publication_status": "allowed",
+      "eligibility_status": "eligible",
+      "gates": [
+        {
+          "rule_id": "remote",
+          "outcome": "pass",
+          "reason_codes": [],
+          "evidence_ids": [
+            "j1"
+          ],
+          "message": "Remote confirmed in the synthetic fixture."
+        },
+        {
+          "rule_id": "rights",
+          "outcome": "pass",
+          "reason_codes": [],
+          "evidence_ids": [],
+          "message": "Synthetic fixture only; no production permission implied."
+        }
+      ],
+      "hiring_option_results": [
+        {
+          "hiring_option_id": "opt_1",
+          "outcome": "pass",
+          "rules": [
+            {
+              "rule_id": "geography",
+              "outcome": "pass",
+              "reason_codes": [],
+              "evidence_ids": [
+                "j1",
+                "c2"
+              ],
+              "message": "Worldwide statement is compatible with candidate country."
+            },
+            {
+              "rule_id": "authorization",
+              "outcome": "not_applicable",
+              "reason_codes": [],
+              "evidence_ids": [],
+              "message": "No additional authorization requirement stated; no legal verification implied."
+            },
+            {
+              "rule_id": "salary",
+              "outcome": "pass",
+              "reason_codes": [],
+              "evidence_ids": [
+                "j3"
+              ],
+              "message": "Published range intersects the required minimum; not a promised offer."
+            }
+          ]
+        }
+      ],
+      "candidate_requirement_results": [
+        {
+          "rule_id": "req_react",
+          "outcome": "pass",
+          "reason_codes": [],
+          "evidence_ids": [
+            "j2",
+            "c1"
+          ],
+          "message": "Required React skill is confirmed."
+        }
+      ],
+      "evaluated_at": "2026-09-23T08:00:00Z"
+    },
+    {
+      "kind": "ranking_result",
+      "schema_version": "1.0.0",
+      "id": "rank_demo",
+      "version": 1,
+      "owner_id": "user_demo",
+      "eligibility_evaluation_id": "elig_demo",
+      "job_id": "job_demo_001",
+      "job_version": 1,
+      "profile_version": 1,
+      "ranking_version": "baseline-v1",
+      "eligibility_status": "eligible",
+      "relevance_score": 67.5,
+      "evidence_coverage": 0.35,
+      "components": [
+        {
+          "name": "required_skills",
+          "value": 1,
+          "effective_weight": 0.35,
+          "evidence_ids": [
+            "c1",
+            "j2"
+          ]
+        },
+        {
+          "name": "role",
+          "value": 0.5,
+          "effective_weight": 0.25,
+          "evidence_ids": []
+        },
+        {
+          "name": "seniority",
+          "value": null,
+          "effective_weight": 0.15,
+          "evidence_ids": []
+        },
+        {
+          "name": "preferred",
+          "value": null,
+          "effective_weight": 0.1,
+          "evidence_ids": []
+        },
+        {
+          "name": "domain",
+          "value": null,
+          "effective_weight": 0.1,
+          "evidence_ids": []
+        },
+        {
+          "name": "soft_preferences",
+          "value": null,
+          "effective_weight": 0.05,
+          "evidence_ids": []
+        }
+      ],
+      "explanations": [
+        {
+          "text": "The required React skill is confirmed in the candidate profile. Duration is not established.",
+          "candidate_evidence_ids": [
+            "c1"
+          ],
+          "job_evidence_ids": [
+            "j2"
+          ]
+        }
+      ],
+      "created_at": "2026-09-23T08:00:00Z"
+    },
+    {
+      "kind": "source_policy",
+      "schema_version": "1.0.0",
+      "id": "fixture_policy",
+      "version": 1,
+      "source_id": "fixture_only",
+      "status": "approved",
+      "enabled": true,
+      "terms_urls": [
+        "https://example.invalid/fixture-license"
+      ],
+      "terms_hash": "synthetic-not-a-real-contract",
+      "reviewed_at": "2026-09-23T08:00:00Z",
+      "approved_by": "fixture_runner_not_a_legal_reviewer",
+      "approval_reference": "SYNTHETIC TEST DATA ONLY",
+      "valid_until": null,
+      "permissions": {
+        "fetch": "allowed",
+        "cache": "allowed",
+        "store_full_text": "allowed",
+        "store_excerpt": "allowed",
+        "derive_fields": "allowed",
+        "process_with_ml": "denied",
+        "send_to_ai_provider": "denied",
+        "publish_full_text": "allowed",
+        "publish_excerpt": "allowed",
+        "send_email": "denied",
+        "index_web_page": "denied",
+        "syndicate_google_jobs": "denied",
+        "train_model": "denied",
+        "direct_apply": "denied",
+        "bulk_export": "denied"
+      },
+      "max_retention_hours": 24,
+      "min_poll_interval_seconds": 3600,
+      "attribution": {
+        "required": true,
+        "display_name": "Synthetic fixture",
+        "backlink_required": true,
+        "link_rel": [
+          "noopener"
+        ],
+        "logo_allowed": "denied"
+      },
+      "apply_route": "source_required",
+      "allowed_surfaces": [
+        "public_web",
+        "private_matching"
+      ]
+    }
+  ]
+}

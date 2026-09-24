@@ -1,0 +1,10 @@
+
+> atlas-starter@0.1.0 syntax
+> node scripts/check-syntax.cjs
+
+{
+  "compiler": "5.8.3",
+  "scope": "syntax only",
+  "files": 36,
+  "errors": []
+}

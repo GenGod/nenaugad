@@ -1,0 +1,599 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:atlas:cover-letters:contracts:1.0",
+  "title": "Atlas Cover Letters — обменные контракты CL 1.0",
+  "description": "Схема структуры. Не проверяет права, ownership, entailment, истинность фактов или атомарность списания бюджета.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/GenerationRequest"
+    },
+    {
+      "$ref": "#/$defs/EvidenceBundle"
+    },
+    {
+      "$ref": "#/$defs/ModelOutput"
+    },
+    {
+      "$ref": "#/$defs/LetterRevision"
+    }
+  ],
+  "$defs": {
+    "GenerationRequest": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "const": "generation_request"
+        },
+        "schema_version": {
+          "const": "1.0"
+        },
+        "letter_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "profile_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "profile_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "targeted",
+            "general"
+          ]
+        },
+        "job_variant_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "job_version": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "target_role": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "language": {
+          "type": "string",
+          "enum": [
+            "ru",
+            "en"
+          ]
+        },
+        "length": {
+          "type": "string",
+          "enum": [
+            "short",
+            "standard"
+          ]
+        },
+        "selected_evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "include_work_conditions": {
+          "type": "boolean"
+        },
+        "base_revision_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "expected_draft_version": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "known_mismatch_acknowledged": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "letter_id",
+        "profile_id",
+        "profile_version",
+        "mode",
+        "job_variant_id",
+        "job_version",
+        "target_role",
+        "language",
+        "length",
+        "selected_evidence_ids",
+        "include_work_conditions",
+        "base_revision_id",
+        "expected_draft_version",
+        "known_mismatch_acknowledged"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "targeted"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "job_variant_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "job_version": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "general"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "job_variant_id": {
+                "type": "null"
+              },
+              "job_version": {
+                "type": "null"
+              },
+              "target_role": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "EvidenceBundle": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "const": "evidence_bundle"
+        },
+        "schema_version": {
+          "const": "1.0"
+        },
+        "synthetic": {
+          "type": "boolean"
+        },
+        "candidate_role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "job_title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "company_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          },
+          "minItems": 1
+        },
+        "unknowns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "prohibited_assertions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "synthetic",
+        "candidate_role",
+        "job_title",
+        "company_name",
+        "evidence",
+        "unknowns",
+        "prohibited_assertions"
+      ],
+      "additionalProperties": false
+    },
+    "Evidence": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "candidate",
+            "job",
+            "user_confirmed_for_letter"
+          ]
+        },
+        "origin_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "origin_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "confirmed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "origin",
+        "origin_id",
+        "origin_version",
+        "text",
+        "confirmed"
+      ],
+      "additionalProperties": false
+    },
+    "ModelOutput": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "const": "model_output"
+        },
+        "schema_version": {
+          "const": "1.0"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "ready",
+            "needs_input"
+          ]
+        },
+        "language": {
+          "type": "string",
+          "enum": [
+            "ru",
+            "en"
+          ]
+        },
+        "paragraphs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Paragraph"
+          }
+        },
+        "claims": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Claim"
+          }
+        },
+        "omitted_requirements": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "status",
+        "language",
+        "paragraphs",
+        "claims",
+        "omitted_requirements",
+        "questions"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "ready"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "paragraphs": {
+                "minItems": 1
+              },
+              "claims": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "needs_input"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "paragraphs": {
+                "maxItems": 0
+              },
+              "claims": {
+                "maxItems": 0
+              },
+              "questions": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Paragraph": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "Claim": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "paragraph_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "candidate_fact",
+            "employer_fact",
+            "intent",
+            "bridge",
+            "generic"
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "id",
+        "paragraph_id",
+        "text",
+        "kind",
+        "evidence_ids"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "candidate_fact",
+                  "employer_fact",
+                  "bridge"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidence_ids": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "LetterRevision": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "const": "letter_revision"
+        },
+        "schema_version": {
+          "const": "1.0"
+        },
+        "letter_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "model",
+            "user",
+            "restore",
+            "template"
+          ]
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1
+        },
+        "body_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "profile_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "profile_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "job_variant_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "job_version": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "source_policy_generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "review_state": {
+          "type": "string",
+          "enum": [
+            "generated_checked",
+            "user_edited_unchecked",
+            "user_reviewed"
+          ]
+        },
+        "input_state": {
+          "type": "string",
+          "enum": [
+            "current",
+            "inputs_changed",
+            "source_unavailable"
+          ]
+        },
+        "model_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "prompt_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "validator_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "claims": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Claim"
+          }
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "letter_id",
+        "revision_id",
+        "revision_number",
+        "origin",
+        "body",
+        "body_sha256",
+        "profile_id",
+        "profile_version",
+        "job_variant_id",
+        "job_version",
+        "source_policy_generation",
+        "review_state",
+        "input_state",
+        "model_version",
+        "prompt_version",
+        "validator_version",
+        "claims",
+        "created_at"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

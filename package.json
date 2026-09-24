@@ -1,0 +1,47 @@
+{
+  "name": "nenaugad",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Nenaugad (ex-Atlas starter): local-only, read-only starter for Solo Pipeline SP 1.0",
+  "engines": {
+    "node": "^22.16.0 || ^24.0.0 || ^26.0.0"
+  },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "doctor": "node --experimental-strip-types --env-file-if-exists=.env scripts/doctor.ts",
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build",
+    "start": "next start --hostname 127.0.0.1",
+    "tokens": "node scripts/tokens.mjs",
+    "tokens:check": "node scripts/tokens.mjs --check",
+    "lint": "biome lint src scripts tests next.config.ts playwright.config.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/unit/*.test.ts",
+    "guardrails": "node scripts/guardrails.mjs",
+    "check:offline": "npm run tokens:check && npm run guardrails && npm test",
+    "check": "npm run check:offline && npm run lint && npm run typecheck",
+    "db:migrate": "node --experimental-strip-types --env-file-if-exists=.env scripts/migrate.ts",
+    "db:seed": "node --experimental-strip-types --env-file-if-exists=.env scripts/seed.ts",
+    "test:db": "node --experimental-strip-types --env-file-if-exists=.env --test --test-concurrency=1 tests/integration/*.test.ts",
+    "test:e2e": "playwright test",
+    "task": "node scripts/task.mjs",
+    "syntax": "node scripts/check-syntax.cjs"
+  },
+  "dependencies": {
+    "next": "16.3.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "pg": "8.23.0",
+    "server-only": "0.0.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.2.4",
+    "@playwright/test": "1.62.1",
+    "@types/node": "22.15.30",
+    "@types/pg": "8.15.4",
+    "@types/react": "19.0.0",
+    "@types/react-dom": "19.0.0",
+    "typescript": "5.9.3"
+  }
+}

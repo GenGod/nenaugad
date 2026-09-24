@@ -1,0 +1,15 @@
+{
+  "task_id": "S0-001",
+  "file": "tasks/S0-001-install-and-verify.md",
+  "status": "accepted",
+  "repair_cycles_used": 1,
+  "max_repair_cycles": 2,
+  "hypotheses": [
+    {
+      "text": "E2E 'keyboard reaches skip link and labeled search' падает на toHaveCount(1) для q=SQL: осознанный подстрочный поиск selectCatalog матчит и cobalt-data (skills: SQL), и north-backend (skills: PostgreSQL), т.е. 2 карточки. Гипотеза: неверно ожидание никогда не запускавшегося E2E-сценария, а не домен. Ремонт: ожидать 2 карточки и перезапустить test:e2e.",
+      "recorded_at": "2026-09-24T17:42:48.311Z"
+    }
+  ],
+  "coding_host_spend": "unknown",
+  "note": "No reset command. New session must keep this task's counter."
+}

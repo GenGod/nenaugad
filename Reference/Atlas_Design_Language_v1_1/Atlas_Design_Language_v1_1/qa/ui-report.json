@@ -1,0 +1,588 @@
+{
+  "browser": "Chromium via Playwright",
+  "page_errors": [],
+  "responsive": [
+    {
+      "route": "overview",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "foundations",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "components",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "home",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "results",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "job-fern",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "profile",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "saved",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "states",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "overview",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "foundations",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "components",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "home",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "results",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "job-fern",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "profile",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "saved",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "states",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "overview",
+      "width": 390,
+      "scrollWidth": 390,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "foundations",
+      "width": 390,
+      "scrollWidth": 390,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "components",
+      "width": 390,
+      "scrollWidth": 390,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "home",
+      "width": 390,
+      "scrollWidth": 390,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "results",
+      "width": 390,
+      "scrollWidth": 390,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "job-fern",
+      "width": 390,
+      "scrollWidth": 390,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "profile",
+      "width": 390,
+      "scrollWidth": 390,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "saved",
+      "width": 390,
+      "scrollWidth": 390,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "states",
+      "width": 390,
+      "scrollWidth": 390,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "overview",
+      "width": 768,
+      "scrollWidth": 768,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "foundations",
+      "width": 768,
+      "scrollWidth": 768,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "components",
+      "width": 768,
+      "scrollWidth": 768,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "home",
+      "width": 768,
+      "scrollWidth": 768,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "results",
+      "width": 768,
+      "scrollWidth": 768,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "job-fern",
+      "width": 768,
+      "scrollWidth": 768,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "profile",
+      "width": 768,
+      "scrollWidth": 768,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "saved",
+      "width": 768,
+      "scrollWidth": 768,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "states",
+      "width": 768,
+      "scrollWidth": 768,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "overview",
+      "width": 1024,
+      "scrollWidth": 1024,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "foundations",
+      "width": 1024,
+      "scrollWidth": 1024,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "components",
+      "width": 1024,
+      "scrollWidth": 1024,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "home",
+      "width": 1024,
+      "scrollWidth": 1024,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "results",
+      "width": 1024,
+      "scrollWidth": 1024,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "job-fern",
+      "width": 1024,
+      "scrollWidth": 1024,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "profile",
+      "width": 1024,
+      "scrollWidth": 1024,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "saved",
+      "width": 1024,
+      "scrollWidth": 1024,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "states",
+      "width": 1024,
+      "scrollWidth": 1024,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "overview",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "foundations",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "components",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "home",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "results",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "job-fern",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "profile",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "saved",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "states",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "overview",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "foundations",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "components",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "home",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "results",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "job-fern",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "profile",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "saved",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    },
+    {
+      "route": "states",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "h1": 1,
+      "main": 1,
+      "pass": true
+    }
+  ],
+  "interactions": [
+    {
+      "case": "Keyword search",
+      "pass": true
+    },
+    {
+      "case": "Filter Escape cancels draft and restores focus",
+      "pass": true
+    },
+    {
+      "case": "Apply filters changes results and shows empty state",
+      "pass": true
+    },
+    {
+      "case": "Keyboard tabs use arrows and update result panel",
+      "pass": true
+    },
+    {
+      "case": "Salary published filter removes unpublished salary",
+      "pass": true
+    },
+    {
+      "case": "Save is reflected in saved view",
+      "pass": true
+    },
+    {
+      "case": "Evidence disclosure expands",
+      "pass": true
+    },
+    {
+      "case": "Apply demonstration never changes application status",
+      "pass": true
+    },
+    {
+      "case": "Profile demo validates and preserves form values",
+      "pass": true
+    },
+    {
+      "case": "Reduced motion disables transitions",
+      "pass": true
+    },
+    {
+      "case": "Mobile detail uses apply bar instead of stacked global nav",
+      "pass": true
+    },
+    {
+      "case": "Mobile modal traps focus and supports Escape",
+      "pass": true
+    }
+  ],
+  "screenshots": [
+    "overview-mobile.png",
+    "foundations-mobile.png",
+    "components-mobile.png",
+    "home-mobile.png",
+    "results-mobile.png",
+    "job-fern-mobile.png",
+    "profile-mobile.png",
+    "saved-mobile.png",
+    "states-mobile.png",
+    "overview-desktop.png",
+    "foundations-desktop.png",
+    "components-desktop.png",
+    "home-desktop.png",
+    "results-desktop.png",
+    "job-fern-desktop.png",
+    "profile-desktop.png",
+    "saved-desktop.png",
+    "states-desktop.png"
+  ],
+  "limitations": [
+    "No full WCAG certification",
+    "No manual screen-reader test",
+    "No real uploads, network integrations or matching",
+    "User research not performed",
+    "Browser policy blocks file navigation in test environment; same HTML was loaded with set_content"
+  ],
+  "pass": true
+}

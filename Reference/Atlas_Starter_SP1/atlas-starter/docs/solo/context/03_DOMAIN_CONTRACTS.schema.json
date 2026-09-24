@@ -1,0 +1,2243 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://remote-job-product.example/schemas/domain/1.0.0",
+  "title": "Remote-only candidate-owned job discovery domain contracts",
+  "description": "Normative exchange syntax. Runtime validates owner scope, evidence references, set semantics, IANA zones, dates, money ordering, cross-field invariants and approved legal policies.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/JobSnapshot"
+    },
+    {
+      "$ref": "#/$defs/CandidateProfile"
+    },
+    {
+      "$ref": "#/$defs/SearchProfile"
+    },
+    {
+      "$ref": "#/$defs/EligibilityEvaluation"
+    },
+    {
+      "$ref": "#/$defs/RankingResult"
+    },
+    {
+      "$ref": "#/$defs/SourcePolicy"
+    }
+  ],
+  "$defs": {
+    "Evidence": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "origin_type": {
+          "type": "string",
+          "enum": [
+            "job_source",
+            "user_cv",
+            "user_confirmation",
+            "manual_review"
+          ]
+        },
+        "origin_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "origin_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "field_path": {
+          "type": "string"
+        },
+        "quote": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "source_field",
+            "rule",
+            "model",
+            "user_confirmed",
+            "human_review"
+          ]
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "id",
+        "origin_type",
+        "origin_id",
+        "origin_version",
+        "field_path",
+        "quote",
+        "method",
+        "confidence"
+      ],
+      "additionalProperties": false
+    },
+    "Geography": {
+      "type": "object",
+      "properties": {
+        "scope": {
+          "type": "string",
+          "enum": [
+            "worldwide",
+            "restricted",
+            "unspecified"
+          ]
+        },
+        "allowed_countries": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$"
+          },
+          "uniqueItems": true
+        },
+        "excluded_countries": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$"
+          },
+          "uniqueItems": true
+        },
+        "allowed_subdivisions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "region_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "exhaustive": {
+          "type": "boolean"
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "scope",
+        "allowed_countries",
+        "excluded_countries",
+        "allowed_subdivisions",
+        "region_text",
+        "exhaustive",
+        "evidence_ids"
+      ],
+      "additionalProperties": false
+    },
+    "LocalWindow": {
+      "type": "object",
+      "properties": {
+        "weekdays": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 7
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "start": {
+          "type": "string",
+          "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+        },
+        "end": {
+          "type": "string",
+          "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+        },
+        "crosses_midnight": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "weekdays",
+        "start",
+        "end",
+        "crosses_midnight"
+      ],
+      "additionalProperties": false
+    },
+    "Schedule": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "explicit",
+            "not_stated",
+            "unknown"
+          ]
+        },
+        "timezone": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "zone_semantics": {
+          "type": "string",
+          "enum": [
+            "iana",
+            "fixed_utc_offset",
+            "ambiguous",
+            "not_stated"
+          ]
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "daily_minimum",
+            "weekly_total",
+            "within_offset_set",
+            "not_stated",
+            "unknown"
+          ]
+        },
+        "local_windows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LocalWindow"
+          }
+        },
+        "required_overlap_minutes": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10080
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "accepted_utc_offsets_minutes": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": -840,
+            "maximum": 840
+          }
+        },
+        "original_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "status",
+        "timezone",
+        "zone_semantics",
+        "mode",
+        "local_windows",
+        "required_overlap_minutes",
+        "accepted_utc_offsets_minutes",
+        "original_text",
+        "evidence_ids"
+      ],
+      "additionalProperties": false
+    },
+    "Authorization": {
+      "type": "object",
+      "properties": {
+        "requirement": {
+          "type": "string",
+          "enum": [
+            "none_stated",
+            "required",
+            "unclear"
+          ]
+        },
+        "authorization_type": {
+          "type": "string",
+          "enum": [
+            "work_authorization",
+            "residency",
+            "visa_sponsorship",
+            "other",
+            "none_stated"
+          ]
+        },
+        "any_of_countries": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$"
+          },
+          "uniqueItems": true
+        },
+        "original_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "requirement",
+        "authorization_type",
+        "any_of_countries",
+        "original_text",
+        "evidence_ids"
+      ],
+      "additionalProperties": false
+    },
+    "HiringOption": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "geography": {
+          "$ref": "#/$defs/Geography"
+        },
+        "employment_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "employment_full_time",
+              "employment_part_time",
+              "contractor",
+              "freelance",
+              "internship",
+              "temporary",
+              "unknown"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "authorization": {
+          "$ref": "#/$defs/Authorization"
+        },
+        "schedule": {
+          "$ref": "#/$defs/Schedule"
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "id",
+        "geography",
+        "employment_types",
+        "authorization",
+        "schedule",
+        "evidence_ids"
+      ],
+      "additionalProperties": false
+    },
+    "Workplace": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "remote",
+            "hybrid",
+            "onsite",
+            "unknown"
+          ]
+        },
+        "permanence": {
+          "type": "string",
+          "enum": [
+            "permanent",
+            "temporary",
+            "after_onsite_onboarding",
+            "unknown"
+          ]
+        },
+        "mandatory_onsite": {
+          "type": "string",
+          "enum": [
+            "required",
+            "not_stated",
+            "explicitly_not_required",
+            "unknown"
+          ]
+        },
+        "mandatory_travel": {
+          "type": "string",
+          "enum": [
+            "required",
+            "not_stated",
+            "explicitly_not_required",
+            "unknown"
+          ]
+        },
+        "optional_offsites": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "verification_state": {
+          "type": "string",
+          "enum": [
+            "confirmed",
+            "unknown",
+            "conflicting",
+            "rejected"
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "type",
+        "permanence",
+        "mandatory_onsite",
+        "mandatory_travel",
+        "optional_offsites",
+        "verification_state",
+        "evidence_ids"
+      ],
+      "additionalProperties": false
+    },
+    "RequirementExpression": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "atom"
+            },
+            "attribute": {
+              "type": "string"
+            },
+            "operator": {
+              "type": "string",
+              "enum": [
+                "present",
+                "absent",
+                "at_least",
+                "at_most",
+                "equals",
+                "one_of"
+              ]
+            },
+            "value": {
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "array"
+              ]
+            }
+          },
+          "required": [
+            "op",
+            "attribute",
+            "operator",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "enum": [
+                "all",
+                "any"
+              ]
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/RequirementExpression"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "op",
+            "children"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "not"
+            },
+            "child": {
+              "$ref": "#/$defs/RequirementExpression"
+            }
+          },
+          "required": [
+            "op",
+            "child"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Requirement": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "skill",
+            "experience",
+            "language",
+            "education",
+            "certification",
+            "other"
+          ]
+        },
+        "strength": {
+          "type": "string",
+          "enum": [
+            "must",
+            "preferred",
+            "unclear"
+          ]
+        },
+        "expression": {
+          "$ref": "#/$defs/RequirementExpression"
+        },
+        "original_text": {
+          "type": "string"
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "strength",
+        "expression",
+        "original_text",
+        "evidence_ids"
+      ],
+      "additionalProperties": false
+    },
+    "CompensationRange": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]{1,6})?$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]{1,6})?$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "currency": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "period": {
+          "type": "string",
+          "enum": [
+            "hourly",
+            "daily",
+            "weekly",
+            "fortnightly",
+            "monthly",
+            "annual",
+            "project",
+            "unknown"
+          ]
+        },
+        "tax_basis": {
+          "type": "string",
+          "enum": [
+            "gross",
+            "net",
+            "unknown"
+          ]
+        },
+        "component": {
+          "type": "string",
+          "enum": [
+            "base",
+            "total",
+            "unknown"
+          ]
+        },
+        "applicable_countries": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$"
+          },
+          "uniqueItems": true
+        },
+        "hours_per_week": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 168
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "paid_weeks_per_year": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 53
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "min",
+        "max",
+        "currency",
+        "period",
+        "tax_basis",
+        "component",
+        "applicable_countries",
+        "hours_per_week",
+        "paid_weeks_per_year",
+        "evidence_ids"
+      ],
+      "additionalProperties": false
+    },
+    "Compensation": {
+      "type": "object",
+      "properties": {
+        "ranges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CompensationRange"
+          }
+        },
+        "original_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "ranges",
+        "original_text",
+        "evidence_ids"
+      ],
+      "additionalProperties": false
+    },
+    "JobSnapshot": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "job_snapshot"
+        },
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_record_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "title": {
+          "type": "string"
+        },
+        "company_name": {
+          "type": "string"
+        },
+        "company_domain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "apply_url": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uri"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description_text": {
+          "type": "string"
+        },
+        "description_language": {
+          "type": "string"
+        },
+        "workplace": {
+          "$ref": "#/$defs/Workplace"
+        },
+        "hiring_options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HiringOption"
+          }
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Requirement"
+          }
+        },
+        "compensation": {
+          "$ref": "#/$defs/Compensation"
+        },
+        "dates": {
+          "type": "object",
+          "properties": {
+            "source_published_at": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "fetched_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "last_seen_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "expires_at": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "source_published_at",
+            "fetched_at",
+            "last_seen_at",
+            "expires_at"
+          ],
+          "additionalProperties": false
+        },
+        "lifecycle": {
+          "type": "string",
+          "enum": [
+            "active",
+            "closed",
+            "stale",
+            "quarantined",
+            "tombstoned"
+          ]
+        },
+        "conflicts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "id",
+        "version",
+        "source_record_id",
+        "title",
+        "company_name",
+        "company_domain",
+        "source_url",
+        "apply_url",
+        "description_text",
+        "description_language",
+        "workplace",
+        "hiring_options",
+        "requirements",
+        "compensation",
+        "dates",
+        "lifecycle",
+        "conflicts",
+        "evidence"
+      ],
+      "additionalProperties": false
+    },
+    "CandidateSkill": {
+      "type": "object",
+      "properties": {
+        "skill_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "confirmed_present",
+            "confirmed_absent",
+            "unconfirmed"
+          ]
+        },
+        "first_used": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_used": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "skill_id",
+        "name",
+        "status",
+        "first_used",
+        "last_used",
+        "evidence_ids"
+      ],
+      "additionalProperties": false
+    },
+    "Experience": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "role": {
+          "type": "string"
+        },
+        "company_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "start_date": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "end_date": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "is_current": {
+          "type": "boolean"
+        },
+        "date_precision": {
+          "type": "string",
+          "enum": [
+            "day",
+            "month",
+            "year",
+            "unknown"
+          ]
+        },
+        "skill_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          }
+        },
+        "responsibilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "id",
+        "role",
+        "company_name",
+        "start_date",
+        "end_date",
+        "is_current",
+        "date_precision",
+        "skill_ids",
+        "responsibilities",
+        "evidence_ids"
+      ],
+      "additionalProperties": false
+    },
+    "CandidateAuthorization": {
+      "type": "object",
+      "properties": {
+        "country": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "work_authorization",
+            "residency"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "confirmed_yes",
+            "confirmed_no",
+            "unknown"
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "country",
+        "type",
+        "status",
+        "evidence_ids"
+      ],
+      "additionalProperties": false
+    },
+    "CandidateProfile": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "candidate_profile"
+        },
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "owner_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "confirmed",
+            "deleted"
+          ]
+        },
+        "residence_country": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Z]{2}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "timezone": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CandidateSkill"
+          }
+        },
+        "experience": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Experience"
+          }
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "language": {
+                "type": "string"
+              },
+              "level_original": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "cefr": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "A1",
+                      "A2",
+                      "B1",
+                      "B2",
+                      "C1",
+                      "C2"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                },
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "language",
+              "level_original",
+              "cefr",
+              "evidence_ids"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "education": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "qualification": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "completed",
+                  "in_progress",
+                  "unknown"
+                ]
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                },
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "qualification",
+              "status",
+              "evidence_ids"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "certifications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "valid",
+                  "expired",
+                  "unknown"
+                ]
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                },
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "name",
+              "status",
+              "evidence_ids"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "authorizations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CandidateAuthorization"
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "id",
+        "version",
+        "owner_id",
+        "state",
+        "residence_country",
+        "timezone",
+        "skills",
+        "experience",
+        "languages",
+        "education",
+        "certifications",
+        "authorizations",
+        "warnings",
+        "evidence"
+      ],
+      "additionalProperties": false
+    },
+    "SearchProfile": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "search_profile"
+        },
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "owner_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "candidate_profile_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "candidate_profile_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "target_roles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "seniority_preferences": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "employment_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "employment_full_time",
+              "employment_part_time",
+              "contractor",
+              "freelance",
+              "internship",
+              "temporary"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "availability": {
+          "type": "object",
+          "properties": {
+            "timezone": {
+              "type": "string"
+            },
+            "local_windows": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/LocalWindow"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "timezone",
+            "local_windows"
+          ],
+          "additionalProperties": false
+        },
+        "zero_mandatory_attendance": {
+          "type": "boolean"
+        },
+        "allow_relocation": {
+          "const": false
+        },
+        "minimum_compensation": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "amount": {
+                  "type": "string",
+                  "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]{1,6})?$"
+                },
+                "currency": {
+                  "type": "string",
+                  "pattern": "^[A-Z]{3}$"
+                },
+                "period": {
+                  "type": "string",
+                  "enum": [
+                    "hourly",
+                    "daily",
+                    "weekly",
+                    "fortnightly",
+                    "monthly",
+                    "annual",
+                    "project"
+                  ]
+                },
+                "tax_basis": {
+                  "type": "string",
+                  "enum": [
+                    "gross",
+                    "net",
+                    "unknown"
+                  ]
+                },
+                "component": {
+                  "type": "string",
+                  "enum": [
+                    "base",
+                    "total",
+                    "unknown"
+                  ]
+                },
+                "hard": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "amount",
+                "currency",
+                "period",
+                "tax_basis",
+                "component",
+                "hard"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "excluded_companies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excluded_industries": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "show_needs_review": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "id",
+        "version",
+        "owner_id",
+        "candidate_profile_id",
+        "candidate_profile_version",
+        "target_roles",
+        "seniority_preferences",
+        "employment_types",
+        "availability",
+        "zero_mandatory_attendance",
+        "allow_relocation",
+        "minimum_compensation",
+        "excluded_companies",
+        "excluded_industries",
+        "show_needs_review"
+      ],
+      "additionalProperties": false
+    },
+    "RuleResult": {
+      "type": "object",
+      "properties": {
+        "rule_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "fail",
+            "unknown",
+            "not_applicable"
+          ]
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "uniqueItems": true
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "rule_id",
+        "outcome",
+        "reason_codes",
+        "evidence_ids",
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "EligibilityEvaluation": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "eligibility_evaluation"
+        },
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "owner_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "candidate_profile_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "candidate_profile_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "search_profile_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "search_profile_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "job_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "job_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "source_policy_generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "publication_status": {
+          "type": "string",
+          "enum": [
+            "allowed",
+            "blocked"
+          ]
+        },
+        "eligibility_status": {
+          "type": "string",
+          "enum": [
+            "eligible",
+            "needs_review",
+            "ineligible",
+            "not_evaluated"
+          ]
+        },
+        "gates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RuleResult"
+          }
+        },
+        "hiring_option_results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "hiring_option_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "outcome": {
+                "type": "string",
+                "enum": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ]
+              },
+              "rules": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/RuleResult"
+                }
+              }
+            },
+            "required": [
+              "hiring_option_id",
+              "outcome",
+              "rules"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "candidate_requirement_results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RuleResult"
+          }
+        },
+        "evaluated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "id",
+        "version",
+        "owner_id",
+        "candidate_profile_id",
+        "candidate_profile_version",
+        "search_profile_id",
+        "search_profile_version",
+        "job_id",
+        "job_version",
+        "policy_version",
+        "source_policy_generation",
+        "publication_status",
+        "eligibility_status",
+        "gates",
+        "hiring_option_results",
+        "candidate_requirement_results",
+        "evaluated_at"
+      ],
+      "additionalProperties": false
+    },
+    "RankingResult": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "ranking_result"
+        },
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "owner_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "eligibility_evaluation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "job_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "job_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "profile_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "ranking_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "eligibility_status": {
+          "type": "string",
+          "enum": [
+            "eligible",
+            "needs_review"
+          ]
+        },
+        "relevance_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "evidence_coverage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "effective_weight": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                },
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "name",
+              "value",
+              "effective_weight",
+              "evidence_ids"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "explanations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "candidate_evidence_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                },
+                "uniqueItems": true
+              },
+              "job_evidence_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                },
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "text",
+              "candidate_evidence_ids",
+              "job_evidence_ids"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "id",
+        "version",
+        "owner_id",
+        "eligibility_evaluation_id",
+        "job_id",
+        "job_version",
+        "profile_version",
+        "ranking_version",
+        "eligibility_status",
+        "relevance_score",
+        "evidence_coverage",
+        "components",
+        "explanations",
+        "created_at"
+      ],
+      "additionalProperties": false
+    },
+    "SourcePolicy": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "source_policy"
+        },
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "approved",
+            "suspended",
+            "revoked"
+          ]
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "terms_urls": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "terms_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reviewed_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "approved_by": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "approval_reference": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "valid_until": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "permissions": {
+          "type": "object",
+          "properties": {
+            "fetch": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "denied",
+                "unknown"
+              ]
+            },
+            "cache": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "denied",
+                "unknown"
+              ]
+            },
+            "store_full_text": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "denied",
+                "unknown"
+              ]
+            },
+            "store_excerpt": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "denied",
+                "unknown"
+              ]
+            },
+            "derive_fields": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "denied",
+                "unknown"
+              ]
+            },
+            "process_with_ml": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "denied",
+                "unknown"
+              ]
+            },
+            "send_to_ai_provider": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "denied",
+                "unknown"
+              ]
+            },
+            "publish_full_text": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "denied",
+                "unknown"
+              ]
+            },
+            "publish_excerpt": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "denied",
+                "unknown"
+              ]
+            },
+            "send_email": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "denied",
+                "unknown"
+              ]
+            },
+            "index_web_page": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "denied",
+                "unknown"
+              ]
+            },
+            "syndicate_google_jobs": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "denied",
+                "unknown"
+              ]
+            },
+            "train_model": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "denied",
+                "unknown"
+              ]
+            },
+            "direct_apply": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "denied",
+                "unknown"
+              ]
+            },
+            "bulk_export": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "denied",
+                "unknown"
+              ]
+            }
+          },
+          "required": [
+            "fetch",
+            "cache",
+            "store_full_text",
+            "store_excerpt",
+            "derive_fields",
+            "process_with_ml",
+            "send_to_ai_provider",
+            "publish_full_text",
+            "publish_excerpt",
+            "send_email",
+            "index_web_page",
+            "syndicate_google_jobs",
+            "train_model",
+            "direct_apply",
+            "bulk_export"
+          ],
+          "additionalProperties": false
+        },
+        "max_retention_hours": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "min_poll_interval_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "attribution": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "boolean"
+            },
+            "display_name": {
+              "type": "string"
+            },
+            "backlink_required": {
+              "type": "boolean"
+            },
+            "link_rel": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "logo_allowed": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "denied",
+                "unknown"
+              ]
+            }
+          },
+          "required": [
+            "required",
+            "display_name",
+            "backlink_required",
+            "link_rel",
+            "logo_allowed"
+          ],
+          "additionalProperties": false
+        },
+        "apply_route": {
+          "type": "string",
+          "enum": [
+            "source_required",
+            "direct_allowed",
+            "unknown"
+          ]
+        },
+        "allowed_surfaces": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "public_web",
+              "private_matching",
+              "email",
+              "ordinary_seo",
+              "google_jobs",
+              "external_api"
+            ]
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "id",
+        "version",
+        "source_id",
+        "status",
+        "enabled",
+        "terms_urls",
+        "terms_hash",
+        "reviewed_at",
+        "approved_by",
+        "approval_reference",
+        "valid_until",
+        "permissions",
+        "max_retention_hours",
+        "min_poll_interval_seconds",
+        "attribution",
+        "apply_route",
+        "allowed_surfaces"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

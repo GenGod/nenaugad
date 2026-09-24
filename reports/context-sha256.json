@@ -1,0 +1,14 @@
+{
+  "docs/solo/context/01_TECHNICAL_SPEC.md": "1637f064961377d92d103938b19499a6823508a82fd1bff47163f0e237518573",
+  "docs/solo/context/02_SOURCE_REGISTRY.json": "248886932e2200eca78b207414a9cf6f437d1f2e76b4f94f0d06fdcb1164ac34",
+  "docs/solo/context/03_DOMAIN_CONTRACTS.schema.json": "a918d35b7b7c0fe9d2f6199ae860eb1f75bb1312eb7762eb432d200f0a1a882c",
+  "docs/solo/context/04_ACCEPTANCE_CASES.json": "cc7620cc4adfef4ac53d577005d69f7302f37f8d33b7a09cd1584eca51fab405",
+  "docs/solo/context/05_AI_TASK_PROMPTS.md": "77c9a3df0edd6620185c9c4668ed9456ab3f90fe3b77f82ed22d605abcc28061",
+  "docs/solo/context/06_EXAMPLES.json": "0f686e817060954988e18d833fec56bf793eeb710093fcaf0eeeba901fce461c",
+  "docs/solo/context/ATLAS_COVER_LETTERS_SPEC.md": "8c80f2ddedd3f0cfb3e2a49cc02dead7d2d9d4a96070d5d16c9347ac0c209af9",
+  "docs/solo/context/ATLAS_DESIGN_LANGUAGE.md": "7b4d3a5e0efd05d15e4aea0075a24895ae8e83d7ba3de0aa1b29f78ccd320694",
+  "docs/solo/context/atlas.tokens.json": "e47bdbe9fb04b1a97613d55e3468486e11fdbbae1f925459b95c16cd04e3409b",
+  "docs/solo/context/cover-letters/GENERATOR_SYSTEM_PROMPT.txt": "fac4ea6357c25060b485304135aa39d87bbbb6f62c0b3a416575448321cc1dea",
+  "docs/solo/context/cover-letters/acceptance-cases.json": "f7ce368e877773e8406bbd70ffa3def6a5f2d3e1a039a28e2446c9de33b8b30e",
+  "docs/solo/context/cover-letters/cover-letters.contracts.schema.json": "6092847ae671daec5b2a87f389cf06559f3bd09a162c7e98e39cc6ad8574a234"
+}
