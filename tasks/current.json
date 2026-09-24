@@ -1,7 +1,7 @@
 {
   "task_id": "S1-002",
   "file": "tasks/S1-002-himalayas-live-adapter.md",
-  "status": "in_progress",
+  "status": "accepted",
   "repair_cycles_used": 1,
   "max_repair_cycles": 2,
   "hypotheses": [
@@ -11,5 +11,5 @@
     }
   ],
   "coding_host_spend": "unknown",
-  "note": "Owner assigned S1-002 (live adapter) after accepting S1-001. Activation (enabled=true) stays a separate owner decision."
+  "note": "Owner committed and activated himalayas on 2026-09-24. First import done: 497 records, cursor checkpoint saved."
 }

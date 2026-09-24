@@ -56,7 +56,7 @@ test("adapter refuses a disabled or unapproved source without any transport call
   const report = await runHimalayasImport({
     transport: async () => { calls += 1; return { status: "ok", jobs: [], nextCursor: null }; },
     persistence: createMemoryPersistence(),
-    policy: himalayasCandidatePolicy,
+    policy: { ...himalayasCandidatePolicy, enabled: false },
     now: NOW,
   });
   assert.equal(report.result, "refused_disabled");

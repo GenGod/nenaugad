@@ -30,10 +30,10 @@ function importOnce(records: readonly unknown[], store: SnapshotStore = emptySna
 test("acceptance 1: source policy fixes purpose, restrictions and owner review", () => {
   assert.equal(isSourcePolicy(himalayasCandidatePolicy), true);
   assert.equal(isSourcePolicy(atlasFixturesPolicy), true);
-  // Owner approved the permission matrix on 2026-09-24 after a live review;
-  // activation is deliberately separate from approval.
+  // Owner approved the permission matrix on 2026-09-24 and activated the
+  // source after reviewing the S1-002 diff.
   assert.equal(himalayasCandidatePolicy.status, "approved");
-  assert.equal(himalayasCandidatePolicy.enabled, false);
+  assert.equal(himalayasCandidatePolicy.enabled, true);
   assert.equal(himalayasCandidatePolicy.reviewed_at !== null, true);
   assert.equal(himalayasCandidatePolicy.approved_by, "owner");
   assert.equal(himalayasCandidatePolicy.terms_hash !== null, true);
@@ -52,9 +52,13 @@ test("acceptance 1: source policy fixes purpose, restrictions and owner review",
   }
   assert.equal(himalayasCandidatePolicy.apply_route, "source_required");
   assert.equal(himalayasCandidatePolicy.max_retention_hours, 720);
-  // Approval alone activates nothing: while disabled every permission stays denied.
-  assert.equal(permissionFor(himalayasCandidatePolicy, "fetch", NOW), "denied");
-  assert.equal(permissionFor(himalayasCandidatePolicy, "publish_excerpt", NOW), "denied");
+  // While enabled the approved matrix grants fetch and publishing; a disabled
+  // clone must deny everything again (rollback works without code changes).
+  assert.equal(permissionFor(himalayasCandidatePolicy, "fetch", NOW), "allowed");
+  assert.equal(permissionFor(himalayasCandidatePolicy, "publish_excerpt", NOW), "allowed");
+  const disabledClone: SourcePolicy = { ...himalayasCandidatePolicy, enabled: false };
+  assert.equal(permissionFor(disabledClone, "fetch", NOW), "denied");
+  assert.equal(permissionFor(disabledClone, "publish_excerpt", NOW), "denied");
   assert.equal(permissionFor(atlasFixturesPolicy, "publish_excerpt", NOW), "allowed");
   assert.equal(permissionFor(atlasFixturesPolicy, "send_to_ai_provider", NOW), "denied");
   assert.equal(getSourcePolicy("himalayas")?.source_id, "himalayas");
@@ -223,8 +227,18 @@ test("acceptance 5: the card carries source, dates and a policy-approved apply r
 
 test("acceptance 7: a disabled or unapproved source publishes nothing, no mocks", () => {
   const store = importOnce(mapHimalayasFixture(NOW)).store;
-  assert.deepEqual(snapshotCatalogCards({
+  // The activated real policy now publishes the gated fixture cards.
+  const published = snapshotCatalogCards({
     store, getPolicy: getSourcePolicy, now: NOW,
+  });
+  assert.deepEqual(published.map(card => card.id).sort(),
+    ["himalayas:jobs-fixture-h-001", "himalayas:jobs-fixture-h-002"]);
+  assert.equal(published.every(card => card.visibility === "main_catalog"), true);
+  // A disabled clone of the same policy contributes nothing — no mocks.
+  assert.deepEqual(snapshotCatalogCards({
+    store, getPolicy: id => (id === "himalayas"
+      ? { ...himalayasCandidatePolicy, enabled: false }
+      : getSourcePolicy(id)), now: NOW,
   }), []);
   // Even a hypothetical approval change is not enough without enabled+permission.
   const suspended: SourcePolicy = { ...himalayasCandidatePolicy, enabled: true, status: "suspended" };
@@ -241,15 +255,4 @@ test("acceptance 7: a disabled or unapproved source publishes nothing, no mocks"
   assert.deepEqual(snapshotCatalogCards({
     store: syntheticStore, getPolicy: getSourcePolicy, now: NOW,
   }), []);
-  // Enabling himalayas hypothetically still yields only gated cards.
-  const approved: SourcePolicy = {
-    ...himalayasCandidatePolicy, status: "approved", enabled: true,
-    permissions: { ...himalayasCandidatePolicy.permissions, publish_excerpt: "allowed" },
-  };
-  const cards = snapshotCatalogCards({
-    store, getPolicy: id => (id === "himalayas" ? approved : getSourcePolicy(id)), now: NOW,
-  });
-  assert.deepEqual(cards.map(c => c.id).sort(),
-    ["himalayas:jobs-fixture-h-001", "himalayas:jobs-fixture-h-002"]);
-  assert.equal(cards.every(c => c.visibility === "main_catalog"), true);
 });

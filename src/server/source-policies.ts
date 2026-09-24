@@ -43,17 +43,17 @@ export const atlasFixturesPolicy: SourcePolicy = {
 
 // Candidate source from the registry (02_SOURCE_REGISTRY.json, himalayas).
 // Permission matrix approved by the owner on 2026-09-24 after a live review of
-// himalayas.app API docs, OpenAPI spec and site ToS. Approval covers rights
-// only: enabled stays false until the separately reviewed live-adapter task.
+// himalayas.app API docs, OpenAPI spec and site ToS. Activated by the owner on
+// 2026-09-24 after reviewing the S1-002 implementation diff.
 // terms_hash = sha256 of https://himalayas.app/terms as fetched 2026-09-24.
 export const himalayasCandidatePolicy: SourcePolicy = {
   kind: "source_policy",
   schema_version: "1.0.0",
   id: "policy/himalayas/1",
-  version: 2,
+  version: 3,
   source_id: "himalayas",
   status: "approved",
-  enabled: false,
+  enabled: true,
   terms_urls: [
     "https://himalayas.app/terms",
     "https://himalayas.app/api",
@@ -65,7 +65,7 @@ export const himalayasCandidatePolicy: SourcePolicy = {
   approved_by: "owner",
   approval_reference:
     "Owner-approved permission matrix 2026-09-24 (live review of API docs + ToS); " +
-    "enabled=false until the live-adapter task; re-review by 2026-12-23",
+    "activated 2026-09-24 after S1-002 diff review; re-review by 2026-12-23",
   valid_until: "2026-12-23T00:00:00.000Z",
   permissions: {
     fetch: "allowed",

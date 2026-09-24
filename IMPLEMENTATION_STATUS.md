@@ -1,9 +1,32 @@
 # Nenaugad — status (ex-Atlas Starter)
 
 ## Сейчас
-Активная задача: [S1-002](tasks/S1-002-himalayas-live-adapter.md) — **implemented,
-tested locally** (2026-09-24), ждёт review и решения владельца об активации
-(`enabled: true`). Рабочее дерево содержит незакоммиченный diff S1-002.
+[S1-002](tasks/S1-002-himalayas-live-adapter.md) — **activated and accepted by the
+owner 2026-09-24** («коммит и включай Himalayas»). Первый живой импорт выполнен:
+25 страниц, 497 записей в `job_snapshots`, 3 отклонены маппером явно (мусор не
+сохраняется), курсор-чекпоинт сохранён (полный фид ~100k — догоняется бюджетными
+прогонами). Локальный режим `.env` переключён на `DATA_BACKEND=postgres`;
+каталог `/jobs` рендерит демо-примеры + ~494 карточки Himalayas (excerpt,
+атрибуция, backlink nofollow; полный текст хранится, но не публикуется).
+Следующую задачу назначает владелец (кандидаты: S2 профиль, второй источник
+Jobicy, регуляризация импорта cron/worker).
+
+Активная политика himalayas: version 3, approved+enabled, valid_until
+2026-12-23 (повторный review), retention 720ч, polling ≥24ч. Откат: `enabled:
+false` — карточи исчезают без правки UI.
+
+E2E продолжает гонять fixture-бэкенд (env в playwright.config) — счётчик
+демо-каталога валиден; postgres-режим e2e — будущая задача.
+
+## Решения владельца
+- Node 26 (2026-09-24): `.nvmrc` = 26.7.0, `engines` +`^26.0.0`.
+- Переименование Atlas → Nenaugad (2026-09-24).
+- S0-001 принят; git init, main; коммиты f1f2ab7…e31a9bd.
+- Матрица прав himalayas утверждена 2026-09-24 (d48bcfe); S1-001 принят (e31a9bd).
+- S1-002 закоммичен и активирован 2026-09-24 (см. git log).
+- Mimosa: полн. аудит не завершён (лимиты library_source/callgraph; ложные
+  срабатывания на параметризованный SQL и `.exec(`/`.match(` — обходы без
+  ослабления защиты). Безопасность проекта не заявляется.
 
 **Что реализовано:** закреплённый транспорт `src/server/import/fetcher.ts`
 (единственный файл в guardrail-allowlist: pinned host, opaque-cursor валидация,
