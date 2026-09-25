@@ -1,4 +1,3 @@
-import "server-only";
 import { readConfig } from "./config.ts";
 import { fixtureRepository } from "./storage/fixture.ts";
 import { postgresRepository } from "./storage/postgres.ts";

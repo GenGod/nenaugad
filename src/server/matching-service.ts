@@ -1,4 +1,5 @@
-import "server-only";
+// server-only guard removed: this module is imported by the standalone
+// worker (scripts/worker.ts) which runs outside Next.js React context.
 import { readConfig } from "./config.ts";
 import { latestProfile } from "./profile-service.ts";
 import { hiddenSnapshotIds } from "./feedback-service.ts";

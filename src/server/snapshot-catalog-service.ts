@@ -1,4 +1,3 @@
-import "server-only";
 import { readConfig } from "./config.ts";
 import { getSourcePolicy } from "./source-policies.ts";
 import {

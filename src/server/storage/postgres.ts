@@ -1,4 +1,3 @@
-import "server-only";
 import { Pool } from "pg";
 import { isStarterJob, type CatalogRepository, type StarterJob } from "../../domain/job.ts";
 import { localDatabaseUrl } from "../config.ts";
