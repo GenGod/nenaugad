@@ -51,6 +51,14 @@ attempt counters, deadline, uncertain billing, cancellation and commit-time reva
 No SDK retry/queue retry may reset a root operation's limit.
 Use mocks only when clearly labelled; no fake generated letter or fake server save.
 
+## Subagent delegation (owner decision 2026-09-25)
+During work, create subagents for parallelisable simple tasks and pass them
+the context they need. Delegate non-complex execution (file edits, test runs,
+simple greps, boilerplate) to the fastest available model (GLM 5.3-flash).
+Keep architecture, security, source-policy, money-adjacent and breaking-change
+decisions in the main session. The main agent reviews all subagent output
+before committing. Subagent cost is reported as unknown unless visible.
+
 ## Handoff
 Update the existing `IMPLEMENTATION_STATUS.md`, not a new essay for each method.
 Report: result, files, commands + exit codes, unexecuted checks, mock/live, costs/unknown,
