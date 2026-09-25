@@ -3,6 +3,7 @@ import { currentUser } from "../../../../server/auth.ts";
 import {
   listSavedJobs, saveJobForUser, unsaveJobForUser, ProfileServiceError,
 } from "../../../../server/profile-service.ts";
+import { setAppliedMark } from "../../../../server/feedback-service.ts";
 import { snapshotPool } from "../../../../server/storage/snapshots.ts";
 
 function unauthorized() {
@@ -58,4 +59,26 @@ export async function DELETE(request: Request) {
   if (snapshotId === null) return NextResponse.json({ error: "INVALID_INPUT" }, { status: 400 });
   const removed = await unsaveJobForUser(snapshotPool(), user.id, snapshotId);
   return NextResponse.json({ ok: removed }, { status: removed ? 200 : 404 });
+}
+
+// Manual apply mark (spec 4.3): set or clear only by an explicit user action.
+export async function PATCH(request: Request) {
+  const user = await currentUser();
+  if (!user) return unauthorized();
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
+  }
+  const snapshotId = readSnapshotId(body);
+  const applied = (body as { applied?: unknown }).applied;
+  if (snapshotId === null || typeof applied !== "boolean") {
+    return NextResponse.json({ error: "INVALID_INPUT" }, { status: 400 });
+  }
+  const updated = await setAppliedMark({
+    pool: snapshotPool(), userId: user.id, snapshotId, applied,
+    now: new Date().toISOString(),
+  });
+  return NextResponse.json({ ok: updated }, { status: updated ? 200 : 404 });
 }

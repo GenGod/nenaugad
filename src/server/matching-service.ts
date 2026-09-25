@@ -1,6 +1,7 @@
 import "server-only";
 import { readConfig } from "./config.ts";
 import { latestProfile } from "./profile-service.ts";
+import { hiddenSnapshotIds } from "./feedback-service.ts";
 import { readSnapshotCardsData, snapshotPool } from "./storage/snapshots.ts";
 import { getSourcePolicy } from "./source-policies.ts";
 import { classifySnapshot, policyPublishes, projectCard } from "../domain/snapshot-projection.ts";
@@ -30,6 +31,8 @@ export async function matchedForUser(userId: string): Promise<MatchedResult> {
   const pool = snapshotPool();
   const profile = await latestProfile(pool, userId);
   if (!profile) return { ...empty, status: "no_profile" };
+  // Personal hides (spec 4.3): hidden jobs leave matching for this user only.
+  const hidden = await hiddenSnapshotIds(pool, userId);
   const eligible: MatchedJob[] = [];
   const needsReview: MatchedJob[] = [];
   let notEvaluated = 0;
@@ -43,6 +46,7 @@ export async function matchedForUser(userId: string): Promise<MatchedResult> {
         notEvaluated += 1;
         continue;
       }
+      if (hidden.has(row.stored.snapshot.id)) continue;
       const evaluation = evaluateJob(row.stored.snapshot, profile.input);
       const card = { ...projectCard(row.stored, policy), excerpt: row.excerpt };
       if (evaluation.status === "eligible") eligible.push({ card, evaluation });

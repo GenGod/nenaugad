@@ -3,6 +3,7 @@ import Link from "next/link";
 import { currentUser } from "../../server/auth.ts";
 import { matchedForUser, type MatchedJob } from "../../server/matching-service.ts";
 import type { RuleResult } from "../../domain/matching.ts";
+import { HideButton } from "../../components/feedback-buttons.tsx";
 
 export const metadata: Metadata = { title: "Подбор" };
 export const dynamic = "force-dynamic";
@@ -41,8 +42,9 @@ function MatchedCard({ job }: { job: MatchedJob }) {
           ? job.card.geography.countries.join(", ")
           : "География не указана"}</span>
       <a className="text-link" href={job.card.apply.url} rel="nofollow noreferrer" target="_blank">
-        Открыть на Himalayas <span aria-hidden="true">↗</span>
+        Открыть на {job.card.source.displayName} <span aria-hidden="true">↗</span>
       </a>
+      <HideButton snapshotId={job.card.id} />
     </div>
   </article>;
 }
