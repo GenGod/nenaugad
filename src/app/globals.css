@@ -77,6 +77,7 @@ button:disabled { cursor: not-allowed; background: var(--color-bg-subtle); color
 .search-form label.context-field { display: flex; align-items: center; gap: .55rem; border-top: none; padding: .3rem 0; font-weight: 400; cursor: pointer; }
 .search-form label.context-field span { display: inline; margin: 0; color: var(--color-text-primary); font-size: .875rem; line-height: 1.4; }
 .search-form input[type="checkbox"] { width: 1rem; height: 1rem; accent-color: var(--color-action-primary); }
+.search-form .search-controls { margin-top: .75rem; }
 .field-error { display: block; margin: .35rem 0 .75rem; font-size: .8rem; color: var(--color-text-secondary); }
 .field-error::before { content: "⚠ "; }
 /* Compact control size for dense form and card contexts. */

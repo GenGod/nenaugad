@@ -5,7 +5,7 @@
 import type { JobSnapshot, HiringOption } from "./source-contracts.ts";
 import type { ManualProfileInput } from "./profile.ts";
 
-export const RULESET_VERSION = 1;
+export const RULESET_VERSION = 2;
 
 export type RuleOutcome = "pass" | "fail" | "unknown" | "not_applicable";
 
@@ -109,6 +109,28 @@ function ruleAttendance(
         explanation: "Обязательное присутствие не требуется или не заявлено." };
 }
 
+// ROLE-01: do any of the user's target roles appear in the job title or
+// description? A positive signal — not a hard gate (jobs without a keyword
+// match are still evaluated, the rule is neutral/not_applicable for them).
+function ruleRoles(
+  snapshot: JobSnapshot, profile: ManualProfileInput,
+): RuleResult {
+  const base = { ruleId: "ROLE-01", hiringOptionId: null, reasonCodes: [] as string[] };
+  if (profile.targetRoles.length === 0) {
+    return { ...base, outcome: "not_applicable", reasonCodes: [],
+      explanation: "Целевые роли не заданы." };
+  }
+  const haystack = `${snapshot.title} ${snapshot.description_text}`.toLowerCase();
+  const matched = profile.targetRoles.filter(role =>
+    haystack.includes(role.toLowerCase()));
+  if (matched.length > 0) {
+    return { ...base, outcome: "pass", reasonCodes: [],
+      explanation: `Целевая роль «${matched[0]}» найдена в заголовке или описании.` };
+  }
+  return { ...base, outcome: "not_applicable", reasonCodes: ["NO_ROLE_MATCH"],
+    explanation: `Ни одна из целевых ролей (${profile.targetRoles.join(", ")}) не найдена в заголовке.` };
+}
+
 function ruleSalary(
   snapshot: JobSnapshot, profile: ManualProfileInput,
 ): RuleResult {
@@ -190,6 +212,7 @@ export function evaluateJob(snapshot: JobSnapshot, profile: ManualProfileInput):
   const jobLevel: RuleResult[] = [
     ruleAttendance(snapshot, profile),
     ruleSalary(snapshot, profile),
+    ruleRoles(snapshot, profile),
   ];
   const optionOutcomes = snapshot.hiring_options.map(option => {
     const rules = [ruleGeography(option, profile), ruleEmployment(option, profile), ruleOverlap(option, profile)];

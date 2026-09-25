@@ -23,16 +23,22 @@ export default async function NewLetter({ searchParams }: {
       <Link className="button primary" href="/matched">К подбору</Link>
     </section>;
   }
+  let letterId: string | null = null;
   try {
     const letter = await getOrCreateLetter({
       pool: snapshotPool(), userId: user.id, jobSnapshotId: jobId,
     });
-    redirect(`/letters/${letter.id}`);
+    letterId = letter.id;
   } catch {
+    letterId = null;
+  }
+  // redirect() throws NEXT_REDIRECT which must NOT be inside a try-catch.
+  if (letterId === null) {
     return <section className="status-page">
       <p className="eyebrow">Письмо</p><h1>Вакансия недоступна</h1>
-      <p className="hero-lead">Вакансия могла быть удалена источником.</p>
+      <p className="hero-lead">Вакансия могла быть удалена источником или у вас нет прав.</p>
       <Link className="button primary" href="/matched">К подбору</Link>
     </section>;
   }
+  redirect(`/letters/${letterId}`);
 }

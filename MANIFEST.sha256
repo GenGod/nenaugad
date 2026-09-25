@@ -58,7 +58,7 @@ bfabc78c6bb769e64a42622042f4baf50e7ff699573f342b2cb362812551847d  scripts/tokens
 948b2a64ef6bafd67736eabe67a67c7c2ab225f9d45d427b20bd10488c12b657  src/app/api/v1/jobs/[id]/route.ts
 9d46b63e990bd239df7b4f0ce7cf089a647599cc34ab7bf4f64a6a9471a2b487  src/app/api/v1/jobs/route.ts
 307457764d1f8b26a74c459a27610ca2a55e0f30181471ac680d84a1f49b0424  src/app/error.tsx
-dcc79fecb562be2c354fb285ed2bae4abe4150ba6e7449eb579d6e487ff64b9e  src/app/globals.css
+8b4aef57a13aed76bd0b8981dbbbb05d9ce2c7f912d26491e20db38e00598dac  src/app/globals.css
 29ada41c9638a992cf6795f9e6442392f93d6f4fa630037121fe739d263f0d6f  src/app/jobs/[id]/page.tsx
 bb5743ce1957a8de750f749d1d1f2e5749f0676b8ca5f696c6fd819c2febf4f3  src/app/jobs/page.tsx
 1198e77536e52ec23e93b6789443b5f1fd4a7c1ee1da0012012b3a7d6533df4b  src/app/layout.tsx
