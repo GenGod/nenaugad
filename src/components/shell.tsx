@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { currentUser } from "../server/auth.ts";
+import { LogoutButton } from "./auth-forms.tsx";
 
-export function Header() {
+export async function Header() {
+  const user = await currentUser();
   return <>
     <a className="skip-link" href="#main">К содержимому</a>
     <div className="demo-banner">
@@ -13,7 +16,19 @@ export function Header() {
         <Link href="/saved">Сохранённое</Link>
         <Link href="/profile">Профиль</Link>
       </nav>
-      <Link className="status-link" href="/status"><span className="status-dot" aria-hidden="true" />Что уже работает</Link>
+      {user
+        ? <div className="header-user">
+            <Link className="status-link" href="/matched">
+              <span className="status-dot" aria-hidden="true" />Подбор
+            </Link>
+            <span className="user-chip" title={user.email ?? undefined}>
+              {(user.email ?? "аккаунт").split("@")[0]}
+            </span>
+            <LogoutButton />
+          </div>
+        : <Link className="status-link" href="/login">
+            <span className="status-dot" aria-hidden="true" />Войти
+          </Link>}
     </header>
   </>;
 }

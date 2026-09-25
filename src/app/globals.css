@@ -59,8 +59,37 @@ button:disabled { cursor: not-allowed; background: var(--color-bg-subtle); color
 .context-field span { color: var(--color-text-secondary); margin-bottom: .3rem; }
 .search-form { background: var(--color-bg-surface); border: 1px solid var(--color-border-subtle); padding: 1.25rem 1.5rem; border-radius: var(--radius-card); }
 .search-form label { display: block; margin-bottom: .5rem; font-size: .875rem; font-weight: 600; }
-.search-controls { display: flex; gap: .75rem; }
+.search-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
 .search-controls input { flex: 1; min-width: 0; min-height: var(--layout-field); border: 1px solid var(--color-border-control); border-radius: var(--radius-control); padding: .6rem .9rem; background: var(--color-bg-surface); color: var(--color-text-primary); }
+/* Every field inside a form shares one token-driven control style. */
+.search-form input:not([type="checkbox"]), .search-form select {
+  min-height: 2.5rem; border: 1px solid var(--color-border-control);
+  border-radius: var(--radius-control); padding: .45rem .75rem;
+  background: var(--color-bg-surface); color: var(--color-text-primary);
+  width: 100%; max-width: 24rem;
+}
+.search-form input[aria-invalid="true"], .search-form select[aria-invalid="true"] {
+  border-color: var(--color-border-control); outline: 2px solid var(--color-action-primary); outline-offset: 1px;
+}
+.search-form fieldset { border: none; margin: 0; padding: .25rem 0; }
+.search-form fieldset legend { font-size: .875rem; font-weight: 600; margin-bottom: .5rem; padding: 0; }
+/* Checkbox labels: the text sits strictly to the right of the box. */
+.search-form label.context-field { display: flex; align-items: center; gap: .55rem; border-top: none; padding: .3rem 0; font-weight: 400; cursor: pointer; }
+.search-form label.context-field span { display: inline; margin: 0; color: var(--color-text-primary); font-size: .875rem; line-height: 1.4; }
+.search-form input[type="checkbox"] { width: 1rem; height: 1rem; accent-color: var(--color-action-primary); }
+.field-error { display: block; margin: .35rem 0 .75rem; font-size: .8rem; color: var(--color-text-secondary); }
+.field-error::before { content: "⚠ "; }
+/* Compact control size for dense form and card contexts. */
+.button.compact { min-height: 2.25rem; padding: .4rem .85rem; font-size: .875rem; gap: .4rem; }
+.header-user { display: flex; align-items: center; gap: .75rem; margin-left: auto; }
+.user-chip { font-size: .8rem; color: var(--color-text-secondary); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-badge); padding: .2rem .55rem; max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Weekday toggle group: token-driven segmented control. */
+.weekday-picker { border: none; margin: .25rem 0 .75rem; padding: 0; }
+.weekday-picker legend { font-size: .875rem; font-weight: 600; margin-bottom: .5rem; padding: 0; }
+.weekday-picker .search-controls { gap: .4rem; }
+.weekday-toggle { min-height: 2.25rem; min-width: 2.75rem; padding: .35rem .5rem; border: 1px solid var(--color-border-control); border-radius: var(--radius-control); background: var(--color-bg-surface); color: var(--color-text-primary); font-size: .875rem; font-weight: 550; }
+.weekday-toggle[aria-pressed="true"] { background: var(--color-action-subtle); color: var(--color-action-primary); border-color: var(--color-action-primary); }
+.weekday-toggle:focus-visible { outline: 2px solid var(--color-action-primary); outline-offset: 1px; }
 .reset-link { display: inline-block; margin-top: .8rem; }
 .result-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.5rem 0 .75rem; }
 .result-header h2 { font-size: 1rem; margin: 0; }

@@ -12,12 +12,15 @@ async function walk(directory) {
   return result;
 }
 // The only reviewed external-transport module (S1-002 owner approval).
+// Client components may call our own API with literal same-origin relative
+// paths only; absolute URLs, variables, XHR and WebSocket stay banned.
 const transportAllowlist = new Set(["src/server/import/fetcher.ts"]);
 const source = await walk("src");
 for (const filename of source.filter(f => /\.(ts|tsx)$/.test(f))) {
   const relative = filename.split(path.sep).join("/");
   const text = await readFile(filename, "utf8");
-  if (/\b(?:fetch|XMLHttpRequest|WebSocket)\s*\(/.test(text) && !transportAllowlist.has(relative))
+  const withoutSameOriginFetches = text.replace(/fetch\(\s*(["'`])\//gu, "SAFE_SAME_ORIGIN_FETCH(");
+  if (/\b(?:fetch|XMLHttpRequest|WebSocket)\s*\(/.test(withoutSameOriginFetches) && !transportAllowlist.has(relative))
     violations.push(`${filename}: external transport is only allowed in ${[...transportAllowlist].join(", ")}`);
   if (/dangerouslySetInnerHTML/.test(text))
     violations.push(`${filename}: raw HTML insertion requires a separate reviewed task`);

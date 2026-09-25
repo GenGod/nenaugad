@@ -1,15 +1,15 @@
 {
-  "task_id": "S1-002",
-  "file": "tasks/S1-002-himalayas-live-adapter.md",
+  "task_id": "S2-001",
+  "file": "tasks/S2-001-manual-profile-matching-saved.md",
   "status": "accepted",
   "repair_cycles_used": 1,
   "max_repair_cycles": 2,
   "hypotheses": [
     {
-      "text": "Back-filled record: S1-002 bring-up fixes before implementation was declared complete. (1) live smoke revealed timezoneRestrictions are numeric UTC hours (OpenAPI wrongly says strings) and full -11..14 span means no restriction — mapper rewritten to live contract; (2) fixture expiryDate was in the past, exposing a memory-vs-postgres retention parity gap (expires_at rule) — fixture future-dated and memory impl aligned; (3) mechanical: test used pre-rename field pubDateEpoch, URL-encoded cursor assertion, unused var, TS narrowing/import-type issues. Verified: 44/44 unit, 6/6 integration on test DB, check/build, smoke contract_ok on live records, CLI refusal exit 1 while disabled, e2e 24/24.",
-      "recorded_at": "2026-09-24T19:07:22.341Z"
+      "text": "Back-filled record: S2-001 bring-up fixes before implementation was declared complete. (1) TIME-01 redesigned after test pushback: v1 checks timezone-offset containment in the source's accepted zones with Jan/Jul seasonal honesty, not window arithmetic (full DST overlap engine is a later versioned rule); (2) aggregation tests initially overlooked fixture's Full Time vs contractor profile (CONTRACT-01 fail everywhere) — tests corrected to isolate geography; (3) guardrail allowlist refined: client components may only fetch literal same-origin relative paths; (4) findUserByEmail took the global pool instead of an injected one — integration tests caught it querying the dev DB; (5) e2e failed until 0003 was applied to the dev DB (users table absent); (6) environment: Docker Desktop had stopped — restarted explicitly. Verified: 51/51 unit, 10/10 integration, 30/30 e2e, check/build.",
+      "recorded_at": "2026-09-24T19:56:01.872Z"
     }
   ],
   "coding_host_spend": "unknown",
-  "note": "Owner committed and activated himalayas on 2026-09-24. First import done: 497 records, cursor checkpoint saved."
+  "note": "Owner accepted S2-001 on 2026-09-25 after three rounds of UI feedback (real-time validation, compact buttons, unified field styles, header logout, weekday toggles, checkbox label alignment). Diff not yet committed."
 }
