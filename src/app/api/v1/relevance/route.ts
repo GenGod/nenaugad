@@ -7,6 +7,9 @@ import {
   parseRelevanceResponse, parseBatchResponse,
   RELEVANCE_BATCH_SIZE, RelevanceError,
 } from "../../../../server/relevance-service.ts";
+import {
+  isBatchConfigured, submitBatch, checkBatch, retrieveBatchResults, persistBatchResults,
+} from "../../../../server/ai/openai-batch.ts";
 import { matchedForUser } from "../../../../server/matching-service.ts";
 import { latestProfile } from "../../../../server/profile-service.ts";
 import { readSnapshotCardsData, snapshotPool } from "../../../../server/storage/snapshots.ts";
@@ -56,12 +59,83 @@ export async function POST(request: Request) {
   try { body = await request.json(); } catch {
     return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
   }
-  const raw = body as { snapshotId?: unknown; batch?: unknown };
+  const raw = body as { snapshotId?: unknown; batch?: unknown;
+    mode?: unknown; checkBatchId?: unknown };
   const pool = snapshotPool();
   const profile = await latestProfile(pool, user.id);
   if (!profile) return NextResponse.json({ error: "PROFILE_REQUIRED" }, { status: 409 });
 
   try {
+    // --- OpenAI Batch API mode (50% discount, async) ---
+    if (raw.mode === "openai-batch" && raw.batch === true) {
+      if (!isBatchConfigured()) {
+        return NextResponse.json({ error: "PROVIDER_NOT_CONFIGURED" }, { status: 503 });
+      }
+      const matched = await matchedForUser(user.id);
+      if (matched.status !== "ok") {
+        return NextResponse.json({ error: matched.status }, { status: 409 });
+      }
+      const eligibleIds = matched.eligible.map(job => job.card.id);
+      if (eligibleIds.length === 0) {
+        return NextResponse.json({ error: "NO_ELIGIBLE_JOBS" }, { status: 404 });
+      }
+      const cachedMap = await getAllCachedScores({
+        pool, userId: user.id, profileVersion: profile.version,
+      });
+      const toAnalyze = eligibleIds.filter(id => !cachedMap.has(id));
+      if (toAnalyze.length === 0) {
+        return NextResponse.json({ batchId: null, jobCount: 0, cached: cachedMap.size,
+          message: "All jobs already analyzed." });
+      }
+      // Build one request per job (individual, focused analysis).
+      const jobs = [];
+      const customIdMap = new Map<string, string>();
+      for (const sourceId of new Set(toAnalyze.map(id => id.split(":")[0] ?? ""))) {
+        const rows = await readSnapshotCardsData(pool, sourceId);
+        for (const row of rows) {
+          if (!isJobSnapshot(row.stored.snapshot)) continue;
+          const snapshotId = row.stored.snapshot.id;
+          if (!toAnalyze.includes(snapshotId)) continue;
+          const customId = `rel-${snapshotId.replace(/[^a-z0-9-]/gu, "_")}`;
+          customIdMap.set(customId, snapshotId);
+          jobs.push({
+            customId,
+            snapshotId,
+            prompt: buildSinglePrompt(
+              { title: row.stored.snapshot.title, company: row.stored.snapshot.company_name,
+                description: row.excerpt || row.stored.snapshot.description_text },
+              { targetRoles: profile.input.targetRoles,
+                country: profile.input.residenceCountry ?? "не указана" },
+            ),
+          });
+        }
+      }
+      const submission = await submitBatch(jobs);
+      // Store the customId→snapshotId mapping for later retrieval.
+      // In a production system this would go in the DB; for MVP we pass it back.
+      return NextResponse.json({
+        batchId: submission.batchId,
+        jobCount: submission.jobCount,
+        cached: cachedMap.size,
+        mapping: Object.fromEntries(customIdMap),
+        message: "Batch submitted. Check status in ~5-30 minutes (50% discount applies).",
+      }, { status: 202 });
+    }
+    // --- Check OpenAI batch status and retrieve results ---
+    if (typeof raw.checkBatchId === "string") {
+      const status = await checkBatch(raw.checkBatchId);
+      if (status.status === "completed" && status.outputFileId) {
+        const mapping = (body as { mapping?: Record<string, string> }).mapping ?? {};
+        const customIdMap = new Map(Object.entries(mapping));
+        const results = await retrieveBatchResults(status.outputFileId, customIdMap);
+        const stored = await persistBatchResults({
+          pool, userId: user.id, profileVersion: profile.version, results,
+        });
+        return NextResponse.json({ ...status, storedCount: stored });
+      }
+      return NextResponse.json(status);
+    }
+    // --- Synchronous batch (existing, immediate) ---
     if (raw.batch === true) {
       const matched = await matchedForUser(user.id);
       if (matched.status !== "ok") {
