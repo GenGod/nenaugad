@@ -69,29 +69,34 @@ export async function storeScore(params: Readonly<{
 
 // --- Prompt building -----------------------------------------------------
 export function buildSinglePrompt(job: { title: string; company: string; description: string },
-  profile: { targetRoles: readonly string[]; country: string }): string {
+  profile: { targetRoles: readonly string[]; country: string; skills?: readonly string[] }): string {
+  const skillsLine = profile.skills && profile.skills.length > 0
+    ? `Candidate confirmed skills: ${profile.skills.join(", ")}` : "";
   return `Analyze the relevance of this job for the candidate.
 
 Candidate target roles: ${profile.targetRoles.join(", ")}
+${skillsLine}
 Candidate country: ${profile.country}
 
 Job title: ${job.title}
 Company: ${job.company}
 Job description (excerpt): ${job.description.slice(0, 800)}
 
-Rate relevance 0-100 and identify matched/missing skills.
+Rate relevance 0-100 based on how well the candidate's confirmed skills and target roles match the job requirements. Identify which specific skills matched and which are missing.
 Return JSON: {"score": <0-100>, "matched_skills": [...], "missing_skills": [...], "explanation": "..."}`;
 }
 
 export function buildBatchPrompt(jobs: { id: string; title: string; company: string; description: string }[],
-  profile: { targetRoles: readonly string[]; country: string }): string {
+  profile: { targetRoles: readonly string[]; country: string; skills?: readonly string[] }): string {
+  const skillsLine = profile.skills && profile.skills.length > 0
+    ? `Candidate confirmed skills: ${profile.skills.join(", ")}\n` : "";
   const jobList = jobs.map((job, index) =>
     `[${index + 1}] ID: ${job.id}\nTitle: ${job.title} at ${job.company}\nDescription: ${job.description.slice(0, 400)}`,
   ).join("\n\n");
   return `Analyze relevance of ${jobs.length} jobs for this candidate.
 
 Candidate target roles: ${profile.targetRoles.join(", ")}
-Candidate country: ${profile.country}
+${skillsLine}Candidate country: ${profile.country}
 
 Jobs:
 ${jobList}

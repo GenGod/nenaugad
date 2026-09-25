@@ -21,7 +21,7 @@ test.after(async () => { await pool.end(); });
 
 const PROFILE_INPUT = {
   residenceCountry: "DE", timezone: "Europe/Berlin",
-  targetRoles: ["engineer"], employmentTypes: ["contractor"],
+  targetRoles: ["engineer"], skills: [], employmentTypes: ["contractor"],
   availabilityWindows: [{ weekdays: [1, 2, 3, 4, 5], start: "09:00", end: "18:00" }],
   zeroMandatoryAttendance: true, minimumCompensation: null, showNeedsReview: true,
 };

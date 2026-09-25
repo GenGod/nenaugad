@@ -4,6 +4,7 @@
 // explanation; aggregation is AND inside a hiring option, OR across options.
 import type { JobSnapshot, HiringOption } from "./source-contracts.ts";
 import type { ManualProfileInput } from "./profile.ts";
+import { extractSkills, skillOverlap } from "./skills.ts";
 
 export const RULESET_VERSION = 2;
 
@@ -131,6 +132,33 @@ function ruleRoles(
     explanation: `Ни одна из целевых ролей (${profile.targetRoles.join(", ")}) не найдена в заголовке.` };
 }
 
+// SKILL-01: overlap between the user's confirmed skills and the skills
+// extracted from the job description. A positive signal like ROLE-01 —
+// pass with ≥30% overlap, not_applicable below (jobs aren't excluded,
+// the match quality is just lower).
+function ruleSkills(
+  snapshot: JobSnapshot, profile: ManualProfileInput,
+): RuleResult {
+  const base = { ruleId: "SKILL-01", hiringOptionId: null, reasonCodes: [] as string[] };
+  if (profile.skills.length === 0) {
+    return { ...base, outcome: "not_applicable", reasonCodes: [],
+      explanation: "Навыки не заданы в профиле — загрузите резюме для автозаполнения." };
+  }
+  const jobSkills = extractSkills(`${snapshot.title} ${snapshot.description_text}`);
+  if (jobSkills.length === 0) {
+    return { ...base, outcome: "not_applicable", reasonCodes: [],
+      explanation: "В описании вакансии не найдены узнаваемые навыки." };
+  }
+  const { overlap, matched } = skillOverlap(profile.skills, jobSkills);
+  const percent = Math.round(overlap * 100);
+  if (percent >= 30) {
+    return { ...base, outcome: "pass", reasonCodes: [],
+      explanation: `Совпало ${matched.length} из ${profile.skills.length} навыков (${percent}%): ${matched.slice(0, 5).join(", ")}.` };
+  }
+  return { ...base, outcome: "not_applicable", reasonCodes: ["LOW_SKILL_OVERLAP"],
+    explanation: `Совпало ${matched.length}/${profile.skills.length} (${percent}%). Совпавшие: ${matched.length > 0 ? matched.join(", ") : "нет"}.` };
+}
+
 function ruleSalary(
   snapshot: JobSnapshot, profile: ManualProfileInput,
 ): RuleResult {
@@ -213,6 +241,7 @@ export function evaluateJob(snapshot: JobSnapshot, profile: ManualProfileInput):
     ruleAttendance(snapshot, profile),
     ruleSalary(snapshot, profile),
     ruleRoles(snapshot, profile),
+    ruleSkills(snapshot, profile),
   ];
   const optionOutcomes = snapshot.hiring_options.map(option => {
     const rules = [ruleGeography(option, profile), ruleEmployment(option, profile), ruleOverlap(option, profile)];

@@ -24,6 +24,7 @@ export type ManualProfileInput = Readonly<{
   residenceCountry: string | null;
   timezone: string | null;
   targetRoles: readonly string[];
+  skills: readonly string[];
   employmentTypes: readonly EmploymentType[];
   availabilityWindows: readonly AvailabilityWindow[];
   zeroMandatoryAttendance: boolean;
@@ -71,6 +72,11 @@ export function parseManualProfileInput(value: unknown): ManualProfileInput {
   if (!Array.isArray(targetRoles) || targetRoles.length < 1 || targetRoles.length > 10 ||
     !targetRoles.every(role => typeof role === "string" && role.trim().length >= 2 && role.length <= 80)) {
     throw new ProfileValidationError("INVALID_TARGET_ROLES");
+  }
+  const skills = raw.skills;
+  if (!Array.isArray(skills) || skills.length > 50 ||
+    !skills.every(skill => typeof skill === "string" && skill.length >= 1 && skill.length <= 80)) {
+    throw new ProfileValidationError("INVALID_SKILLS");
   }
   const employmentTypes = raw.employmentTypes;
   if (!Array.isArray(employmentTypes) || employmentTypes.length < 1 ||
@@ -124,6 +130,7 @@ export function parseManualProfileInput(value: unknown): ManualProfileInput {
     residenceCountry: country,
     timezone,
     targetRoles: (targetRoles as string[]).map(role => role.trim()),
+    skills: (skills as string[]).map(skill => skill.trim()),
     employmentTypes: employmentTypes as EmploymentType[],
     availabilityWindows: parsedWindows,
     zeroMandatoryAttendance: raw.zeroMandatoryAttendance,
@@ -135,7 +142,7 @@ export function parseManualProfileInput(value: unknown): ManualProfileInput {
 export type CandidateProfileDocument = Readonly<{
   kind: "candidate_profile"; schema_version: "1.0.0"; id: string; version: number;
   owner_id: string; state: "confirmed"; residence_country: string | null;
-  timezone: string | null; skills: readonly unknown[]; experience: readonly unknown[];
+  timezone: string | null; skills: readonly string[]; experience: readonly unknown[];
   languages: readonly unknown[]; education: readonly unknown[];
   certifications: readonly unknown[]; authorizations: readonly unknown[];
   warnings: readonly string[]; evidence: readonly unknown[];
@@ -169,7 +176,7 @@ export function buildProfileDocuments(params: Readonly<{
       kind: "candidate_profile", schema_version: "1.0.0", id: candidateId, version,
       owner_id: userId, state: "confirmed",
       residence_country: input.residenceCountry, timezone: input.timezone,
-      skills: [], experience: [], languages: [], education: [],
+      skills: input.skills, experience: [], languages: [], education: [],
       certifications: [], authorizations: [], warnings: [], evidence: [],
     },
     search: {
@@ -207,6 +214,7 @@ export function profileFromDocuments(
       residenceCountry: candidate.residence_country,
       timezone: candidate.timezone,
       targetRoles: [...search.target_roles],
+      skills: [...candidate.skills],
       employmentTypes: [...search.employment_types],
       availabilityWindows: search.availability.local_windows
         .map(window => window as AvailabilityWindow),

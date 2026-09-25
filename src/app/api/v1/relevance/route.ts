@@ -173,7 +173,7 @@ export async function POST(request: Request) {
       for (let i = 0; i < jobs.length; i += RELEVANCE_BATCH_SIZE) {
         const chunk = jobs.slice(i, i + RELEVANCE_BATCH_SIZE);
         const prompt = buildBatchPrompt(chunk,
-          { targetRoles: profile.input.targetRoles, country: profile.input.residenceCountry ?? "не указана" });
+          { targetRoles: profile.input.targetRoles, country: profile.input.residenceCountry ?? "не указана", skills: profile.input.skills });
         try {
           const output = await dispatchWithPrompt(prompt, user.id,
             `batch-${i}-${profile.version}-${Date.now()}`);

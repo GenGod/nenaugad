@@ -10,6 +10,7 @@ type ProfileState = {
   residenceCountry: string;
   timezone: string;
   targetRoles: string;
+  skills: string;
   employmentTypes: string[];
   windowStart: string;
   windowEnd: string;
@@ -34,7 +35,7 @@ const DAY_LABELS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 export function ProfileForm({ initial, version }: { initial: ProfileState | null; version: number | null }) {
   const router = useRouter();
   const [state, setState] = useState<ProfileState>(initial ?? {
-    residenceCountry: "", timezone: "", targetRoles: "", employmentTypes: ["contractor"],
+    residenceCountry: "", timezone: "", targetRoles: "", skills: "", employmentTypes: ["contractor"],
     windowStart: "09:00", windowEnd: "18:00", weekdays: [1, 2, 3, 4, 5],
     zeroMandatoryAttendance: true, salaryAmount: "", salaryCurrency: "USD", salaryHard: true,
     showNeedsReview: true,
@@ -77,6 +78,7 @@ export function ProfileForm({ initial, version }: { initial: ProfileState | null
         residenceCountry: state.residenceCountry.trim().toUpperCase() || null,
         timezone: state.timezone.trim() || null,
         targetRoles: state.targetRoles.split(",").map(role => role.trim()).filter(Boolean),
+        skills: state.skills.split(",").map(skill => skill.trim()).filter(Boolean),
         employmentTypes: state.employmentTypes,
         availabilityWindows: [{ weekdays: state.weekdays, start: state.windowStart, end: state.windowEnd }],
         zeroMandatoryAttendance: state.zeroMandatoryAttendance,
@@ -143,6 +145,40 @@ export function ProfileForm({ initial, version }: { initial: ProfileState | null
       onChange={event => update({ targetRoles: event.target.value })}
       onBlur={() => markTouched("roles")} placeholder="engineer, analyst" />
     {fieldError("roles", errors.roles)}
+    <label htmlFor="skills">Навыки (через запятую — улучшает подбор)</label>
+    <div className="search-controls">
+      <input id="skills" maxLength={1000} value={state.skills} style={{ flex: 1 }}
+        onChange={event => update({ skills: event.target.value })}
+        placeholder="React, Node.js, PostgreSQL, Docker, Kubernetes" />
+      <button type="button" className="button secondary compact" disabled={busy}
+        onClick={async () => {
+          setBusy(true); setError(null);
+          try {
+            const res = await fetch("/api/v1/cv");
+            if (res.ok) {
+              const body = (await res.json()) as { items?: { id: string }[] };
+              const latest = body.items?.[0];
+              if (latest) {
+                const textRes = await fetch(`/api/v1/cv/${latest.id}`);
+                if (textRes.ok) {
+                  const textBody = (await textRes.json()) as { text: string };
+                  const { extractSkills } = await import("../domain/skills.ts");
+                  const found = extractSkills(textBody.text);
+                  if (found.length > 0) {
+                    update({ skills: found.join(", ") });
+                    setStatus(`Найдено ${found.length} навыков в вашем резюме.`);
+                  } else {
+                    setError("В резюме не найдены узнаваемые навыки — введите вручную.");
+                  }
+                }
+              } else {
+                setError("Сначала загрузите резюме на странице «Резюме».");
+              }
+            }
+          } finally { setBusy(false); }
+        }}>Извлечь из резюме</button>
+    </div>
+    <p className="helper">Подтверждённые навыки улучшают точность подбора и AI-рейтинга.</p>
     <fieldset>
       <legend>Формы сотрудничества</legend>
       {EMPLOYMENT_OPTIONS.map(([value, label]) => (

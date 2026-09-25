@@ -10,7 +10,7 @@ const NOW = "2026-09-24T12:00:00.000Z";
 function profileWith(overrides: Record<string, unknown>) {
   const base = {
     residenceCountry: "DE", timezone: "Europe/Berlin",
-    targetRoles: ["engineer"], employmentTypes: ["contractor"],
+    targetRoles: ["engineer"], skills: [], employmentTypes: ["contractor"],
     availabilityWindows: [{ weekdays: [1, 2, 3, 4, 5], start: "08:00", end: "18:00" }],
     zeroMandatoryAttendance: true, minimumCompensation: null, showNeedsReview: true,
     ...overrides,

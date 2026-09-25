@@ -25,6 +25,7 @@ export default async function Profile() {
     residenceCountry: profile.input.residenceCountry ?? "",
     timezone: profile.input.timezone ?? "",
     targetRoles: profile.input.targetRoles.join(", "),
+    skills: profile.input.skills.join(", "),
     employmentTypes: [...profile.input.employmentTypes],
     windowStart: profile.input.availabilityWindows[0]?.start ?? "09:00",
     windowEnd: profile.input.availabilityWindows[0]?.end ?? "18:00",
