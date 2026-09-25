@@ -48,7 +48,8 @@ export const openAiTransport: ModelTransport = {
           { role: "system", content: "You are a careful cover letter generator. Output valid JSON only." },
           { role: "user", content: `Operation ${operation.id}, attempt ${operation.attemptCount}. Generate a cover letter draft.` },
         ],
-        max_tokens: GPT6_LUNA.maxOutputTokens,
+        // GPT-6 models require max_completion_tokens (not max_tokens).
+        max_completion_tokens: GPT6_LUNA.maxOutputTokens,
         response_format: { type: "json_object" },
       });
       const usage = completion.usage;
