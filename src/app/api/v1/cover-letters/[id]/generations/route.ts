@@ -1,0 +1,96 @@
+import { NextResponse } from "next/server";
+import { currentUser } from "../../../../../../server/auth.ts";
+import {
+  getLetterDetail, saveGeneratedRevision, LetterError,
+} from "../../../../../../server/letters/service.ts";
+import {
+  executeGuardedOperation,
+} from "../../../../../../server/ai/gateway.ts";
+import { openAiTransport } from "../../../../../../server/ai/openai-transport.ts";
+import { GPT6_LUNA, worstCaseCostMicroCents } from "../../../../../../server/ai/provider.ts";
+import { snapshotPool, readSnapshotCardsData } from "../../../../../../server/storage/snapshots.ts";
+import { isJobSnapshot } from "../../../../../../domain/source-contracts.ts";
+import { latestProfile } from "../../../../../../server/profile-service.ts";
+
+type Params = { params: Promise<{ id: string }> };
+
+function unauthorized() {
+  return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+}
+
+export async function POST(request: Request, { params }: Params) {
+  const user = await currentUser();
+  if (!user) return unauthorized();
+  const { id } = await params;
+  const idempotencyKey = request.headers.get("idempotency-key") ?? "";
+  if (idempotencyKey.length < 8) {
+    return NextResponse.json({ error: "IDEMPOTENCY_KEY_REQUIRED" }, { status: 400 });
+  }
+  const pool = snapshotPool();
+  const detail = await getLetterDetail({ pool, userId: user.id, letterId: id });
+  if (!detail) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+
+  // Build a targeted prompt from the user's profile and the job snapshot.
+  const profile = await latestProfile(pool, user.id);
+  if (!profile) return NextResponse.json({ error: "PROFILE_REQUIRED" }, { status: 409 });
+  const snapshotRows = await readSnapshotCardsData(pool, detail.summary.jobSnapshotId.split(":")[0] ?? "");
+  const snapshot = snapshotRows.find(row => row.stored.snapshot.id === detail.summary.jobSnapshotId);
+  if (!snapshot) return NextResponse.json({ error: "JOB_UNAVAILABLE" }, { status: 404 });
+  if (!isJobSnapshot(snapshot.stored.snapshot)) {
+    return NextResponse.json({ error: "JOB_UNAVAILABLE" }, { status: 404 });
+  }
+  const job = snapshot.stored.snapshot;
+
+  const roles = profile.input.targetRoles.join(", ");
+  const country = profile.input.residenceCountry ?? "не указана";
+  const jobTitle = job.title;
+  const company = job.company_name;
+  const jobExcerpt = (snapshot.excerpt || job.description_text.slice(0, 500)).slice(0, 500);
+  const prompt = `Write a professional cover letter for the position "${jobTitle}" at "${company}". Candidate target roles: ${roles}. Country: ${country}. Job excerpt: ${jobExcerpt}. Write in a neutral professional tone, 150-250 words. Do NOT invent achievements, metrics, or skills not mentioned. Output JSON: {"cover_letter": "..."}`;
+
+  try {
+    const worstCase = worstCaseCostMicroCents({
+      inputTokens: 1500, outputTokens: 3000,
+    });
+    const result = await executeGuardedOperation({
+      pool,
+      ownerId: user.id,
+      taskType: "cover_letter",
+      idempotencyKey: `letter-${id}-${idempotencyKey}`,
+      worstCaseMinor: worstCase,
+      transport: {
+        dispatchOnce: async (operation, attempt) => {
+          return openAiTransport.dispatchOnce(
+            { ...operation, inputHash: prompt.slice(0, 32) }, attempt,
+          );
+        },
+      },
+      now: new Date().toISOString(),
+    });
+    // Parse the JSON response to extract the letter text.
+    let body = result.output;
+    try {
+      const parsed = JSON.parse(result.output) as { cover_letter?: string };
+      if (typeof parsed.cover_letter === "string" && parsed.cover_letter.length > 0) {
+        body = parsed.cover_letter;
+      }
+    } catch { /* raw output if not JSON */ }
+    const revision = await saveGeneratedRevision({
+      pool, letterId: id, userId: user.id, body, modelId: GPT6_LUNA.modelId,
+    });
+    return NextResponse.json({
+      revision, settledMinor: result.settledMinor,
+    }, { status: 201 });
+  } catch (error) {
+    if (error instanceof LetterError) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    if (error instanceof Error && error.message.includes("BUDGET")) {
+      return NextResponse.json({ error: "BUDGET_EXCEEDED" }, { status: 402 });
+    }
+    if (error instanceof Error && error.message.includes("ATTEMPTS")) {
+      return NextResponse.json({ error: "GENERATION_LIMIT" }, { status: 429 });
+    }
+    return NextResponse.json({ error: "GENERATION_FAILED" }, { status: 502 });
+  }
+}

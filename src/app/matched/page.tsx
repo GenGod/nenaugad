@@ -45,6 +45,9 @@ function MatchedCard({ job }: { job: MatchedJob }) {
         Открыть на {job.card.source.displayName} <span aria-hidden="true">↗</span>
       </a>
       <HideButton snapshotId={job.card.id} />
+      <Link className="button secondary compact" href={`/letters/new?job=${job.card.id}`}>
+        Составить письмо
+      </Link>
     </div>
   </article>;
 }

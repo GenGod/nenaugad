@@ -84,6 +84,7 @@ button:disabled { cursor: not-allowed; background: var(--color-bg-subtle); color
 .header-user { display: flex; align-items: center; gap: .75rem; margin-left: auto; }
 .user-chip { font-size: .8rem; color: var(--color-text-secondary); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-badge); padding: .2rem .55rem; max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Weekday toggle group: token-driven segmented control. */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .weekday-picker { border: none; margin: .25rem 0 .75rem; padding: 0; }
 .weekday-picker legend { font-size: .875rem; font-weight: 600; margin-bottom: .5rem; padding: 0; }
 .weekday-picker .search-controls { gap: .4rem; }

@@ -23,10 +23,11 @@ test("excluded record is not directly readable", async ({ request }) => {
   expect((await request.get("/api/v1/jobs/hybrid-excluded")).status()).toBe(404);
   expect((await request.get("/api/v1/jobs/closed-excluded")).status()).toBe(404);
 });
-test("API rejects duplicate filters and never accepts a real letter", async ({ request }) => {
+test("API rejects duplicate filters; letters require auth", async ({ request }) => {
   expect((await request.get("/api/v1/jobs?q=React&q=SQL")).status()).toBe(400);
-  const reply = await request.post("/api/v1/cover-letters",{data:{body:"SYNTHETIC TEST ONLY"}});
-  expect(reply.status()).toBe(503);
+  // The stub 503 is gone (S4-001): real CRUD now, anonymous access → 401.
+  const reply = await request.post("/api/v1/cover-letters",{data:{jobId:"test"}});
+  expect(reply.status()).toBe(401);
 });
 test("empty state explains the result without silently broadening", async ({ page }) => {
   await page.goto("/jobs?q=unlisted-skill");
