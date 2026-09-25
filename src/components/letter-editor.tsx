@@ -20,6 +20,7 @@ export function LetterEditor({ letterId, initialRevision, initialVersions }: {
   const [busy, setBusy] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [needsInput, setNeedsInput] = useState<string[] | null>(null);
 
   const origin = initialRevision?.origin;
   const statusLabel = origin === "generated"
@@ -39,8 +40,16 @@ export function LetterEditor({ letterId, initialRevision, initialVersions }: {
       });
       const body = (await response.json().catch(() => ({}))) as {
         revision?: Revision; error?: string; settledMinor?: string;
+        questions?: string[]; rawOutput?: string;
+        validation?: { passed: boolean; issues: { code: string; message: string }[] };
       };
       if (!response.ok) {
+        if (body.error === "NEEDS_INPUT" && body.questions) {
+          setNeedsInput(body.questions);
+          if (body.rawOutput) setText(body.rawOutput);
+          setStatus("Письмо требует доработки — вопросы ниже.");
+          return;
+        }
         setError(body.error === "BUDGET_EXCEEDED"
           ? "Бюджет исчерпан — обратитесь к владельцу."
           : body.error === "PROFILE_REQUIRED"
@@ -52,8 +61,11 @@ export function LetterEditor({ letterId, initialRevision, initialVersions }: {
         setText(body.revision.body);
         setCurrentVersion(body.revision.version);
         setVersions(prev => [body.revision!, ...prev]);
-        setStatus(`Черновик создан (версия ${body.revision.version}). ` +
-          `Списано ${body.settledMinor ?? "?"} micro-cents.`);
+        setNeedsInput(null);
+        const warnings = body.validation?.issues?.filter(i => i.code !== "EMPTY") ?? [];
+        setStatus(`Черновик создан и проверен (версия ${body.revision.version}).` +
+          (warnings.length > 0 ? ` Замечания: ${warnings.map(w => w.message).join("; ")}` : "") +
+          ` Списано ${body.settledMinor ?? "?"} micro-cents.`);
         router.refresh();
       }
     } finally {
@@ -116,6 +128,13 @@ export function LetterEditor({ letterId, initialRevision, initialVersions }: {
   }
 
   return <>
+    {needsInput && <div className="empty-state" style={{ marginBottom: 16 }} role="alert">
+      <h2>Письмо требует доработки</h2>
+      <p>Валидатор обнаружил проблемы. Исправьте текст вручную или уточните данные:</p>
+      <ul>{needsInput.map((question, index) => <li key={index}>{question}</li>)}</ul>
+      <button type="button" className="button secondary compact"
+        onClick={() => setNeedsInput(null)}>Понятно, правлю вручную</button>
+    </div>}
     <div className="search-controls" style={{ marginBottom: 16 }}>
       <button type="button" className="button primary compact" disabled={generating}
         onClick={generate}>

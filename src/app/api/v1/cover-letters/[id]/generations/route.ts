@@ -75,11 +75,37 @@ export async function POST(request: Request, { params }: Params) {
         body = parsed.cover_letter;
       }
     } catch { /* raw output if not JSON */ }
+    // Deterministic post-generation validation (CL §7–8, §12).
+    const { validateLetter, issuesToQuestions } =
+      await import("../../../../../../server/letters/validator.ts");
+    const validation = validateLetter({
+      body,
+      profileTargetRoles: profile.input.targetRoles,
+      profileCountry: profile.input.residenceCountry,
+      jobTitle: job.title,
+      jobCompany: job.company_name,
+    });
+    if (!validation.passed) {
+      // needs_input: return the questions, don't save a bad revision (CL §8).
+      return NextResponse.json({
+        error: "NEEDS_INPUT",
+        questions: issuesToQuestions(validation.issues),
+        issues: validation.issues,
+        rawOutput: body.slice(0, 2000),
+      }, { status: 422 });
+    }
     const revision = await saveGeneratedRevision({
       pool, letterId: id, userId: user.id, body, modelId: GPT6_LUNA.modelId,
     });
     return NextResponse.json({
       revision, settledMinor: result.settledMinor,
+      validation: { passed: true, issues: validation.issues },
+      evidence: {
+        profileRoles: profile.input.targetRoles,
+        profileCountry: profile.input.residenceCountry,
+        jobTitle: job.title,
+        jobCompany: job.company_name,
+      },
     }, { status: 201 });
   } catch (error) {
     if (error instanceof LetterError) {
