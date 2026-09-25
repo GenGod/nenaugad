@@ -18,6 +18,11 @@ test("register, create profile, see honest empty matching, cannot save unknown j
   await country.fill("DE");
   await expect(page.getByText("Страна — двухбуквенный ISO-код, например DE или US.")).toBeHidden();
 
+  // Autocomplete hints are wired: country codes and IANA zones are offered.
+  await expect(page.locator("#country-options option[value='DE']")).toHaveCount(1);
+  await expect(page.locator("#country-options option", { hasText: "Германия" })).toHaveCount(1);
+  await expect(page.locator("#timezone-options option[value='Europe/Berlin']")).toHaveCount(1);
+
   await page.getByLabel("Часовой пояс (IANA, например Europe/Berlin)").fill("Europe/Berlin");
   await page.getByLabel("Целевые роли (через запятую)").fill("engineer");
   await page.getByRole("button", { name: "Создать профиль" }).click();

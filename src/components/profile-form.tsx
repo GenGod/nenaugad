@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import {
   validateCountry, validateRoles, validateSalaryAmount, validateTimeOrder, validateTimezone,
 } from "./form-validation.ts";
+import { COUNTRY_OPTIONS, timeZoneOptions } from "./autocomplete-data.ts";
 
 type ProfileState = {
   residenceCountry: string;
@@ -118,16 +119,23 @@ export function ProfileForm({ initial, version }: { initial: ProfileState | null
 
   return <form className="search-form" onSubmit={save} noValidate>
     <label htmlFor="country">Страна работы (ISO-код, например DE)</label>
-    <input id="country" maxLength={2} value={state.residenceCountry}
+    <input id="country" maxLength={2} value={state.residenceCountry} list="country-options"
       aria-invalid={touched.country === true && errors.country !== null}
       onChange={event => update({ residenceCountry: event.target.value.toUpperCase() })}
       onBlur={() => markTouched("country")} placeholder="DE" />
+    <datalist id="country-options">
+      {COUNTRY_OPTIONS.map(([code, name]) =>
+        <option key={code} value={code}>{name}</option>)}
+    </datalist>
     {fieldError("country", errors.country)}
     <label htmlFor="tz">Часовой пояс (IANA, например Europe/Berlin)</label>
-    <input id="tz" maxLength={64} value={state.timezone}
+    <input id="tz" maxLength={64} value={state.timezone} list="timezone-options"
       aria-invalid={touched.timezone === true && errors.timezone !== null}
       onChange={event => update({ timezone: event.target.value })}
       onBlur={() => markTouched("timezone")} placeholder="Europe/Berlin" />
+    <datalist id="timezone-options">
+      {timeZoneOptions().map(zone => <option key={zone} value={zone} />)}
+    </datalist>
     {fieldError("timezone", errors.timezone)}
     <label htmlFor="roles">Целевые роли (через запятую)</label>
     <input id="roles" maxLength={400} value={state.targetRoles}
