@@ -1,10 +1,10 @@
 {
-  "task_id": "S3-003",
-  "file": "tasks/S3-003-pdf-text-layer.md",
-  "status": "accepted",
+  "task_id": "AI-001",
+  "file": "tasks/AI-001-budget-guards.md",
+  "status": "in_progress",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Owner accepted S3-003 PDF text layer implicitly (commit + next task instruction pending)."
+  "note": "Owner assigned AI guards (2026-09-25). No provider, no SDK, no keys — guards only."
 }
