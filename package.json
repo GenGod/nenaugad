@@ -28,6 +28,7 @@
     "import:himalayas": "node --experimental-strip-types --env-file-if-exists=.env scripts/import-himalayas.ts",
     "import:jobicy": "node --experimental-strip-types --env-file-if-exists=.env scripts/import-jobicy.ts",
     "worker": "node --experimental-strip-types --env-file-if-exists=.env scripts/worker.ts",
+    "seed:budgets": "node --experimental-strip-types --env-file-if-exists=.env scripts/seed-ai-budgets.ts",
     "smoke:himalayas": "node --experimental-strip-types scripts/smoke-himalayas.ts",
     "task": "node scripts/task.mjs",
     "syntax": "node scripts/check-syntax.cjs"
@@ -35,6 +36,7 @@
   "dependencies": {
     "next": "16.3.6",
     "next-auth": "4.24.15",
+    "openai": "7.23.0",
     "pg": "8.23.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",

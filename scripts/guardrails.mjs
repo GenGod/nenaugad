@@ -30,7 +30,8 @@ for (const filename of source.filter(f => /\.(ts|tsx)$/.test(f))) {
     violations.push(`${filename}: client/server boundary`);
 }
 const pkg = JSON.parse(await readFile("package.json","utf8"));
-for (const forbidden of ["openai","@anthropic-ai/sdk","@google/genai","langchain","@langchain/langgraph"]) {
+// "openai" was owner-approved on 2026-09-25 (AI-002); all others remain banned.
+for (const forbidden of ["@anthropic-ai/sdk","@google/genai","langchain","@langchain/langgraph"]) {
   if (pkg.dependencies?.[forbidden]) violations.push(`Unapproved paid/agent SDK: ${forbidden}`);
 }
 const env = await readFile(".env.example", "utf8");
