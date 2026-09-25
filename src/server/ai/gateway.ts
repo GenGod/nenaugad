@@ -14,7 +14,8 @@ import {
 export type ModelTransport = Readonly<{
   // One dispatch. Implementations must NOT retry internally (SP 9: the
   // operation's attempt counter is the only retry budget).
-  dispatchOnce(operation: OperationRow, attempt: number): Promise<
+  // prompt is the actual user message for the model.
+  dispatchOnce(operation: OperationRow, attempt: number, prompt?: string): Promise<
     | Readonly<{ kind: "result"; actualMinor: bigint; output: string }>
     | Readonly<{ kind: "uncertain" }>
   >;
@@ -34,6 +35,7 @@ export async function executeGuardedOperation(params: Readonly<{
   idempotencyKey: string;
   worstCaseMinor: bigint;
   transport: ModelTransport | null; // null = fail closed (production today)
+  prompt?: string; // the actual user message for the model
   now: string;
 }>): Promise<Readonly<{ output: string; settledMinor: bigint }>> {
   if (params.transport === null) throw new ProviderNotConfiguredError();
@@ -63,7 +65,7 @@ export async function executeGuardedOperation(params: Readonly<{
 
   // Persist the dispatch before the transport call (SP 9). After this
   // point any failure is `uncertain`, never "did not happen".
-  const outcome = await params.transport.dispatchOnce(attempt, attempt.attemptCount);
+  const outcome = await params.transport.dispatchOnce(attempt, attempt.attemptCount, params.prompt);
   if (outcome.kind === "uncertain") {
     await markUncertain({ pool: params.pool, ownerId: params.ownerId,
       operationId: operation.id, now: params.now });

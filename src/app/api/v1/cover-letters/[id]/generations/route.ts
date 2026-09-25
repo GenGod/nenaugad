@@ -65,13 +65,8 @@ export async function POST(request: Request, { params }: Params) {
       taskType: "cover_letter",
       idempotencyKey: `letter-${id}-${idempotencyKey}`,
       worstCaseMinor: worstCase,
-      transport: {
-        dispatchOnce: async (operation, attempt) => {
-          return openAiTransport.dispatchOnce(
-            { ...operation, inputHash: prompt.slice(0, 32) }, attempt,
-          );
-        },
-      },
+      transport: openAiTransport,
+      prompt,
       now: new Date().toISOString(),
     });
     // Parse the JSON response to extract the letter text.

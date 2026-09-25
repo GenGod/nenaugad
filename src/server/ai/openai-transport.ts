@@ -33,20 +33,20 @@ export function isOpenAIConfigured(): boolean {
 }
 
 export const openAiTransport: ModelTransport = {
-  async dispatchOnce(operation: OperationRow, _attempt: number) {
+  async dispatchOnce(operation: OperationRow, _attempt: number, prompt?: string) {
     if (!isOpenAIConfigured()) {
-      // No key configured: this is a configuration error, not uncertain
-      // billing — nothing was sent. The gateway checks this before
-      // reserving, so reaching here means a race; treat as uncertain to
-      // stay conservative.
       return { kind: "uncertain" as const };
     }
     try {
+      // Use the provided prompt; fall back to a generic default that
+      // satisfies OpenAI's json_object requirement (must contain "json").
+      const userMessage = prompt ??
+        "Generate a cover letter draft. Return the result as valid json.";
       const completion = await getClient().chat.completions.create({
         model: GPT6_LUNA.modelId,
         messages: [
-          { role: "system", content: "You are a careful cover letter generator. Output valid JSON only." },
-          { role: "user", content: `Operation ${operation.id}, attempt ${operation.attemptCount}. Generate a cover letter draft.` },
+          { role: "system", content: "You are a careful assistant. Output valid json only." },
+          { role: "user", content: userMessage },
         ],
         // GPT-6 models require max_completion_tokens (not max_tokens).
         max_completion_tokens: GPT6_LUNA.maxOutputTokens,

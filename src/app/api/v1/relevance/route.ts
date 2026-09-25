@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { createHash } from "node:crypto";
 import { currentUser } from "../../../../server/auth.ts";
 import {
   getAllCachedScores, getCachedScore, storeScore,
@@ -40,13 +39,8 @@ async function dispatchWithPrompt(prompt: string, userId: string, idemKey: strin
   const result = await executeGuardedOperation({
     pool: snapshotPool(), ownerId: userId, taskType: "job_matching",
     idempotencyKey: idemKey, worstCaseMinor: worstCase,
-    transport: {
-      dispatchOnce: async (operation: Parameters<typeof openAiTransport.dispatchOnce>[0], attempt: number) =>
-        openAiTransport.dispatchOnce(
-          { ...operation, inputHash: createHash("sha256").update(prompt).digest("hex").slice(0, 32) },
-          attempt,
-        ),
-    },
+    transport: openAiTransport,
+    prompt,
     now: new Date().toISOString(),
   });
   return result.output;
