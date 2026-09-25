@@ -46,6 +46,8 @@ export function validateLetter(params: Readonly<{
   profileCountry: string | null;
   jobTitle: string;
   jobCompany: string;
+  // General mode: no job reference check (CL §3 — no invented employer).
+  generalMode?: boolean;
   // Upper bounds from the input material (null = not stated).
   maxYearsFromCv?: number | null;
 }>): ValidationResult {
@@ -108,17 +110,27 @@ export function validateLetter(params: Readonly<{
     issues.push({ code: "TOO_LONG", message: `Слишком длинно: ${wordCount} слов (максимум 350).` });
   }
 
-  // 6. Must mention the job or company (targeted mode).
-  const mentionsJob = text.toLowerCase().includes(params.jobTitle.toLowerCase().split(" ")[0] ?? "") ||
-    text.toLowerCase().includes(params.jobCompany.toLowerCase());
-  if (!mentionsJob) {
-    issues.push({ code: "NO_JOB_REFERENCE", message: "Письмо не упоминает должность или компанию." });
+  // 6. Must mention the job or company (targeted mode only).
+  if (!params.generalMode) {
+    const mentionsJob = text.toLowerCase().includes(params.jobTitle.toLowerCase().split(" ")[0] ?? "") ||
+      text.toLowerCase().includes(params.jobCompany.toLowerCase());
+    if (!mentionsJob) {
+      issues.push({ code: "NO_JOB_REFERENCE", message: "Письмо не упоминает должность или компанию." });
+    }
+  } else {
+    // General mode: must NOT mention a specific employer (CL §3).
+    const mentionsEmployer = params.jobCompany.length > 0 &&
+      text.toLowerCase().includes(params.jobCompany.toLowerCase());
+    if (mentionsEmployer) {
+      issues.push({ code: "GENERAL_MENTIONS_EMPLOYER", message: "Общий черновик не должен упоминать конкретного работодателя." });
+    }
   }
 
   // Verdict: critical issues block publication; structural ones are warnings.
   const critical = issues.filter(issue =>
     issue.code === "FORBIDDEN_PHRASE" || issue.code === "FABRICATED_PERCENT" ||
-    issue.code === "FABRICATED_YEARS" || issue.code === "EMPTY");
+    issue.code === "FABRICATED_YEARS" || issue.code === "EMPTY" ||
+    issue.code === "GENERAL_MENTIONS_EMPLOYER");
   const passed = critical.length === 0 && issues.length <= 3;
   return { passed, issues };
 }
@@ -140,6 +152,8 @@ export function issuesToQuestions(issues: readonly ValidationIssue[]): readonly 
         return `${issue.message} Сократите до самых релевантных оснований.`;
       case "NO_JOB_REFERENCE":
         return `${issue.message} Укажите должность или название компании.`;
+      case "GENERAL_MENTIONS_EMPLOYER":
+        return `Общий черновик не должен называть конкретного работодателя — ${issue.message}`;
       case "NO_GREETING":
         return `Добавьте приветствие («Здравствуйте, команда…»).`;
       case "NO_CLOSING":

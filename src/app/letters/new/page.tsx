@@ -16,8 +16,9 @@ export default async function NewLetter({ searchParams }: {
   const user = await currentUser();
   if (!user) redirect("/login");
   const raw = await searchParams;
-  const jobId = typeof raw.job === "string" ? raw.job : "";
-  if (!jobId) {
+  const jobId = typeof raw.job === "string" ? raw.job : null;
+  const isGeneral = raw.mode === "general";
+  if (!jobId && !isGeneral) {
     return <section className="status-page">
       <p className="eyebrow">Письмо</p><h1>Не указана вакансия</h1>
       <Link className="button primary" href="/matched">К подбору</Link>
@@ -26,7 +27,8 @@ export default async function NewLetter({ searchParams }: {
   let letterId: string | null = null;
   try {
     const letter = await getOrCreateLetter({
-      pool: snapshotPool(), userId: user.id, jobSnapshotId: jobId,
+      pool: snapshotPool(), userId: user.id,
+      jobSnapshotId: isGeneral ? null : jobId,
     });
     letterId = letter.id;
   } catch {

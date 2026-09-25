@@ -34,6 +34,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
   }
   const jobId = (body as { jobId?: unknown }).jobId;
+  const mode = (body as { mode?: unknown }).mode;
+  // General mode: no job, profile-only letter.
+  if (mode === "general") {
+    try {
+      const letter = await getOrCreateLetter({
+        pool: snapshotPool(), userId: user.id, jobSnapshotId: null,
+      });
+      return NextResponse.json(letter, { status: 201 });
+    } catch (error) {
+      const failure = letterError(error);
+      if (failure) return failure;
+      return NextResponse.json({ error: "CREATE_FAILED" }, { status: 500 });
+    }
+  }
   if (typeof jobId !== "string") {
     return NextResponse.json({ error: "INVALID_INPUT" }, { status: 400 });
   }

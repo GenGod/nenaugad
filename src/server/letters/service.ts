@@ -10,7 +10,8 @@ export class LetterError extends Error {
 
 export type LetterSummary = Readonly<{
   id: string;
-  jobSnapshotId: string;
+  jobSnapshotId: string | null;
+  mode: "targeted" | "general";
   currentVersion: number;
   updatedAt: string;
 }>;
@@ -35,21 +36,23 @@ function hashBody(body: string): string {
 }
 
 export async function createLetter(params: Readonly<{
-  pool: Pool; userId: string; jobSnapshotId: string;
+  pool: Pool; userId: string; jobSnapshotId: string | null;
 }>): Promise<LetterSummary> {
-  if (!/^(himalayas|jobicy):[a-z0-9-]{1,150}$/u.test(params.jobSnapshotId)) {
+  const isGeneral = params.jobSnapshotId === null;
+  if (!isGeneral && !/^(himalayas|jobicy):[a-z0-9-]{1,150}$/u.test(params.jobSnapshotId)) {
     throw new LetterError("SNAPSHOT_NOT_FOUND");
   }
   const id = `cl_${randomBytes(12).toString("hex")}`;
   try {
     const result = await params.pool.query(
-      "INSERT INTO cover_letters (id, user_id, job_snapshot_id) VALUES ($1, $2, $3) RETURNING id, job_snapshot_id, current_version, updated_at",
-      [id, params.userId, params.jobSnapshotId],
+      "INSERT INTO cover_letters (id, user_id, job_snapshot_id, mode) VALUES ($1, $2, $3, $4) RETURNING id, job_snapshot_id, mode, current_version, updated_at",
+      [id, params.userId, params.jobSnapshotId, isGeneral ? "general" : "targeted"],
     );
     const row = result.rows[0] as Record<string, unknown>;
     return {
       id: String(row.id),
-      jobSnapshotId: String(row.job_snapshot_id),
+      jobSnapshotId: row.job_snapshot_id === null ? null : String(row.job_snapshot_id),
+      mode: String(row.mode) as "targeted" | "general",
       currentVersion: Number(row.current_version),
       updatedAt: new Date(row.updated_at as Date).toISOString(),
     };
@@ -64,25 +67,37 @@ export async function createLetter(params: Readonly<{
   }
 }
 
+function toSummary(row: Record<string, unknown> | undefined): LetterSummary {
+  if (!row) throw new LetterError("LETTER_NOT_FOUND");
+  return {
+    id: String(row.id),
+    jobSnapshotId: row.job_snapshot_id === null || row.job_snapshot_id === undefined
+      ? null : String(row.job_snapshot_id),
+    mode: String(row.mode ?? "targeted") as "targeted" | "general",
+    currentVersion: Number(row.current_version),
+    updatedAt: new Date(row.updated_at as Date).toISOString(),
+  };
+}
+
 export async function getOrCreateLetter(params: Readonly<{
-  pool: Pool; userId: string; jobSnapshotId: string;
+  pool: Pool; userId: string; jobSnapshotId: string | null;
 }>): Promise<LetterSummary> {
   try {
     return await createLetter(params);
   } catch (error) {
     if (error instanceof LetterError && error.message === "LETTER_EXISTS") {
+      if (params.jobSnapshotId === null) {
+        const result = await params.pool.query(
+          "SELECT id, job_snapshot_id, mode, current_version, updated_at FROM cover_letters WHERE user_id = $1 AND mode = 'general'",
+          [params.userId],
+        );
+        return toSummary(result.rows[0] as Record<string, unknown>);
+      }
       const result = await params.pool.query(
-        "SELECT id, job_snapshot_id, current_version, updated_at FROM cover_letters WHERE user_id = $1 AND job_snapshot_id = $2",
+        "SELECT id, job_snapshot_id, mode, current_version, updated_at FROM cover_letters WHERE user_id = $1 AND job_snapshot_id = $2",
         [params.userId, params.jobSnapshotId],
       );
-      const row = result.rows[0] as Record<string, unknown>;
-      if (!row) throw new LetterError("LETTER_NOT_FOUND");
-      return {
-        id: String(row.id),
-        jobSnapshotId: String(row.job_snapshot_id),
-        currentVersion: Number(row.current_version),
-        updatedAt: new Date(row.updated_at as Date).toISOString(),
-      };
+      return toSummary(result.rows[0] as Record<string, unknown>);
     }
     throw error;
   }
@@ -161,7 +176,7 @@ export async function getLetterDetail(params: Readonly<{
 }>): Promise<LetterDetail | null> {
   if (!/^cl_[a-f0-9]{24}$/u.test(params.letterId)) return null;
   const letter = await params.pool.query(
-    "SELECT id, job_snapshot_id, current_version, updated_at FROM cover_letters WHERE id = $1 AND user_id = $2 AND status = 'draft'",
+    "SELECT id, job_snapshot_id, mode, current_version, updated_at FROM cover_letters WHERE id = $1 AND user_id = $2 AND status = 'draft'",
     [params.letterId, params.userId],
   );
   const letterRow = letter.rows[0] as Record<string, unknown> | undefined;
@@ -180,11 +195,7 @@ export async function getLetterDetail(params: Readonly<{
     };
   });
   return {
-    summary: {
-      id: String(letterRow.id), jobSnapshotId: String(letterRow.job_snapshot_id),
-      currentVersion: Number(letterRow.current_version),
-      updatedAt: new Date(letterRow.updated_at as Date).toISOString(),
-    },
+    summary: toSummary(letterRow),
     current: revs.find(rev => rev.version === Number(letterRow.current_version)) ?? null,
     revisions: revs,
   };
@@ -205,15 +216,8 @@ export async function listLetters(params: Readonly<{
   pool: Pool; userId: string;
 }>): Promise<readonly LetterSummary[]> {
   const result = await params.pool.query(
-    "SELECT id, job_snapshot_id, current_version, updated_at FROM cover_letters WHERE user_id = $1 AND status = 'draft' ORDER BY updated_at DESC",
+    "SELECT id, job_snapshot_id, mode, current_version, updated_at FROM cover_letters WHERE user_id = $1 AND status = 'draft' ORDER BY updated_at DESC",
     [params.userId],
   );
-  return result.rows.map(row => {
-    const record = row as Record<string, unknown>;
-    return {
-      id: String(record.id), jobSnapshotId: String(record.job_snapshot_id),
-      currentVersion: Number(record.current_version),
-      updatedAt: new Date(record.updated_at as Date).toISOString(),
-    };
-  });
+  return result.rows.map(row => toSummary(row as Record<string, unknown>));
 }

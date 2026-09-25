@@ -25,8 +25,9 @@ export default async function LetterPage({ params }: { params: Promise<{ id: str
   if (!detail) notFound();
 
   // Fetch the job snapshot for context display.
-  const sourceId = detail.summary.jobSnapshotId.split(":")[0] ?? "";
-  const rows = await readSnapshotCardsData(snapshotPool(), sourceId);
+  const isGeneral = detail.summary.mode === "general";
+  const sourceId = isGeneral ? "" : (detail.summary.jobSnapshotId ?? "").split(":")[0] ?? "";
+  const rows = sourceId ? await readSnapshotCardsData(snapshotPool(), sourceId) : [];
   const snapshotRow = rows.find(row => row.stored.snapshot.id === detail.summary.jobSnapshotId);
   const job = snapshotRow && isJobSnapshot(snapshotRow.stored.snapshot)
     ? snapshotRow.stored.snapshot : null;
@@ -35,7 +36,9 @@ export default async function LetterPage({ params }: { params: Promise<{ id: str
     <p className="eyebrow">Письмо / приватное</p>
     <h1>Сопроводительное письмо</h1>
     <p className="hero-lead">
-      {job ? `${job.title} · ${job.company_name}` : "Вакансия недоступна"}
+      {isGeneral
+        ? <span className="badge review">Общий черновик — адаптируйте под вакансию</span>
+        : job ? `${job.title} · ${job.company_name}` : "Вакансия недоступна"}
       {" · "}версия профиля активна
     </p>
     <div className="panel">

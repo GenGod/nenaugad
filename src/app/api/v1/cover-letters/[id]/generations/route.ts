@@ -30,23 +30,30 @@ export async function POST(request: Request, { params }: Params) {
   const detail = await getLetterDetail({ pool, userId: user.id, letterId: id });
   if (!detail) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
-  // Build a targeted prompt from the user's profile and the job snapshot.
+  // Build the prompt: targeted (with job) or general (profile only, CL §3).
   const profile = await latestProfile(pool, user.id);
   if (!profile) return NextResponse.json({ error: "PROFILE_REQUIRED" }, { status: 409 });
-  const snapshotRows = await readSnapshotCardsData(pool, detail.summary.jobSnapshotId.split(":")[0] ?? "");
-  const snapshot = snapshotRows.find(row => row.stored.snapshot.id === detail.summary.jobSnapshotId);
-  if (!snapshot) return NextResponse.json({ error: "JOB_UNAVAILABLE" }, { status: 404 });
-  if (!isJobSnapshot(snapshot.stored.snapshot)) {
-    return NextResponse.json({ error: "JOB_UNAVAILABLE" }, { status: 404 });
-  }
-  const job = snapshot.stored.snapshot;
-
+  const isGeneral = detail.summary.jobSnapshotId === null;
   const roles = profile.input.targetRoles.join(", ");
   const country = profile.input.residenceCountry ?? "не указана";
-  const jobTitle = job.title;
-  const company = job.company_name;
-  const jobExcerpt = (snapshot.excerpt || job.description_text.slice(0, 500)).slice(0, 500);
-  const prompt = `Write a professional cover letter for the position "${jobTitle}" at "${company}". Candidate target roles: ${roles}. Country: ${country}. Job excerpt: ${jobExcerpt}. Write in a neutral professional tone, 150-250 words. Do NOT invent achievements, metrics, or skills not mentioned. Output JSON: {"cover_letter": "..."}`;
+  let prompt: string;
+  let jobTitle = "";
+  let jobCompany = "";
+  if (!isGeneral) {
+    const snapshotRows = await readSnapshotCardsData(pool, detail.summary.jobSnapshotId.split(":")[0] ?? "");
+    const snapshot = snapshotRows.find(row => row.stored.snapshot.id === detail.summary.jobSnapshotId);
+    if (!snapshot) return NextResponse.json({ error: "JOB_UNAVAILABLE" }, { status: 404 });
+    if (!isJobSnapshot(snapshot.stored.snapshot)) {
+      return NextResponse.json({ error: "JOB_UNAVAILABLE" }, { status: 404 });
+    }
+    const job = snapshot.stored.snapshot;
+    jobTitle = job.title;
+    jobCompany = job.company_name;
+    const jobExcerpt = (snapshot.excerpt || job.description_text.slice(0, 500)).slice(0, 500);
+    prompt = `Write a professional cover letter for the position "${jobTitle}" at "${jobCompany}". Candidate target roles: ${roles}. Country: ${country}. Job excerpt: ${jobExcerpt}. Write in a neutral professional tone, 150-250 words. Do NOT invent achievements, metrics, or skills not mentioned. Output JSON: {"cover_letter": "..."}`;
+  } else {
+    prompt = `Write a general cover letter draft (no specific employer). Candidate target roles: ${roles}. Country: ${country}. Highlight transferable skills and professional interests. Do NOT mention any specific employer, company, product, mission, or position. Write in a neutral professional tone, 150-250 words. Add at the end: "Адаптируйте под конкретную вакансию." Do NOT invent achievements, metrics, or skills not mentioned. Output JSON: {"cover_letter": "..."}`;
+  }
 
   try {
     const worstCase = worstCaseCostMicroCents({
@@ -82,8 +89,9 @@ export async function POST(request: Request, { params }: Params) {
       body,
       profileTargetRoles: profile.input.targetRoles,
       profileCountry: profile.input.residenceCountry,
-      jobTitle: job.title,
-      jobCompany: job.company_name,
+      jobTitle,
+      jobCompany,
+      generalMode: isGeneral,
     });
     if (!validation.passed) {
       // needs_input: return the questions, don't save a bad revision (CL §8).
@@ -103,8 +111,8 @@ export async function POST(request: Request, { params }: Params) {
       evidence: {
         profileRoles: profile.input.targetRoles,
         profileCountry: profile.input.residenceCountry,
-        jobTitle: job.title,
-        jobCompany: job.company_name,
+        jobTitle,
+        jobCompany,
       },
     }, { status: 201 });
   } catch (error) {
