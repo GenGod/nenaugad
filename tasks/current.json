@@ -1,15 +1,10 @@
 {
-  "task_id": "S1-003",
-  "file": "tasks/S1-003-jobicy-second-source.md",
-  "status": "accepted",
-  "repair_cycles_used": 1,
+  "task_id": "S1-004",
+  "file": "tasks/S1-004-import-worker.md",
+  "status": "in_progress",
+  "repair_cycles_used": 0,
   "max_repair_cycles": 2,
-  "hypotheses": [
-    {
-      "text": "Environment blocker record (not a code defect): during S1-003 verification Docker Desktop on this machine died 6 times; when the engine is nominally up its port-proxy for 127.0.0.1:54329 intermittently refuses connections (ECONNREFUSED captured 3x via temporary route logging, reverted). Effect: the DB-dependent e2e scenario fails on whichever viewport hits a dead window; the identical suite passed 30/30 twice today in stable windows. Code verification: 57/57 unit, 11/11 integration, check/build, CLI refusal. Hypothesis for owner action: Docker Desktop backend/WSL2 port-forward instability — recommend Docker Desktop update/repair or wsl --shutdown; a doctor DB-port probe can automate detection.",
-      "recorded_at": "2026-09-25T09:07:27.380Z"
-    }
-  ],
+  "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Owner assigned Jobicy (2026-09-25). Step 1 done: live research; awaiting the permission matrix approval before implementation."
+  "note": "Owner assigned import regularization (2026-09-25). Implemented: scheduler core + worker CLI + migration 0005. e2e flake during verification was the documented Docker Desktop instability (8th engine death), not code."
 }

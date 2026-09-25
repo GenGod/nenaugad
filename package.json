@@ -27,6 +27,7 @@
     "test:e2e": "playwright test",
     "import:himalayas": "node --experimental-strip-types --env-file-if-exists=.env scripts/import-himalayas.ts",
     "import:jobicy": "node --experimental-strip-types --env-file-if-exists=.env scripts/import-jobicy.ts",
+    "worker": "node --experimental-strip-types --env-file-if-exists=.env scripts/worker.ts",
     "smoke:himalayas": "node --experimental-strip-types scripts/smoke-himalayas.ts",
     "task": "node scripts/task.mjs",
     "syntax": "node scripts/check-syntax.cjs"

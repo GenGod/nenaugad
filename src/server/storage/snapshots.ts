@@ -29,7 +29,7 @@ export function createPostgresPersistence(pool: Pool, policy: SourcePolicy): Sna
   return {
     async loadImportState(): Promise<ImportState | null> {
       const result = await pool.query(
-        "SELECT last_run_at, next_cursor, run_count FROM import_state WHERE source_id = $1",
+        "SELECT last_run_at, next_cursor, run_count, last_attempt_at, consecutive_failures FROM import_state WHERE source_id = $1",
         [sourceId],
       );
       const row = result.rows[0];
@@ -38,12 +38,26 @@ export function createPostgresPersistence(pool: Pool, policy: SourcePolicy): Sna
         lastRunAt: row.last_run_at ? new Date(row.last_run_at).toISOString() : null,
         nextCursor: typeof row.next_cursor === "string" ? row.next_cursor : null,
         runCount: Number(row.run_count),
+        lastAttemptAt: row.last_attempt_at ? new Date(row.last_attempt_at).toISOString() : null,
+        consecutiveFailures: Number(row.consecutive_failures ?? 0),
       };
     },
     async saveImportState(state: ImportState): Promise<void> {
       await pool.query(
         "INSERT INTO import_state (source_id, last_run_at, next_cursor, run_count) VALUES ($1, $2, $3, $4) ON CONFLICT (source_id) DO UPDATE SET last_run_at = EXCLUDED.last_run_at, next_cursor = EXCLUDED.next_cursor, run_count = EXCLUDED.run_count",
         [sourceId, state.lastRunAt, state.nextCursor, state.runCount],
+      );
+    },
+    async recordAttempt(success: boolean, now: string): Promise<void> {
+      await pool.query(
+        "INSERT INTO import_state (source_id, last_attempt_at, consecutive_failures) VALUES ($1, $2, $3) ON CONFLICT (source_id) DO UPDATE SET last_attempt_at = EXCLUDED.last_attempt_at, consecutive_failures = CASE WHEN $4::boolean THEN 0 ELSE import_state.consecutive_failures + 1 END",
+        [sourceId, now, success ? 0 : 1, success],
+      );
+    },
+    async resumeAttempts(): Promise<void> {
+      await pool.query(
+        "UPDATE import_state SET consecutive_failures = 0 WHERE source_id = $1",
+        [sourceId],
       );
     },
     async loadStore(): Promise<{ store: SnapshotStore; excerpts: Record<string, string> }> {

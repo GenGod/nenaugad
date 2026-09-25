@@ -19,6 +19,8 @@ export type ImportState = Readonly<{
   lastRunAt: string | null;
   nextCursor: string | null;
   runCount: number;
+  lastAttemptAt?: string | null;
+  consecutiveFailures?: number;
 }>;
 
 export type SnapshotPersistence = Readonly<{
@@ -27,6 +29,8 @@ export type SnapshotPersistence = Readonly<{
   loadStore(): Promise<{ store: SnapshotStore; excerpts: Record<string, string> }>;
   saveStore(store: SnapshotStore, excerpts: Record<string, string>): Promise<void>;
   deleteExpired(now: string): Promise<number>;
+  recordAttempt(success: boolean, now: string): Promise<void>;
+  resumeAttempts(): Promise<void>;
 }>;
 
 export type AdapterReport = Readonly<{
@@ -51,6 +55,17 @@ export function createMemoryPersistence(retentionHours = 720): SnapshotPersisten
     excerpts: {},
     async loadImportState() { return this.state; },
     async saveImportState(state) { this.state = state; },
+    async recordAttempt(success, now) {
+      if (!this.state) this.state = { lastRunAt: null, nextCursor: null, runCount: 0 };
+      this.state = {
+        ...this.state,
+        lastAttemptAt: now,
+        consecutiveFailures: success ? 0 : (this.state.consecutiveFailures ?? 0) + 1,
+      };
+    },
+    async resumeAttempts() {
+      if (this.state) this.state = { ...this.state, consecutiveFailures: 0 };
+    },
     async loadStore() { return { store: this.store, excerpts: this.excerpts }; },
     async saveStore(store, excerpts) {
       this.store = store;
