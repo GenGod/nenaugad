@@ -45,6 +45,7 @@ export default async function Profile() {
     <div className="panel"><ProfileForm initial={initial} version={profile?.version ?? null} /></div>
     <div className="search-controls" style={{ marginTop: 16 }}>
       <Link className="button primary" href="/matched">Открыть подбор</Link>
+      <Link className="button secondary compact" href="/cv">Резюме (текст)</Link>
       <LogoutButton />
     </div>
     <p className="helper">Права на работу и гражданство не запрашиваются: профиль оценивает только опубликованные условия.</p>

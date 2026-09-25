@@ -3,7 +3,7 @@ export type Config = Readonly<{
   backend: "fixture" | "postgres";
   liveAi: false;
   liveSources: false;
-  uploads: false;
+  uploads: boolean;
 }>;
 
 export class ConfigurationError extends Error {
@@ -18,16 +18,25 @@ export function readConfig(env: Record<string, string | undefined>): Config {
   if (environment !== "local" && environment !== "test") {
     throw new ConfigurationError("PRODUCTION_NOT_IMPLEMENTED");
   }
-  for (const key of ["LIVE_AI_ENABLED", "LIVE_SOURCES_ENABLED", "UPLOADS_ENABLED"]) {
+  for (const key of ["LIVE_AI_ENABLED", "LIVE_SOURCES_ENABLED"]) {
     if (env[key] !== undefined && env[key] !== "false") {
       throw new ConfigurationError(`${key}_NOT_IMPLEMENTED`);
     }
+  }
+  // Uploads are implemented for the local offline intake only (S3-001) and
+  // stay disabled unless explicitly enabled; malformed values fail closed.
+  let uploads = false;
+  if (env.UPLOADS_ENABLED !== undefined && env.UPLOADS_ENABLED !== "false") {
+    if (env.UPLOADS_ENABLED !== "true") {
+      throw new ConfigurationError("UPLOADS_ENABLED_NOT_IMPLEMENTED");
+    }
+    uploads = true;
   }
   const backend = env.DATA_BACKEND ?? "fixture";
   if (backend !== "fixture" && backend !== "postgres") {
     throw new ConfigurationError("INVALID_DATA_BACKEND");
   }
-  return { environment, backend, liveAi: false, liveSources: false, uploads: false };
+  return { environment, backend, liveAi: false, liveSources: false, uploads };
 }
 
 export function localDatabaseUrl(raw: string | undefined, testOnly = false): string {

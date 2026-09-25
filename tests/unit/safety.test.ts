@@ -12,12 +12,20 @@ test("starter defaults to fixture/local with all live features disabled", () => 
 test("production cannot be enabled through one environment switch", () => {
   assert.throws(() => readConfig({ ATLAS_ENV: "production" }), /PRODUCTION_NOT_IMPLEMENTED/u);
 });
-test("live AI, live sources and uploads fail closed, including malformed flags", () => {
-  for (const key of ["LIVE_AI_ENABLED","LIVE_SOURCES_ENABLED","UPLOADS_ENABLED"]) {
+test("live AI and live sources fail closed, including malformed flags", () => {
+  for (const key of ["LIVE_AI_ENABLED","LIVE_SOURCES_ENABLED"]) {
     for (const value of ["true","1","FALSE","", "enabled"]) {
       assert.throws(() => readConfig({ [key]:value }), /NOT_IMPLEMENTED/u);
     }
   }
+});
+test("uploads stay disabled by default and reject malformed flags; explicit local opt-in only", () => {
+  assert.equal(readConfig({}).uploads, false);
+  assert.equal(readConfig({ UPLOADS_ENABLED: "false" }).uploads, false);
+  for (const value of ["1","FALSE","","enabled"]) {
+    assert.throws(() => readConfig({ UPLOADS_ENABLED: value }), /NOT_IMPLEMENTED/u);
+  }
+  assert.equal(readConfig({ UPLOADS_ENABLED: "true" }).uploads, true);
 });
 test("postgres can be selected, but never as a silent fallback", () => {
   assert.equal(readConfig({ DATA_BACKEND:"postgres" }).backend, "postgres");

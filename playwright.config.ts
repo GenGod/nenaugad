@@ -16,7 +16,7 @@ export default defineConfig({
     env: {
       ATLAS_ENV: "test", DATA_BACKEND: "fixture",
       LIVE_AI_ENABLED: "false", LIVE_SOURCES_ENABLED: "false",
-      UPLOADS_ENABLED: "false", NEXT_TELEMETRY_DISABLED: "1"
+      UPLOADS_ENABLED: "true", NEXT_TELEMETRY_DISABLED: "1"
     }
   },
   projects: [

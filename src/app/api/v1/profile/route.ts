@@ -3,6 +3,7 @@ import { currentUser } from "../../../../server/auth.ts";
 import {
   countProfileVersions, deleteAllProfiles, latestProfile, saveProfileVersion,
 } from "../../../../server/profile-service.ts";
+import { deleteAllCvUploads } from "../../../../server/cv/service.ts";
 import { snapshotPool } from "../../../../server/storage/snapshots.ts";
 
 function unauthorized() {
@@ -43,6 +44,10 @@ export async function PUT(request: Request) {
 export async function DELETE() {
   const user = await currentUser();
   if (!user) return unauthorized();
-  const removed = await deleteAllProfiles(snapshotPool(), user.id);
-  return NextResponse.json({ ok: true, removed }, { status: 200 });
+  const pool = snapshotPool();
+  const removedProfiles = await deleteAllProfiles(pool, user.id);
+  // Profile deletion also removes all stored CV uploads (spec 9/4.3).
+  const removedCv = await deleteAllCvUploads(pool, user.id);
+  return NextResponse.json({ ok: true, removed: removedProfiles, removedCvUploads: removedCv },
+    { status: 200 });
 }
