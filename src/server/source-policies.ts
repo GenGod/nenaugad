@@ -97,18 +97,18 @@ export const himalayasCandidatePolicy: SourcePolicy = {
 // Second source (registry S02). Permission matrix approved by the owner on
 // 2026-09-25 after a live review of jobicy.com/jobs-rss-feed and the GitHub
 // docs ("normal integrations do not require a separate agreement"; mandatory
-// attribution + canonical Jobicy URL). enabled=false until the S1-003
-// implementation review; the paid Bearer direct-link option and the
-// affiliate parameter stay out of scope.
+// attribution + canonical Jobicy URL). Activated by the owner on 2026-09-25
+// after the S1-003 implementation review. The paid Bearer direct-link option
+// and the affiliate parameter stay out of scope.
 // terms_hash = sha256 of https://jobicy.com/jobs-rss-feed as fetched 2026-09-25.
 export const jobicyCandidatePolicy: SourcePolicy = {
   kind: "source_policy",
   schema_version: "1.0.0",
   id: "policy/jobicy/1",
-  version: 1,
+  version: 2,
   source_id: "jobicy",
   status: "approved",
-  enabled: false,
+  enabled: true,
   terms_urls: [
     "https://jobicy.com/jobs-rss-feed",
     "https://github.com/Jobicy/remote-jobs-api",
@@ -118,7 +118,7 @@ export const jobicyCandidatePolicy: SourcePolicy = {
   approved_by: "owner",
   approval_reference:
     "Owner-approved permission matrix 2026-09-25 (live review of API docs); " +
-    "enabled=false until the S1-003 review; paid direct links and affiliate out of scope; " +
+    "activated 2026-09-25 after the S1-003 review; paid direct links and affiliate out of scope; " +
     "re-review by 2026-12-23",
   valid_until: "2026-12-23T00:00:00.000Z",
   permissions: {

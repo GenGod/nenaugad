@@ -1,7 +1,7 @@
 {
   "task_id": "S1-003",
   "file": "tasks/S1-003-jobicy-second-source.md",
-  "status": "in_progress",
+  "status": "accepted",
   "repair_cycles_used": 1,
   "max_repair_cycles": 2,
   "hypotheses": [

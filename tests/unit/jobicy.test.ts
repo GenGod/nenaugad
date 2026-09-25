@@ -9,16 +9,16 @@ import {
 } from "../../src/server/import/himalayas-fixture.ts";
 import { runJobicyImport } from "../../src/server/import/jobicy-adapter.ts";
 import { createMemoryPersistence } from "../../src/server/import/himalayas-adapter.ts";
-import { jobicyCandidatePolicy } from "../../src/server/source-policies.ts";
+import { jobicyCandidatePolicy, permissionFor } from "../../src/server/source-policies.ts";
 import { fetchJobicyWindow } from "../../src/server/import/fetcher.ts";
 import { classifySnapshot } from "../../src/domain/snapshot-projection.ts";
 
 const NOW = "2026-09-25T12:00:00.000Z";
 const enabledPolicy = { ...jobicyCandidatePolicy, enabled: true };
 
-test("policy: jobicy matrix approved but not activated", () => {
+test("policy: jobicy matrix approved and activated; a disabled clone denies everything", () => {
   assert.equal(jobicyCandidatePolicy.status, "approved");
-  assert.equal(jobicyCandidatePolicy.enabled, false);
+  assert.equal(jobicyCandidatePolicy.enabled, true);
   assert.equal(jobicyCandidatePolicy.terms_hash !== null, true);
   assert.equal(jobicyCandidatePolicy.valid_until, "2026-12-23T00:00:00.000Z");
   for (const permission of ["fetch", "cache", "store_full_text", "store_excerpt",
@@ -31,6 +31,8 @@ test("policy: jobicy matrix approved but not activated", () => {
     assert.equal(jobicyCandidatePolicy.permissions[permission], "denied", permission);
   }
   assert.equal(jobicyCandidatePolicy.min_poll_interval_seconds, 21600);
+  // Rollback without code changes: disabling the policy denies fetch again.
+  assert.equal(permissionFor({ ...jobicyCandidatePolicy, enabled: false }, "fetch", NOW), "denied");
 });
 
 test("mapper: fixture validates; ids stable; labels are honest", () => {
@@ -79,11 +81,12 @@ test("mapper: employment types mapped, unknown when absent; invalid input reject
 });
 
 test("window import: always partial, idempotent, poll-gated, disabled refuses", async () => {
-  // Disabled policy: no transport call.
+  // Disabled clone: no transport call.
   let calls = 0;
   const refused = await runJobicyImport({
     transport: async () => { calls += 1; return { status: "ok", jobs: [] }; },
-    persistence: createMemoryPersistence(), policy: jobicyCandidatePolicy, now: NOW,
+    persistence: createMemoryPersistence(),
+    policy: { ...jobicyCandidatePolicy, enabled: false }, now: NOW,
   });
   assert.equal(refused.result, "refused_disabled");
   assert.equal(calls, 0);
