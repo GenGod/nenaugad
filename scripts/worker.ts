@@ -16,6 +16,9 @@ import { runClosureCheckPass, closureStatus } from "../src/server/import/closure
 import {
   isPaused, nextDueAt, shouldAttempt, PAUSE_AFTER_CONSECUTIVE_FAILURES,
 } from "../src/server/import/scheduler.ts";
+import {
+  processPendingBatches, checkForStaleAnalyses, submitRelevanceBatch,
+} from "../src/server/ai/batch-queue-service.ts";
 
 const SOURCES = ["himalayas", "jobicy"] as const;
 const args = process.argv.slice(2);
@@ -179,6 +182,22 @@ async function main(): Promise<void> {
       });
       if (report.result !== "nothing_due") {
         log({ event: "closure_pass", source: "jobicy", ...report });
+      }
+    }
+    // Batch relevance: poll pending OpenAI Batches and persist results.
+    if (!flag("no-batch")) {
+      const batchReport = await processPendingBatches(pool);
+      if (batchReport.completed > 0) {
+        log({ event: "batch_poll", ...batchReport });
+      }
+      // After imports: check if any user has new eligible jobs without scores.
+      const staleUsers = await checkForStaleAnalyses(pool);
+      for (const userId of staleUsers) {
+        const submitted = await submitRelevanceBatch({ pool, userId });
+        if (submitted) {
+          log({ event: "batch_submitted", userId: userId.slice(0, 8) + "…",
+            batchId: submitted.openaiBatchId, jobs: submitted.jobCount });
+        }
       }
     }
     if (flag("once")) break;

@@ -30,6 +30,12 @@ export async function PUT(request: Request) {
   }
   try {
     const saved = await saveProfileVersion(snapshotPool(), user.id, body);
+    // Event trigger: profile changed → cached relevance scores are stale.
+    // Fire-and-forget: submit an async OpenAI Batch (50% discount) so fresh
+    // scores are ready when the user next opens /matched.
+    const { submitRelevanceBatch } = await import("../../../../server/ai/batch-queue-service.ts");
+    void submitRelevanceBatch({ pool: snapshotPool(), userId: user.id })
+      .catch(() => undefined);
     return NextResponse.json({ ok: true, version: saved.version });
   } catch (error) {
     const code = error instanceof Error ? error.message : "PROFILE_SAVE_FAILED";
