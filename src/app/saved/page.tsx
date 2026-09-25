@@ -47,6 +47,8 @@ export default async function Saved() {
               <h2><a href={card.apply.url} rel="nofollow noreferrer" target="_blank">{card.title}</a></h2>
             </div>
             <span className="badge neutral">{card.salaryOriginalText ?? "Зарплата не указана"}</span>
+            {row.snapshot.lifecycle === "closed" &&
+              <span className="badge review">Закрыта (источник)</span>}
           </div>
           {row.excerpt && <p className="conditions">{row.excerpt}</p>}
           <div className="card-bottom">

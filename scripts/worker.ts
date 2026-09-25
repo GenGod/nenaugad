@@ -11,7 +11,8 @@ import { getSourcePolicy, permissionFor } from "../src/server/source-policies.ts
 import { createPostgresPersistence } from "../src/server/storage/snapshots.ts";
 import { runHimalayasImport } from "../src/server/import/himalayas-adapter.ts";
 import { runJobicyImport } from "../src/server/import/jobicy-adapter.ts";
-import { fetchHimalayasPage, fetchJobicyWindow } from "../src/server/import/fetcher.ts";
+import { fetchHimalayasPage, fetchJobicyWindow, headJobicyListing } from "../src/server/import/fetcher.ts";
+import { runClosureCheckPass, closureStatus } from "../src/server/import/closure-checks.ts";
 import {
   isPaused, nextDueAt, shouldAttempt, PAUSE_AFTER_CONSECUTIVE_FAILURES,
 } from "../src/server/import/scheduler.ts";
@@ -101,6 +102,7 @@ async function main(): Promise<void> {
     for (const setup of setups) {
       const state = await setup.persistence.loadImportState();
       const nowMs = Date.now();
+      const closure = setup.source === "jobicy" ? await closureStatus(pool) : undefined;
       log({
         event: "status", source: setup.source,
         enabled: setup.policy.enabled,
@@ -112,6 +114,7 @@ async function main(): Promise<void> {
         consecutiveFailures: state?.consecutiveFailures ?? 0,
         lastRunAt: state?.lastRunAt ?? null,
         lastAttemptAt: state?.lastAttemptAt ?? null,
+        closure,
         nextDueAt: state
           ? new Date(nextDueAt({
               state: {
@@ -165,6 +168,17 @@ async function main(): Promise<void> {
         nowMs,
       })) {
         await attempt(setup);
+      }
+    }
+    // Closure pass (jobicy only): 404/410 HEAD signals per spec 5.2/14.3.
+    const jobicy = setups.find(item => item.source === "jobicy");
+    if (jobicy && !flag("no-closure") &&
+      permissionFor(jobicy.policy, "fetch", new Date().toISOString()) === "allowed") {
+      const report = await runClosureCheckPass({
+        pool, now: new Date().toISOString(), head: headJobicyListing,
+      });
+      if (report.result !== "nothing_due") {
+        log({ event: "closure_pass", source: "jobicy", ...report });
       }
     }
     if (flag("once")) break;

@@ -95,3 +95,37 @@ export async function fetchJobicyWindow(request: Readonly<{
   const result = await pinnedJsonFetch(url, request.timeoutMs ?? DEFAULT_TIMEOUT_MS);
   return result.status === "ok" ? { status: "ok", jobs: result.jobs } : result;
 }
+
+// HEAD availability probe of a canonical Jobicy listing (spec 5.2/14.3):
+// 404/410 is an inactivity signal; every other outcome — including 429, 5xx,
+// redirects and network errors — stays unknown and never closes a record.
+export type ListingCheckResult = Readonly<{ result: "active" | "inactive" | "unknown" }>;
+
+export async function headJobicyListing(listingUrl: string, timeoutMs = 10000): Promise<ListingCheckResult> {
+  let url: URL;
+  try {
+    url = new URL(listingUrl);
+  } catch {
+    return { result: "unknown" };
+  }
+  if (url.protocol !== "https:" || url.host !== "jobicy.com" || url.port !== "" || url.username !== "") {
+    return { result: "unknown" };
+  }
+  const timeout = new AbortController();
+  const timer = setTimeout(() => timeout.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      method: "HEAD",
+      redirect: "error",
+      signal: timeout.signal,
+      headers: { accept: "text/html" },
+    });
+    if (response.status === 404 || response.status === 410) return { result: "inactive" };
+    if (response.ok) return { result: "active" };
+    return { result: "unknown" };
+  } catch {
+    return { result: "unknown" };
+  } finally {
+    clearTimeout(timer);
+  }
+}
