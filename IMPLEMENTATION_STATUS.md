@@ -1,10 +1,38 @@
 # Nenaugad — status (ex-Atlas Starter)
 
 ## Сейчас
-[S2-001](tasks/S2-001-manual-profile-matching-saved.md) — **accepted владельцем
-2026-09-25** после трёх раундов UI-правок (real-time валидация, компактные
-кнопки, единые поля, logout в хедере, переключатели дней, текст чекбоксов
-строго справа). **Diff ещё не закоммичен** — ждёт слова владельца.
+Активная задача: [S1-003](tasks/S1-003-jobicy-second-source.md) — **implemented,
+tested locally** (2026-09-25), ждёт review владельца; **активация (enabled=true) —
+отдельное решение**. Матрица прав jobicy утверждена владельцем 2026-09-25.
+
+**Что реализовано:** политика jobicy (approved, enabled=false, terms_hash
+зафиксирован, valid_until 2026-12-23); миграция 0004 (job_snapshots →
+мультиисточник: source_id IN (himalayas, jobicy), именованные констрейнты);
+`fetchJobicyWindow` в allowlisted fetcher (pinned jobicy.com, count≤200);
+маппер под живой контракт (id-число→`jobicy:{id}`, pubDate ISO+00:00→ISO,
+jobGeo: Anywhere→worldwide / страна→ISO / регион→region_text без выдуманного
+списка стран, jobType→employment_types, salary nullable, excerpt=jobExcerpt);
+`runJobicyImport` (окно всегда partial: absence ≠ closure, miss-счётчики не
+растут; poll-гейт 6ч; retention 720ч); CLI `npm run import:jobicy` (отказ
+exit 1 пока выключен); read-пути обобщены на оба источника (каталог
+«Внешние источники», подбор, сохранённое — с per-source атрибуцией).
+
+**Проверено:** 57/57 unit (маппер/гейты/идемпотентность/отказы), 11/11
+integration (в т.ч. jobicy в общих таблицах после 0004 + отказ чужого
+источника), check/build, отказ CLI без сети. **e2e: 30/30 проходил дважды за
+день в стабильные окна; текущий прогон 27/30 — три падения на 100% связаны
+с окружением** (Docker Desktop умирал 6 раз; трижды зафиксирован
+ECONNREFUSED 127.0.0.1:54329 при живом движке — порт-прокси). С1-003 не
+меняет UI-пути, пока jobicy выключен. Цикл ремонта 1/2 — запись о блокере
+окружения.
+
+**Блокер окружения (действие владельца):** Docker Desktop нестабилен —
+движок падает каждые ~10–20 минут, порт-прокси отказывает при живом движке.
+Рекомендации: обновить/починить Docker Desktop, проверить лимит памяти WSL2
+(.wslconfig), попробовать `wsl --shutdown`; могу добавить db-пробу в doctor.
+
+**После review:** «коммить» + отдельно «включай Jobicy» (enabled=true →
+`npm run import:jobicy` → ~200 свежих карточек рядом с Himalayas).
 
 Итог S2-001: auth (next-auth@4.24.15, scrypt), миграция 0003 (users/профили
 с версиями/saved_jobs + ownership), ручной профиль, детерминированный подбор
@@ -12,11 +40,29 @@ v1 (5 правил, 4 исхода, reason codes, AND/OR-агрегация, г�
 объяснениями, /saved, API с 401/404-дисциплиной. Проверено: 51/51 unit,
 10/10 integration (ownership-негативы), 30/30 e2e, check/build.
 
-**Следующая задача (по решению владельца): второй источник Jobicy** —
-контрактные тесты адаптера уже покрыты обобщённым пайплайном S1; нужны:
-source policy Jobicy (review владельцем прав, как для Himalayas), адаптер
-под его API (GET /api/v2/remote-jobs, интервальные окна 6ч, HEAD-проверка
-закрытия 404/410), фикстуры, активация отдельным решением.
+**Следующая задача: [S1-003](tasks/S1-003-jobicy-second-source.md) — Jobicy (назначена
+2026-09-25).** Живое исследование выполнено; матрица прав ждёт решения владельца.
+
+### Факты review jobicy (собраны 2026-09-25 с живых страниц, владельцем поручено)
+- API (jobicy.com/jobs-rss-feed + github.com/Jobicy/remote-jobs-api): `GET /api/v2/remote-jobs`,
+  без ключа, count 1–200 (окно последних записей, НЕ полный снимок); поля: id (число), url
+  (канонический листинг Jobicy), jobTitle/companyName/jobIndustry[]/jobType[]/jobGeo/jobLevel/
+  jobExcerpt/jobDescription(HTML)/pubDate(ISO+00:00)/salary*(nullable). Smoke подтверждён.
+- Права: «normal integrations do not require a separate agreement»; обязательны атрибуция
+  («Keep Jobicy as the original source and preserve the canonical Jobicy job URL»); нельзя
+  выдавать за свои, спам-сети/вводящие в заблуждение базы запрещены; polling ≤1/час,
+  кэшировать поощряется; HTML-описание санитизировать. GitHub-код MIT, но листинги не входят.
+- Paid-опция: Bearer-ключ → прямой ATS URL, $0.01 за впервые полученную запись; выключена
+  без бюджета. Affiliate `?u=` — не используем без решения владельца.
+- Закрытие: рекомендован HEAD листинга 1–2/час; 404/410 = неактивна, иные ошибки ≠ закрытие
+  (следующая задача lifecycle; в S1-003 окно всегда partial, absence ≠ closure).
+- terms_hash (sha256 /jobs-rss-feed, 2026-09-25):
+  97e86dc4985447f754f9de36b9e72f4723d17dab6995052e35e88aff3370698c
+- Рекомендуемая матрица: fetch/cache/store_full_text/store_excerpt/derive_fields/
+  publish_excerpt = allowed (атрибутация+backlink); publish_full_text/process_with_ml/
+  send_to_ai_provider/train_model/send_email/index_web_page/syndicate/bulk_export/
+  direct_apply = denied; apply_route=source_required; retention 720ч; poll ≥6ч;
+  valid_until 2026-12-23.
 
 ## Решения владельца
 - Node 26 (2026-09-24): `.nvmrc` = 26.7.0, `engines` +`^26.0.0`.

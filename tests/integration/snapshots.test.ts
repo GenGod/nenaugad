@@ -80,3 +80,30 @@ test("retention deletes snapshots whose last_seen passed the policy window", asy
   const remaining = await pool.query("SELECT id FROM job_snapshots");
   assert.equal(remaining.rowCount, 2);
 });
+
+test("jobicy rows share the snapshot tables after migration 0004", async () => {
+  await migrate(pool);
+  await pool.query("DELETE FROM job_snapshots WHERE source_id = 'jobicy'");
+  await pool.query("DELETE FROM import_state WHERE source_id = 'jobicy'");
+  const { jobicyCandidatePolicy } = await import("../../src/server/source-policies.ts");
+  const { runJobicyImport } = await import("../../src/server/import/jobicy-adapter.ts");
+  const { jobicyContractFixture } = await import("../../src/server/import/jobicy-fixture.ts");
+  const jobicyEnabled = { ...jobicyCandidatePolicy, enabled: true };
+  const report = await runJobicyImport({
+    transport: async () => ({ status: "ok" as const, jobs: [...jobicyContractFixture] }),
+    persistence: createPostgresPersistence(pool, jobicyEnabled),
+    policy: jobicyEnabled,
+    now: "2026-09-25T12:00:00.000Z",
+  });
+  assert.equal(report.result, "partial");
+  assert.equal(report.recordsMapped, 3);
+  const rows = await pool.query<{ source_id: string; excerpt: string }>(
+    "SELECT source_id, excerpt FROM job_snapshots WHERE source_id = 'jobicy' ORDER BY id");
+  assert.equal(rows.rowCount, 3);
+  assert.ok(rows.rows.every(row => typeof row.excerpt === "string"));
+  // Foreign sources are still rejected by the named constraint.
+  await assert.rejects(pool.query(
+    "INSERT INTO job_snapshots (id, source_id, content_hash, first_seen_at, snapshot) VALUES ($1, 'remotive', 'x', now(), $2::jsonb)",
+    ["foreign-2", JSON.stringify({ kind: "job_snapshot", id: "foreign-2" })],
+  ));
+});

@@ -22,7 +22,7 @@ export function SnapshotCard({ card }: { card: SnapshotCardView }) {
         <p className="company">{card.company}</p>
         <h2><a href={card.apply.url} rel="nofollow noreferrer" target="_blank">{card.title}</a></h2>
       </div>
-      <span className="badge neutral">Himalayas</span>
+      <span className="badge neutral">{card.source.displayName}</span>
     </div>
     <p className="salary">{card.salaryOriginalText ?? "Зарплата не указана"}</p>
     <p className="conditions">{geographyLabel(card)}</p>
@@ -30,11 +30,11 @@ export function SnapshotCard({ card }: { card: SnapshotCardView }) {
     <div className="card-bottom">
       <span className="badge neutral">Показан фрагмент; полностью — на источнике</span>
       <a className="text-link" href={card.apply.url} rel="nofollow noreferrer" target="_blank">
-        Открыть на Himalayas <span aria-hidden="true">↗</span>
+        Открыть на {card.source.displayName} <span aria-hidden="true">↗</span>
       </a>
     </div>
     <p className="source-line">
-      Источник: Himalayas · листинг от {publishedDate(card)} · данные обновляются ежедневно
+      Источник: {card.source.displayName} · листинг от {publishedDate(card)} · данные обновляются регулярно
     </p>
   </article>;
 }

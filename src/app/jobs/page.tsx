@@ -65,7 +65,7 @@ export default async function Jobs({ searchParams }: { searchParams: Promise<Sea
         </div> : result.items.map(job => <JobCard key={job.id} job={job} />)}
         {snapshots.cards.length > 0 && <>
           <div className="result-header">
-            <h2>Источник Himalayas</h2>
+            <h2>Внешние источники</h2>
             <span className="muted">Фрагменты с атрибуцией · без оценки совместимости</span>
           </div>
           {snapshots.cards.map(card => <SnapshotCard key={card.id} card={card} />)}

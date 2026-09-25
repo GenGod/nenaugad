@@ -74,7 +74,7 @@ export async function deleteAllProfiles(pool: Pool, userId: string): Promise<num
 }
 
 export async function saveJobForUser(pool: Pool, userId: string, snapshotId: string): Promise<void> {
-  if (!/^himalayas:[a-z0-9-]{1,150}$/u.test(snapshotId)) {
+  if (!/^(himalayas|jobicy):[a-z0-9-]{1,150}$/u.test(snapshotId)) {
     throw new ProfileServiceError("SNAPSHOT_NOT_FOUND");
   }
   try {

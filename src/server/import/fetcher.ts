@@ -1,8 +1,9 @@
 // The ONLY module in src/ allowed to open network transport
-// (scripts/guardrails.mjs allowlist). The destination is pinned to the
-// owner-approved Himalayas feed; this is not an arbitrary-URL proxy:
-// no redirects, fixed host, opaque cursor validated as a token.
+// (scripts/guardrails.mjs allowlist). Destinations are pinned to
+// owner-approved feeds; this is not an arbitrary-URL proxy:
+// no redirects, fixed hosts, opaque tokens validated as tokens.
 export const HIMALAYAS_FEED_URL = "https://himalayas.app/jobs/api";
+export const JOBICY_FEED_URL = "https://jobicy.com/api/v2/remote-jobs";
 const CURSOR_PATTERN = /^[A-Za-z0-9._~=-]{1,512}$/u;
 const MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
 const DEFAULT_TIMEOUT_MS = 15000;
@@ -21,22 +22,12 @@ export type PageRequest = Readonly<{
   timeoutMs?: number;
 }>;
 
-export async function fetchHimalayasPage(request: PageRequest = {}): Promise<FetchPageResult> {
-  const cursor = request.cursor ?? null;
-  if (cursor !== null && !CURSOR_PATTERN.test(cursor)) {
-    return { status: "network_error" };
-  }
-  const limit = Math.min(Math.max(request.limit ?? DEFAULT_PAGE_LIMIT, 1), DEFAULT_PAGE_LIMIT);
-  const url = new URL(HIMALAYAS_FEED_URL);
-  url.searchParams.set("limit", String(limit));
-  if (cursor !== null) url.searchParams.set("cursor", cursor);
-  // Defence in depth: the pinned base can never produce another host, and
+async function pinnedJsonFetch(url: URL, timeoutMs: number): Promise<FetchPageResult> {
+  // Defence in depth: a pinned base can never produce another host, and
   // redirects are refused outright.
-  if (url.protocol !== "https:" || url.host !== "himalayas.app") {
-    return { status: "network_error" };
-  }
+  if (url.protocol !== "https:") return { status: "network_error" };
   const timeout = new AbortController();
-  const timer = setTimeout(() => timeout.abort(), request.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+  const timer = setTimeout(() => timeout.abort(), timeoutMs);
   let response: Response;
   try {
     response = await fetch(url, {
@@ -70,4 +61,37 @@ export async function fetchHimalayasPage(request: PageRequest = {}): Promise<Fet
     ? (CURSOR_PATTERN.test(rawCursor) ? rawCursor : null)
     : null;
   return { status: "ok", jobs: (parsed as { jobs: unknown[] }).jobs, nextCursor };
+}
+
+export async function fetchHimalayasPage(request: PageRequest = {}): Promise<FetchPageResult> {
+  const cursor = request.cursor ?? null;
+  if (cursor !== null && !CURSOR_PATTERN.test(cursor)) {
+    return { status: "network_error" };
+  }
+  const limit = Math.min(Math.max(request.limit ?? DEFAULT_PAGE_LIMIT, 1), DEFAULT_PAGE_LIMIT);
+  const url = new URL(HIMALAYAS_FEED_URL);
+  url.searchParams.set("limit", String(limit));
+  if (cursor !== null) url.searchParams.set("cursor", cursor);
+  if (url.host !== "himalayas.app") return { status: "network_error" };
+  return pinnedJsonFetch(url, request.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+}
+
+// Jobicy window feed: one request returns the latest window (no cursor).
+// The window is NOT a full snapshot — the importer always treats it as partial.
+export type JobicyWindowResult = Readonly<
+  | { status: "ok"; jobs: readonly unknown[] }
+  | { status: "rate_limited" }
+  | { status: "server_error" }
+  | { status: "network_error" }
+>;
+
+export async function fetchJobicyWindow(request: Readonly<{
+  count?: number; timeoutMs?: number;
+}> = {}): Promise<JobicyWindowResult> {
+  const count = Math.min(Math.max(request.count ?? 200, 1), 200);
+  const url = new URL(JOBICY_FEED_URL);
+  url.searchParams.set("count", String(count));
+  if (url.host !== "jobicy.com") return { status: "network_error" };
+  const result = await pinnedJsonFetch(url, request.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+  return result.status === "ok" ? { status: "ok", jobs: result.jobs } : result;
 }

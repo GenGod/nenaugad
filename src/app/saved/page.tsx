@@ -6,10 +6,15 @@ import { snapshotPool } from "../../server/storage/snapshots.ts";
 import { SaveButton } from "../../components/save-button.tsx";
 import { isJobSnapshot } from "../../domain/source-contracts.ts";
 import { projectCard } from "../../domain/snapshot-projection.ts";
-import { himalayasCandidatePolicy } from "../../server/source-policies.ts";
+import { getSourcePolicy } from "../../server/source-policies.ts";
 
 export const metadata: Metadata = { title: "Сохранённое" };
 export const dynamic = "force-dynamic";
+
+function policyForSnapshotId(snapshotId: string) {
+  const separator = snapshotId.indexOf(":");
+  return getSourcePolicy(separator === -1 ? snapshotId : snapshotId.slice(0, separator));
+}
 
 export default async function Saved() {
   const user = await currentUser();
@@ -28,10 +33,12 @@ export default async function Saved() {
     <div className="results">
       {rows.map(row => {
         if (!isJobSnapshot(row.snapshot)) return null;
+        const policy = policyForSnapshotId(row.snapshotId);
+        if (!policy) return null;
         const card = projectCard({
-          sourceId: "himalayas", snapshot: row.snapshot,
+          sourceId: policy.source_id, snapshot: row.snapshot,
           contentHash: "", firstSeenAt: row.savedAt, fullPassMisses: 0,
-        }, himalayasCandidatePolicy);
+        }, policy);
         return <article key={row.snapshotId} className="job-card">
           <div className="card-top">
             <div className="company-monogram" aria-hidden="true">{card.company.slice(0, 1)}</div>

@@ -12,25 +12,31 @@ export type SnapshotCatalogResult = Readonly<{
   unavailable: boolean;
 }>;
 
-// The only server path from stored snapshots to public cards. A disabled,
-// unapproved or expired policy contributes nothing, and a fixture backend
+// The only server path from stored snapshots to public cards. Disabled,
+// unapproved or expired policies contribute nothing, and a fixture backend
 // has no snapshot storage: both return an empty, healthy result.
 export async function readSnapshotCards(): Promise<SnapshotCatalogResult> {
   const now = new Date().toISOString();
   const config = readConfig(process.env);
-  const policy = getSourcePolicy("himalayas");
-  if (!policy || !policyPublishes(policy, now)) return { cards: [], unavailable: false };
   if (config.backend !== "postgres") return { cards: [], unavailable: false };
-  try {
-    const rows = await readSnapshotCardsData(snapshotPool(), policy.source_id);
-    const cards = rows
-      .map(row => ({ ...projectCard(row.stored, policy), excerpt: row.excerpt }))
-      .filter(card => card.visibility === "main_catalog");
-    return { cards, unavailable: false };
-  } catch {
-    // The synthetic catalog keeps its own hard failure path; the optional
-    // snapshot section degrades visibly instead of faking an empty success.
-    console.error(JSON.stringify({ code: "SNAPSHOT_CATALOG_UNAVAILABLE", backend: config.backend }));
-    return { cards: [], unavailable: true };
+  const pool = snapshotPool();
+  const cards: SnapshotCardView[] = [];
+  let unavailable = false;
+  for (const sourceId of ["himalayas", "jobicy"]) {
+    const policy = getSourcePolicy(sourceId);
+    if (!policy || !policyPublishes(policy, now)) continue;
+    try {
+      const rows = await readSnapshotCardsData(pool, sourceId);
+      for (const row of rows) {
+        const card = { ...projectCard(row.stored, policy), excerpt: row.excerpt };
+        if (card.visibility === "main_catalog") cards.push(card);
+      }
+    } catch {
+      // The synthetic catalog keeps its own hard failure path; a broken
+      // source degrades visibly instead of faking an empty success.
+      unavailable = true;
+      console.error(JSON.stringify({ code: "SNAPSHOT_CATALOG_UNAVAILABLE", source: sourceId }));
+    }
   }
+  return { cards, unavailable };
 }

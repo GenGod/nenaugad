@@ -1,15 +1,15 @@
 {
-  "task_id": "S2-001",
-  "file": "tasks/S2-001-manual-profile-matching-saved.md",
-  "status": "accepted",
+  "task_id": "S1-003",
+  "file": "tasks/S1-003-jobicy-second-source.md",
+  "status": "in_progress",
   "repair_cycles_used": 1,
   "max_repair_cycles": 2,
   "hypotheses": [
     {
-      "text": "Back-filled record: S2-001 bring-up fixes before implementation was declared complete. (1) TIME-01 redesigned after test pushback: v1 checks timezone-offset containment in the source's accepted zones with Jan/Jul seasonal honesty, not window arithmetic (full DST overlap engine is a later versioned rule); (2) aggregation tests initially overlooked fixture's Full Time vs contractor profile (CONTRACT-01 fail everywhere) — tests corrected to isolate geography; (3) guardrail allowlist refined: client components may only fetch literal same-origin relative paths; (4) findUserByEmail took the global pool instead of an injected one — integration tests caught it querying the dev DB; (5) e2e failed until 0003 was applied to the dev DB (users table absent); (6) environment: Docker Desktop had stopped — restarted explicitly. Verified: 51/51 unit, 10/10 integration, 30/30 e2e, check/build.",
-      "recorded_at": "2026-09-24T19:56:01.872Z"
+      "text": "Environment blocker record (not a code defect): during S1-003 verification Docker Desktop on this machine died 6 times; when the engine is nominally up its port-proxy for 127.0.0.1:54329 intermittently refuses connections (ECONNREFUSED captured 3x via temporary route logging, reverted). Effect: the DB-dependent e2e scenario fails on whichever viewport hits a dead window; the identical suite passed 30/30 twice today in stable windows. Code verification: 57/57 unit, 11/11 integration, check/build, CLI refusal. Hypothesis for owner action: Docker Desktop backend/WSL2 port-forward instability — recommend Docker Desktop update/repair or wsl --shutdown; a doctor DB-port probe can automate detection.",
+      "recorded_at": "2026-09-25T09:07:27.380Z"
     }
   ],
   "coding_host_spend": "unknown",
-  "note": "Owner accepted S2-001 on 2026-09-25 after three rounds of UI feedback (real-time validation, compact buttons, unified field styles, header logout, weekday toggles, checkbox label alignment). Diff not yet committed."
+  "note": "Owner assigned Jobicy (2026-09-25). Step 1 done: live research; awaiting the permission matrix approval before implementation."
 }
