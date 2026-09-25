@@ -4,6 +4,11 @@ import { currentUser } from "../../server/auth.ts";
 import { matchedForUser, type MatchedJob } from "../../server/matching-service.ts";
 import type { RuleResult } from "../../domain/matching.ts";
 import { HideButton } from "../../components/feedback-buttons.tsx";
+import { RelevanceButton, BatchAnalyzeButton, ScoreBadge } from "../../components/relevance-buttons.tsx";
+import { getAllCachedScores } from "../../server/relevance-service.ts";
+import { latestProfile } from "../../server/profile-service.ts";
+import { snapshotPool } from "../../server/storage/snapshots.ts";
+import type { RelevanceScore } from "../../server/relevance-service.ts";
 
 export const metadata: Metadata = { title: "Подбор" };
 export const dynamic = "force-dynamic";
@@ -24,7 +29,7 @@ function RulesList({ rules }: { rules: readonly RuleResult[] }) {
   </ul>;
 }
 
-function MatchedCard({ job }: { job: MatchedJob }) {
+function MatchedCard({ job, score }: { job: MatchedJob; score?: RelevanceScore | null }) {
   return <article className="job-card">
     <div className="card-top">
       <div className="company-monogram" aria-hidden="true">{job.card.company.slice(0, 1)}</div>
@@ -48,6 +53,9 @@ function MatchedCard({ job }: { job: MatchedJob }) {
       <Link className="button secondary compact" href={`/letters/new?job=${job.card.id}`}>
         Составить письмо
       </Link>
+      {score
+        ? <ScoreBadge score={score} />
+        : <RelevanceButton snapshotId={job.card.id} />}
     </div>
   </article>;
 }
@@ -76,17 +84,47 @@ export default async function Matched() {
     </section>;
   }
   return <>
+    <MatchedResults userId={user.id} result={result} />
+  </>;
+}
+
+async function MatchedResults({ userId, result }: {
+  userId: string;
+  result: NonNullable<Awaited<ReturnType<typeof matchedForUser>>>;
+}) {
+  // Load cached AI relevance scores for this profile version.
+  const pool = snapshotPool();
+  const profile = await latestProfile(pool, userId);
+  const relevanceMap = profile
+    ? await getAllCachedScores({ pool, userId, profileVersion: profile.version })
+    : new Map<string, RelevanceScore>();
+  const withScore = (job: MatchedJob): { job: MatchedJob; score: RelevanceScore | null } => ({
+    job, score: relevanceMap.get(job.card.id) ?? null,
+  });
+  // Sort eligible by AI score (desc), then by no-score, preserving stable order.
+  const eligibleSorted = result.eligible.map(withScore).sort((a, b) => {
+    if (a.score && b.score) return b.score.score - a.score.score;
+    if (a.score) return -1;
+    if (b.score) return 1;
+    return 0;
+  });
+  const analyzedCount = result.eligible.filter(job => relevanceMap.has(job.card.id)).length;
+  return <>
     <section className="page-heading">
-      <div><p className="eyebrow">Подбор / правила v{result.rulesetVersion}</p>
+      <div><p className="eyebrow">Подбор / правила v{result.rulesetVersion} + AI</p>
         <h1>Совместимо по опубликованным условиям.</h1>
-        <p>Детерминированные правила без LLM. Это не оценка вероятности найма и не юридическое заключение.</p></div>
-      <span className="catalog-count">{result.eligible.length} совместимо · {result.needsReview.length} уточнить</span>
+        <p>Детерминированные правила без LLM + AI-рейтинг релевантности (кэшируется до смены профиля).</p></div>
+      <span className="catalog-count">{result.eligible.length} совместимо · {result.needsReview.length} уточнить{analyzedCount > 0 ? ` · ${analyzedCount} с AI-рейтингом` : ""}</span>
     </section>
+    <div style={{ marginBottom: 16 }}>
+      <BatchAnalyzeButton count={result.eligible.length - analyzedCount} />
+    </div>
     <section aria-label="Совместимые вакансии" className="results">
-      {result.eligible.length === 0
+      {eligibleSorted.length === 0
         ? <div className="empty-state"><h2>Совпадений пока нет</h2>
           <p>Правила не нашли полностью совместимых вакансий — это честный результат, а не ошибка.</p></div>
-        : result.eligible.slice(0, 50).map(job => <MatchedCard key={job.card.id} job={job} />)}
+        : eligibleSorted.slice(0, 50).map(({ job, score }) =>
+          <MatchedCard key={job.card.id} job={job} score={score} />)}
     </section>
     {result.needsReview.length > 0 && <>
       <section className="result-header"><h2>Нужно уточнить</h2>

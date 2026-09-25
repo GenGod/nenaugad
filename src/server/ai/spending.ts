@@ -11,12 +11,13 @@ export const MAX_ATTEMPTS: Readonly<Record<string, number>> = {
   job_extraction: 2,
   cv_extraction: 2,
   cover_letter: 4,
+  job_matching: 2,
 };
 export const OPERATION_DEADLINE_MS = 120_000;
 export const GLOBAL_BUDGET_ID = "budget/global/total";
 export const OWNER_BUDGET_PREFIX = "budget/owner";
 
-export type TaskType = "job_extraction" | "cv_extraction" | "cover_letter";
+export type TaskType = "job_extraction" | "cv_extraction" | "cover_letter" | "job_matching";
 export type OperationStatus =
   | "pending" | "reserved" | "in_flight" | "uncertain" | "settled" | "failed" | "cancelled";
 
