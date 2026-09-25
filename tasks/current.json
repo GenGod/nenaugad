@@ -1,10 +1,10 @@
 {
-  "task_id": "S2-002",
-  "file": "tasks/S2-002-hide-and-applied.md",
+  "task_id": "S3-003",
+  "file": "tasks/S3-003-pdf-text-layer.md",
   "status": "accepted",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Owner accepted S2-002 on 2026-09-25 (commit + accept + next task S3-002)."
+  "note": "Owner accepted S3-003 PDF text layer implicitly (commit + next task instruction pending)."
 }

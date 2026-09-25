@@ -125,9 +125,11 @@ test("docx: decompression bombs die at the output cap, not in memory", () => {
   ])), (error: unknown) => error instanceof CvParseError && error.message === "DOCX_UNCOMPRESSED_LIMIT");
 });
 
-test("upload routing: signatures over extensions; PDF rejected with the text path", () => {
-  assert.throws(() => parseUploadedFile("cv.pdf", Buffer.from("%PDF-1.7 fake")), (error: unknown) =>
-    error instanceof CvParseError && error.message === "PDF_NOT_SUPPORTED");
+test("upload routing: signatures over extensions; PDF with no text layer is rejected honestly", () => {
+  // A PDF without text operators (a scan) gets the explicit no-text-layer
+  // error with the manual text path, not a silent empty result.
+  assert.throws(() => parseUploadedFile("cv.pdf", Buffer.from("%PDF-1.7\n<< /Subtype /Image >>\nstream\nxx\nendstream")), (error: unknown) =>
+    error instanceof CvParseError && error.message === "PDF_NO_TEXT_LAYER");
   // A .docx-named file that is not a zip fails the signature check.
   assert.throws(() => parseUploadedFile("cv.docx", Buffer.from("просто текст")), (error: unknown) =>
     error instanceof CvParseError && error.message === "INVALID_DOCX");

@@ -3,6 +3,7 @@
 // and .docx (ZIP + word/document.xml). PDF is deliberately rejected for now
 // with a text-form suggestion; encrypted/oversized inputs fail closed.
 import { inflateRawSync } from "node:zlib";
+import { parsePdf } from "./pdf.ts";
 
 export const MAX_FILE_BYTES = 10 * 1024 * 1024;
 export const MAX_EXTRACTED_CHARS = 150_000;
@@ -149,7 +150,7 @@ export function parseUploadedFile(filename: string, buffer: Buffer): CvParseResu
   if (buffer.length > MAX_FILE_BYTES) throw new CvParseError("EXCEEDS_FILE_SIZE");
   const isZip = buffer.length >= 4 && buffer.readUInt32BE(0) === 0x504b0304;
   const isPdf = buffer.subarray(0, 5).toString("latin1") === "%PDF-";
-  if (isPdf) throw new CvParseError("PDF_NOT_SUPPORTED");
+  if (isPdf) return parsePdf(buffer);
   // Signature wins over the file name: any ZIP container is routed to the
   // docx parser, which rejects archives without word/document.xml.
   if (isZip) return parseDocx(buffer);
