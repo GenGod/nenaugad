@@ -15,6 +15,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 12
-    restart: "no"
+    # Dev convenience (owner decision 2026-09-25): the DB must come back
+    # with the Docker engine; manual `docker compose stop db` still works.
+    restart: unless-stopped
 volumes:
   nenaugad_pgdata:
