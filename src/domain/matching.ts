@@ -133,9 +133,9 @@ function ruleRoles(
 }
 
 // SKILL-01: overlap between the user's confirmed skills and the skills
-// extracted from the job description. A positive signal like ROLE-01 —
-// pass with ≥30% overlap, not_applicable below (jobs aren't excluded,
-// the match quality is just lower).
+// extracted from the job description. 0% overlap with extractable skills
+// on both sides is evidence of mismatch → fail (the job moves to
+// needs_review). 1-29% is a weak signal → not_applicable. ≥30% → pass.
 function ruleSkills(
   snapshot: JobSnapshot, profile: ManualProfileInput,
 ): RuleResult {
@@ -155,8 +155,12 @@ function ruleSkills(
     return { ...base, outcome: "pass", reasonCodes: [],
       explanation: `Совпало ${matched.length} из ${profile.skills.length} навыков (${percent}%): ${matched.slice(0, 5).join(", ")}.` };
   }
+  if (matched.length === 0) {
+    return { ...base, outcome: "fail", reasonCodes: ["ZERO_SKILL_OVERLAP"],
+      explanation: `Ни один из ваших навыков (${profile.skills.slice(0, 5).join(", ")}) не найден в вакансии.` };
+  }
   return { ...base, outcome: "not_applicable", reasonCodes: ["LOW_SKILL_OVERLAP"],
-    explanation: `Совпало ${matched.length}/${profile.skills.length} (${percent}%). Совпавшие: ${matched.length > 0 ? matched.join(", ") : "нет"}.` };
+    explanation: `Совпало ${matched.length}/${profile.skills.length} (${percent}%). Совпавшие: ${matched.join(", ")}.` };
 }
 
 function ruleSalary(
@@ -254,5 +258,12 @@ export function evaluateJob(snapshot: JobSnapshot, profile: ManualProfileInput):
   if (optionOutcomes.some(option => option.outcome === "pass")) status = "eligible";
   else if (optionOutcomes.some(option => option.outcome === "unknown")) status = "needs_review";
   else status = "ineligible";
+  // Job-level hard constraints (attendance, salary, skills) cap the status:
+  // a job-level fail means the job cannot be eligible even if a hiring
+  // option passes logistics (spec 13.2: "После условий найма применяются
+  // выбранные пользователем hard preferences и обязательные требования").
+  if (status === "eligible" && jobLevel.some(rule => rule.outcome === "fail")) {
+    status = "needs_review";
+  }
   return { snapshotId: snapshot.id, status, rules };
 }
