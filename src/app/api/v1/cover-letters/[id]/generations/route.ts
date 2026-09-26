@@ -101,7 +101,7 @@ export async function POST(request: Request, { params }: Params) {
       pool, letterId: id, userId: user.id, body, modelId: GPT6_LUNA.modelId,
     });
     return NextResponse.json({
-      revision, settledMinor: result.settledMinor,
+      revision, settledMinor: result.settledMinor.toString(),
       validation: { passed: true, issues: validation.issues },
       evidence: {
         profileRoles: profile.input.targetRoles,
@@ -120,6 +120,9 @@ export async function POST(request: Request, { params }: Params) {
     if (error instanceof Error && error.message.includes("ATTEMPTS")) {
       return NextResponse.json({ error: "GENERATION_LIMIT" }, { status: 429 });
     }
+    console.error(JSON.stringify({ code: "GENERATION_DEBUG",
+      name: error instanceof Error ? error.constructor.name : typeof error,
+      message: error instanceof Error ? error.message.slice(0, 300) : String(error).slice(0, 300) }));
     return NextResponse.json({ error: "GENERATION_FAILED" }, { status: 502 });
   }
 }
