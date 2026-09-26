@@ -4,7 +4,7 @@
 // explanation; aggregation is AND inside a hiring option, OR across options.
 import type { JobSnapshot, HiringOption } from "./source-contracts.ts";
 import type { ManualProfileInput } from "./profile.ts";
-import { extractSkills, skillOverlap } from "./skills.ts";
+import { extractSkills, skillOverlap, skillCategory } from "./skills.ts";
 
 export const RULESET_VERSION = 2;
 
@@ -132,14 +132,22 @@ function ruleRoles(
     explanation: `Ни одна из целевых ролей (${profile.targetRoles.join(", ")}) не найдена в заголовке.` };
 }
 
-// SKILL-01: overlap between the user's confirmed skills and the skills
-// extracted from the job description. Count-based (not percentage) so
-// profiles with many skills aren't penalized: a fullstack dev with 15
-// skills who matches 3 on a React job has a strong signal (20% by
-// percentage, but 3 concrete matches). Thresholds:
-//   matched == 0 with extractable skills on both sides → fail (mismatch)
-//   matched == 1 → not_applicable (weak but not a mismatch)
-//   matched >= 2 → pass (meaningful overlap)
+// Determine the user's primary skill categories (top 2 by skill count).
+function primaryCategories(userSkills: readonly string[]): Set<string> {
+  const counts = new Map<string, number>();
+  for (const skill of userSkills) {
+    const category = skillCategory(skill);
+    counts.set(category, (counts.get(category) ?? 0) + 1);
+  }
+  const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  return new Set(sorted.slice(0, 2).map(([category]) => category));
+}
+
+// SKILL-01: skill matching with category awareness.
+//   matched >= 2 AND at least one from a primary category → pass
+//   matched >= 2 BUT all from secondary categories → fail (different field)
+//   matched == 1 → not_applicable (weak signal)
+//   matched == 0 → fail (proven mismatch)
 function ruleSkills(
   snapshot: JobSnapshot, profile: ManualProfileInput,
 ): RuleResult {
@@ -154,9 +162,18 @@ function ruleSkills(
       explanation: "В описании вакансии не найдены узнаваемые навыки." };
   }
   const { matched } = skillOverlap(profile.skills, jobSkills);
-  if (matched.length >= 2) {
+  const primaries = primaryCategories(profile.skills);
+  const primaryMatched = matched.filter(skill => primaries.has(skillCategory(skill)));
+  const secondaryMatched = matched.filter(skill => !primaries.has(skillCategory(skill)));
+
+  if (primaryMatched.length >= 1 && matched.length >= 2) {
     return { ...base, outcome: "pass", reasonCodes: [],
       explanation: `Совпало ${matched.length} навыков: ${matched.slice(0, 5).join(", ")}.` };
+  }
+  if (matched.length >= 2 && primaryMatched.length === 0) {
+    const secondaryCats = [...new Set(secondaryMatched.map(skillCategory))].join(", ");
+    return { ...base, outcome: "fail", reasonCodes: ["WRONG_FIELD"],
+      explanation: `Совпали только вторичные навыки (${secondaryMatched.join(", ")}) из категории ${secondaryCats}. Это другая сфера деятельности.` };
   }
   if (matched.length === 1) {
     return { ...base, outcome: "not_applicable", reasonCodes: ["WEAK_SKILL_OVERLAP"],
