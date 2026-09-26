@@ -12,10 +12,10 @@ export const dynamic = "force-dynamic";
 export default async function Profile() {
   const user = await currentUser();
   if (!user) {
-    return <section className="status-page">
-      <p className="eyebrow">Профиль</p><h1>Сначала вход</h1>
-      <p className="hero-lead">Профиль, подбор и сохранённое доступны после входа.</p>
-      <Link className="button primary" href="/login">Войти или зарегистрироваться</Link>
+    return <section className="empty">
+      <p className="overline">Профиль</p><h1>Сначала вход</h1>
+      <p>Профиль, подбор и сохранённое доступны после входа.</p>
+      <Link className="btn primary" href="/login">Войти или зарегистрироваться</Link>
     </section>;
   }
   const pool = snapshotPool();
@@ -36,20 +36,29 @@ export default async function Profile() {
     salaryHard: profile.input.minimumCompensation?.hard ?? true,
     showNeedsReview: profile.input.showNeedsReview,
   } : null;
-  return <section className="status-page">
-    <p className="eyebrow">Профиль / ручной ввод</p><h1>Условия вашей работы.</h1>
-    <p className="hero-lead">
-      {profile
-        ? `Текущая версия: ${profile.version} (сохранено версий: ${versions}). Изменение создаёт новую версию.`
-        : "Профиль ещё не создан — заполните условия; всё проверяется вашими руками, ничего не выводится из резюме."}
-    </p>
-    <div className="panel"><ProfileForm initial={initial} version={profile?.version ?? null} /></div>
-    <div className="search-controls" style={{ marginTop: 16 }}>
-      <Link className="button primary" href="/matched">Открыть подбор</Link>
-      <Link className="button secondary compact" href="/cv">Резюме (текст)</Link>
-      <Link className="button secondary compact" href="/letters/new?mode=general">Общее письмо</Link>
+  return <>
+    <header className="page-head">
+      <p className="overline">Профиль / ручной ввод</p>
+      <h1>Условия вашей работы</h1>
+      <p>
+        {profile
+          ? `Текущая версия: ${profile.version} (сохранено версий: ${versions}). Изменение создаёт новую версию.`
+          : "Профиль ещё не создан — заполните условия; всё проверяется вашими руками, ничего не выводится из резюме."}
+      </p>
+    </header>
+    <section className="profile-section" aria-label="Условия поиска">
+      <h2 style={{ fontSize: "1.25rem", marginBottom: 20 }}>Условия поиска</h2>
+      <div className="panel">
+        <ProfileForm initial={initial} version={profile?.version ?? null} />
+      </div>
+    </section>
+    <div className="row" style={{ marginTop: 24 }}>
+      <Link className="btn primary" href="/matched">Открыть подбор</Link>
+      <Link className="btn secondary" href="/cv">Резюме (текст)</Link>
+      <Link className="btn secondary" href="/letters/new?mode=general">Общее письмо</Link>
       <LogoutButton />
     </div>
-    <p className="helper">Права на работу и гражданство не запрашиваются: профиль оценивает только опубликованные условия.</p>
-  </section>;
+    <p className="small secondary" style={{ marginTop: 12 }}>Права на работу и гражданство
+      не запрашиваются: профиль оценивает только опубликованные условия.</p>
+  </>;
 }

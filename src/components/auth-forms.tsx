@@ -53,36 +53,40 @@ export function LoginForm() {
   const fieldError = (visible: boolean, message: string | null) =>
     visible && message ? <span className="field-error" role="alert">{message}</span> : null;
 
-  return <form className="search-form" onSubmit={submit} noValidate>
-    <label htmlFor="email">Email</label>
-    <input id="email" type="email" required maxLength={200} value={email}
-      autoComplete="email" aria-invalid={touched.email === true && emailError !== null}
-      onChange={event => setEmail(event.target.value)}
-      onBlur={() => setTouched(current => ({ ...current, email: true }))} />
-    {fieldError(touched.email === true, emailError)}
-    <label htmlFor="password">Пароль (минимум 10 символов)</label>
-    <input id="password" type="password" required minLength={10} maxLength={200} value={password}
-      autoComplete="new-password" aria-invalid={touched.password === true && passwordError !== null}
-      onChange={event => setPassword(event.target.value)}
-      onBlur={() => setTouched(current => ({ ...current, password: true }))} />
-    {fieldError(touched.password === true, passwordError)}
+  return <form className="stack" onSubmit={submit} noValidate>
+    <div className="field">
+      <label htmlFor="email">Email</label>
+      <input id="email" type="email" required maxLength={200} value={email}
+        autoComplete="email" aria-invalid={touched.email === true && emailError !== null}
+        onChange={event => setEmail(event.target.value)}
+        onBlur={() => setTouched(current => ({ ...current, email: true }))} />
+      {fieldError(touched.email === true, emailError)}
+    </div>
+    <div className="field">
+      <label htmlFor="password">Пароль (минимум 10 символов)</label>
+      <input id="password" type="password" required minLength={10} maxLength={200} value={password}
+        autoComplete="new-password" aria-invalid={touched.password === true && passwordError !== null}
+        onChange={event => setPassword(event.target.value)}
+        onBlur={() => setTouched(current => ({ ...current, password: true }))} />
+      {fieldError(touched.password === true, passwordError)}
+    </div>
     {error && <p className="field-error" role="alert">{error}</p>}
-    <div className="search-controls">
-      <button type="submit" className="button primary compact" disabled={busy || !formValid}>
+    <div className="row">
+      <button type="submit" className="btn primary" disabled={busy || !formValid}>
         {mode === "register" ? "Создать аккаунт и войти" : "Войти"}
       </button>
-      <button type="button" className="button secondary compact" onClick={() => {
+      <button type="button" className="btn secondary" onClick={() => {
         setMode(mode === "register" ? "login" : "register");
         setError(null);
       }}>
         {mode === "register" ? "У меня есть аккаунт" : "Создать аккаунт"}
       </button>
     </div>
-    <p className="helper">Локальный демо-аккаунт. Не используйте пароль от других сервисов.</p>
+    <p className="small secondary">Локальный демо-аккаунт. Не используйте пароль от других сервисов.</p>
   </form>;
 }
 
 export function LogoutButton() {
-  return <button type="button" className="button secondary compact"
+  return <button type="button" className="btn secondary"
     onClick={() => { void signOut({ callbackUrl: "/" }); }}>Выйти</button>;
 }

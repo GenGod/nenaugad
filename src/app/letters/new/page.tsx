@@ -19,9 +19,9 @@ export default async function NewLetter({ searchParams }: {
   const jobId = typeof raw.job === "string" ? raw.job : null;
   const isGeneral = raw.mode === "general";
   if (!jobId && !isGeneral) {
-    return <section className="status-page">
-      <p className="eyebrow">Письмо</p><h1>Не указана вакансия</h1>
-      <Link className="button primary" href="/matched">К подбору</Link>
+    return <section className="empty">
+      <p className="overline">Письмо</p><h1>Не указана вакансия</h1>
+      <Link className="btn primary" href="/matched">К подбору</Link>
     </section>;
   }
   let letterId: string | null = null;
@@ -36,10 +36,10 @@ export default async function NewLetter({ searchParams }: {
   }
   // redirect() throws NEXT_REDIRECT which must NOT be inside a try-catch.
   if (letterId === null) {
-    return <section className="status-page">
-      <p className="eyebrow">Письмо</p><h1>Вакансия недоступна</h1>
-      <p className="hero-lead">Вакансия могла быть удалена источником или у вас нет прав.</p>
-      <Link className="button primary" href="/matched">К подбору</Link>
+    return <section className="empty">
+      <p className="overline">Письмо</p><h1>Вакансия недоступна</h1>
+      <p>Вакансия могла быть удалена источником или у вас нет прав.</p>
+      <Link className="btn primary" href="/matched">К подбору</Link>
     </section>;
   }
   redirect(`/letters/${letterId}`);

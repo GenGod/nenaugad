@@ -117,51 +117,64 @@ export function CvForm({ initialItems, enabled }: { initialItems: UploadItem[]; 
     {!enabled && <p className="field-error" role="alert">
       Загрузка выключена (UPLOADS_ENABLED). Вставка текста ниже работает только при включённом флаге.
     </p>}
-    <form className="search-form" onSubmit={submitText}>
-      <label htmlFor="cvtext">Вставьте текст резюме</label>
-      <textarea id="cvtext" rows={8} maxLength={200000} value={text}
-        onChange={event => setText(event.target.value)}
-        placeholder="Опыт, роли, навыки, годы…" />
-      <div className="search-controls">
-        <button type="submit" className="button primary compact" disabled={busy || !enabled}>Сохранить текст</button>
-        <label className="button secondary compact" style={{ cursor: busy || !enabled ? "not-allowed" : "pointer" }}>
+    <form className="panel" onSubmit={submitText}>
+      <div className="field">
+        <label htmlFor="cvtext">Вставьте текст резюме</label>
+        <textarea id="cvtext" rows={8} maxLength={200000} value={text}
+          onChange={event => setText(event.target.value)}
+          placeholder="Опыт, роли, навыки, годы…" />
+      </div>
+      <div className="row" style={{ marginTop: 16 }}>
+        <button type="submit" className="btn primary" disabled={busy || !enabled}>Сохранить текст</button>
+        <label className="btn secondary" style={{ cursor: busy || !enabled ? "not-allowed" : "pointer" }}>
           Загрузить файл (.txt/.md/.docx)
           <input type="file" accept=".txt,.md,.docx,text/plain,text/markdown" hidden
             disabled={busy || !enabled} onChange={submitFile} />
         </label>
       </div>
-      <p className="helper">Парсер работает офлайн; PDF пока не поддерживается — вставьте текст. Исходный файл не хранится, только извлечённый текст. Ничего не отправляется внешним сервисам.</p>
+      <p className="small secondary" style={{ marginTop: 12 }}>Парсер работает офлайн; PDF пока
+        не поддерживается — вставьте текст. Исходный файл не хранится, только извлечённый текст.
+        Ничего не отправляется внешним сервисам.</p>
     </form>
     {error && <p className="field-error" role="alert">{error}</p>}
-    {message && <p className="helper">{message}</p>}
-    <div className="result-header"><h2>Сохранённые резюме</h2>
-      <span className="muted">Только ваши; удаление профиля удаляет и их</span></div>
+    {message && <p className="small secondary" style={{ marginTop: 8 }} aria-live="polite">{message}</p>}
+    <div className="section-head">
+      <h3>Сохранённые резюме</h3>
+      <span className="small secondary">Только ваши; удаление профиля удаляет и их</span>
+    </div>
     {items.length === 0
-      ? <div className="empty-state"><h2>Пока ничего не загружено</h2>
-        <p>Текст остаётся приватным и используется только вами при заполнении профиля.</p></div>
-      : items.map(item => <article key={item.id} className="job-card">
-        <div className="card-top">
-          <div className="company-monogram" aria-hidden="true">{item.kind === "docx" ? "W" : "T"}</div>
-          <div className="card-heading">
-            <p className="company">{item.originalFilename}</p>
-            <h2><button type="button" className="text-link"
-              onClick={() => { void toggleOpen(item.id); }}>
-              {openId === item.id ? "Скрыть текст" : "Показать текст"}
-            </button></h2>
+      ? <div className="empty">
+        <h2>Пока ничего не загружено</h2>
+        <p>Текст остаётся приватным и используется только вами при заполнении профиля.</p>
+      </div>
+      : <div className="job-list">
+        {items.map(item => <article key={item.id} className="job-card">
+          <div className="job-top">
+            <span className="company-mark" aria-hidden="true">{item.kind === "docx" ? "W" : "T"}</span>
+            <div className="job-title-area">
+              <p className="company">{item.originalFilename}</p>
+              <h3><button type="button" className="source-link"
+                onClick={() => { void toggleOpen(item.id); }}>
+                {openId === item.id ? "Скрыть текст" : "Показать текст"}
+              </button></h3>
+            </div>
+            <span className="badge neutral">{item.kind} · {item.characterCount} симв.</span>
           </div>
-          <span className="badge neutral">{item.kind} · {item.characterCount} симв.</span>
-        </div>
-        {item.warnings.length > 0 && <ul>
-          {item.warnings.map(code => <li key={code} className="helper">⚠ {WARNING_LABELS[code] ?? code}</li>)}
-        </ul>}
-        {openId === item.id && openText !== null && (
-          <textarea readOnly rows={12} value={openText} aria-label="Извлечённый текст" />
-        )}
-        <div className="card-bottom">
-          <span className="helper">Загружено {item.createdAt.slice(0, 10)}</span>
-          <button type="button" className="button secondary compact" disabled={busy}
-            onClick={() => { void remove(item.id); }}>Удалить</button>
-        </div>
-      </article>)}
+          {item.warnings.length > 0 && <ul className="small secondary" style={{ marginTop: 8 }}>
+            {item.warnings.map(code => <li key={code}>⚠ {WARNING_LABELS[code] ?? code}</li>)}
+          </ul>}
+          {openId === item.id && openText !== null && (
+            <div style={{ marginTop: 12 }}>
+              <textarea readOnly rows={12} value={openText} aria-label="Извлечённый текст"
+                style={{ width: "100%" }} />
+            </div>
+          )}
+          <div className="job-bottom">
+            <span className="small secondary">Загружено {item.createdAt.slice(0, 10)}</span>
+            <button type="button" className="btn secondary" disabled={busy}
+              onClick={() => { void remove(item.id); }}>Удалить</button>
+          </div>
+        </article>)}
+      </div>}
   </>;
 }

@@ -27,10 +27,10 @@ export function HideButton({ snapshotId }: { snapshotId: string }) {
   }
 
   if (!open) {
-    return <button type="button" className="button secondary compact" disabled={busy}
+    return <button type="button" className="btn secondary" disabled={busy}
       onClick={() => setOpen(true)}>Скрыть…</button>;
   }
-  return <span className="search-controls">
+  return <span className="row">
     <select aria-label="Причина скрытия" defaultValue="salary_mismatch" disabled={busy}
       onChange={event => { if (event.target.value !== "") void hide(event.target.value); }}>
       <option value="" disabled>Выберите причину</option>
@@ -42,16 +42,16 @@ export function HideButton({ snapshotId }: { snapshotId: string }) {
       <option value="remote_conditions_unclear">Условия удалёнки неясны</option>
       <option value="other">Другое</option>
     </select>
-    <button type="button" className="button secondary compact" disabled={busy}
+    <button type="button" className="btn secondary" disabled={busy}
       onClick={() => setOpen(false)}>Отмена</button>
-    {error && <span className="helper" role="alert">{error}</span>}
+    {error && <span className="small secondary" role="alert">{error}</span>}
   </span>;
 }
 
 export function UnhideButton({ snapshotId }: { snapshotId: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  return <button type="button" className="button secondary compact" disabled={busy}
+  return <button type="button" className="btn secondary" disabled={busy}
     onClick={async () => {
       setBusy(true);
       try {
@@ -73,7 +73,7 @@ export function AppliedToggle({ snapshotId, markedAppliedAt }: {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   return <button type="button"
-    className={markedAppliedAt ? "button secondary compact" : "button primary compact"}
+    className={markedAppliedAt ? "btn secondary" : "btn primary"}
     disabled={busy}
     onClick={async () => {
       setBusy(true);

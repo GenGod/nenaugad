@@ -1,10 +1,13 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Icon } from "./icon.tsx";
 
 // Saves/unaves a snapshot through the ownership-scoped API; the button
 // reflects only real server responses, never an optimistic fake state.
-export function SaveButton({ snapshotId, initiallySaved }: { snapshotId: string; initiallySaved?: boolean }) {
+export function SaveButton({ snapshotId, initiallySaved, variant }: {
+  snapshotId: string; initiallySaved?: boolean; variant?: "text" | "icon";
+}) {
   const router = useRouter();
   const [saved, setSaved] = useState(initiallySaved === true);
   const [busy, setBusy] = useState(false);
@@ -33,11 +36,18 @@ export function SaveButton({ snapshotId, initiallySaved }: { snapshotId: string;
     }
   }
 
+  if (variant === "icon") {
+    return <button type="button" className="icon-btn" aria-pressed={saved}
+      aria-label={saved ? "Убрать из сохранённого" : "Сохранить вакансию"}
+      onClick={toggle} disabled={busy}>
+      <Icon name={saved ? "bookmark-filled" : "bookmark"} />
+    </button>;
+  }
   return <>
-    <button type="button" className={saved ? "button secondary compact" : "button primary compact"}
+    <button type="button" className={saved ? "btn secondary" : "btn primary"}
       onClick={toggle} disabled={busy}>
       {saved ? "Убрать из сохранённого" : "Сохранить"}
     </button>
-    {error && <span className="helper" role="alert">{error}</span>}
+    {error && <span className="small secondary" role="alert">{error}</span>}
   </>;
 }

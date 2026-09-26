@@ -1,0 +1,514 @@
+[
+  {
+    "name": "home",
+    "label_ru": "Главная",
+    "group": "navigation",
+    "usage": "Главная",
+    "group_ru": "Навигация",
+    "svg_inner": "<path d=\"m3 10 9-7 9 7v10H3z\"/><path d=\"M9 20v-7h6v7\"/>"
+  },
+  {
+    "name": "search",
+    "label_ru": "Поиск",
+    "group": "navigation",
+    "usage": "Поиск",
+    "group_ru": "Навигация",
+    "svg_inner": "<circle cx=\"10.5\" cy=\"10.5\" r=\"6.5\"/><path d=\"m15.5 15.5 5 5\"/>"
+  },
+  {
+    "name": "briefcase",
+    "label_ru": "Вакансии",
+    "group": "navigation",
+    "usage": "Вакансии",
+    "group_ru": "Навигация",
+    "svg_inner": "<rect x=\"3\" y=\"7\" width=\"18\" height=\"14\" rx=\"2\"/><path d=\"M8 7V4h8v3M3 13h18M10 11v4h4v-4\"/>"
+  },
+  {
+    "name": "bookmark",
+    "label_ru": "Сохранить",
+    "group": "navigation",
+    "usage": "Сохранить",
+    "group_ru": "Навигация",
+    "svg_inner": "<path class=\"bookmark\" d=\"M6 3h12v18l-6-4-6 4z\"/>"
+  },
+  {
+    "name": "bookmark-filled",
+    "label_ru": "Сохранено",
+    "group": "navigation",
+    "usage": "Сохранено",
+    "group_ru": "Навигация",
+    "svg_inner": "<path d=\"M6 3h12v18l-6-4-6 4z\" fill=\"currentColor\" stroke=\"none\"/>"
+  },
+  {
+    "name": "user",
+    "label_ru": "Профиль",
+    "group": "navigation",
+    "usage": "Профиль",
+    "group_ru": "Навигация",
+    "svg_inner": "<circle cx=\"12\" cy=\"7\" r=\"4\"/><path d=\"M4 21v-3a8 8 0 0 1 16 0v3\"/>"
+  },
+  {
+    "name": "settings",
+    "label_ru": "Настройки",
+    "group": "navigation",
+    "usage": "Настройки",
+    "group_ru": "Навигация",
+    "svg_inner": "<path d=\"M3 6h4m4 0h10M3 12h11m4 0h3M3 18h3m4 0h11\"/><rect x=\"7\" y=\"4\" width=\"4\" height=\"4\" rx=\"1\"/><rect x=\"14\" y=\"10\" width=\"4\" height=\"4\" rx=\"1\"/><rect x=\"6\" y=\"16\" width=\"4\" height=\"4\" rx=\"1\"/>"
+  },
+  {
+    "name": "menu",
+    "label_ru": "Меню",
+    "group": "navigation",
+    "usage": "Меню",
+    "group_ru": "Навигация",
+    "svg_inner": "<path d=\"M4 6h16M4 12h16M4 18h16\"/>"
+  },
+  {
+    "name": "chevron-left",
+    "label_ru": "Назад",
+    "group": "navigation",
+    "usage": "Назад",
+    "group_ru": "Навигация",
+    "svg_inner": "<path d=\"m15 5-7 7 7 7\"/>"
+  },
+  {
+    "name": "chevron-right",
+    "label_ru": "Вперёд",
+    "group": "navigation",
+    "usage": "Вперёд",
+    "group_ru": "Навигация",
+    "svg_inner": "<path d=\"m9 5 7 7-7 7\"/>"
+  },
+  {
+    "name": "chevron-down",
+    "label_ru": "Развернуть",
+    "group": "navigation",
+    "usage": "Развернуть",
+    "group_ru": "Навигация",
+    "svg_inner": "<path d=\"m5 9 7 7 7-7\"/>"
+  },
+  {
+    "name": "chevron-up",
+    "label_ru": "Свернуть",
+    "group": "navigation",
+    "usage": "Свернуть",
+    "group_ru": "Навигация",
+    "svg_inner": "<path d=\"m5 15 7-7 7 7\"/>"
+  },
+  {
+    "name": "arrow-left",
+    "label_ru": "Стрелка назад",
+    "group": "navigation",
+    "usage": "Стрелка назад",
+    "group_ru": "Навигация",
+    "svg_inner": "<path d=\"M20 12H4m6-6-6 6 6 6\"/>"
+  },
+  {
+    "name": "arrow-right",
+    "label_ru": "Следующий шаг",
+    "group": "navigation",
+    "usage": "Следующий шаг",
+    "group_ru": "Навигация",
+    "svg_inner": "<path d=\"M4 12h16m-6-6 6 6-6 6\"/>"
+  },
+  {
+    "name": "external-link",
+    "label_ru": "Внешний переход",
+    "group": "navigation",
+    "usage": "Внешний переход",
+    "group_ru": "Навигация",
+    "svg_inner": "<path d=\"M14 3h7v7m0-7L10 14M10 4H4v16h16v-6\"/>"
+  },
+  {
+    "name": "more-horizontal",
+    "label_ru": "Другие действия",
+    "group": "navigation",
+    "usage": "Другие действия",
+    "group_ru": "Навигация",
+    "svg_inner": "<circle cx=\"5\" cy=\"12\" r=\"1\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"12\" cy=\"12\" r=\"1\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"19\" cy=\"12\" r=\"1\" fill=\"currentColor\" stroke=\"none\"/>"
+  },
+  {
+    "name": "filter",
+    "label_ru": "Фильтры",
+    "group": "actions",
+    "usage": "Фильтры",
+    "group_ru": "Действия",
+    "svg_inner": "<path d=\"M3 5h18l-7 8v6l-4 2v-8z\"/>"
+  },
+  {
+    "name": "sort",
+    "label_ru": "Сортировка",
+    "group": "actions",
+    "usage": "Сортировка",
+    "group_ru": "Действия",
+    "svg_inner": "<path d=\"M4 6h11M4 12h8M4 18h5m9-13v15m-3-3 3 3 3-3\"/>"
+  },
+  {
+    "name": "plus",
+    "label_ru": "Добавить",
+    "group": "actions",
+    "usage": "Добавить",
+    "group_ru": "Действия",
+    "svg_inner": "<path d=\"M12 4v16M4 12h16\"/>"
+  },
+  {
+    "name": "minus",
+    "label_ru": "Уменьшить",
+    "group": "actions",
+    "usage": "Уменьшить",
+    "group_ru": "Действия",
+    "svg_inner": "<path d=\"M4 12h16\"/>"
+  },
+  {
+    "name": "close",
+    "label_ru": "Закрыть",
+    "group": "actions",
+    "usage": "Закрыть",
+    "group_ru": "Действия",
+    "svg_inner": "<path d=\"m6 6 12 12M6 18 18 6\"/>"
+  },
+  {
+    "name": "edit",
+    "label_ru": "Редактировать",
+    "group": "actions",
+    "usage": "Редактировать",
+    "group_ru": "Действия",
+    "svg_inner": "<path d=\"m4 16 12-12 4 4L8 20H4zm9-9 4 4\"/>"
+  },
+  {
+    "name": "trash",
+    "label_ru": "Удалить",
+    "group": "actions",
+    "usage": "Удалить",
+    "group_ru": "Действия",
+    "svg_inner": "<path d=\"M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7\"/>"
+  },
+  {
+    "name": "refresh",
+    "label_ru": "Обновить",
+    "group": "actions",
+    "usage": "Обновить",
+    "group_ru": "Действия",
+    "svg_inner": "<path d=\"M20 8a8 8 0 0 0-14-3L3 8m0-5v5h5M4 16a8 8 0 0 0 14 3l3-3m0 5v-5h-5\"/>"
+  },
+  {
+    "name": "copy",
+    "label_ru": "Скопировать",
+    "group": "actions",
+    "usage": "Скопировать",
+    "group_ru": "Действия",
+    "svg_inner": "<rect x=\"8\" y=\"8\" width=\"12\" height=\"13\" rx=\"2\"/><path d=\"M16 8V3H3v13h5\"/>"
+  },
+  {
+    "name": "download",
+    "label_ru": "Сохранить файл",
+    "group": "actions",
+    "usage": "Сохранить файл",
+    "group_ru": "Действия",
+    "svg_inner": "<path d=\"M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5\"/>"
+  },
+  {
+    "name": "upload",
+    "label_ru": "Загрузить файл",
+    "group": "actions",
+    "usage": "Загрузить файл",
+    "group_ru": "Действия",
+    "svg_inner": "<path d=\"M12 16V3m-5 5 5-5 5 5M4 16v5h16v-5\"/>"
+  },
+  {
+    "name": "share",
+    "label_ru": "Поделиться",
+    "group": "actions",
+    "usage": "Не публиковать CV или письма; только разрешённые публичные ссылки.",
+    "group_ru": "Действия",
+    "svg_inner": "<circle cx=\"5\" cy=\"12\" r=\"3\"/><circle cx=\"18\" cy=\"5\" r=\"3\"/><circle cx=\"18\" cy=\"19\" r=\"3\"/><path d=\"m8 10 7-4M8 14l7 4\"/>"
+  },
+  {
+    "name": "eye",
+    "label_ru": "Показать",
+    "group": "actions",
+    "usage": "Показать",
+    "group_ru": "Действия",
+    "svg_inner": "<path d=\"M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>"
+  },
+  {
+    "name": "eye-off",
+    "label_ru": "Скрыть",
+    "group": "actions",
+    "usage": "Скрыть",
+    "group_ru": "Действия",
+    "svg_inner": "<path d=\"m3 3 18 18M9 5a12 12 0 0 1 13 7 20 20 0 0 1-4 4M6 6a22 22 0 0 0-4 6s4 7 10 7c2 0 4-1 5-2M10 10a3 3 0 0 0 4 4\"/>"
+  },
+  {
+    "name": "logout",
+    "label_ru": "Выйти",
+    "group": "actions",
+    "usage": "Выйти",
+    "group_ru": "Действия",
+    "svg_inner": "<path d=\"M10 4H4v16h6M10 12h11m-4-4 4 4-4 4\"/>"
+  },
+  {
+    "name": "check",
+    "label_ru": "Подтвердить",
+    "group": "actions",
+    "usage": "Подтвердить",
+    "group_ru": "Действия",
+    "svg_inner": "<path d=\"m5 12 4 4L19 6\"/>"
+  },
+  {
+    "name": "location",
+    "label_ru": "Страна работы",
+    "group": "conditions",
+    "usage": "Страна работы",
+    "group_ru": "Условия и статусы",
+    "svg_inner": "<path d=\"M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z\"/><circle cx=\"12\" cy=\"10\" r=\"2.5\"/>"
+  },
+  {
+    "name": "globe",
+    "label_ru": "География найма",
+    "group": "conditions",
+    "usage": "География; сама иконка не утверждает worldwide.",
+    "group_ru": "Условия и статусы",
+    "svg_inner": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><ellipse cx=\"12\" cy=\"12\" rx=\"4\" ry=\"9\"/><path d=\"M3 12h18\"/>"
+  },
+  {
+    "name": "clock",
+    "label_ru": "Рабочие часы",
+    "group": "conditions",
+    "usage": "Рабочие часы",
+    "group_ru": "Условия и статусы",
+    "svg_inner": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 6v6l4 2\"/>"
+  },
+  {
+    "name": "calendar",
+    "label_ru": "Расписание",
+    "group": "conditions",
+    "usage": "Расписание",
+    "group_ru": "Условия и статусы",
+    "svg_inner": "<rect x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"2\"/><path d=\"M7 3v4m10-4v4M3 10h18M7 14h2m3 0h2m3 0h1M7 18h2m3 0h2\"/>"
+  },
+  {
+    "name": "contract",
+    "label_ru": "Форма договора",
+    "group": "conditions",
+    "usage": "Форма договора",
+    "group_ru": "Условия и статусы",
+    "svg_inner": "<path d=\"M5 3h11l3 3v15H5zM8 8h8M8 12h8M8 17l2-2 2 2 3-2\"/>"
+  },
+  {
+    "name": "salary",
+    "label_ru": "Компенсация",
+    "group": "conditions",
+    "usage": "Компенсация",
+    "group_ru": "Условия и статусы",
+    "svg_inner": "<rect x=\"3\" y=\"6\" width=\"18\" height=\"13\" rx=\"2\"/><circle cx=\"12\" cy=\"12.5\" r=\"3\"/><path d=\"M6 10v5m12-5v5\"/>"
+  },
+  {
+    "name": "language",
+    "label_ru": "Язык",
+    "group": "conditions",
+    "usage": "Не выводить уровень языка из языка резюме.",
+    "group_ru": "Условия и статусы",
+    "svg_inner": "<path d=\"M3 5h10M8 3v2M5 5c1 5 4 8 8 10M11 5c-1 5-4 8-8 10m10 5 4-11 4 11m-6-4h4\"/>"
+  },
+  {
+    "name": "remote",
+    "label_ru": "Удалённый формат",
+    "group": "conditions",
+    "usage": "Формат работы; не заменяет проверку обязательного офиса.",
+    "group_ru": "Условия и статусы",
+    "svg_inner": "<rect x=\"3\" y=\"8\" width=\"18\" height=\"12\" rx=\"2\"/><path d=\"M7 20v2h10v-2M7 5a8 8 0 0 1 10 0M10 3a5 5 0 0 1 4 0\"/>"
+  },
+  {
+    "name": "office",
+    "label_ru": "Офисное присутствие",
+    "group": "conditions",
+    "usage": "Офисное присутствие",
+    "group_ru": "Условия и статусы",
+    "svg_inner": "<path d=\"M5 21V3h14v18M3 21h18M9 21v-5h6v5M8 7h2m4 0h2M8 11h2m4 0h2\"/>"
+  },
+  {
+    "name": "check-circle",
+    "label_ru": "Условие выполнено",
+    "group": "conditions",
+    "usage": "Условие выполнено",
+    "group_ru": "Условия и статусы",
+    "svg_inner": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"m7 12 3 3 7-7\"/>"
+  },
+  {
+    "name": "help-circle",
+    "label_ru": "Нужно уточнить",
+    "group": "conditions",
+    "usage": "Нужно уточнить",
+    "group_ru": "Условия и статусы",
+    "svg_inner": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M9.5 9a2.5 2.5 0 0 1 5 .5c0 1.5-2.5 2-2.5 3.5\"/><circle cx=\"12\" cy=\"17\" r=\".9\" fill=\"currentColor\" stroke=\"none\"/>"
+  },
+  {
+    "name": "conflict",
+    "label_ru": "Несовместимость",
+    "group": "conditions",
+    "usage": "Несовместимость",
+    "group_ru": "Условия и статусы",
+    "svg_inner": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"m8 8 8 8m-8 0 8-8\"/>"
+  },
+  {
+    "name": "info",
+    "label_ru": "Информация",
+    "group": "conditions",
+    "usage": "Информация",
+    "group_ru": "Условия и статусы",
+    "svg_inner": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 11v6\"/><circle cx=\"12\" cy=\"7\" r=\".9\" fill=\"currentColor\" stroke=\"none\"/>"
+  },
+  {
+    "name": "lock",
+    "label_ru": "Приватные данные",
+    "group": "conditions",
+    "usage": "Приватные данные",
+    "group_ru": "Условия и статусы",
+    "svg_inner": "<rect x=\"5\" y=\"10\" width=\"14\" height=\"11\" rx=\"2\"/><path d=\"M8 10V7a4 4 0 0 1 8 0v3m-4 4v3\"/>"
+  },
+  {
+    "name": "shield",
+    "label_ru": "Защита данных",
+    "group": "conditions",
+    "usage": "Не знак юридической проверки, не гарантия безопасности.",
+    "group_ru": "Условия и статусы",
+    "svg_inner": "<path d=\"m12 3 8 3v6c0 4-8 9-8 9s-8-5-8-9V6z\"/>"
+  },
+  {
+    "name": "alert-circle",
+    "label_ru": "Предупреждение",
+    "group": "conditions",
+    "usage": "Предупреждение",
+    "group_ru": "Условия и статусы",
+    "svg_inner": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 7v6\"/><circle cx=\"12\" cy=\"17\" r=\".9\" fill=\"currentColor\" stroke=\"none\"/>"
+  },
+  {
+    "name": "document",
+    "label_ru": "Документ",
+    "group": "documents",
+    "usage": "Документ",
+    "group_ru": "Документы и основания",
+    "svg_inner": "<path d=\"M5 3h9l5 5v13H5zM14 3v6h5M8 13h8M8 17h6\"/>"
+  },
+  {
+    "name": "resume",
+    "label_ru": "Резюме",
+    "group": "documents",
+    "usage": "Резюме",
+    "group_ru": "Документы и основания",
+    "svg_inner": "<rect x=\"4\" y=\"3\" width=\"16\" height=\"18\" rx=\"2\"/><circle cx=\"9\" cy=\"8\" r=\"2\"/><path d=\"M6 13c0-3 6-3 6 0m2-6h3m-3 4h3M7 17h10\"/>"
+  },
+  {
+    "name": "letter",
+    "label_ru": "Сопроводительное письмо",
+    "group": "documents",
+    "usage": "Объект письма; не действие автоматической отправки.",
+    "group_ru": "Документы и основания",
+    "svg_inner": "<rect x=\"3\" y=\"6\" width=\"18\" height=\"14\" rx=\"2\"/><path d=\"m3 7 9 7 9-7M7 3h10\"/>"
+  },
+  {
+    "name": "file-check",
+    "label_ru": "Профиль подтверждён",
+    "group": "documents",
+    "usage": "Профиль подтверждён",
+    "group_ru": "Документы и основания",
+    "svg_inner": "<path d=\"M13 21H5V3h9l5 5v5M14 3v6h5m-6 9 3 3 5-6\"/>"
+  },
+  {
+    "name": "history",
+    "label_ru": "История версий",
+    "group": "documents",
+    "usage": "История версий",
+    "group_ru": "Документы и основания",
+    "svg_inner": "<path d=\"M4 8a8 8 0 1 1-1 7M3 3v6h6M12 7v6l4 2\"/>"
+  },
+  {
+    "name": "compare",
+    "label_ru": "Сравнить варианты",
+    "group": "documents",
+    "usage": "Сравнить варианты",
+    "group_ru": "Документы и основания",
+    "svg_inner": "<rect x=\"3\" y=\"4\" width=\"7\" height=\"16\" rx=\"1\"/><rect x=\"14\" y=\"4\" width=\"7\" height=\"16\" rx=\"1\"/><path d=\"M6 8h1m-1 4h1m-1 4h1M17 8h1m-1 4h1m-1 4h1\"/>"
+  },
+  {
+    "name": "folder",
+    "label_ru": "Материалы",
+    "group": "documents",
+    "usage": "Материалы",
+    "group_ru": "Документы и основания",
+    "svg_inner": "<path d=\"M3 6V4h6l2 3h10v13H3z\"/>"
+  },
+  {
+    "name": "bell",
+    "label_ru": "Уведомления",
+    "group": "documents",
+    "usage": "Уведомления",
+    "group_ru": "Документы и основания",
+    "svg_inner": "<path d=\"M5 17h14l-2-3V9a5 5 0 0 0-10 0v5zM9 20a3 3 0 0 0 6 0M12 3v1\"/>"
+  },
+  {
+    "name": "loader",
+    "label_ru": "Обработка",
+    "group": "documents",
+    "usage": "Только при реальной операции; не выдуманный прогресс.",
+    "group_ru": "Документы и основания",
+    "svg_inner": "<path d=\"M12 3a9 9 0 1 1-9 9\"/><path d=\"M3 8V4h4\"/>"
+  },
+  {
+    "name": "search-empty",
+    "label_ru": "Нет результатов",
+    "group": "documents",
+    "usage": "Нет результатов",
+    "group_ru": "Документы и основания",
+    "svg_inner": "<circle cx=\"10\" cy=\"10\" r=\"6.5\"/><path d=\"m15 15 6 6M7 10h6\"/>"
+  },
+  {
+    "name": "source",
+    "label_ru": "Источник данных",
+    "group": "documents",
+    "usage": "Источник данных",
+    "group_ru": "Документы и основания",
+    "svg_inner": "<path d=\"M7 4H3v16h4m10-16h4v16h-4M9 8h6M9 12h6M9 16h4\"/>"
+  },
+  {
+    "name": "evidence",
+    "label_ru": "Основание",
+    "group": "documents",
+    "usage": "Раскрыть конкретный фрагмент, а не знак успешной проверки.",
+    "group_ru": "Документы и основания",
+    "svg_inner": "<path d=\"M7 4H3v16h4m10-16h4v16h-4M8 9h3v4H8zm5 0h3v4h-3zM11 13l-2 3m7-3-2 3\"/>"
+  },
+  {
+    "name": "conditions",
+    "label_ru": "Карта условий",
+    "group": "documents",
+    "usage": "Карта условий",
+    "group_ru": "Документы и основания",
+    "svg_inner": "<path d=\"M6 3H3v18h3m12-18h3v18h-3M10 6h6M10 12h6M10 18h6\"/><path d=\"M7 6h.01M7 12h.01M7 18h.01\"/>"
+  },
+  {
+    "name": "time-overlap",
+    "label_ru": "Пересечение часов",
+    "group": "documents",
+    "usage": "Рядом нужны IANA-зоны и численное объяснение.",
+    "group_ru": "Документы и основания",
+    "svg_inner": "<path d=\"M3 6h13v4H3zm5 8h13v4H8zM8 3v18m8-18v18\"/>"
+  },
+  {
+    "name": "document-edit",
+    "label_ru": "Редактировать письмо",
+    "group": "documents",
+    "usage": "Редактировать письмо",
+    "group_ru": "Документы и основания",
+    "svg_inner": "<path d=\"M12 21H4V3h12v5M7 7h5M7 11h3m2 6 7-7 3 3-7 7h-3zm5-5 3 3\"/>"
+  },
+  {
+    "name": "archive",
+    "label_ru": "Архив",
+    "group": "documents",
+    "usage": "Архив",
+    "group_ru": "Документы и основания",
+    "svg_inner": "<path d=\"M4 8h16v13H4zM3 3h18v5H3zM9 12h6\"/>"
+  }
+]

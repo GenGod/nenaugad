@@ -119,92 +119,104 @@ export function ProfileForm({ initial, version }: { initial: ProfileState | null
   const fieldError = (field: keyof typeof errors, message: string | null) =>
     touched[field] && message ? <span className="field-error" role="alert">{message}</span> : null;
 
-  return <form className="search-form" onSubmit={save} noValidate>
-    <label htmlFor="country">Страна работы (ISO-код, например DE)</label>
-    <input id="country" maxLength={2} value={state.residenceCountry} list="country-options"
-      aria-invalid={touched.country === true && errors.country !== null}
-      onChange={event => update({ residenceCountry: event.target.value.toUpperCase() })}
-      onBlur={() => markTouched("country")} placeholder="DE" />
-    <datalist id="country-options">
-      {COUNTRY_OPTIONS.map(([code, name]) =>
-        <option key={code} value={code}>{name}</option>)}
-    </datalist>
-    {fieldError("country", errors.country)}
-    <label htmlFor="tz">Часовой пояс (IANA, например Europe/Berlin)</label>
-    <input id="tz" maxLength={64} value={state.timezone} list="timezone-options"
-      aria-invalid={touched.timezone === true && errors.timezone !== null}
-      onChange={event => update({ timezone: event.target.value })}
-      onBlur={() => markTouched("timezone")} placeholder="Europe/Berlin" />
-    <datalist id="timezone-options">
-      {timeZoneOptions().map(zone => <option key={zone} value={zone} />)}
-    </datalist>
-    {fieldError("timezone", errors.timezone)}
-    <label htmlFor="roles">Целевые роли (через запятую)</label>
-    <input id="roles" maxLength={400} value={state.targetRoles}
-      aria-invalid={touched.roles === true && errors.roles !== null}
-      onChange={event => update({ targetRoles: event.target.value })}
-      onBlur={() => markTouched("roles")} placeholder="engineer, analyst" />
-    {fieldError("roles", errors.roles)}
-    <label htmlFor="skills">Навыки (через запятую — улучшает подбор)</label>
-    <div className="search-controls">
-      <input id="skills" maxLength={1000} value={state.skills} style={{ flex: 1 }}
-        onChange={event => update({ skills: event.target.value })}
-        placeholder="React, Node.js, PostgreSQL, Docker, Kubernetes" />
-      <button type="button" className="button secondary compact" disabled={busy}
-        onClick={async () => {
-          setBusy(true); setError(null);
-          try {
-            const res = await fetch("/api/v1/cv");
-            if (res.ok) {
-              const body = (await res.json()) as { items?: { id: string }[] };
-              const latest = body.items?.[0];
-              if (latest) {
-                const textRes = await fetch(`/api/v1/cv/${latest.id}`);
-                if (textRes.ok) {
-                  const textBody = (await textRes.json()) as { text: string };
-                  const { extractSkills } = await import("../domain/skills.ts");
-                  const found = extractSkills(textBody.text);
-                  if (found.length > 0) {
-                    update({ skills: found.join(", ") });
-                    setStatus(`Найдено ${found.length} навыков в вашем резюме.`);
-                  } else {
-                    setError("В резюме не найдены узнаваемые навыки — введите вручную.");
-                  }
-                }
-              } else {
-                setError("Сначала загрузите резюме на странице «Резюме».");
-              }
-            }
-          } finally { setBusy(false); }
-        }}>Извлечь из резюме</button>
+  return <form className="form-grid" onSubmit={save} noValidate>
+    <div className="field">
+      <label htmlFor="country">Страна работы (ISO-код, например DE)</label>
+      <input id="country" maxLength={2} value={state.residenceCountry} list="country-options"
+        aria-invalid={touched.country === true && errors.country !== null}
+        onChange={event => update({ residenceCountry: event.target.value.toUpperCase() })}
+        onBlur={() => markTouched("country")} placeholder="DE" />
+      <datalist id="country-options">
+        {COUNTRY_OPTIONS.map(([code, name]) =>
+          <option key={code} value={code}>{name}</option>)}
+      </datalist>
+      {fieldError("country", errors.country)}
     </div>
-    <p className="helper">Подтверждённые навыки улучшают точность подбора и AI-рейтинга.</p>
-    <fieldset>
+    <div className="field">
+      <label htmlFor="tz">Часовой пояс (IANA, например Europe/Berlin)</label>
+      <input id="tz" maxLength={64} value={state.timezone} list="timezone-options"
+        aria-invalid={touched.timezone === true && errors.timezone !== null}
+        onChange={event => update({ timezone: event.target.value })}
+        onBlur={() => markTouched("timezone")} placeholder="Europe/Berlin" />
+      <datalist id="timezone-options">
+        {timeZoneOptions().map(zone => <option key={zone} value={zone} />)}
+      </datalist>
+      {fieldError("timezone", errors.timezone)}
+    </div>
+    <div className="field full">
+      <label htmlFor="roles">Целевые роли (через запятую)</label>
+      <input id="roles" maxLength={400} value={state.targetRoles}
+        aria-invalid={touched.roles === true && errors.roles !== null}
+        onChange={event => update({ targetRoles: event.target.value })}
+        onBlur={() => markTouched("roles")} placeholder="engineer, analyst" />
+      {fieldError("roles", errors.roles)}
+    </div>
+    <div className="field full">
+      <label htmlFor="skills">Навыки (через запятую — улучшает подбор)</label>
+      <div className="row">
+        <input id="skills" maxLength={1000} value={state.skills} style={{ flex: 1 }}
+          onChange={event => update({ skills: event.target.value })}
+          placeholder="React, Node.js, PostgreSQL, Docker, Kubernetes" />
+        <button type="button" className="btn secondary" disabled={busy}
+          onClick={async () => {
+            setBusy(true); setError(null);
+            try {
+              const res = await fetch("/api/v1/cv");
+              if (res.ok) {
+                const body = (await res.json()) as { items?: { id: string }[] };
+                const latest = body.items?.[0];
+                if (latest) {
+                  const textRes = await fetch(`/api/v1/cv/${latest.id}`);
+                  if (textRes.ok) {
+                    const textBody = (await textRes.json()) as { text: string };
+                    const { extractSkills } = await import("../domain/skills.ts");
+                    const found = extractSkills(textBody.text);
+                    if (found.length > 0) {
+                      update({ skills: found.join(", ") });
+                      setStatus(`Найдено ${found.length} навыков в вашем резюме.`);
+                    } else {
+                      setError("В резюме не найдены узнаваемые навыки — введите вручную.");
+                    }
+                  }
+                } else {
+                  setError("Сначала загрузите резюме на странице «Резюме».");
+                }
+              }
+            } finally { setBusy(false); }
+          }}>Извлечь из резюме</button>
+      </div>
+      <p className="small secondary">Подтверждённые навыки улучшают точность подбора и AI-рейтинга.</p>
+    </div>
+    <fieldset className="full">
       <legend>Формы сотрудничества</legend>
-      {EMPLOYMENT_OPTIONS.map(([value, label]) => (
-        <label key={value} className="context-field">
-          <input type="checkbox" checked={state.employmentTypes.includes(value)}
-            onChange={event => update({
-              employmentTypes: event.target.checked
-                ? [...state.employmentTypes, value]
-                : state.employmentTypes.filter(type => type !== value),
-            })} />
-          <span>{label}</span>
-        </label>
-      ))}
+      <div className="stack" style={{ gap: 4 }}>
+        {EMPLOYMENT_OPTIONS.map(([value, label]) => (
+          <label key={value} className="check">
+            <input type="checkbox" checked={state.employmentTypes.includes(value)}
+              onChange={event => update({
+                employmentTypes: event.target.checked
+                  ? [...state.employmentTypes, value]
+                  : state.employmentTypes.filter(type => type !== value),
+              })} />
+            <span>{label}</span>
+          </label>
+        ))}
+      </div>
       {fieldError("employment", errors.employment)}
     </fieldset>
-    <label htmlFor="start">Доступность: время и дни (локальные часы)</label>
-    <div className="search-controls">
-      <input id="start" type="time" value={state.windowStart} style={{ maxWidth: "8rem" }}
-        onChange={event => update({ windowStart: event.target.value })} />
-      <span aria-hidden="true">—</span>
-      <input id="end" type="time" aria-label="До" value={state.windowEnd} style={{ maxWidth: "8rem" }}
-        onChange={event => update({ windowEnd: event.target.value })} />
+    <div className="field full">
+      <label htmlFor="start">Доступность: время и дни (локальные часы)</label>
+      <div className="row">
+        <input id="start" type="time" value={state.windowStart} style={{ maxWidth: "8rem" }}
+          onChange={event => update({ windowStart: event.target.value })} />
+        <span aria-hidden="true">—</span>
+        <input id="end" type="time" aria-label="До" value={state.windowEnd} style={{ maxWidth: "8rem" }}
+          onChange={event => update({ windowEnd: event.target.value })} />
+      </div>
     </div>
-    <fieldset className="weekday-picker">
+    <fieldset className="full">
       <legend>Дни доступности</legend>
-      <div className="search-controls">
+      <div className="row" style={{ gap: 8 }}>
         {DAY_LABELS.map((label, index) => {
           const day = index + 1;
           const selected = state.weekdays.includes(day);
@@ -220,46 +232,50 @@ export function ProfileForm({ initial, version }: { initial: ProfileState | null
         })}
       </div>
     </fieldset>
-    {fieldError("timeOrder", errors.timeOrder)}
-    {fieldError("weekdays", errors.weekdays)}
-    <label className="context-field">
+    <div className="full">{fieldError("timeOrder", errors.timeOrder)}{fieldError("weekdays", errors.weekdays)}</div>
+    <label className="check full">
       <input type="checkbox" checked={state.zeroMandatoryAttendance}
         onChange={event => update({ zeroMandatoryAttendance: event.target.checked })} />
       <span>Исключать обязательное физическое присутствие (zero mandatory attendance)</span>
     </label>
-    <label htmlFor="salary">Минимальная оплата (в час, та же валюта, что у вакансий)</label>
-    <div className="search-controls">
-      <input id="salary" inputMode="decimal" maxLength={12} value={state.salaryAmount}
-        style={{ maxWidth: "8rem" }} aria-invalid={touched.salary === true && errors.salary !== null}
-        onChange={event => update({ salaryAmount: event.target.value })}
-        onBlur={() => markTouched("salary")} placeholder="30" />
-      <select aria-label="Валюта" value={state.salaryCurrency}
-        onChange={event => update({ salaryCurrency: event.target.value })} style={{ maxWidth: "6rem" }}>
-        {["USD", "EUR", "GBP"].map(currency => <option key={currency}>{currency}</option>)}
-      </select>
-      <label className="context-field">
-        <input type="checkbox" checked={state.salaryHard}
-          onChange={event => update({ salaryHard: event.target.checked })} />
-        <span>жёсткий минимум</span>
-      </label>
+    <div className="field full">
+      <label htmlFor="salary">Минимальная оплата (в час, та же валюта, что у вакансий)</label>
+      <div className="row">
+        <input id="salary" inputMode="decimal" maxLength={12} value={state.salaryAmount}
+          style={{ maxWidth: "8rem" }} aria-invalid={touched.salary === true && errors.salary !== null}
+          onChange={event => update({ salaryAmount: event.target.value })}
+          onBlur={() => markTouched("salary")} placeholder="30" />
+        <select aria-label="Валюта" value={state.salaryCurrency}
+          onChange={event => update({ salaryCurrency: event.target.value })} style={{ maxWidth: "6rem" }}>
+          {["USD", "EUR", "GBP"].map(currency => <option key={currency}>{currency}</option>)}
+        </select>
+        <label className="check">
+          <input type="checkbox" checked={state.salaryHard}
+            onChange={event => update({ salaryHard: event.target.checked })} />
+          <span>жёсткий минимум</span>
+        </label>
+      </div>
+      {fieldError("salary", errors.salary)}
     </div>
-    {fieldError("salary", errors.salary)}
-    <label className="context-field">
+    <label className="check full">
       <input type="checkbox" checked={state.showNeedsReview}
         onChange={event => update({ showNeedsReview: event.target.checked })} />
       <span>Показывать вкладку «Нужно уточнить»</span>
     </label>
-    {error && <p className="field-error" role="alert">{error}</p>}
-    {status && <p className="helper">{status}</p>}
-    <div className="search-controls">
-      <button type="submit" className="button primary compact" disabled={busy}>
-        {version === null ? "Создать профиль" : "Сохранить новую версию"}
-      </button>
-      {version !== null && <button type="button" className="button secondary compact" disabled={busy} onClick={remove}>
-        Удалить профиль
-      </button>}
+    <div className="full">
+      {error && <p className="field-error" role="alert">{error}</p>}
+      {status && <p className="small secondary">{status}</p>}
+      <div className="row" style={{ marginTop: 8 }}>
+        <button type="submit" className="btn primary" disabled={busy}>
+          {version === null ? "Создать профиль" : "Сохранить новую версию"}
+        </button>
+        {version !== null && <button type="button" className="btn secondary" disabled={busy} onClick={remove}>
+          Удалить профиль
+        </button>}
+      </div>
+      <p className="small secondary" style={{ marginTop: 12 }}>Страна и часы задаются вами явно и
+        ниоткуда не выводятся. Профиль не покидает локальную базу.</p>
     </div>
-    <p className="helper">Страна и часы задаются вами явно и ниоткуда не выводятся. Профиль не покидает локальную базу.</p>
   </form>;
 }
 

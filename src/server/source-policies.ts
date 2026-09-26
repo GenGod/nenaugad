@@ -34,7 +34,7 @@ export const atlasFixturesPolicy: SourcePolicy = {
   max_retention_hours: null,
   min_poll_interval_seconds: 86400,
   attribution: {
-    required: true, display_name: "Atlas Fixtures",
+    required: true, display_name: "Nenaugad Fixtures",
     backlink_required: false, link_rel: [], logo_allowed: "denied",
   },
   apply_route: "source_required",
