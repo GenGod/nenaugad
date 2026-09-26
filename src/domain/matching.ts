@@ -133,9 +133,13 @@ function ruleRoles(
 }
 
 // SKILL-01: overlap between the user's confirmed skills and the skills
-// extracted from the job description. 0% overlap with extractable skills
-// on both sides is evidence of mismatch → fail (the job moves to
-// needs_review). 1-29% is a weak signal → not_applicable. ≥30% → pass.
+// extracted from the job description. Count-based (not percentage) so
+// profiles with many skills aren't penalized: a fullstack dev with 15
+// skills who matches 3 on a React job has a strong signal (20% by
+// percentage, but 3 concrete matches). Thresholds:
+//   matched == 0 with extractable skills on both sides → fail (mismatch)
+//   matched == 1 → not_applicable (weak but not a mismatch)
+//   matched >= 2 → pass (meaningful overlap)
 function ruleSkills(
   snapshot: JobSnapshot, profile: ManualProfileInput,
 ): RuleResult {
@@ -149,18 +153,17 @@ function ruleSkills(
     return { ...base, outcome: "not_applicable", reasonCodes: [],
       explanation: "В описании вакансии не найдены узнаваемые навыки." };
   }
-  const { overlap, matched } = skillOverlap(profile.skills, jobSkills);
-  const percent = Math.round(overlap * 100);
-  if (percent >= 30) {
+  const { matched } = skillOverlap(profile.skills, jobSkills);
+  if (matched.length >= 2) {
     return { ...base, outcome: "pass", reasonCodes: [],
-      explanation: `Совпало ${matched.length} из ${profile.skills.length} навыков (${percent}%): ${matched.slice(0, 5).join(", ")}.` };
+      explanation: `Совпало ${matched.length} навыков: ${matched.slice(0, 5).join(", ")}.` };
   }
-  if (matched.length === 0) {
-    return { ...base, outcome: "fail", reasonCodes: ["ZERO_SKILL_OVERLAP"],
-      explanation: `Ни один из ваших навыков (${profile.skills.slice(0, 5).join(", ")}) не найден в вакансии.` };
+  if (matched.length === 1) {
+    return { ...base, outcome: "not_applicable", reasonCodes: ["WEAK_SKILL_OVERLAP"],
+      explanation: `Один совпавший навык: ${matched[0]}. Слабый сигнал.` };
   }
-  return { ...base, outcome: "not_applicable", reasonCodes: ["LOW_SKILL_OVERLAP"],
-    explanation: `Совпало ${matched.length}/${profile.skills.length} (${percent}%). Совпавшие: ${matched.join(", ")}.` };
+  return { ...base, outcome: "fail", reasonCodes: ["ZERO_SKILL_OVERLAP"],
+    explanation: `Ни один из ваших навыков (${profile.skills.slice(0, 5).join(", ")}) не найден в вакансии.` };
 }
 
 function ruleSalary(
