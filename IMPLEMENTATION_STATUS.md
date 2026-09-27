@@ -2,7 +2,8 @@
 
 ## Сейчас
 Активная задача: [DS-001](tasks/DS-001-nenaugad-design-system.md) —
-**implemented, tested locally** (2026-09-26), ждёт review/принятия владельца.
+**accepted владельцем** (2026-09-27); ветка `feature/nenaugad-design-system`
+(e346203) готовится к merge, идёт расширение тестового покрытия.
 
 **DS-001 — дизайн-система Ненаугад 1.3 в приложении (ветка
 `feature/nenaugad-design-system`, не слита в main).** Владелец 2026-09-26
