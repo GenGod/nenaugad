@@ -22,7 +22,9 @@ function shotName(route: string): string {
 }
 
 const ANON_ROUTES = [
-  "/", "/jobs", "/jobs/fern-frontend", "/login", "/status", "/profile", "/saved", "/cv",
+  "/", "/jobs", "/jobs/fern-frontend", "/jobs/orbit-product",
+  "/jobs?q=React", "/jobs?q=unlisted-skill",
+  "/login", "/status", "/profile", "/saved", "/cv",
 ];
 
 for (const route of ANON_ROUTES) {
@@ -53,6 +55,14 @@ test("authed flow renders as baselined: profile, matched, saved, letter", async 
   await page.reload();
   await expect(page.getByText("Профиль ещё не создан", { exact: false })).toBeVisible();
   await shot(page, "authed-profile-empty.png");
+
+  // Inline validation state: the error disappears once the field is fixed.
+  const country = page.getByLabel("Страна работы (ISO-код, например DE)");
+  await country.fill("D1");
+  await country.blur();
+  await expect(page.getByText("Страна — двухбуквенный ISO-код, например DE или US.")).toBeVisible();
+  await shot(page, "authed-profile-error.png");
+  await country.fill("DE");
 
   await page.getByLabel("Страна работы (ISO-код, например DE)").fill("DE");
   await page.getByLabel("Часовой пояс (IANA, например Europe/Berlin)").fill("Europe/Berlin");
