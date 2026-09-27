@@ -1,7 +1,8 @@
 import type { SnapshotCardView } from "../server/snapshot-catalog-service.ts";
+import { Icon } from "./icon.tsx";
 
 function geographyLabel(card: SnapshotCardView): string {
-  if (card.geography.scope === "worldwide") return "Страны найма: по всему миру (по контракту источника)";
+  if (card.geography.scope === "worldwide") return "По всему миру (по контракту источника)";
   if (card.geography.scope === "restricted" && card.geography.countries.length > 0) {
     return `Страны найма: ${card.geography.countries.join(", ")}`;
   }
@@ -16,25 +17,23 @@ function publishedDate(card: SnapshotCardView): string {
 // but never republished), visible attribution and a backlink to the listing.
 export function SnapshotCard({ card }: { card: SnapshotCardView }) {
   return <article className="job-card">
-    <div className="card-top">
-      <div className="company-monogram" aria-hidden="true">{card.company.slice(0, 1)}</div>
-      <div className="card-heading">
+    <div className="job-top">
+      <span className="company-mark" aria-hidden="true">{card.company.slice(0, 1)}</span>
+      <div className="job-title-area">
         <p className="company">{card.company}</p>
-        <h2><a href={card.apply.url} rel="nofollow noreferrer" target="_blank">{card.title}</a></h2>
+        <h3><a href={card.apply.url} rel="nofollow noreferrer" target="_blank">{card.title}</a></h3>
       </div>
       <span className="badge neutral">{card.source.displayName}</span>
     </div>
-    <p className="salary">{card.salaryOriginalText ?? "Зарплата не указана"}</p>
-    <p className="conditions">{geographyLabel(card)}</p>
-    {card.excerpt && <p className="conditions">{card.excerpt}</p>}
-    <div className="card-bottom">
-      <span className="badge neutral">Показан фрагмент; полностью — на источнике</span>
-      <a className="text-link" href={card.apply.url} rel="nofollow noreferrer" target="_blank">
-        Открыть на {card.source.displayName} <span aria-hidden="true">↗</span>
-      </a>
+    <p className="salary money">{card.salaryOriginalText ?? "Зарплата не опубликована"}</p>
+    <div className="job-facts">
+      <span><Icon name="globe" />{geographyLabel(card)}</span>
+      <span><Icon name="info" />Показан фрагмент; полностью — на источнике</span>
     </div>
-    <p className="source-line">
-      Источник: {card.source.displayName} · листинг от {publishedDate(card)} · данные обновляются регулярно
-    </p>
+    {card.excerpt && <p className="job-reason">{card.excerpt}</p>}
+    <p className="source"><Icon name="source" size={16} />
+      Источник: {card.source.displayName} · листинг от {publishedDate(card)} · данные обновляются регулярно ·
+      {" "}<a className="source-link" href={card.apply.url} rel="nofollow noreferrer" target="_blank">
+        Открыть на {card.source.displayName}</a></p>
   </article>;
 }

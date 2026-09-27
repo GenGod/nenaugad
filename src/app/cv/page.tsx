@@ -12,18 +12,23 @@ export const dynamic = "force-dynamic";
 export default async function Cv() {
   const user = await currentUser();
   if (!user) {
-    return <section className="status-page">
-      <p className="eyebrow">Резюме</p><h1>Доступно после входа</h1>
-      <p className="hero-lead">Резюме — приватные данные: загрузка и просмотр только для владельца сессии.</p>
-      <Link className="button primary" href="/login">Войти</Link>
+    return <section className="empty">
+      <p className="overline">Резюме</p><h1>Доступно после входа</h1>
+      <p>Резюме — приватные данные: загрузка и просмотр только для владельца сессии.</p>
+      <Link className="btn primary" href="/login">Войти</Link>
     </section>;
   }
   const uploads = await listCvUploads(snapshotPool(), user.id);
-  return <section className="status-page">
-    <p className="eyebrow">Резюме / детерминированный приём</p><h1>Ваш текст — ваша проверка.</h1>
-    <p className="hero-lead">Система ничего не выводит из резюме автоматически: вы читаете извлечённый текст
-      и сами подтверждаете каждый факт в профиле. AI-извлечение не подключено.</p>
+  return <>
+    <header className="page-head">
+      <p className="overline">Резюме / детерминированный приём</p>
+      <h1>Ваш текст — ваша проверка.</h1>
+      <p>Система ничего не выводит из резюме автоматически: вы читаете извлечённый текст
+        и сами подтверждаете каждый факт в профиле. AI-извлечение не подключено.</p>
+    </header>
     <CvForm initialItems={[...uploads]} enabled={readConfig(process.env).uploads} />
-    <p className="helper"><Link className="text-link" href="/profile">Перейти к заполнению профиля →</Link></p>
-  </section>;
+    <p className="small secondary" style={{ marginTop: 16 }}>
+      <Link href="/profile">Перейти к заполнению профиля →</Link>
+    </p>
+  </>;
 }

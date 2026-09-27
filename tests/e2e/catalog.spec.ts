@@ -2,8 +2,8 @@ import { expect, test } from "@playwright/test";
 
 test("open catalog, search, inspect evidence and return", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading",{name:/Работа, которая/u})).toBeVisible();
-  await page.getByRole("link",{name:/Посмотреть демо-каталог/u}).click();
+  await expect(page.getByRole("heading",{name:/Выбирать работу/u})).toBeVisible();
+  await page.getByRole("link",{name:/Смотреть вакансии/u}).click();
   await expect(page.getByRole("article")).toHaveCount(4);
   await page.getByLabel("Роль, компания или навык").fill("React");
   await page.getByRole("button",{name:"Найти",exact:true}).click();

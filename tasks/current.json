@@ -1,10 +1,10 @@
 {
-  "task_id": "S4-003",
-  "file": "tasks/S4-003-general-letters.md",
+  "task_id": "DS-001",
+  "file": "tasks/DS-001-nenaugad-design-system.md",
   "status": "accepted",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Owner accepted S4-003 (general mode). Next: batch API test."
+  "note": "Owner accepted the redesign on 2026-09-27. Follow-up in the same instruction: broaden coverage (screenshot/unit/e2e) before merge."
 }

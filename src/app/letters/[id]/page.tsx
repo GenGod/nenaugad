@@ -13,9 +13,9 @@ export const dynamic = "force-dynamic";
 export default async function LetterPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await currentUser();
   if (!user) {
-    return <section className="status-page">
-      <p className="eyebrow">Письмо</p><h1>Доступно после входа</h1>
-      <Link className="button primary" href="/login">Войти</Link>
+    return <section className="empty">
+      <p className="overline">Письмо</p><h1>Доступно после входа</h1>
+      <Link className="btn primary" href="/login">Войти</Link>
     </section>;
   }
   const { id } = await params;
@@ -32,15 +32,17 @@ export default async function LetterPage({ params }: { params: Promise<{ id: str
   const job = snapshotRow && isJobSnapshot(snapshotRow.stored.snapshot)
     ? snapshotRow.stored.snapshot : null;
 
-  return <section className="status-page">
-    <p className="eyebrow">Письмо / приватное</p>
-    <h1>Сопроводительное письмо</h1>
-    <p className="hero-lead">
-      {isGeneral
-        ? <span className="badge review">Общий черновик — адаптируйте под вакансию</span>
-        : job ? `${job.title} · ${job.company_name}` : "Вакансия недоступна"}
-      {" · "}версия профиля активна
-    </p>
+  return <>
+    <header className="page-head">
+      <p className="overline">Письмо / приватное</p>
+      <h1>Сопроводительное письмо</h1>
+      <p>
+        {isGeneral
+          ? <span className="badge review">Общий черновик — адаптируйте под вакансию</span>
+          : job ? `${job.title} · ${job.company_name}` : "Вакансия недоступна"}
+        {" · "}версия профиля активна
+      </p>
+    </header>
     <div className="panel">
       <LetterEditor
         letterId={detail.summary.id}
@@ -55,9 +57,9 @@ export default async function LetterPage({ params }: { params: Promise<{ id: str
         }))}
       />
     </div>
-    <p className="helper">
-      <Link className="text-link" href="/matched">← К подбору</Link>
+    <p className="small secondary" style={{ marginTop: 16 }}>
+      <Link href="/matched">← К подбору</Link>
       {" · "}Данные обрабатываются через OpenAI GPT-6 Luna; текст не публикуется.
     </p>
-  </section>;
+  </>;
 }

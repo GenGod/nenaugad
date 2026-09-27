@@ -128,61 +128,71 @@ export function LetterEditor({ letterId, initialRevision, initialVersions }: {
   }
 
   return <>
-    {needsInput && <div className="empty-state" style={{ marginBottom: 16 }} role="alert">
-      <h2>Письмо требует доработки</h2>
-      <p>Валидатор обнаружил проблемы. Исправьте текст вручную или уточните данные:</p>
-      <ul>{needsInput.map((question, index) => <li key={index}>{question}</li>)}</ul>
-      <button type="button" className="button secondary compact"
-        onClick={() => setNeedsInput(null)}>Понятно, правлю вручную</button>
+    {needsInput && <div className="banner review" style={{ marginBottom: 16 }} role="alert">
+      <div>
+        <strong>Письмо требует доработки.</strong>
+        <p style={{ marginTop: 8 }}>Валидатор обнаружил проблемы. Исправьте текст вручную
+          или уточните данные:</p>
+        <ul style={{ marginTop: 8, paddingLeft: 20 }}>
+          {needsInput.map((question, index) => <li key={index}>{question}</li>)}
+        </ul>
+        <button type="button" className="btn secondary" style={{ marginTop: 12 }}
+          onClick={() => setNeedsInput(null)}>Понятно, правлю вручную</button>
+      </div>
     </div>}
-    <div className="search-controls" style={{ marginBottom: 16 }}>
-      <button type="button" className="button primary compact" disabled={generating}
-        onClick={generate}>
+    <div className="row" style={{ marginBottom: 16 }}>
+      <button type="button" className="btn primary" disabled={generating} onClick={generate}>
         {generating ? "Генерируем…" : "Создать черновик"}
       </button>
-      <button type="button" className="button primary compact" disabled={busy || text.trim().length === 0}
+      <button type="button" className="btn primary" disabled={busy || text.trim().length === 0}
         onClick={copyToClipboard}>Скопировать письмо</button>
-      <button type="button" className="button secondary compact" disabled={busy}
+      <button type="button" className="btn secondary" disabled={busy}
         onClick={save}>Сохранить правки</button>
-      <button type="button" className="button secondary compact" disabled={text.trim().length === 0}
+      <button type="button" className="btn secondary" disabled={text.trim().length === 0}
         onClick={downloadTxt}>Сохранить TXT</button>
-      <button type="button" className="button secondary compact"
+      <button type="button" className="btn secondary"
         onClick={() => setShowVersions(!showVersions)}>
         {showVersions ? "Скрыть версии" : `История (${versions.length})`}
       </button>
-      <button type="button" className="button secondary compact" disabled={busy} onClick={remove}>
+      <button type="button" className="btn secondary" disabled={busy} onClick={remove}>
         Удалить
       </button>
     </div>
-    <p className="helper" aria-live="polite">
+    <p className="small secondary" aria-live="polite">
       {statusLabel} · Письмо не отправляется работодателю автоматически.
     </p>
-    <label htmlFor="letter-body" className="sr-only">Текст письма</label>
-    <textarea id="letter-body" rows={16} value={text} style={{ width: "100%", fontSize: "1rem" }}
-      onChange={event => { setText(event.target.value); setStatus(null); }}
-      placeholder="Нажмите «Создать черновик» для AI-генерации или пишите вручную…" />
-    <output id="letter-word-count" className="helper" aria-live="off">Слов: {text.trim() ? text.trim().split(/\s+/u).length : 0}</output>
+    <div className="letter-area">
+      <label htmlFor="letter-body" className="sr-only">Текст письма</label>
+      <textarea id="letter-body" rows={16} value={text} style={{ width: "100%" }}
+        onChange={event => { setText(event.target.value); setStatus(null); }}
+        placeholder="Нажмите «Создать черновик» для AI-генерации или пишите вручную…" />
+    </div>
+    <output id="letter-word-count" className="small secondary" aria-live="off">
+      Слов: {text.trim() ? text.trim().split(/\s+/u).length : 0}
+    </output>
     {error && <p className="field-error" role="alert">{error}</p>}
-    {status && <output className="helper" aria-live="polite">{status}</output>}
-    {showVersions && <div className="results" style={{ marginTop: 16 }}>
-      <div className="result-header"><h2>Версии</h2></div>
-      {versions.map(rev => (
-        <article key={rev.id} className="job-card" style={{ padding: "1rem" }}>
-          <div className="card-top">
-            <span className="badge neutral">v{rev.version}</span>
-            <span className="badge neutral">{rev.origin === "generated" ? "AI" : "правка"}</span>
-            <span className="helper">{rev.createdAt.slice(0, 16).replace("T", " ")}</span>
-          </div>
-          <p className="conditions" style={{
-            maxHeight: "6rem", overflow: "hidden", fontSize: ".875rem" }}>
-            {rev.body.slice(0, 200)}{rev.body.length > 200 ? "…" : ""}
-          </p>
-          <button type="button" className="button secondary compact"
-            onClick={() => { setText(rev.body); setCurrentVersion(rev.version); setStatus(`Показана версия ${rev.version}.`); }}>
-            Открыть
-          </button>
-        </article>
-      ))}
+    {status && <output className="small secondary" aria-live="polite">{status}</output>}
+    {showVersions && <div style={{ marginTop: 16 }}>
+      <div className="section-head" style={{ marginTop: 8 }}><h3>Версии</h3></div>
+      <div className="stack">
+        {versions.map(rev => (
+          <article key={rev.id} className="aside-card">
+            <div className="row">
+              <span className="badge neutral">v{rev.version}</span>
+              <span className="badge neutral">{rev.origin === "generated" ? "AI" : "правка"}</span>
+              <span className="small secondary">{rev.createdAt.slice(0, 16).replace("T", " ")}</span>
+            </div>
+            <p className="small secondary" style={{
+              marginTop: 8, maxHeight: "6rem", overflow: "hidden" }}>
+              {rev.body.slice(0, 200)}{rev.body.length > 200 ? "…" : ""}
+            </p>
+            <button type="button" className="btn secondary"
+              onClick={() => { setText(rev.body); setCurrentVersion(rev.version); setStatus(`Показана версия ${rev.version}.`); }}>
+              Открыть
+            </button>
+          </article>
+        ))}
+      </div>
     </div>}
   </>;
 }

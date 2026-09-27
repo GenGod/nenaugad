@@ -19,3 +19,6 @@ backups/
 tasks/.task.lock
 tasks/current.json.tmp
 .mimosa/
+
+# DS-001 scratch extraction (Reference/Nenaugad)
+.scratch/

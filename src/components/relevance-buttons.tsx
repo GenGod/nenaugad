@@ -10,7 +10,7 @@ export function RelevanceButton({ snapshotId }: { snapshotId: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return <>
-    <button type="button" className="button secondary compact" disabled={busy}
+    <button type="button" className="btn secondary" disabled={busy}
       onClick={async () => {
         setBusy(true); setError(null);
         try {
@@ -24,7 +24,7 @@ export function RelevanceButton({ snapshotId }: { snapshotId: string }) {
       }}>
       {busy ? "Анализ…" : "AI-рейтинг"}
     </button>
-    {error && <span className="helper" role="alert">{error}</span>}
+    {error && <span className="small secondary" role="alert">{error}</span>}
   </>;
 }
 
@@ -33,8 +33,8 @@ export function BatchAnalyzeButton({ count }: { count: number }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  return <span className="search-controls">
-    <button type="button" className="button primary compact" disabled={busy || count === 0}
+  return <span className="row">
+    <button type="button" className="btn primary" disabled={busy || count === 0}
       onClick={async () => {
         setBusy(true); setError(null); setResult(null);
         try {
@@ -55,20 +55,20 @@ export function BatchAnalyzeButton({ count }: { count: number }) {
       }}>
       {busy ? "Анализируем…" : `AI-анализ всех (${count})`}
     </button>
-    {result && <output className="helper" aria-live="polite">{result}</output>}
-    {error && <span className="helper" role="alert">{error}</span>}
+    {result && <output className="small secondary" aria-live="polite">{result}</output>}
+    {error && <span className="small secondary" role="alert">{error}</span>}
   </span>;
 }
 
 export function ScoreBadge({ score }: { score: Score }) {
-  const color = score.score >= 70 ? "neutral" : score.score >= 40 ? "neutral" : "review";
-  return <div className="card-bottom" style={{ marginTop: ".5rem" }}>
-    <span className={`badge ${color}`} title={score.explanation}>
+  const tone = score.score >= 40 ? "neutral" : "review";
+  return <div className="stack" style={{ gap: 4 }}>
+    <span className={`badge ${tone}`} title={score.explanation}>
       AI-рейтинг: {score.score}/100
     </span>
     {score.matchedSkills.length > 0 &&
-      <span className="helper">Совпало: {score.matchedSkills.slice(0, 3).join(", ")}</span>}
+      <span className="small secondary">Совпало: {score.matchedSkills.slice(0, 3).join(", ")}</span>}
     {score.missingSkills.length > 0 &&
-      <span className="helper">Не хватает: {score.missingSkills.slice(0, 3).join(", ")}</span>}
+      <span className="small secondary">Не хватает: {score.missingSkills.slice(0, 3).join(", ")}</span>}
   </div>;
 }

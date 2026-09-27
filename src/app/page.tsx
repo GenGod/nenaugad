@@ -1,32 +1,55 @@
 import Link from "next/link";
+import { Icon } from "../components/icon.tsx";
 
 export default function Home() {
   return <>
     <section className="hero">
       <div>
-        <p className="eyebrow">Удалённая работа. С понятными условиями.</p>
-        <h1>Работа, которая<br /><em>совпадает с жизнью.</em></h1>
-        <p className="hero-lead">Не просто слово remote. Страна найма, рабочие часы и требования — на виду, а неизвестное не выдаётся за совпадение.</p>
+        <p className="overline">Подбор с основаниями</p>
+        <h1>Выбирать работу.<br /><em>Не наугад.</em></h1>
+        <p className="lead">Удалённая работа с понятными условиями: страна найма, рабочие часы
+          и обязательные требования стоят рядом с каждым выводом, а неизвестное не выдаётся
+          за совпадение.</p>
         <div className="actions">
-          <Link className="button primary" href="/jobs">Посмотреть демо-каталог <span aria-hidden="true">→</span></Link>
-          <Link className="text-link" href="/status">Как устроен старт</Link>
+          <Link className="btn primary large" href="/profile">Подобрать по резюме</Link>
+          <Link className="btn secondary large" href="/jobs">Смотреть вакансии</Link>
         </div>
-        <p className="helper">Это стартовый шаблон для разработки. Все данные ниже — примеры.</p>
+        <p className="privacy"><Icon name="lock" size={16} />
+          Вы подтвердите профиль перед подбором. Резюме не отправляется работодателям
+          автоматически.</p>
       </div>
-      <aside className="hero-example" aria-label="Пример карточки условий">
-        <div className="example-title"><span className="company-monogram">F</span><span>Fern Labs<span className="source-line">Синтетическая компания</span></span></div>
-        <h2>Senior Frontend Engineer</h2>
-        <p className="salary">€72 000–90 000 / год</p>
-        <div className="example-row"><span>Формат</span><strong>Полностью удалённо</strong></div>
-        <div className="example-row"><span>Страны найма</span><strong>По всему миру</strong></div>
-        <div className="example-row"><span>Рабочие часы</span><span className="badge review">Не опубликованы</span></div>
-        <p className="helper">Совместимость с вашим профилем ещё не оценена. В шаблоне нет авторизации и профилей.</p>
+      <aside className="proof-shell" aria-label="Пример карты условий">
+        <div className="proof-head"><span>Пример</span><span>Карта условий</span></div>
+        <div className="proof-card">
+          <div className="row">
+            <span className="company-mark fern" aria-hidden="true">F</span>
+            <div>
+              <p className="small secondary">Fern Labs · синтетическая компания</p>
+              <h3>Senior Frontend Engineer</h3>
+            </div>
+          </div>
+          <p className="pay money">€72 000–90 000 <small className="small secondary">/ год, до налогов</small></p>
+          <div className="proof-rule"><Icon name="check" size={16} />
+            <span><strong>Страна найма</strong>По всему миру — по контракту источника</span></div>
+          <div className="proof-rule"><Icon name="help-circle" size={16} style={{ color: "var(--amber)" }} />
+            <span><strong>Рабочие часы</strong>Не опубликованы — нужно уточнить</span></div>
+          <div className="proof-rule"><Icon name="check" size={16} />
+            <span><strong>Формат</strong>Постоянная полная удалёнка, без обязательного офиса</span></div>
+          <p className="proof-foot">Демонстрационный пример, не реальная вакансия. Персональная
+            совместимость появится после подтверждения профиля.</p>
+        </div>
       </aside>
     </section>
-    <section className="principles" aria-label="Принципы Nenaugad">
-      <article><span className="eyebrow">01 / Ясность</span><h2>Условия раньше обещаний</h2><p>Полная удалёнка не означает, что нанимают из любой страны.</p></article>
-      <article><span className="eyebrow">02 / Контроль</span><h2>Решение остаётся за вами</h2><p>Без автоматической отправки резюме и скрытых откликов.</p></article>
-      <article><span className="eyebrow">03 / Основания</span><h2>Неизвестное остаётся видимым</h2><p>Неполные сведения не превращаются в уверенную рекомендацию.</p></article>
+    <section className="promise-grid" aria-label="Принципы Ненаугад">
+      <div className="promise"><Icon name="conditions" />
+        <h3>Условия раньше обещаний</h3>
+        <p>Полная удалёнка не означает, что нанимают из любой страны.</p></div>
+      <div className="promise"><Icon name="shield" />
+        <h3>Решение остаётся за вами</h3>
+        <p>Без автоматической отправки резюме и скрытых откликов.</p></div>
+      <div className="promise"><Icon name="evidence" />
+        <h3>Неизвестное остаётся видимым</h3>
+        <p>Неполные сведения не превращаются в уверенную рекомендацию.</p></div>
     </section>
   </>;
 }

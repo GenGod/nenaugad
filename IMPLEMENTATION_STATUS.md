@@ -1,8 +1,80 @@
 # Nenaugad — status (ex-Atlas Starter)
 
 ## Сейчас
-Активная задача: [S2-002](tasks/S2-002-hide-and-applied.md) — **implemented,
-tested locally** (2026-09-25), ждёт review/принятия владельца.
+Активная задача: [DS-001](tasks/DS-001-nenaugad-design-system.md) —
+**accepted владельцем** (2026-09-27); ветка `feature/nenaugad-design-system`
+(e346203) готовится к merge, идёт расширение тестового покрытия.
+
+**DS-001 — дизайн-система Ненаугад 1.3 в приложении (ветка
+`feature/nenaugad-design-system`, не слита в main).** Владелец 2026-09-26
+поручил применить брендбук из `Reference/Nenaugad/` (v1.3) pixel-perfect со
+скриншотными тестами. Реализовано: токены `--ng-*` — 140 шт (132 значения
+Atlas 1.1 без изменения + 8 brand) из нового
+`docs/solo/context/nenaugad.tokens.json`; генератор `scripts/tokens.mjs`
+теперь учитывает единицы DTCG (rem больше не делится на 16 — починен
+мёртвый слой `--size-*`/`--leading-*`, добавлены motion/layer/weight/brand);
+`atlas.tokens.json` сохранён на месте (требование guardrails), больше не
+источник генерации. Бренд: `public/brand/wordmark.png` (208/176 px, из
+комплекта), favicon.svg, «Ненаугад» в metadata/UI, tagline «Только
+удалённо». Иконки: `docs/solo/context/nenaugad.icons.json` (64 глифа) →
+`scripts/icons.mjs` → спрайт `public/icons/nenaugad.sprite.svg` + типизированный
+реестр; `Icon`-компонент через `<use href>` (без `dangerouslySetInnerHTML`,
+CSP не тронут); `icons:check` в `check:offline`. `globals.css` переписан из
+эталонного CSS витрины (продуктовый слой 1:1: `.wrap`, `.btn`, `.badge`,
+`.job-card`, `.context`, `.conditions`, `.empty`, `.banner`, `.saved-row`,
+`.mobile-nav`…); все экраны (/, /jobs, /jobs/[id], /matched, /profile,
+/saved, /status, /login, /cv, /letters, error/not-found) переведены на
+разметку витрины; header/footer/mobile-nav — с `aria-current` и SVG-иконками
+вместо unicode. Display-слой: `display_name` источника фикстур →
+«Nenaugad Fixtures» (внутренний `source_id: "atlas-fixtures"` и все ключи
+не тронуты). Главная фраза «Выбирать работу. Не наугад.»
+
+**Скриншотные тесты:** `tests/e2e/visual.spec.ts` — 13 состояний × 3 вьюпорта
+(1440/390/320), fullPage-базлайны в git; dev-индикатор Next скрывается,
+email в header детерминирован по проекту, профиль перед снимками
+восстанавливается удалением (база персистит между прогонами).
+
+**Проверено (реальные команды):** `npm run check` → exit 0 (tokens:check 140,
+icons:check 64, guardrails, unit **117/117**, biome, tsc); `npm run build` →
+exit 0; `npm run test:e2e` → **93/93**: 39 старых сценариев с обновлёнными
+селекторами DOM/копирайта, 18 design-system-проверок (ассеты/спрайт 64 глифа,
+security-заголовки, header/favicon/декоративные иконки, карта условий 5 групп
+с amber-состоянием unknown, mobile-nav по вьюпортам, редирект письма) и
+36 визуальных состояний (базлайны стабильны в повторных прогонах). После
+приёмки владельцем покрытие расширено: unit- suite
+`tests/unit/design-system.test.ts` (полный набор 140 токенов с ключевыми
+значениями витрины, семантические алиасы, 64 глифа в 4 группах, спрайт без
+исполняемого содержимого, замыкание `var()` в globals.css, запрет
+screen-local цветов вне китовых акцентов) + скриншотные состояния
+unknown-географии, пустой выдачи, поиска и ошибки валидации профиля.
+`test:db` не запускался — изменений данных/миграций нет (`not_run`, не
+«прошёл»).
+
+**Задокументированные отклонения от витрины** (правило «домен важнее
+screenshot», полный список в задаче): нет мёртвой кнопки «Фильтры» (в каталоге
+нет фильтров кроме поиска); нет bookmark на карточках фикстур (сохранение —
+только для снапшотов по API-контракту; на карточках подбора bookmark
+настоящий); статус в «Сохранённом» — реальные действия, а не демо-select;
+копирайт демо-полосы адаптирован к фактическому состоянию приложения.
+
+**Ограничения/затраты:** шрифтовые файлы не входят в комплект (стеки
+Inter/Source Serif 4 с fallback, CSP `font-src 'self'`) — базлайны точны для
+среды, где сняты, на машинах без Inter рендер уйдёт в fallback; фиксированные
+элементы в fullPage-снимках на mobile рисуются в позиции первого вьюпорта
+(артефакт Playwright, стабилен). Расход coding-host: unknown. Побочный
+артефакт сессии: `docs/research/2026-09-26-job-matching-research.md`
+(веб-исследование субагента вне задачи DS-001) — не закоммичен, решение
+владельца. Dev-сервер на :3000 был остановлен для прогона e2e
+(`npm run dev` перезапускает).
+
+**Откат:** ветка не слита; `git checkout main` полностью возвращает прежний
+вид. Следующий шаг: review владельца; далее S3-002 или batch API test S4-003.
+
+---
+Предыдущие записи (S2-002, S3-003, S1-003, …) сохранены ниже без изменений.
+
+Активная задача ранее: [S2-002](tasks/S2-002-hide-and-applied.md) —
+**implemented, tested locally** (2026-09-25), ждёт review/принятия владельца.
 
 **Что реализовано:** миграция 0008 (`hidden_jobs` с reason-CHECK +
 `saved_jobs.marked_applied_at`); фиксированные коды причин скрытия (7 шт,
