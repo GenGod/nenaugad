@@ -35,5 +35,12 @@ export function SnapshotCard({ card }: { card: SnapshotCardView }) {
       Источник: {card.source.displayName} · листинг от {publishedDate(card)} · данные обновляются регулярно ·
       {" "}<a className="source-link" href={card.apply.url} rel="nofollow noreferrer" target="_blank">
         Открыть на {card.source.displayName}</a></p>
+    {/* Cross-source provenance (item A4): the same posting on other boards is
+        shown once, but never at the cost of the other source's attribution —
+        each one keeps its own named backlink. */}
+    {card.alsoListedAt.length > 0 && <p className="source">
+      Та же вакансия также на: {card.alsoListedAt.map((listing, index) => <span key={listing.sourceId}>
+        {index > 0 ? ", " : ""}<a className="source-link" href={listing.url} rel="nofollow noreferrer" target="_blank">{listing.displayName}</a>
+      </span>)}</p>}
   </article>;
 }

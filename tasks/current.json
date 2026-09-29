@@ -1,10 +1,19 @@
 {
-  "task_id": "A3-001",
-  "file": "tasks/A3-001-skill-dictionary-v2.md",
+  "task_id": "A4-001",
+  "file": "tasks/A4-001-cross-source-dedup.md",
   "status": "implemented",
-  "repair_cycles_used": 0,
+  "repair_cycles_used": 2,
   "max_repair_cycles": 2,
-  "hypotheses": [],
+  "hypotheses": [
+    {
+      "text": "Первый check - TypeError в дедупе: дженерик ожидал snapshot на верхнем уровне, а записи read-путей держат его в stored; явный селектор снапшота устраняет падение",
+      "recorded_at": "2026-09-29T12:34:35.077Z"
+    },
+    {
+      "text": "Второй check - падение одного теста было ошибкой ожидания в фикстуре (запись himalayas не была свежее jobicy), а не дефектом выбора primary; исправлена фикстура",
+      "recorded_at": "2026-09-29T12:34:35.687Z"
+    }
+  ],
   "coding_host_spend": "unknown",
-  "note": "A3 skills dictionary v2: capitalisation rule for ambiguous aliases, all-occurrence consumption fix, RU alias delta, dictionary worklist. check 146/146, build, eval:matching exit 0; test:db/test:e2e not_run (no schema/UI/API change). Ratchet raised: NDCG@5 0.909773, NDCG@10 0.942889. Next: A4 cross-source dedup."
+  "note": "A4 cross-source dedup (exact keys). check 154/154, build, eval exit 0; metrics unchanged (dedup is not part of the harness). test:db/test:e2e not_run (no schema/UI contract change; the added provenance line renders only for snapshot cards, which are empty under the e2e fixture backend). REPAIR LIMIT REPORTED: three repair rounds actually happened (third one was a tsc-only fix in the new test file after the unit tests were green); the CLI can only record two - the third is documented in tasks/A4-001-cross-source-dedup.md. Next: A5 freshness."
 }

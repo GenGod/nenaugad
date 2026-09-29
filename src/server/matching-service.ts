@@ -5,7 +5,8 @@ import { latestProfile } from "./profile-service.ts";
 import { hiddenSnapshotIds } from "./feedback-service.ts";
 import { readSnapshotCardsData, snapshotPool } from "./storage/snapshots.ts";
 import { getSourcePolicy } from "./source-policies.ts";
-import { classifySnapshot, policyPublishes, projectCard } from "../domain/snapshot-projection.ts";
+import { choosePrimary, groupDuplicates } from "../domain/dedup.ts";
+import { classifySnapshot, policyPublishes, projectCard, type PolicyBoundRecord } from "../domain/snapshot-projection.ts";
 import { evaluateJob, RULESET_VERSION, type JobEvaluation } from "../domain/matching.ts";
 
 export type MatchedJob = Readonly<{
@@ -37,6 +38,7 @@ export async function matchedForUser(userId: string): Promise<MatchedResult> {
   const eligible: MatchedJob[] = [];
   const needsReview: MatchedJob[] = [];
   let notEvaluated = 0;
+  const collected: (PolicyBoundRecord & { excerpt: string })[] = [];
   for (const sourceId of ["himalayas", "jobicy"]) {
     const policy = getSourcePolicy(sourceId);
     if (!policy || !policyPublishes(policy, new Date().toISOString())) continue;
@@ -47,13 +49,32 @@ export async function matchedForUser(userId: string): Promise<MatchedResult> {
         notEvaluated += 1;
         continue;
       }
-      if (hidden.has(row.stored.snapshot.id)) continue;
-      const evaluation = evaluateJob(row.stored.snapshot, profile.input);
-      const card = { ...projectCard(row.stored, policy), excerpt: row.excerpt };
-      if (evaluation.status === "eligible") eligible.push({ card, evaluation });
-      else if (evaluation.status === "needs_review") needsReview.push({ card, evaluation });
-      // ineligible stays hidden by default (spec 13.3)
+      collected.push({ stored: row.stored, policy, excerpt: row.excerpt });
     }
+  }
+  // One posting = one result (item A4): the same job syndicated to two boards
+  // is evaluated through one representative record and its card lists the other
+  // sources. The representative is chosen among the records whose gates pass,
+  // so a fresher unreviewed copy cannot hide a publishable one. A hide applies
+  // to the whole group — the candidate said "not this posting", not "not this
+  // copy of it".
+  for (const group of groupDuplicates(collected, record => record.stored.snapshot)) {
+    if (group.members.some(record => hidden.has(record.stored.snapshot.id))) continue;
+    const primary = choosePrimary(group.members, record => record.stored.snapshot);
+    const others = group.members.filter(record => record !== primary);
+    const evaluation = evaluateJob(primary.stored.snapshot, profile.input);
+    const card = {
+      ...projectCard(primary.stored, primary.policy, others.map(record => ({
+        sourceId: record.policy.source_id,
+        displayName: record.policy.attribution.display_name,
+        url: record.stored.snapshot.source_url,
+      }))),
+      excerpt: primary.excerpt,
+    };
+    const matched: MatchedJob = { card, evaluation };
+    if (evaluation.status === "eligible") eligible.push(matched);
+    else if (evaluation.status === "needs_review") needsReview.push(matched);
+    // ineligible stays hidden by default (spec 13.3)
   }
   return {
     status: "ok", rulesetVersion: RULESET_VERSION,
