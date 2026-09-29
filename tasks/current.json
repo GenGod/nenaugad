@@ -1,19 +1,19 @@
 {
-  "task_id": "A9-001",
-  "file": "tasks/A9-001-ranker-shadow-guardrails.md",
+  "task_id": "A10-001",
+  "file": "tasks/A10-001-ev-ghost-signal.md",
   "status": "implemented",
   "repair_cycles_used": 2,
   "max_repair_cycles": 2,
   "hypotheses": [
     {
-      "text": "check упал на tsc: реестр типизировал ранкеры тремя аргументами, а теневая служба передаёт четвёртый (предпочтения A6-002); гипотеза — у реестра должен быть собственный тип ранкера с необязательными предпочтениями, старые версии при этом не переписываются",
-      "recorded_at": "2026-09-29T13:29:01.049Z"
+      "text": "tsc после подключения слоя: обязательное поле RankedJob.ghost отсутствовало у псевдо-ранкера порядка каталога в реестре, у синтетического ранкера в matching-eval.test.ts и у записей collected в выдаче (они не несли closure); гипотеза — контракт расширился, все три места обязаны отдавать новый факт",
+      "recorded_at": "2026-09-29T13:35:13.642Z"
     },
     {
-      "text": "Живая проверка дала ложное срабатывание guardrail'а: seen-set честно скрыл все 46 вакансий, и метрика пустой выдачи посчитала это деградацией; гипотеза — пустой пул ранкера не равен пустой выдаче, метрика обязана считать только запросы, где ранкеру было что упорядочивать (и ловить ранкер, выкидывающий всё из непустого входа)",
-      "recorded_at": "2026-09-29T13:29:02.645Z"
+      "text": "Первый прогон нового unit-теста: job.snapshot.closure не существует — сигнал проверки принят за поле снапшота; гипотеза — closure живёт в closure_checks, а не в контракте снапшота, и тест обязан проверять инертность слоя (нет сигнала → ghost 0), а не выдуманное поле",
+      "recorded_at": "2026-09-29T13:35:14.225Z"
     }
   ],
   "coding_host_spend": "unknown",
-  "note": "A9 ranker infrastructure: ranker registry with stable ids (incl. feed-default-order = what candidates get today), per-request guardrails (empty share, closed/duplicate/unapproved in top-10, p95 latency) as constants with tests, shadow diff by positions, counts-only logging, eval:shadow CLI gate (exit 1 on violations). Product order deliberately unchanged: the shadow reports, never reorders, and a throwing shadow cannot affect the feed. Measurements: golden set v0 moves 150/159 positions (top10 changed 68, max shift 22); live feed 46 postings -> 43 moved, top10 changed 18, maxShift 39, guardrails pass, shadow cost ~0-25ms. V3: check 189/189, test:db 42/42, build exit 0, e2e 96 passed, eval:matching unchanged. Counter 2/2 with 4 verification rounds (type contract; shadow scope = delivered only; pool semantics; live false positive on an honestly empty feed), all documented. Next: A10 (EV multipliers behind these guardrails)."
+  "note": "A10 EV layer phase 1 (ghost): closure signals finally reach ranking and the candidate. src/domain/ev-multipliers.ts (suspectedInactive -20, pipelineStale -25, unknown/active = 0, honest note), RankableJob.closure + RankedJob.ghost, RANKER_VERSION v4, readSnapshotCardsData joins closure_checks, MatchedJob.closure carries the signal to the card. Urgency slot deliberately not duplicated: the A5 age demotion is phase-1 urgency, the survival model is B6. Verification: check 194/194, test:db 44/44 (2 new: one failed check keeps the posting with the note, two close it by the closure rule, unknown neither hides nor warns), build exit 0, e2e 96 passed, eval:matching unchanged (v4, NDCG@10 0.916), eval:shadow v4 moves 155/159 positions vs catalog order with guardrails passing; live check showed the note on a card while the posting stayed in the feed. The feed is still not ordered by the ranker - switching it is an owner decision (the page AI sort is decision #11). Counter 2/2. Group A complete: A1-A10."
 }

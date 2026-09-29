@@ -39,7 +39,7 @@ export const REGISTERED_RANKERS: readonly RegisteredRanker[] = [
   {
     id: FEED_DEFAULT_ORDER_ID,
     description: "Not a ranker: the order the catalog itself delivers (what candidates get today).",
-    rank: (jobs) => jobs.map(job => ({ ...job, score: 0, freshness: 0, preference: 0 })),
+    rank: (jobs) => jobs.map(job => ({ ...job, score: 0, freshness: 0, preference: 0, ghost: 0 })),
   },
   {
     id: "v0-status-skills-role",

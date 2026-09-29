@@ -10,6 +10,7 @@ import { Icon } from "../../components/icon.tsx";
 import { tint } from "../../components/job-card.tsx";
 import { getAllCachedScores } from "../../server/relevance-service.ts";
 import { firstSeenLabel } from "../../domain/freshness.ts";
+import { ghostNote } from "../../domain/ev-multipliers.ts";
 import { SEEN_TTL_DAYS } from "../../domain/seen-set.ts";
 import { ImpressionReporter } from "../../components/impression-reporter.tsx";
 import { latestProfile } from "../../server/profile-service.ts";
@@ -66,6 +67,9 @@ function MatchedCard({ job, score, tone, now }: {
   // Item A5: when OUR pipeline first saw the posting, next to (not instead of)
   // the source's own publication date — the two are different facts.
   const foundAge = firstSeenLabel(card.firstSeenAt, now);
+  // Item A10: a posting whose availability we could not confirm is still shown —
+  // one failed check is a suspicion, not proof — but the candidate is told.
+  const availabilityNote = ghostNote(job.closure);
   return <article className="job-card">
     <div className="job-top">
       <span className={`company-mark ${tint(card.company)}`} aria-hidden="true">{card.company.slice(0, 1)}</span>
@@ -81,6 +85,9 @@ function MatchedCard({ job, score, tone, now }: {
       {published && <span><Icon name="calendar" />Листинг от {published}</span>}
       {foundAge !== null && <span><Icon name="clock" />{foundAge}</span>}
     </div>
+    {availabilityNote !== null && <p className="small secondary" style={{ marginTop: 4 }}>
+      <Icon name="help-circle" size={16} /> {availabilityNote}
+    </p>}
     <div className="job-bottom">
       <div>
         <span className={`badge ${tone === "match" ? "pass" : "review"}`}>

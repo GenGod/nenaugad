@@ -5,6 +5,7 @@
 // fixed literals with $n parameters; no user input is ever concatenated.
 import { Pool } from "pg";
 import { isJobSnapshot, type SourcePolicy } from "../../domain/source-contracts.ts";
+import type { ClosureSignal } from "../../domain/ev-multipliers.ts";
 import type { SnapshotStore, StoredSnapshot } from "../../domain/snapshot-projection.ts";
 import type { ImportState, SnapshotPersistence } from "../import/himalayas-adapter.ts";
 import { localDatabaseUrl } from "../config.ts";
@@ -112,21 +113,40 @@ export function createPostgresPersistence(pool: Pool, policy: SourcePolicy): Sna
 export type SnapshotCardRecord = Readonly<{
   stored: StoredSnapshot;
   excerpt: string;
+  /**
+   * Availability signal from the closure checks (item A10), or null when no check
+   * has run. Read together with the card so ranking and the candidate-facing note
+   * use the same fact.
+   */
+  closure: ClosureSignal | null;
 }>;
 
 export async function readSnapshotCardsData(
   pool: Pool, sourceId: string,
 ): Promise<readonly SnapshotCardRecord[]> {
   const result = await pool.query(
-    "SELECT id, source_id, content_hash, first_seen_at, full_pass_misses, excerpt, snapshot FROM job_snapshots WHERE source_id = $1",
+    "SELECT j.id, j.source_id, j.content_hash, j.first_seen_at, j.full_pass_misses, j.excerpt, j.snapshot, c.last_result, c.consecutive_inactive FROM job_snapshots j LEFT JOIN closure_checks c ON c.snapshot_id = j.id WHERE j.source_id = $1",
     [sourceId],
   );
   const rows: SnapshotCardRecord[] = [];
   for (const row of result.rows) {
     const stored = toStored(row as Row);
-    if (stored) rows.push({ stored, excerpt: String((row as Row).excerpt ?? "") });
+    if (stored) {
+      rows.push({
+        stored,
+        excerpt: String((row as Row).excerpt ?? ""),
+        closure: toClosureSignal(row as Row),
+      });
+    }
   }
   return rows;
+}
+
+/** Closure signals are optional (a source without availability checks has none). */
+function toClosureSignal(row: Row): ClosureSignal | null {
+  const lastResult = row.last_result;
+  if (lastResult !== "active" && lastResult !== "inactive" && lastResult !== "unknown") return null;
+  return { lastResult, consecutiveInactive: Number(row.consecutive_inactive ?? 0) };
 }
 
 const globalPool = globalThis as typeof globalThis & { nenaugadSnapshotPool?: Pool };

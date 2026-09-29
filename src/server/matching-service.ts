@@ -11,12 +11,16 @@ import { choosePrimary, groupDuplicates } from "../domain/dedup.ts";
 import { classifySnapshot, policyPublishes, projectCard, type PolicyBoundRecord } from "../domain/snapshot-projection.ts";
 import { evaluateJob, RULESET_VERSION, type JobEvaluation } from "../domain/matching.ts";
 import type { RankableJob } from "../domain/match-ranker.ts";
+import type { ClosureSignal } from "../domain/ev-multipliers.ts";
 import type { RankedRequestItem } from "../domain/rank-guardrails.ts";
 import { computeRankerShadow, logRankerShadow, type ShadowRequest } from "./ranker-shadow-service.ts";
 
 export type MatchedJob = Readonly<{
   card: ReturnType<typeof projectCard> & Readonly<{ excerpt: string }>;
   evaluation: JobEvaluation;
+  /** Availability signal (item A10): shown as a candidate-facing note, and used by
+   *  the ranker's ghost demotion. Null when no check has run. */
+  closure: ClosureSignal | null;
 }>;
 
 export type MatchedResult = Readonly<{
@@ -64,7 +68,7 @@ export async function matchedForUser(
   const shownForRanker: RankableJob[] = [];
   const guardrailItems: RankedRequestItem[] = [];
   const deliveredGroupKeys = new Set<string>();
-  const collected: (PolicyBoundRecord & { excerpt: string })[] = [];
+  const collected: (PolicyBoundRecord & { excerpt: string; closure: ClosureSignal | null })[] = [];
   for (const sourceId of ["himalayas", "jobicy"]) {
     const policy = getSourcePolicy(sourceId);
     if (!policy || !policyPublishes(policy, now)) continue;
@@ -75,7 +79,7 @@ export async function matchedForUser(
         notEvaluated += 1;
         continue;
       }
-      collected.push({ stored: row.stored, policy, excerpt: row.excerpt });
+      collected.push({ stored: row.stored, policy, excerpt: row.excerpt, closure: row.closure });
     }
   }
   // Seen-set (item A6): a posting the candidate already looked at and did not act
@@ -117,7 +121,7 @@ export async function matchedForUser(
       }))),
       excerpt: primary.excerpt,
     };
-    const matched: MatchedJob = { card, evaluation };
+    const matched: MatchedJob = { card, evaluation, closure: primary.closure };
     if (evaluation.status === "eligible") eligible.push(matched);
     else if (evaluation.status === "needs_review") needsReview.push(matched);
     // ineligible stays hidden by default (spec 13.3) — and out of the shadow too:
@@ -128,6 +132,7 @@ export async function matchedForUser(
       snapshot: primary.stored.snapshot,
       status: evaluation.status === "eligible" ? "eligible" : "needs_review",
       firstSeenAt: primary.stored.firstSeenAt,
+      closure: primary.closure,
     });
     guardrailItems.push({
       id: primary.stored.snapshot.id,

@@ -53,7 +53,7 @@ function requestedCandidates(): readonly string[] {
   }
   return REGISTERED_RANKERS
     .map(ranker => ranker.id)
-    .filter(id => id !== RANKER_VERSION && id !== FEED_DEFAULT_ORDER_ID);
+    .filter(id => id !== FEED_DEFAULT_ORDER_ID);
 }
 
 const candidates = requestedCandidates();
