@@ -1,15 +1,19 @@
 {
-  "task_id": "A8-001",
-  "file": "tasks/A8-001-events-journal.md",
+  "task_id": "A6-001",
+  "file": "tasks/A6-001-seen-set.md",
   "status": "implemented",
-  "repair_cycles_used": 1,
+  "repair_cycles_used": 2,
   "max_repair_cycles": 2,
   "hypotheses": [
     {
-      "text": "Гейт записи Mimosa заблокировал первую версию events-service.ts за сборку SQL-текста из плейсхолдеров; тот же интент выражается одним параметризованным INSERT ... FROM unnest(...) без строкового SQL вообще, что и прошло гейт с зелёными тестами",
-      "recorded_at": "2026-09-29T12:46:04.402Z"
+      "text": "Первый прогон проверок красный не из-за правила, а вокруг него: незакрытый generic в типе MatchedResult (биом парсинг), тест, берущий первую строку снапшотов в общей тестовой БД, и показ, записанный позже переданных часов на миллисекунды, из-за чего допуск clock skew нужен как явная константа",
+      "recorded_at": "2026-09-29T13:07:19.122Z"
+    },
+    {
+      "text": "После первого ремонта остался один красный тест: повторный импорт внутри min_poll_interval пропускается адаптером (retry_scheduled), поэтому изменение содержимого вообще не наблюдалось; гипотеза — сбросить import_state, имитируя следующий запланированный опрос, а не ждать окно",
+      "recorded_at": "2026-09-29T13:07:19.711Z"
     }
   ],
   "coding_host_spend": "unknown",
-  "note": "A8 events journal: migration 0014 job_events, strict payload domain, service (single parameterized unnest insert, no string-built SQL), POST /api/v1/events, deletion with the profile. check 163/163, test:db exit 0 (4 new integration tests on a live test DB), build exit 0 with the new route. test:e2e not_run (no UI change). Repair cycle 1/2: the write gate flagged the placeholder-joining version, rewritten as unnest. Client-side impression/click sending is the next small task."
+  "note": "A6 seen-set: migration 0015 job_events.shown_content_hash (server-read fingerprint), domain rule with documented 14-day window and clock-skew tolerance, seen state derived from the journal (no second table), feed suppression per duplicate group with per-tab honest disclosure, client impression reporting (A8's deferred half) with explicit feed-order labels. V3: check 170/170, test:db exit 0 (37/37, 6 new), build exit 0, test:e2e 93 passed (dev DB needed migration 0014 applied), eval:matching unchanged 0.916 NDCG@10. Manual loop on the local DB: 46 impressions with hashes, then 46 suppressed with the disclosure. Repair cycles 2/2. Next small task: A6-002 (weighted demotion around hidden postings), then A7."
 }

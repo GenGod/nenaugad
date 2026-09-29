@@ -10,12 +10,24 @@ import { Icon } from "../../components/icon.tsx";
 import { tint } from "../../components/job-card.tsx";
 import { getAllCachedScores } from "../../server/relevance-service.ts";
 import { firstSeenLabel } from "../../domain/freshness.ts";
+import { SEEN_TTL_DAYS } from "../../domain/seen-set.ts";
+import { ImpressionReporter } from "../../components/impression-reporter.tsx";
 import { latestProfile } from "../../server/profile-service.ts";
 import { snapshotPool } from "../../server/storage/snapshots.ts";
 import type { RelevanceScore } from "../../server/relevance-service.ts";
 
 export const metadata: Metadata = { title: "Подбор" };
 export const dynamic = "force-dynamic";
+
+// The order this feed actually shows today: cached AI relevance first when it
+// exists, catalog order otherwise (match tab), catalog order (review tab). No
+// versioned ranker is wired into the read path yet (item A9), so the journal is
+// given an explicit label of what produced the order rather than a made-up
+// ranker version.
+const FEED_ORDER_VERSION = {
+  match: "v0-ai-score-then-catalog",
+  review: "v0-review-catalog-order",
+} as const;
 
 const OUTCOME_LABELS: Readonly<Record<string, string>> = {
   pass: "совпадает", fail: "не подходит", unknown: "нужно уточнить", not_applicable: "не применимо",
@@ -162,7 +174,12 @@ async function MatchedResults({ userId, result, tab }: {
     contract || "Не задано",
   ].join(" · ");
   const roles = (input?.targetRoles ?? []).join(", ");
-  const list = tab === "review" ? result.needsReview : eligibleSorted;
+  const suppressedHere = tab === "review" ? result.seenSuppressed.needsReview : result.seenSuppressed.eligible;
+  // One normalised list: the rendered slice is also what the impression report
+  // describes, so the positions in the journal match what the candidate saw.
+  const list: readonly { job: MatchedJob; score: RelevanceScore | null }[] = tab === "review"
+    ? result.needsReview.slice(0, 50).map(job => ({ job, score: null }))
+    : eligibleSorted.slice(0, 50);
   return <>
     <header className="page-head">
       <p className="overline">Подбор с основаниями</p>
@@ -210,30 +227,43 @@ async function MatchedResults({ userId, result, tab }: {
         </div>}
         {list.length === 0
           ? <div className="empty">
-            {tab === "match"
+            {suppressedHere > 0
               ? <>
-                <h2>Совпадений пока нет</h2>
-                <p>Правила не нашли полностью совместимых вакансий — это честный результат, а не ошибка.
-                  Проверьте вкладку «Нужно уточнить».</p>
-                <Link className="btn tertiary" href="/matched?tab=review">Нужно уточнить</Link>
+                <h2>Новых {tab === "match" ? "совпадений" : "уточнений"} нет</h2>
+                <p>Вакансии, которые вы уже видели, не показываются заново — скрыто
+                  {" "}{suppressedHere}. Они вернутся, если вакансия изменится, или через
+                  {" "}{SEEN_TTL_DAYS} дней.</p>
+                <Link className="btn tertiary" href={tab === "match" ? "/matched?tab=review" : "/matched"}>
+                  {tab === "match" ? "Нужно уточнить" : "Условия совпадают"}</Link>
               </>
-              : <>
-                <h2>Уточнений нет</h2>
-                <p>Все вакансии либо совпадают по опубликованным условиям, либо несовместимы и скрыты.</p>
-                <Link className="btn tertiary" href="/matched">Условия совпадают</Link>
-              </>}
+              : tab === "match"
+                ? <>
+                  <h2>Совпадений пока нет</h2>
+                  <p>Правила не нашли полностью совместимых вакансий — это честный результат, а не ошибка.
+                    Проверьте вкладку «Нужно уточнить».</p>
+                  <Link className="btn tertiary" href="/matched?tab=review">Нужно уточнить</Link>
+                </>
+                : <>
+                  <h2>Уточнений нет</h2>
+                  <p>Все вакансии либо совпадают по опубликованным условиям, либо несовместимы и скрыты.</p>
+                  <Link className="btn tertiary" href="/matched">Условия совпадают</Link>
+                </>}
           </div>
           : <div className="job-list">
-            {tab === "review"
-              ? result.needsReview.slice(0, 50).map(job =>
-                <MatchedCard key={job.card.id} job={job} tone="review" now={now} />)
-              : eligibleSorted.slice(0, 50).map(({ job, score }) =>
-                <MatchedCard key={job.card.id} job={job} score={score} tone="match" now={now} />)}
+            {list.map(({ job, score }) =>
+              <MatchedCard key={job.card.id} job={job} score={score}
+                tone={tab === "review" ? "review" : "match"} now={now} />)}
           </div>}
+        {list.length > 0 && suppressedHere > 0 && <p className="small secondary" style={{ marginTop: 8 }}>
+          Скрыто как уже показанное: {suppressedHere} — вернутся, если вакансия изменится,
+          или через {SEEN_TTL_DAYS} дней.
+        </p>}
         <p className="small secondary" style={{ marginTop: 16 }}>
           Несовместимые вакансии скрыты; вне оценки (гейты remote/права/жизненный цикл):
           {" "}{result.notEvaluatedCount}.
         </p>
+        <ImpressionReporter rankerVersion={FEED_ORDER_VERSION[tab]}
+          items={list.map(({ job }, index) => ({ snapshotId: job.card.id, position: index }))} />
       </section>
     </div>
   </>;

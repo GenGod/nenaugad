@@ -13,6 +13,7 @@ export async function GET() {
     return NextResponse.json({
       status: "fixture_backend", rulesetVersion: result.rulesetVersion,
       eligible: [], needsReview: [], notEvaluatedCount: 0,
+      seenSuppressed: { eligible: 0, needsReview: 0 },
     });
   }
   return NextResponse.json({
@@ -22,5 +23,6 @@ export async function GET() {
     needsReview: result.needsReview.map(item => ({ id: item.card.id, title: item.card.title,
       company: item.card.company, status: item.evaluation.status, rules: item.evaluation.rules })),
     notEvaluatedCount: result.notEvaluatedCount,
+    seenSuppressed: result.seenSuppressed,
   });
 }

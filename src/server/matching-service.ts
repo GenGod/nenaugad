@@ -3,6 +3,7 @@
 import { readConfig } from "./config.ts";
 import { latestProfile } from "./profile-service.ts";
 import { hiddenSnapshotIds } from "./feedback-service.ts";
+import { suppressedSnapshotIds } from "./seen-service.ts";
 import { readSnapshotCardsData, snapshotPool } from "./storage/snapshots.ts";
 import { getSourcePolicy } from "./source-policies.ts";
 import { choosePrimary, groupDuplicates } from "../domain/dedup.ts";
@@ -20,11 +21,14 @@ export type MatchedResult = Readonly<{
   eligible: readonly MatchedJob[];
   needsReview: readonly MatchedJob[];
   notEvaluatedCount: number;
+  /** Postings kept out of the feed as already seen and not acted on (item A6), per tab. */
+  seenSuppressed: Readonly<{ eligible: number; needsReview: number }>;
 }>;
 
 export async function matchedForUser(userId: string): Promise<MatchedResult> {
   const empty: MatchedResult = {
-    status: "ok", rulesetVersion: RULESET_VERSION, eligible: [], needsReview: [], notEvaluatedCount: 0,
+    status: "ok", rulesetVersion: RULESET_VERSION, eligible: [], needsReview: [],
+    notEvaluatedCount: 0, seenSuppressed: { eligible: 0, needsReview: 0 },
   };
   const config = readConfig(process.env);
   if (config.backend !== "postgres") {
@@ -33,15 +37,20 @@ export async function matchedForUser(userId: string): Promise<MatchedResult> {
   const pool = snapshotPool();
   const profile = await latestProfile(pool, userId);
   if (!profile) return { ...empty, status: "no_profile" };
+  // One reference time for the whole read: policy windows and the seen-set
+  // window must not disagree within a single render.
+  const now = new Date().toISOString();
   // Personal hides (spec 4.3): hidden jobs leave matching for this user only.
   const hidden = await hiddenSnapshotIds(pool, userId);
   const eligible: MatchedJob[] = [];
   const needsReview: MatchedJob[] = [];
   let notEvaluated = 0;
+  let seenSuppressedEligible = 0;
+  let seenSuppressedNeedsReview = 0;
   const collected: (PolicyBoundRecord & { excerpt: string })[] = [];
   for (const sourceId of ["himalayas", "jobicy"]) {
     const policy = getSourcePolicy(sourceId);
-    if (!policy || !policyPublishes(policy, new Date().toISOString())) continue;
+    if (!policy || !policyPublishes(policy, now)) continue;
     const rows = await readSnapshotCardsData(pool, sourceId);
     for (const row of rows) {
       // Gates first (spec 13.2): anything outside the main catalog is not a result.
@@ -52,6 +61,17 @@ export async function matchedForUser(userId: string): Promise<MatchedResult> {
       collected.push({ stored: row.stored, policy, excerpt: row.excerpt });
     }
   }
+  // Seen-set (item A6): a posting the candidate already looked at and did not act
+  // on stays out of the feed until its content changes or the window expires.
+  // Like hiding, the rule spans the whole duplicate group: the candidate saw the
+  // posting, not one board's copy of it.
+  const seenNow = await suppressedSnapshotIds({
+    pool, userId, now,
+    candidates: collected.map(record => ({
+      snapshotId: record.stored.snapshot.id,
+      contentHash: record.stored.contentHash,
+    })),
+  });
   // One posting = one result (item A4): the same job syndicated to two boards
   // is evaluated through one representative record and its card lists the other
   // sources. The representative is chosen among the records whose gates pass,
@@ -63,6 +83,15 @@ export async function matchedForUser(userId: string): Promise<MatchedResult> {
     const primary = choosePrimary(group.members, record => record.stored.snapshot);
     const others = group.members.filter(record => record !== primary);
     const evaluation = evaluateJob(primary.stored.snapshot, profile.input);
+    // A posting the candidate already saw and did not act on is not a result
+    // again until it changes or the window expires (item A6). The evaluation has
+    // already run, so the suppression is counted per tab — an empty tab can then
+    // say honestly WHY it is empty instead of claiming "nothing matched".
+    if (group.members.some(record => seenNow.has(record.stored.snapshot.id))) {
+      if (evaluation.status === "eligible") seenSuppressedEligible += 1;
+      else if (evaluation.status === "needs_review") seenSuppressedNeedsReview += 1;
+      continue;
+    }
     const card = {
       ...projectCard(primary.stored, primary.policy, others.map(record => ({
         sourceId: record.policy.source_id,
@@ -79,5 +108,6 @@ export async function matchedForUser(userId: string): Promise<MatchedResult> {
   return {
     status: "ok", rulesetVersion: RULESET_VERSION,
     eligible, needsReview, notEvaluatedCount: notEvaluated,
+    seenSuppressed: { eligible: seenSuppressedEligible, needsReview: seenSuppressedNeedsReview },
   };
 }
