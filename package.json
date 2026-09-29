@@ -34,7 +34,8 @@
     "smoke:himalayas": "node --experimental-strip-types scripts/smoke-himalayas.ts",
     "eval:matching": "node --experimental-strip-types scripts/eval-matching.ts",
     "task": "node scripts/task.mjs",
-    "syntax": "node scripts/check-syntax.cjs"
+    "syntax": "node scripts/check-syntax.cjs",
+    "eval:shadow": "node --experimental-strip-types scripts/eval-shadow.ts"
   },
   "dependencies": {
     "next": "16.3.6",

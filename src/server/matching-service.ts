@@ -10,6 +10,9 @@ import { getSourcePolicy } from "./source-policies.ts";
 import { choosePrimary, groupDuplicates } from "../domain/dedup.ts";
 import { classifySnapshot, policyPublishes, projectCard, type PolicyBoundRecord } from "../domain/snapshot-projection.ts";
 import { evaluateJob, RULESET_VERSION, type JobEvaluation } from "../domain/matching.ts";
+import type { RankableJob } from "../domain/match-ranker.ts";
+import type { RankedRequestItem } from "../domain/rank-guardrails.ts";
+import { computeRankerShadow, logRankerShadow, type ShadowRequest } from "./ranker-shadow-service.ts";
 
 export type MatchedJob = Readonly<{
   card: ReturnType<typeof projectCard> & Readonly<{ excerpt: string }>;
@@ -27,12 +30,13 @@ export type MatchedResult = Readonly<{
 }>;
 
 /**
- * The candidate's feed. `pool` is injectable so a caller that owns a different
- * connection (tests, the worker) shares exactly this code path.
+ * The candidate's feed. Both seams are injectable so a caller that owns a
+ * different connection (tests, the worker) or wants to observe the shadow run
+ * shares exactly this code path.
  */
 export async function matchedForUser(
   userId: string,
-  options: Readonly<{ pool?: Pool }> = {},
+  options: Readonly<{ pool?: Pool; shadow?: (request: ShadowRequest) => void }> = {},
 ): Promise<MatchedResult> {
   const empty: MatchedResult = {
     status: "ok", rulesetVersion: RULESET_VERSION, eligible: [], needsReview: [],
@@ -55,6 +59,11 @@ export async function matchedForUser(
   let notEvaluated = 0;
   let seenSuppressedEligible = 0;
   let seenSuppressedNeedsReview = 0;
+  // Shadow inputs (item A9): the same postings this feed delivers, plus the flags
+  // the guardrails check. See the shadow run after the loop.
+  const shownForRanker: RankableJob[] = [];
+  const guardrailItems: RankedRequestItem[] = [];
+  const deliveredGroupKeys = new Set<string>();
   const collected: (PolicyBoundRecord & { excerpt: string })[] = [];
   for (const sourceId of ["himalayas", "jobicy"]) {
     const policy = getSourcePolicy(sourceId);
@@ -111,7 +120,38 @@ export async function matchedForUser(
     const matched: MatchedJob = { card, evaluation };
     if (evaluation.status === "eligible") eligible.push(matched);
     else if (evaluation.status === "needs_review") needsReview.push(matched);
-    // ineligible stays hidden by default (spec 13.3)
+    // ineligible stays hidden by default (spec 13.3) — and out of the shadow too:
+    // the shadow compares the postings a candidate can actually see.
+    else continue;
+    // Shadow inputs: only what this feed actually delivers.
+    shownForRanker.push({
+      snapshot: primary.stored.snapshot,
+      status: evaluation.status === "eligible" ? "eligible" : "needs_review",
+      firstSeenAt: primary.stored.firstSeenAt,
+    });
+    guardrailItems.push({
+      id: primary.stored.snapshot.id,
+      // Computed from the data rather than assumed: today the gates make all three
+      // flags false by construction, and that is exactly what a guardrail is for —
+      // a future change that breaks one of them shows up in the numbers.
+      closed: primary.stored.snapshot.lifecycle !== "active",
+      duplicate: deliveredGroupKeys.has(group.key),
+      approvedSource: policyPublishes(primary.policy, now),
+    });
+    deliveredGroupKeys.add(group.key);
+  }
+  // Item A9: run the ranker in shadow over exactly these inputs. What the feed
+  // returns is unchanged — the shadow only reports, and a shadow failure is
+  // swallowed on purpose: a candidate's feed must never depend on it.
+  const shadow = options.shadow
+    ?? ((request: ShadowRequest) => logRankerShadow(computeRankerShadow(request)));
+  try {
+    shadow({
+      jobs: shownForRanker, items: guardrailItems, profile: profile.input,
+      now, poolSize: shownForRanker.length,
+    });
+  } catch {
+    console.error(JSON.stringify({ code: "RANKER_SHADOW_FAILED" }));
   }
   return {
     status: "ok", rulesetVersion: RULESET_VERSION,
