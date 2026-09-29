@@ -131,7 +131,7 @@ test("evaluation: the harness detects degradation (control ranker scores strictl
   // A deliberately bad but deterministic ranker: input order reversed, no scores.
   // Annotated as Ranker so the (jobs, profile, now) contract stays explicit.
   const control: Ranker = (jobs) =>
-    jobs.map(job => ({ ...job, score: 0, freshness: 0 })).reverse();
+    jobs.map(job => ({ ...job, score: 0, freshness: 0, preference: 0 })).reverse();
   const degraded = runMatchingEval(GOLDEN_SET, control);
   assert.ok(degraded.aggregate.ndcgAt10 !== null && baseline.aggregate.ndcgAt10 !== null);
   assert.ok(degraded.aggregate.ndcgAt10 < baseline.aggregate.ndcgAt10,

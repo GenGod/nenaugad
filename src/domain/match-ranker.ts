@@ -1,9 +1,10 @@
-// Baseline ranker for the matching golden-set harness (design items A1, A2, A5).
+// Baseline ranker for the matching golden-set harness (design items A1, A2, A5, A6).
 //
 // Layer stack, each one measurable on its own (see the ratchet tests):
 //   base      — gate status, matched dictionary skills, target role in the title
 //   + A2      — penalty for a must-have requirement the profile cannot evidence
 //   + A5      — freshness of the listing (src/domain/freshness.ts)
+//   + A6      — demotion around postings the candidate hid (negative-preference.ts)
 //
 // Why the requirement term is deliberately asymmetric (measured, not assumed):
 //   * an uncovered must-have (-15) is NEW information — pure skill-overlap
@@ -28,11 +29,12 @@
 // inputs and the same reference time produce the same order.
 import { assessSnapshotRequirements, REQUIREMENT_LAYER_VERSION } from "./requirements.ts";
 import { FRESHNESS_MAX_DEMOTION, freshnessDemotion } from "./freshness.ts";
+import { NEGATIVE_PREFERENCE_VERSION, preferenceDemotion, type DislikedPosting } from "./negative-preference.ts";
 import { extractSkills, skillOverlap } from "./skills.ts";
 import type { ManualProfileInput } from "./profile.ts";
 import type { JobSnapshot } from "./source-contracts.ts";
 
-export const RANKER_VERSION = "v2-status-skills-role-must-stale-demotion";
+export const RANKER_VERSION = "v3-status-skills-role-must-stale-preference-demotion";
 
 export const RANKER_WEIGHTS = {
   eligibleStatus: 30,
@@ -53,6 +55,14 @@ export type RankedJob = RankableJob & Readonly<{
   score: number;
   /** Freshness points (0 or negative); reported for transparency. */
   freshness: number;
+  /** Demotion around hidden postings (0 or negative); reported for transparency. */
+  preference: number;
+}>;
+
+/** What the caller knows about this candidate's stated dislikes (item A6). */
+export type RankerPreferences = Readonly<{
+  /** Postings the candidate hid: their neighbourhood is demoted, never hidden. */
+  disliked?: readonly DislikedPosting[];
 }>;
 
 export type Ranker = (
@@ -68,6 +78,7 @@ function scoreJob(
   profile: ManualProfileInput,
   layers: LayerOptions,
   now: string,
+  preference: number,
 ): number {
   const jobSkills = extractSkills(`${job.snapshot.title} ${job.snapshot.description_text}`);
   const { matched } = skillOverlap(profile.skills, jobSkills);
@@ -87,7 +98,9 @@ function scoreJob(
     // ever lifted above a better match by being new.
     score += freshnessDemotion(job.firstSeenAt, now);
   }
-  return score;
+  // Also demotion only: hiding a posting lowers its neighbours, never the rest —
+  // the layer's worst case is the neighbour's own position.
+  return score + preference;
 }
 
 function orderByScore(
@@ -95,13 +108,20 @@ function orderByScore(
   profile: ManualProfileInput,
   layers: LayerOptions,
   now: string,
+  preferences: RankerPreferences,
 ): readonly RankedJob[] {
+  const disliked = preferences.disliked ?? [];
   return jobs
-    .map(job => ({
-      ...job,
-      score: scoreJob(job, profile, layers, now),
-      freshness: layers.freshness ? freshnessDemotion(job.firstSeenAt, now) : 0,
-    }))
+    .map(job => {
+      const freshness = layers.freshness ? freshnessDemotion(job.firstSeenAt, now) : 0;
+      const preference = preferenceDemotion(job.snapshot, disliked);
+      return {
+        ...job,
+        score: scoreJob(job, profile, layers, now, preference),
+        freshness,
+        preference,
+      };
+    })
     .sort((a, b) => {
       if (a.score !== b.score) return b.score - a.score;
       if (a.snapshot.id === b.snapshot.id) return 0;
@@ -109,32 +129,41 @@ function orderByScore(
     });
 }
 
-/** Product/eval ranking: every layer on. */
+/** Product/eval ranking: every layer on. Preferences default to none. */
 export function rankJobs(
-  jobs: readonly RankableJob[], profile: ManualProfileInput, now: string,
+  jobs: readonly RankableJob[],
+  profile: ManualProfileInput,
+  now: string,
+  preferences: RankerPreferences = {},
 ): readonly RankedJob[] {
-  return orderByScore(jobs, profile, { requirements: true, freshness: true }, now);
+  return orderByScore(jobs, profile, { requirements: true, freshness: true }, now, preferences);
 }
 
 /** Same ranker with the requirement terms off — the A2 ratchet's control. */
 export function rankJobsWithoutRequirements(
-  jobs: readonly RankableJob[], profile: ManualProfileInput, now: string,
+  jobs: readonly RankableJob[],
+  profile: ManualProfileInput,
+  now: string,
 ): readonly RankedJob[] {
-  return orderByScore(jobs, profile, { requirements: false, freshness: true }, now);
+  return orderByScore(jobs, profile, { requirements: false, freshness: true }, now, {});
 }
 
 /** Same ranker with the freshness term off — the A5 ratchet's control. */
 export function rankJobsWithoutFreshness(
-  jobs: readonly RankableJob[], profile: ManualProfileInput, now: string,
+  jobs: readonly RankableJob[],
+  profile: ManualProfileInput,
+  now: string,
 ): readonly RankedJob[] {
-  return orderByScore(jobs, profile, { requirements: true, freshness: false }, now);
+  return orderByScore(jobs, profile, { requirements: true, freshness: false }, now, {});
 }
 
 /** The A1 baseline: none of the later layers. Exists only for measurement. */
 export function rankJobsBaselineV0(
-  jobs: readonly RankableJob[], profile: ManualProfileInput, _now: string,
+  jobs: readonly RankableJob[],
+  profile: ManualProfileInput,
+  _now: string,
 ): readonly RankedJob[] {
-  return orderByScore(jobs, profile, { requirements: false, freshness: false }, _now);
+  return orderByScore(jobs, profile, { requirements: false, freshness: false }, _now, {});
 }
 
 export const RANKER_VERSIONS = {
@@ -142,4 +171,5 @@ export const RANKER_VERSIONS = {
   baselineWithoutRequirements: "v1-equivalent-status-skills-role-uncovered-must",
   baselineWithoutFreshness: "v1-requirements-on",
   requirementLayer: REQUIREMENT_LAYER_VERSION,
+  preferenceLayer: NEGATIVE_PREFERENCE_VERSION,
 } as const;

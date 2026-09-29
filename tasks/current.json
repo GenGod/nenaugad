@@ -1,19 +1,19 @@
 {
-  "task_id": "A6-001",
-  "file": "tasks/A6-001-seen-set.md",
+  "task_id": "A6-002",
+  "file": "tasks/A6-002-negative-preference.md",
   "status": "implemented",
   "repair_cycles_used": 2,
   "max_repair_cycles": 2,
   "hypotheses": [
     {
-      "text": "Первый прогон проверок красный не из-за правила, а вокруг него: незакрытый generic в типе MatchedResult (биом парсинг), тест, берущий первую строку снапшотов в общей тестовой БД, и показ, записанный позже переданных часов на миллисекунды, из-за чего допуск clock skew нужен как явная константа",
-      "recorded_at": "2026-09-29T13:07:19.122Z"
+      "text": "Первый прогон новых unit-тестов дал 4 падения, и все — в моих ожиданиях, а не в слое: сигнал общего стека срабатывает и там, где я ждал 0 (другая компания с тем же стеком), алиас js не резолвится (ambiguous в словаре A3), а контроль в паре имел другой текст и потому другой базовый скор",
+      "recorded_at": "2026-09-29T13:12:45.631Z"
     },
     {
-      "text": "После первого ремонта остался один красный тест: повторный импорт внутри min_poll_interval пропускается адаптером (retry_scheduled), поэтому изменение содержимого вообще не наблюдалось; гипотеза — сбросить import_state, имитируя следующий запланированный опрос, а не ждать окно",
-      "recorded_at": "2026-09-29T13:07:19.711Z"
+      "text": "tsc упал в существующем тесте matching-eval: синтетический degraded-ранкер строит RankedJob без нового поля preference; гипотеза — контракт расширился, синтетический ранкер обязан отдавать новое поле, и это не ослабляет проверку деградации",
+      "recorded_at": "2026-09-29T13:12:46.301Z"
     }
   ],
   "coding_host_spend": "unknown",
-  "note": "A6 seen-set: migration 0015 job_events.shown_content_hash (server-read fingerprint), domain rule with documented 14-day window and clock-skew tolerance, seen state derived from the journal (no second table), feed suppression per duplicate group with per-tab honest disclosure, client impression reporting (A8's deferred half) with explicit feed-order labels. V3: check 170/170, test:db exit 0 (37/37, 6 new), build exit 0, test:e2e 93 passed (dev DB needed migration 0014 applied), eval:matching unchanged 0.916 NDCG@10. Manual loop on the local DB: 46 impressions with hashes, then 46 suppressed with the disclosure. Repair cycles 2/2. Next small task: A6-002 (weighted demotion around hidden postings), then A7."
+  "note": "A6 part 2 (negative preferences): src/domain/negative-preference.ts (company -12 via A4 normalisation, shared stack >=4 canonical skills -6, cap -12, no accumulation, empty company matches nothing) + ranker layer (RankerPreferences.disliked, RankedJob.preference, RANKER_VERSION v3). Shape chosen by measurement on the golden set 2026-09-29: company-only 0.926224, company+stack>=2 0.919056 (demotes relevant), >=3 0.919417, >=4 0.930164 (best, no profile worse), stack-only>=3 0.916062 (worse than nothing). check 176/176, eval:matching unchanged (0.916 NDCG@10, guards 0/0), build exit 0; test:db/test:e2e not_run (no schema, no product path). Repair cycles 2/2. Not wired into the product feed yet - A9 (shadow + guardrails) owns that. Next: A7."
 }
