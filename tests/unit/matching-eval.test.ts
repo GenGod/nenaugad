@@ -24,21 +24,24 @@ import { rankJobs, rankJobsBaselineV0, type RankableJob, type RankedJob } from "
 import { parseManualProfileInput } from "../../src/domain/profile.ts";
 import { isJobSnapshot } from "../../src/domain/source-contracts.ts";
 
-// Floors measured on the v1 ranker (requirements on) with golden set version 2
-// (2026-09-29), rounded down to 6 decimals so platform-level floating-point
-// noise cannot flip them.
+// Floors measured on the v1 ranker with golden set version 2 (2026-09-29),
+// rounded down to 6 decimals so platform-level floating-point noise cannot
+// flip them.
 //
-// Re-baselined downward once, with a recorded reason: the set grew from 29 to
-// 32 jobs (the requirement pair j30/j31 and the Russian must-have j32), which
-// changes the shown pools — see tasks/A2-001-requirement-decomposition.md.
+// Re-baselining history (only upward moves are routine; downward moves need a
+// recorded reason here and in the task file):
+//   * item A2 re-baselined once DOWNWARD because the set grew from 29 to 32
+//     jobs (new fixtures change the shown pools) — see tasks/A2-001.
+//   * item A3 raised the floors after the skills dictionary v2 fixed false
+//     positives: NDCG@5 0.903879 -> 0.909773, NDCG@10 0.924056 -> 0.942889.
 // The guarantee that may NOT move is the relative one below: the requirement
 // layer must never score worse than the same ranker without it, per profile
 // and in aggregate.
 const THRESHOLDS = {
   recallAt5: 0.772817,
   recallAt10: 0.955357,
-  ndcgAt5: 0.903879,
-  ndcgAt10: 0.924056,
+  ndcgAt5: 0.909773,
+  ndcgAt10: 0.942889,
   mrr: 1.0,
 } as const;
 

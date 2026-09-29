@@ -8,6 +8,7 @@
 // ratcheted thresholds that actually gate the pipeline live in
 // tests/unit/matching-eval.test.ts; this script is the human-facing report.
 import { GOLDEN_SET } from "../src/data/matching-golden.ts";
+import { dictionaryWorklist } from "../src/domain/dictionary-coverage.ts";
 import { runMatchingEval, type ProfileEval } from "../src/domain/matching-eval.ts";
 import type { MetricValue } from "../src/domain/eval-metrics.ts";
 
@@ -62,4 +63,12 @@ if (process.argv.includes("--json")) {
   console.log("\nAggregate over " + report.aggregate.applicableProfiles + " profiles with applicable metrics:");
   console.log(`  R@5 ${format(report.aggregate.recallAt5)} · R@10 ${format(report.aggregate.recallAt10)} · NDCG@5 ${format(report.aggregate.ndcgAt5)} · NDCG@10 ${format(report.aggregate.ndcgAt10)} · MRR ${format(report.aggregate.mrr)}`);
   console.log(`Guards: unjudged shown ${report.guards.unjudgedShown} (must be 0) · relevant but hidden ${report.guards.relevantHidden} (must be 0)`);
+  // Vocabulary worklist (item A3): candidates for the dictionary, reviewed by a
+  // human before anything is added. Not a quality metric — see the module note.
+  const worklist = dictionaryWorklist(GOLDEN_SET.jobs.map(job => `${job.snapshot.title} ${job.snapshot.description_text}`));
+  console.log(`\nDictionary v${worklist.dictionaryVersion}: ${worklist.tokenCount} tokens in ${GOLDEN_SET.jobs.length} postings · ${worklist.distinctUnknownCount} distinct unknown (${worklist.unknownTokenCount} occurrences)`);
+  const repeated = worklist.topUnknown;
+  console.log(repeated.length === 0
+    ? "No unknown token repeats — nothing to review."
+    : `Worklist (human review, never auto-added): ${repeated.map(item => `${item.token}(${item.count})`).join(", ")}`);
 }

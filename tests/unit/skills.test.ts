@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  ALIAS_DELTA_V2_ENTRIES,
+  canonicalSkillName,
   extractSkills,
   skillCategory,
   skillOverlap,
@@ -173,5 +175,82 @@ test("SKILLS_DICTIONARY has more than 50 well-formed entries", () => {
       validCategories.has(entry.category),
       `unknown category ${entry.category} on ${entry.canonical}`,
     );
+  }
+});
+
+// --- v2 (design item A3): alias matrix, ambiguity rule, RU aliases ---------
+
+test("v2 alias matrix: js / JavaScript / ECMAScript and k8s / Kubernetes resolve to one canonical", () => {
+  assert.deepEqual(extractSkills("JavaScript"), ["JavaScript"]);
+  assert.deepEqual(extractSkills("ECMAScript"), ["JavaScript"]);
+  assert.deepEqual(extractSkills("JS"), ["JavaScript"]); // capitalised short form
+  assert.deepEqual(extractSkills("Kubernetes"), ["Kubernetes"]);
+  assert.deepEqual(extractSkills("k8s"), ["Kubernetes"]);
+  assert.deepEqual(extractSkills("K8s cluster"), ["Kubernetes"]);
+  assert.equal(canonicalSkillName("js"), "JavaScript");
+  assert.equal(canonicalSkillName("ECMAScript"), "JavaScript");
+  assert.equal(canonicalSkillName("k8s"), "Kubernetes");
+  assert.equal(canonicalSkillName("nonsense"), null);
+});
+
+test("v2 ambiguity rule: ordinary words match only in their capitalised form", () => {
+  // The regression measured by the golden harness on 2026-09-29.
+  assert.deepEqual(extractSkills("We go fast and ship daily"), []);
+  assert.deepEqual(extractSkills("Read the docs carefully"), []);
+  assert.deepEqual(extractSkills("Strong BI mindset"), ["Analytics"]); // capitalised short form
+  assert.deepEqual(extractSkills("We use js daily"), []);
+  // Capitalised forms and unambiguous long forms still match.
+  assert.deepEqual(extractSkills("I write Go services"), ["Go"]);
+  assert.deepEqual(extractSkills("golang"), ["Go"]);
+  assert.deepEqual(foundSorted("Rust and Swift experience"), ["Rust", "iOS"]);
+  assert.deepEqual(extractSkills("REST API design"), ["REST API"]);
+});
+
+test("v2 aliases: Russian-language skill names are recognised", () => {
+  assert.deepEqual(extractSkills("машинное обучение"), ["Machine Learning"]);
+  assert.deepEqual(extractSkills("Опыт: глубокое обучение и нейронные сети"), ["Deep Learning"]);
+  assert.deepEqual(extractSkills("аналитика продукта"), ["Analytics"]);
+  assert.deepEqual(extractSkills("кибербезопасность"), ["Cybersecurity"]);
+  assert.deepEqual(extractSkills("управление проектами"), ["Project Management"]);
+  assert.deepEqual(foundSorted("автотесты на Python"), ["Automated Testing", "Python"]);
+  assert.deepEqual(extractSkills("базы данных"), ["SQL"]);
+  // A Russian suffix must not match: the delimiter rule still applies.
+  assert.deepEqual(extractSkills("аналитикам"), []);
+  // Documented limitation, not an oversight: aliases match exact forms, so an
+  // inflected Russian phrase ("базами данных") is currently NOT recognised.
+  // Morphology is out of scope for v2 and belongs to the dictionary work that
+  // follows the vocabulary worklist.
+  assert.deepEqual(extractSkills("работа с базами данных"), []);
+});
+
+test("v2 consumption: every occurrence of a longer alias is consumed", () => {
+  // Measured defect (2026-09-29): only the FIRST occurrence of an alias was
+  // consumed, so a later one leaked a shorter alias ("Node.js" twice reported
+  // JavaScript; "React Native" twice reported React).
+  assert.deepEqual(extractSkills("React Native for mobile, built with React Native"), ["React Native"]);
+  assert.deepEqual(extractSkills("Node.js and Node.js"), ["Node.js"]);
+});
+
+test("v2 alias delta keeps two invariants: targets exist, no alias is stolen", () => {
+  // A typo in the delta would create an alias nobody can match, and a re-used
+  // name would silently reroute a skill to another canonical — assert both here
+  // instead of discovering them through a ranking change.
+  const canonicals = new Set(SKILLS_DICTIONARY.map(entry => entry.canonical));
+  for (const target of Object.keys(ALIAS_DELTA_V2_ENTRIES)) {
+    assert.ok(canonicals.has(target), `alias delta target must exist in the dictionary: ${target}`);
+  }
+  for (const [canonical, aliases] of Object.entries(ALIAS_DELTA_V2_ENTRIES)) {
+    for (const alias of aliases) {
+      assert.equal(canonicalSkillName(alias), canonical, `delta alias ${alias} must resolve to ${canonical}`);
+      for (const entry of SKILLS_DICTIONARY) {
+        if (entry.canonical === canonical) continue;
+        const baseAliases = new Set([
+          entry.canonical.toLowerCase(),
+          ...entry.aliases.map(item => item.toLowerCase()),
+        ]);
+        assert.ok(!baseAliases.has(alias.toLowerCase()),
+          `delta alias ${alias} already belongs to ${entry.canonical}`);
+      }
+    }
   }
 });

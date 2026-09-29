@@ -2,8 +2,13 @@
 // Used for deterministic skill extraction from CV text and job descriptions.
 // Adding a skill here does NOT claim the user has it — it only enables
 // the extractor to recognize the mention and propose it for confirmation.
+//
+// v2 (2026-09-29, design item A3): Russian aliases and a few missed English
+// forms live in ALIAS_DELTA_V2 below, and ambiguous one-word aliases (go, docs,
+// rest, rust, spring…) now require capitalisation — the golden harness measured
+// the cost of reading ordinary prose as skills ("We go fast" -> ["Go"]).
 
-export const SKILLS_DICTIONARY_VERSION = 1;
+export const SKILLS_DICTIONARY_VERSION = 2;
 
 export type SkillCategory =
   | "frontend" | "backend" | "database" | "devops" | "mobile"
@@ -125,13 +130,50 @@ export const SKILLS_DICTIONARY: readonly SkillEntry[] = [
   { canonical: "Edge Computing", aliases: ["edge computing", "cdn", "cloudflare workers"], category: "cloud" },
 ];
 
-// Build a lookup map: lowercase alias → canonical skill.
-const aliasMap: ReadonlyMap<string, string> = new Map(
-  SKILLS_DICTIONARY.flatMap(entry =>
+// v2 alias delta (item A3): Russian-language names for the skills that appear
+// in Russian-language postings, plus a few English forms that were missing.
+// Kept as an explicit delta instead of editing sixty entries above: the review
+// diff shows exactly what v2 added, and the maintenance flow stays obvious —
+// add a line here, bump the version, and the tests below cover it.
+const ALIAS_DELTA_V2: Readonly<Record<string, readonly string[]>> = {
+  "JavaScript": ["ecmascript"],
+  "SQL": ["базы данных"],
+  "Microservices": ["микросервисы"],
+  "Monitoring": ["мониторинг"],
+  "Terraform": ["инфраструктура как код"],
+  "Machine Learning": ["машинное обучение"],
+  "Deep Learning": ["глубокое обучение", "нейронные сети"],
+  "NLP": ["обработка естественного языка"],
+  "Data Engineering": ["инженерия данных"],
+  "Analytics": ["аналитика"],
+  "Big Data": ["большие данные"],
+  "Automated Testing": ["автотесты", "автоматизация тестирования"],
+  "Manual Testing": ["ручное тестирование"],
+  "Load Testing": ["нагрузочное тестирование"],
+  "Cybersecurity": ["кибербезопасность", "информационная безопасность"],
+  "Project Management": ["управление проектами"],
+  "Product Management": ["управление продуктом"],
+  "Team Leadership": ["руководство командой"],
+  "UI/UX Design": ["дизайн интерфейсов"],
+};
+
+// Exported for the tests that assert two properties this delta must keep:
+// every target canonical exists, and no delta alias steals a name that already
+// belongs to a different canonical in the list above.
+export const ALIAS_DELTA_V2_ENTRIES = ALIAS_DELTA_V2;
+
+// Build a lookup map: lowercase alias → canonical skill. The v2 delta is merged
+// in the same pass (no mutation afterwards), so a name collision would be a
+// reviewable conflict rather than a silent overwrite in the tests.
+const aliasMap: ReadonlyMap<string, string> = new Map<string, string>([
+  ...SKILLS_DICTIONARY.flatMap(entry =>
     [entry.canonical.toLowerCase(), ...entry.aliases.map(a => a.toLowerCase())]
       .map(alias => [alias, entry.canonical] as const),
   ),
-);
+  ...Object.entries(ALIAS_DELTA_V2).flatMap(([canonical, aliases]) =>
+    aliases.map(alias => [alias.toLowerCase(), canonical] as const),
+  ),
+]);
 
 export function skillCategory(canonical: string): SkillCategory {
   return SKILLS_DICTIONARY.find(s => s.canonical === canonical)?.category ?? "other";
@@ -144,12 +186,37 @@ export function canonicalSkillName(value: string): string | null {
   return aliasMap.get(value.trim().toLowerCase()) ?? null;
 }
 
+// Is this single token a known alias at all? Used by the vocabulary worklist
+// (src/domain/dictionary-coverage.ts), not by matching.
+export function hasAlias(token: string): boolean {
+  return aliasMap.has(token.trim().toLowerCase());
+}
+
+// Aliases that are ordinary English words. They only match when the source text
+// capitalises them ("Go", "Rust", "REST"): a posting that writes "we go fast" is
+// not offering a Go role. The golden harness measured that failure mode on
+// 2026-09-29 (extractSkills("We go fast") -> ["Go"], and a keyword-stuffed
+// posting climbed the data ranking on "ml"/"bi"-class false matches).
+export const AMBIGUOUS_ALIASES: ReadonlySet<string> = new Set([
+  "go", "docs", "bi", "ml", "ts", "js", "py", "pg", "rest", "rust",
+  "spring", "rails", "swift", "phoenix", "canvas", "queries", "statistics",
+]);
+
+function isCapitalisedAt(text: string, index: number): boolean {
+  const first = text[index];
+  return first !== undefined && /\p{Lu}/u.test(first);
+}
+
 // Deterministic skill extraction from free text (CV or job description).
 // Returns canonical skill names found in the text. Longer aliases are
 // matched first and their text ranges are consumed, preventing shorter
 // aliases from matching inside them ("Node.js" won't also match "js").
 export function extractSkills(text: string): readonly string[] {
   const lower = ` ${text.toLowerCase()} `;
+  // Parallel copy of the original text: toLowerCase preserves length for the
+  // scripts this dictionary covers, so match indices line up and the
+  // capitalisation rule can look at the source form of a match.
+  const original = ` ${text} `;
   const found: string[] = [];
   const seen = new Set<string>();
   const consumed: [number, number][] = [];
@@ -165,11 +232,18 @@ export function extractSkills(text: string): readonly string[] {
       const before = lower[index - 1] ?? " ";
       const after = lower[index + alias.length] ?? " ";
       const end = index + alias.length;
-      if (delimiters.has(before) && delimiters.has(after) && isAvailable(index, end)) {
-        found.push(canonical);
-        seen.add(canonical);
+      const caseOk = !AMBIGUOUS_ALIASES.has(alias) || isCapitalisedAt(original, index);
+      if (caseOk && delimiters.has(before) && delimiters.has(after) && isAvailable(index, end)) {
+        if (!seen.has(canonical)) {
+          found.push(canonical);
+          seen.add(canonical);
+        }
         consumed.push([index, end]);
-        break;
+        // Keep scanning instead of stopping at the first hit: every later
+        // occurrence of this alias must be consumed as well, otherwise a
+        // shorter alias can match inside it. Measured defect (2026-09-29): a
+        // posting with "Node.js" twice let "js" match the second occurrence and
+        // reported JavaScript for a profile that only knows Node.js.
       }
       index = lower.indexOf(alias, index + 1);
     }

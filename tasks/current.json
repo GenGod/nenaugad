@@ -1,15 +1,10 @@
 {
-  "task_id": "A2-001",
-  "file": "tasks/A2-001-requirement-decomposition.md",
+  "task_id": "A3-001",
+  "file": "tasks/A3-001-skill-dictionary-v2.md",
   "status": "implemented",
-  "repair_cycles_used": 1,
+  "repair_cycles_used": 0,
   "max_repair_cycles": 2,
-  "hypotheses": [
-    {
-      "text": "Первая версия маркеров (любое вхождение слова в предложении) и бонус за покрытый must-have искажают ранжирование: keyword-ловушка Technical Recruiter получала 4 must-have из прозы job requirements и поднималась в топ; структурные маркеры плюс отказ от бонуса за покрытие дают строго лучший результат против v0 (0.9241 против 0.9217 NDCG@10)",
-      "recorded_at": "2026-09-29T12:17:00.401Z"
-    }
-  ],
+  "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "A2 requirement decomposition (deterministic layer). check 137/137 / build / eval:matching all exit 0; test:db and test:e2e not_run (no schema/UI/API change). Builds on accepted A1, same branch feature/A1-golden-set-eval-harness. Commits for docs and A1 are still blocked by the Mimosa git gate - owner action needed (see IMPLEMENTATION_STATUS)."
+  "note": "A3 skills dictionary v2: capitalisation rule for ambiguous aliases, all-occurrence consumption fix, RU alias delta, dictionary worklist. check 146/146, build, eval:matching exit 0; test:db/test:e2e not_run (no schema/UI/API change). Ratchet raised: NDCG@5 0.909773, NDCG@10 0.942889. Next: A4 cross-source dedup."
 }
