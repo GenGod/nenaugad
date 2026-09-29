@@ -1,19 +1,19 @@
 {
-  "task_id": "A6-002",
-  "file": "tasks/A6-002-negative-preference.md",
+  "task_id": "A7-001",
+  "file": "tasks/A7-001-whats-new-digest.md",
   "status": "implemented",
   "repair_cycles_used": 2,
   "max_repair_cycles": 2,
   "hypotheses": [
     {
-      "text": "Первый прогон новых unit-тестов дал 4 падения, и все — в моих ожиданиях, а не в слое: сигнал общего стека срабатывает и там, где я ждал 0 (другая компания с тем же стеком), алиас js не резолвится (ambiguous в словаре A3), а контроль в паре имел другой текст и потому другой базовый скор",
-      "recorded_at": "2026-09-29T13:12:45.631Z"
+      "text": "Первый прогон интеграционных тестов дайджеста вернул no_profile: сервис брал snapshotPool() (DATABASE_URL, dev-база), а тесты работают с TEST_DATABASE_URL; гипотеза — пул должен быть инъектируемым, тогда продуктовый путь и тест идут одним кодом",
+      "recorded_at": "2026-09-29T13:21:14.219Z"
     },
     {
-      "text": "tsc упал в существующем тесте matching-eval: синтетический degraded-ранкер строит RankedJob без нового поля preference; гипотеза — контракт расширился, синтетический ранкер обязан отдавать новое поле, и это не ослабляет проверку деградации",
-      "recorded_at": "2026-09-29T13:12:46.301Z"
+      "text": "Второй прогон: ожидания теста были жёстко зашиты (3 видимые вакансии, конкретный id) — набор jobicy-фикстур виден не весь: часть отсекается правилами договора/remote, а в общей тестовой БД лежат остатки himalayas от других файлов; гипотеза — выводить видимый набор тем же гейт-пайплайном и чистить каталог целиком",
+      "recorded_at": "2026-09-29T13:21:14.830Z"
     }
   ],
   "coding_host_spend": "unknown",
-  "note": "A6 part 2 (negative preferences): src/domain/negative-preference.ts (company -12 via A4 normalisation, shared stack >=4 canonical skills -6, cap -12, no accumulation, empty company matches nothing) + ranker layer (RankerPreferences.disliked, RankedJob.preference, RANKER_VERSION v3). Shape chosen by measurement on the golden set 2026-09-29: company-only 0.926224, company+stack>=2 0.919056 (demotes relevant), >=3 0.919417, >=4 0.930164 (best, no profile worse), stack-only>=3 0.916062 (worse than nothing). check 176/176, eval:matching unchanged (0.916 NDCG@10, guards 0/0), build exit 0; test:db/test:e2e not_run (no schema, no product path). Repair cycles 2/2. Not wired into the product feed yet - A9 (shadow + guardrails) owns that. Next: A7."
+  "note": "A7 push-matching MVP: in-app digest (what is new since the last feed view). Window = newest impression in the journal (no cursor table, no write on render); closed postings cannot appear because the digest is computed from the same gates at read time (golden 7); seen-set keeps it from re-showing; per-user isolation and deletion covered. New: domain/digest.ts, server/digest-service.ts, GET /api/v1/digest, /whats-new page, link from /matched, pool injection for matchedForUser. V3: check 180/180, test:db exit 0 (40/40, 3 new), build exit 0, e2e 96 passed; live check on the local dev DB showed first-look text, then the window with 0 new and the honest reason. No schema change, no email (send_email denied in source matrices - owner decision on the channel). Repair cycles 2/2. Next: A9 (ranker shadow mode + guardrails), then A10."
 }

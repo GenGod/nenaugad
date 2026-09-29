@@ -1,5 +1,6 @@
 // server-only guard removed: this module is imported by the standalone
 // worker (scripts/worker.ts) which runs outside Next.js React context.
+import type { Pool } from "pg";
 import { readConfig } from "./config.ts";
 import { latestProfile } from "./profile-service.ts";
 import { hiddenSnapshotIds } from "./feedback-service.ts";
@@ -25,7 +26,14 @@ export type MatchedResult = Readonly<{
   seenSuppressed: Readonly<{ eligible: number; needsReview: number }>;
 }>;
 
-export async function matchedForUser(userId: string): Promise<MatchedResult> {
+/**
+ * The candidate's feed. `pool` is injectable so a caller that owns a different
+ * connection (tests, the worker) shares exactly this code path.
+ */
+export async function matchedForUser(
+  userId: string,
+  options: Readonly<{ pool?: Pool }> = {},
+): Promise<MatchedResult> {
   const empty: MatchedResult = {
     status: "ok", rulesetVersion: RULESET_VERSION, eligible: [], needsReview: [],
     notEvaluatedCount: 0, seenSuppressed: { eligible: 0, needsReview: 0 },
@@ -34,7 +42,7 @@ export async function matchedForUser(userId: string): Promise<MatchedResult> {
   if (config.backend !== "postgres") {
     return { ...empty, status: "fixture_backend" };
   }
-  const pool = snapshotPool();
+  const pool = options.pool ?? snapshotPool();
   const profile = await latestProfile(pool, userId);
   if (!profile) return { ...empty, status: "no_profile" };
   // One reference time for the whole read: policy windows and the seen-set

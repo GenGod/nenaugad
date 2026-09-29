@@ -190,6 +190,7 @@ async function MatchedResults({ userId, result, tab }: {
     <div className="mode-switch">
       <Link href="/matched" aria-current="page">Для вас</Link>
       <Link href="/jobs">Все вакансии</Link>
+      <Link href="/whats-new">Что нового</Link>
     </div>
     <div className="results-layout">
       <aside className="results-sidebar" aria-label="Ваши условия">

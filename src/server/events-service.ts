@@ -113,6 +113,21 @@ export async function countEventsForUser(pool: Pool, userId: string): Promise<nu
 }
 
 /**
+ * When this user last saw the feed: the newest impression in the journal. The
+ * digest (item A7) uses it as its cursor — "new since my last look" needs no
+ * second table, and a page render cannot move it (only a real feed render
+ * writes impressions).
+ */
+export async function lastImpressionAt(pool: Pool, userId: string): Promise<string | null> {
+  const result = await pool.query(
+    "SELECT MAX(created_at) AS last_shown FROM job_events WHERE user_id = $1 AND event_type = 'impression'",
+    [userId],
+  );
+  const value = (result.rows[0] as { last_shown: Date | null } | undefined)?.last_shown;
+  return value === null || value === undefined ? null : new Date(value).toISOString();
+}
+
+/**
  * Profile deletion must leave no behavioural trace: the journal is deleted with
  * the profile, exactly like the CV text (minimisation, not just isolation).
  */
