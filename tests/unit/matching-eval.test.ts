@@ -19,29 +19,34 @@ import { GOLDEN_SET } from "../../src/data/matching-golden.ts";
 import {
   dcgAtK, meanOfApplicable, ndcgAtK, recallAtK, reciprocalRank,
 } from "../../src/domain/eval-metrics.ts";
-import { runMatchingEval } from "../../src/domain/matching-eval.ts";
-import { rankJobs, rankJobsBaselineV0, type RankableJob, type RankedJob } from "../../src/domain/match-ranker.ts";
+import { runMatchingEval, type Ranker } from "../../src/domain/matching-eval.ts";
+import {
+  rankJobs, rankJobsBaselineV0, rankJobsWithoutFreshness,
+} from "../../src/domain/match-ranker.ts";
 import { parseManualProfileInput } from "../../src/domain/profile.ts";
 import { isJobSnapshot } from "../../src/domain/source-contracts.ts";
 
-// Floors measured on the v1 ranker with golden set version 2 (2026-09-29),
-// rounded down to 6 decimals so platform-level floating-point noise cannot
-// flip them.
+// Floors measured on the current ranker and golden set, rounded DOWN to 6
+// decimals so platform-level floating-point noise cannot flip them.
 //
-// Re-baselining history (only upward moves are routine; downward moves need a
-// recorded reason here and in the task file):
-//   * item A2 re-baselined once DOWNWARD because the set grew from 29 to 32
-//     jobs (new fixtures change the shown pools) — see tasks/A2-001.
-//   * item A3 raised the floors after the skills dictionary v2 fixed false
-//     positives: NDCG@5 0.903879 -> 0.909773, NDCG@10 0.924056 -> 0.942889.
-// The guarantee that may NOT move is the relative one below: the requirement
-// layer must never score worse than the same ranker without it, per profile
-// and in aggregate.
+// Re-baselining history (upward moves are routine; downward moves need a reason
+// recorded here and in the task file):
+//   * A2: re-baselined DOWNWARD once — the set grew from 29 to 32 jobs (new
+//     fixtures change the shown pools) — see tasks/A2-001.
+//   * A3: raised after the skills dictionary v2 removed false-positive matches
+//     (NDCG@5 0.903879 -> 0.909773, NDCG@10 0.924056 -> 0.942889).
+//   * A5: re-baselined DOWNWARD once — the set grew from 32 to 34 jobs (the
+//     freshness pair) — see tasks/A5-001; the freshness layer itself was
+//     measured to raise the aggregate on that same set (0.912941 -> 0.914340
+//     NDCG@5, 0.915359 -> 0.916478 NDCG@10) and is guarded by its own ratchet.
+// The guarantees that may NOT move are the relative ones below: neither the
+// requirement layer nor the freshness layer may score worse than the same
+// ranker without it, per profile and in aggregate.
 const THRESHOLDS = {
-  recallAt5: 0.772817,
-  recallAt10: 0.955357,
-  ndcgAt5: 0.909773,
-  ndcgAt10: 0.942889,
+  recallAt5: 0.742261,
+  recallAt10: 0.877380,
+  ndcgAt5: 0.914340,
+  ndcgAt10: 0.916478,
   mrr: 1.0,
 } as const;
 
@@ -124,8 +129,9 @@ test("evaluation: the run is deterministic — same inputs, byte-identical repor
 test("evaluation: the harness detects degradation (control ranker scores strictly worse)", () => {
   const baseline = runMatchingEval(GOLDEN_SET);
   // A deliberately bad but deterministic ranker: input order reversed, no scores.
-  const control = (jobs: readonly RankableJob[]): readonly RankedJob[] =>
-    jobs.map(job => ({ ...job, score: 0 })).reverse();
+  // Annotated as Ranker so the (jobs, profile, now) contract stays explicit.
+  const control: Ranker = (jobs) =>
+    jobs.map(job => ({ ...job, score: 0, freshness: 0 })).reverse();
   const degraded = runMatchingEval(GOLDEN_SET, control);
   assert.ok(degraded.aggregate.ndcgAt10 !== null && baseline.aggregate.ndcgAt10 !== null);
   assert.ok(degraded.aggregate.ndcgAt10 < baseline.aggregate.ndcgAt10,
@@ -150,6 +156,25 @@ test("evaluation: the requirement layer never scores worse than the same ranker 
     assert.ok(withTerms.ndcgAt10 !== null && withoutTerms.ndcgAt10 !== null);
     assert.ok(withTerms.ndcgAt10 >= withoutTerms.ndcgAt10,
       `${withTerms.profileId}: requirements degraded NDCG@10 (${withTerms.ndcgAt10} < ${withoutTerms.ndcgAt10})`);
+  }
+});
+
+test("evaluation: the freshness layer never scores worse than the same ranker without it", () => {
+  // The A5 ratchet, sibling of the requirement one below: on identical fixtures
+  // and the same reference time, turning the freshness term on must help.
+  const withFreshness = runMatchingEval(GOLDEN_SET, rankJobs);
+  const withoutFreshness = runMatchingEval(GOLDEN_SET, rankJobsWithoutFreshness);
+  assert.ok(withFreshness.aggregate.ndcgAt5 > withoutFreshness.aggregate.ndcgAt5,
+    "freshness must improve aggregate NDCG@5");
+  assert.ok(withFreshness.aggregate.ndcgAt10 > withoutFreshness.aggregate.ndcgAt10,
+    "freshness must improve aggregate NDCG@10");
+  for (let i = 0; i < withFreshness.profiles.length; i += 1) {
+    const fresh = withFreshness.profiles[i];
+    const stale = withoutFreshness.profiles[i];
+    assert.ok(fresh !== undefined && stale !== undefined);
+    assert.ok(fresh.ndcgAt10 !== null && stale.ndcgAt10 !== null);
+    assert.ok(fresh.ndcgAt10 >= stale.ndcgAt10,
+      `${fresh.profileId}: freshness degraded NDCG@10 (${fresh.ndcgAt10} < ${stale.ndcgAt10})`);
   }
 });
 

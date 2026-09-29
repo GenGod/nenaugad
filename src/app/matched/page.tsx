@@ -9,6 +9,7 @@ import { SaveButton } from "../../components/save-button.tsx";
 import { Icon } from "../../components/icon.tsx";
 import { tint } from "../../components/job-card.tsx";
 import { getAllCachedScores } from "../../server/relevance-service.ts";
+import { firstSeenLabel } from "../../domain/freshness.ts";
 import { latestProfile } from "../../server/profile-service.ts";
 import { snapshotPool } from "../../server/storage/snapshots.ts";
 import type { RelevanceScore } from "../../server/relevance-service.ts";
@@ -44,12 +45,15 @@ function RulesList({ rules }: { rules: readonly RuleResult[] }) {
   </ul>;
 }
 
-function MatchedCard({ job, score, tone }: {
-  job: MatchedJob; score?: RelevanceScore | null; tone: "match" | "review";
+function MatchedCard({ job, score, tone, now }: {
+  job: MatchedJob; score?: RelevanceScore | null; tone: "match" | "review"; now: string;
 }) {
   const card = job.card;
   const primary = job.evaluation.rules.find(rule => rule.explanation.trim().length > 0);
   const published = card.publishedAt ? card.publishedAt.slice(0, 10) : null;
+  // Item A5: when OUR pipeline first saw the posting, next to (not instead of)
+  // the source's own publication date — the two are different facts.
+  const foundAge = firstSeenLabel(card.firstSeenAt, now);
   return <article className="job-card">
     <div className="job-top">
       <span className={`company-mark ${tint(card.company)}`} aria-hidden="true">{card.company.slice(0, 1)}</span>
@@ -63,6 +67,7 @@ function MatchedCard({ job, score, tone }: {
     <div className="job-facts">
       <span><Icon name="globe" />{geographyFact(job)}</span>
       {published && <span><Icon name="calendar" />Листинг от {published}</span>}
+      {foundAge !== null && <span><Icon name="clock" />{foundAge}</span>}
     </div>
     <div className="job-bottom">
       <div>
@@ -136,6 +141,9 @@ async function MatchedResults({ userId, result, tab }: {
   const withScore = (job: MatchedJob): { job: MatchedJob; score: RelevanceScore | null } => ({
     job, score: relevanceMap.get(job.card.id) ?? null,
   });
+  // One reference time for the whole render: age labels (item A5) stay
+  // consistent with each other and do not depend on load duration.
+  const now = new Date().toISOString();
   // Sort eligible by AI score (desc), then by no-score, preserving stable order.
   const eligibleSorted = result.eligible.map(withScore).sort((a, b) => {
     if (a.score && b.score) return b.score.score - a.score.score;
@@ -218,9 +226,9 @@ async function MatchedResults({ userId, result, tab }: {
           : <div className="job-list">
             {tab === "review"
               ? result.needsReview.slice(0, 50).map(job =>
-                <MatchedCard key={job.card.id} job={job} tone="review" />)
+                <MatchedCard key={job.card.id} job={job} tone="review" now={now} />)
               : eligibleSorted.slice(0, 50).map(({ job, score }) =>
-                <MatchedCard key={job.card.id} job={job} score={score} tone="match" />)}
+                <MatchedCard key={job.card.id} job={job} score={score} tone="match" now={now} />)}
           </div>}
         <p className="small secondary" style={{ marginTop: 16 }}>
           Несовместимые вакансии скрыты; вне оценки (гейты remote/права/жизненный цикл):

@@ -1,4 +1,5 @@
 import type { SnapshotCardView } from "../server/snapshot-catalog-service.ts";
+import { firstSeenLabel } from "../domain/freshness.ts";
 import { Icon } from "./icon.tsx";
 
 function geographyLabel(card: SnapshotCardView): string {
@@ -15,7 +16,10 @@ function publishedDate(card: SnapshotCardView): string {
 
 // Card for an approved external source: excerpt only (full text is stored
 // but never republished), visible attribution and a backlink to the listing.
-export function SnapshotCard({ card }: { card: SnapshotCardView }) {
+// The age line reports when OUR pipeline first saw the posting (item A5), not a
+// claimed publication date — the label is built by src/domain/freshness.ts.
+export function SnapshotCard({ card, now }: { card: SnapshotCardView; now: string }) {
+  const age = firstSeenLabel(card.firstSeenAt, now);
   return <article className="job-card">
     <div className="job-top">
       <span className="company-mark" aria-hidden="true">{card.company.slice(0, 1)}</span>
@@ -29,6 +33,7 @@ export function SnapshotCard({ card }: { card: SnapshotCardView }) {
     <div className="job-facts">
       <span><Icon name="globe" />{geographyLabel(card)}</span>
       <span><Icon name="info" />Показан фрагмент; полностью — на источнике</span>
+      {age !== null && <span><Icon name="clock" />{age}</span>}
     </div>
     {card.excerpt && <p className="job-reason">{card.excerpt}</p>}
     <p className="source"><Icon name="source" size={16} />

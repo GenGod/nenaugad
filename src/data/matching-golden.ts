@@ -330,6 +330,22 @@ export const GOLDEN_JOBS: readonly GoldenJob[] = [
     description: "Требования: обязательно Python. Работаем с SQL и Airflow.",
     language: "ru", geography: worldwide(), ranges: [annualGross("18000000", "22000000", "KZT")],
   }) },
+  // Freshness pair (item A5): two identical postings, one first seen by our
+  // pipeline 45 days before the evaluation, one seen that same day. Without the
+  // freshness term they tie and the stale one wins on id order; the grades say
+  // the fresh listing is the better one to apply to (an old syndication is less
+  // likely to still be live). This pair is what makes the freshness layer
+  // measurable instead of assumed.
+  { note: "freshness pair — stale copy (first seen 45 days before the evaluation)", snapshot: snapshot({
+    id: "golden-j33", title: "Senior Data Engineer", company: "Oldport Systems",
+    description: "Batch pipelines with Python, SQL, Airflow and Data Engineering on AWS.",
+    geography: worldwide(), ranges: [annualGross("80000", "100000", "EUR")],
+  }), firstSeenAt: "2026-08-15T08:00:00.000Z" },
+  { note: "freshness pair — fresh copy (first seen on the evaluation day)", snapshot: snapshot({
+    id: "golden-j34", title: "Senior Data Engineer", company: "Tidalwave",
+    description: "Batch pipelines with Python, SQL, Airflow and Data Engineering on AWS.",
+    geography: worldwide(), ranges: [annualGross("80000", "100000", "EUR")],
+  }), firstSeenAt: "2026-09-29T08:00:00.000Z" },
 ];
 
 // --- Profiles ------------------------------------------------------------
@@ -398,7 +414,9 @@ export const GOLDEN_PROFILES: readonly GoldenProfile[] = [
 
 // --- Grades --------------------------------------------------------------
 // Some postings carry must/nice marker words (golden-j30/j31/j32) so the
-// requirement layer (item A2) is measured rather than assumed.
+// requirement layer (item A2) is measured rather than assumed, and two identical
+// postings differ only in when our pipeline first saw them (golden-j33/j34) so
+// the freshness layer (item A5) is measured the same way.
 //
 // Every judged pair is a written judgment about desirability for that
 // candidate (see the legend in the header). All 32 jobs are judged for all 6
@@ -415,6 +433,7 @@ export const GOLDEN_JUDGMENTS: readonly GoldenJudgment[] = [
     "golden-j26": 1, "golden-j27": 1,
     "golden-j28": 0, "golden-j29": 0,
     "golden-j30": 2, "golden-j31": 3, "golden-j32": 1,
+    "golden-j33": 2, "golden-j34": 3,
   } },
   { profileId: "p-frontend-latam", grades: {
     "golden-j01": 1, "golden-j02": 1, "golden-j03": 1, "golden-j04": 1, "golden-j05": 2,
@@ -425,6 +444,7 @@ export const GOLDEN_JUDGMENTS: readonly GoldenJudgment[] = [
     "golden-j26": 1, "golden-j27": 1,
     "golden-j28": 0, "golden-j29": 0,
     "golden-j30": 1, "golden-j31": 1, "golden-j32": 1,
+    "golden-j33": 1, "golden-j34": 1,
   } },
   { profileId: "p-data-asia", grades: {
     "golden-j01": 1, "golden-j02": 1, "golden-j03": 1, "golden-j04": 1, "golden-j05": 1,
@@ -435,6 +455,7 @@ export const GOLDEN_JUDGMENTS: readonly GoldenJudgment[] = [
     "golden-j26": 2, "golden-j27": 1,
     "golden-j28": 0, "golden-j29": 0,
     "golden-j30": 1, "golden-j31": 1, "golden-j32": 3,
+    "golden-j33": 2, "golden-j34": 3,
   } },
   { profileId: "p-devops-eu", grades: {
     "golden-j01": 1, "golden-j02": 2, "golden-j03": 1, "golden-j04": 1, "golden-j05": 1,
@@ -445,6 +466,7 @@ export const GOLDEN_JUDGMENTS: readonly GoldenJudgment[] = [
     "golden-j26": 1, "golden-j27": 1,
     "golden-j28": 0, "golden-j29": 0,
     "golden-j30": 1, "golden-j31": 1, "golden-j32": 1,
+    "golden-j33": 1, "golden-j34": 1,
   } },
   { profileId: "p-qa-us", grades: {
     "golden-j01": 1, "golden-j02": 1, "golden-j03": 1, "golden-j04": 1, "golden-j05": 1,
@@ -455,6 +477,7 @@ export const GOLDEN_JUDGMENTS: readonly GoldenJudgment[] = [
     "golden-j26": 1, "golden-j27": 1,
     "golden-j28": 0, "golden-j29": 0,
     "golden-j30": 1, "golden-j31": 1, "golden-j32": 1,
+    "golden-j33": 1, "golden-j34": 1,
   } },
   { profileId: "p-ru-ml", grades: {
     "golden-j01": 1, "golden-j02": 1, "golden-j03": 1, "golden-j04": 1, "golden-j05": 1,
@@ -465,13 +488,17 @@ export const GOLDEN_JUDGMENTS: readonly GoldenJudgment[] = [
     "golden-j26": 2, "golden-j27": 1,
     "golden-j28": 0, "golden-j29": 0,
     "golden-j30": 1, "golden-j31": 1, "golden-j32": 2,
+    "golden-j33": 1, "golden-j34": 1,
   } },
 ];
 
 export const GOLDEN_SET: GoldenSet = {
   id: "matching-golden",
-  version: 2,
+  version: 3,
   gradesLegend: "3 strong / 2 good (minor gaps, unclear conditions) / 1 neighbouring specialisation or blocked by own hard conditions / 0 outside software engineering. Relevant for recall and MRR: grade >= 2.",
+  // Fixed reference time for the freshness term and age labels (item A5): the
+  // harness never reads the clock, so results stay reproducible.
+  evaluatedAt: "2026-09-29T12:00:00.000Z",
   profiles: GOLDEN_PROFILES,
   jobs: GOLDEN_JOBS,
   judgments: GOLDEN_JUDGMENTS,

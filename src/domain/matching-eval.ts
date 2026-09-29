@@ -32,6 +32,12 @@ export type GoldenProfile = Readonly<{
 export type GoldenJob = Readonly<{
   snapshot: JobSnapshot;
   note: string;
+  /**
+   * When our pipeline first saw the posting (item A5). Optional on purpose:
+   * fixtures without it exercise the "unknown age" path, and the freshness term
+   * then contributes nothing.
+   */
+  firstSeenAt?: string;
 }>;
 
 export type GoldenJudgment = Readonly<{
@@ -43,6 +49,8 @@ export type GoldenSet = Readonly<{
   id: string;
   version: number;
   gradesLegend: string;
+  /** Fixed reference time: freshness and age labels are relative to it. */
+  evaluatedAt: string;
   profiles: readonly GoldenProfile[];
   jobs: readonly GoldenJob[];
   judgments: readonly GoldenJudgment[];
@@ -67,6 +75,7 @@ export type MatchingEvalReport = Readonly<{
   setVersion: number;
   rulesetVersion: number;
   rankerVersion: string;
+  evaluatedAt: string;
   gradesLegend: string;
   profiles: readonly ProfileEval[];
   aggregate: Readonly<{
@@ -86,6 +95,7 @@ export type MatchingEvalReport = Readonly<{
 export type Ranker = (
   jobs: readonly RankableJob[],
   profile: ManualProfileInput,
+  now: string,
 ) => readonly RankedJob[];
 
 function evaluateProfile(
@@ -93,6 +103,7 @@ function evaluateProfile(
   jobs: readonly GoldenJob[],
   grades: Readonly<Record<string, number>>,
   ranker: Ranker,
+  now: string,
 ): ProfileEval {
   const shown: RankableJob[] = [];
   const hiddenIds: string[] = [];
@@ -101,12 +112,12 @@ function evaluateProfile(
     // and jobs that need review are the ones a candidate can see.
     const evaluation = evaluateJob(job.snapshot, golden.profile);
     if (evaluation.status === "eligible" || evaluation.status === "needs_review") {
-      shown.push({ snapshot: job.snapshot, status: evaluation.status });
+      shown.push({ snapshot: job.snapshot, status: evaluation.status, firstSeenAt: job.firstSeenAt });
     } else {
       hiddenIds.push(job.snapshot.id);
     }
   }
-  const ranked = ranker(shown, golden.profile);
+  const ranked = ranker(shown, golden.profile, now);
   const shownIds = ranked.map(entry => entry.snapshot.id);
   const gradeOf = (id: string): number | undefined => grades[id];
   const judgedShown = shownIds.filter(id => gradeOf(id) !== undefined);
@@ -137,7 +148,7 @@ function evaluateProfile(
 export function runMatchingEval(set: GoldenSet, ranker: Ranker = rankJobs): MatchingEvalReport {
   const profiles = set.profiles.map(golden => {
     const grades = set.judgments.find(judgment => judgment.profileId === golden.id)?.grades ?? {};
-    return evaluateProfile(golden, set.jobs, grades, ranker);
+    return evaluateProfile(golden, set.jobs, grades, ranker, set.evaluatedAt);
   });
   const ndcgAt10 = meanOfApplicable(profiles.map(profile => profile.ndcgAt10));
   return {
@@ -145,6 +156,7 @@ export function runMatchingEval(set: GoldenSet, ranker: Ranker = rankJobs): Matc
     setVersion: set.version,
     rulesetVersion: RULESET_VERSION,
     rankerVersion: RANKER_VERSION,
+    evaluatedAt: set.evaluatedAt,
     gradesLegend: set.gradesLegend,
     profiles,
     aggregate: {

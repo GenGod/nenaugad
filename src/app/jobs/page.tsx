@@ -33,6 +33,9 @@ export default async function Jobs({ searchParams }: { searchParams: Promise<Sea
   // External source section: renders nothing while the source policy is
   // disabled; a storage failure degrades visibly without faking emptiness.
   const snapshots = await readSnapshotCards();
+  // One reference time for the whole render: age labels stay consistent with
+  // each other and the page does not depend on how long it took to load.
+  const now = new Date().toISOString();
   return <>
     <header className="page-head">
       <p className="overline">Открытый каталог / демо</p>
@@ -70,7 +73,7 @@ export default async function Jobs({ searchParams }: { searchParams: Promise<Sea
           <span className="small secondary">Фрагменты с атрибуцией · без оценки совместимости</span>
         </div>
         <div className="job-list">
-          {snapshots.cards.map(card => <SnapshotCard key={card.id} card={card} />)}
+          {snapshots.cards.map(card => <SnapshotCard key={card.id} card={card} now={now} />)}
         </div>
       </>}
       {snapshots.unavailable && <div className="empty">
