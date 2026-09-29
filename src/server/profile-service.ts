@@ -65,9 +65,12 @@ export async function countProfileVersions(pool: Pool, userId: string): Promise<
   return Number((result.rows[0] as { total: string }).total);
 }
 
-// Deletion of entered data: all profile versions of this user are removed.
-// The account row and saved jobs are governed by their own lifecycles.
+// Deletion of entered data: all profile versions of this user are removed, and
+// so is the interaction journal (item A8) — a deleted profile must leave no
+// behavioural trace. The account row and saved jobs are governed by their own
+// lifecycles.
 export async function deleteAllProfiles(pool: Pool, userId: string): Promise<number> {
+  await pool.query("DELETE FROM job_events WHERE user_id = $1", [userId]);
   const search = await pool.query("DELETE FROM search_profiles WHERE user_id = $1", [userId]);
   const candidate = await pool.query("DELETE FROM candidate_profiles WHERE user_id = $1", [userId]);
   return (search.rowCount ?? 0) + (candidate.rowCount ?? 0);

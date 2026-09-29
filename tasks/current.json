@@ -1,19 +1,15 @@
 {
-  "task_id": "A5-001",
-  "file": "tasks/A5-001-freshness.md",
+  "task_id": "A8-001",
+  "file": "tasks/A8-001-events-journal.md",
   "status": "implemented",
-  "repair_cycles_used": 2,
+  "repair_cycles_used": 1,
   "max_repair_cycles": 2,
   "hypotheses": [
     {
-      "text": "Первый typecheck и тесты упали из-за дефектов нового кода: дублирующее объявление export type Ranker (старое, 2 параметра) и возврат -0 из freshnessDemotion; после их правки типcheck и тесты зелёные",
-      "recorded_at": "2026-09-29T12:43:02.724Z"
-    },
-    {
-      "text": "Падал только ратчет порогов: набор вырос 32 -> 34 вакансии, метрики сдвинулись структурно, нужен документированный ре-базлайн вниз; слой свежести при этом улучшает агрегат (NDCG@10 0.915359 -> 0.916478)",
-      "recorded_at": "2026-09-29T12:43:03.332Z"
+      "text": "Гейт записи Mimosa заблокировал первую версию events-service.ts за сборку SQL-текста из плейсхолдеров; тот же интент выражается одним параметризованным INSERT ... FROM unnest(...) без строкового SQL вообще, что и прошло гейт с зелёными тестами",
+      "recorded_at": "2026-09-29T12:46:04.402Z"
     }
   ],
   "coding_host_spend": "unknown",
-  "note": "A5 freshness (stale demotion only, age label from our first sighting). check 159/159, build, eval exit 0. Golden set v3 (34 jobs) with a freshness twin pair; ratchet re-baselined downward once because the set grew (documented), relative ratchets for requirements and freshness unchanged. test:db/test:e2e not_run (no schema change; snapshot cards are empty under the e2e fixture backend). Next: A8 events journal."
+  "note": "A8 events journal: migration 0014 job_events, strict payload domain, service (single parameterized unnest insert, no string-built SQL), POST /api/v1/events, deletion with the profile. check 163/163, test:db exit 0 (4 new integration tests on a live test DB), build exit 0 with the new route. test:e2e not_run (no UI change). Repair cycle 1/2: the write gate flagged the placeholder-joining version, rewritten as unnest. Client-side impression/click sending is the next small task."
 }
