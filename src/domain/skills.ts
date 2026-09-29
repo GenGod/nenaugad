@@ -137,6 +137,13 @@ export function skillCategory(canonical: string): SkillCategory {
   return SKILLS_DICTIONARY.find(s => s.canonical === canonical)?.category ?? "other";
 }
 
+// Canonical name for a single skill mention ("k8s" -> "Kubernetes").
+// Returns null when the value is not in the dictionary — callers must treat
+// that as "not recognised", never as a match.
+export function canonicalSkillName(value: string): string | null {
+  return aliasMap.get(value.trim().toLowerCase()) ?? null;
+}
+
 // Deterministic skill extraction from free text (CV or job description).
 // Returns canonical skill names found in the text. Longer aliases are
 // matched first and their text ranges are consumed, preventing shorter
