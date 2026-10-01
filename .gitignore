@@ -2,6 +2,10 @@ node_modules/
 .next/
 out/
 dist/
+# Local model artifact (B1): ~600 MB, fetched and hash-verified by
+# `npm run models:fetch`, never committed. The pins live in
+# src/domain/embeddings.ts and scripts/models-fetch.ts.
+models/
 .env
 .env.*
 !.env.example
