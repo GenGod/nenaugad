@@ -1,0 +1,22 @@
+-- B1 storage decision (owner, 2026-09-30): vectors live in pgvector inside the
+-- existing PostgreSQL, not in float8[] plus application-side cosine. ADR-001
+-- forbids a separate vector database; this is an extension of the database we
+-- already run, so the ban is respected.
+--
+-- Why an extension and not code: the `vector` type and its distance operators
+-- must exist in the server. The image that ships them is pinned in compose.yaml
+-- (pgvector/pgvector:0.8.6-pg17, carrying the same PostgreSQL 17.11 as before,
+-- so the data directory came across untouched — rehearsal in the 2026-09-30
+-- decision document).
+--
+-- What this migration does NOT do: it creates no table. Embedding storage and
+-- its ownership/privacy rules are the B1 task (the decision document records
+-- that an embedding of a profile or CV is derived personal data and is deleted
+-- with it, and that a posting's vector inherits the snapshot's retention).
+-- Until B1 adds such a table, the database contains nothing vector-shaped and
+-- the application behaves exactly as before.
+--
+-- Idempotent on purpose: the runner applies each file once and records its
+-- checksum in atlas_schema_migrations, and IF NOT EXISTS keeps a manual re-run
+-- harmless.
+CREATE EXTENSION IF NOT EXISTS vector;

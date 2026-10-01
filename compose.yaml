@@ -1,7 +1,7 @@
 name: nenaugad
 services:
   db:
-    image: postgres:17.11-alpine
+    image: pgvector/pgvector:0.8.6-pg17
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?Run npm run setup}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run npm run setup}

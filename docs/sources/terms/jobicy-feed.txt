@@ -1,0 +1,443 @@
+Remote Jobs API/RSS Feed – Jobicy
+Jobicy
+Job title, company or skill
+Post a Job PRO Sign In
+My Profile
+Remote Jobs
+Job Categories
+Job Locations
+Post a Remote Job
+Talent & Career
+AI Tools
+Online Resume Builder
+Interview Prep Hub
+Skill Assessments
+Companies
+Salaries Directory
+Cost of Living Index
+Career Advice
+Career Paths
+Jobicy
+Help Center
+FAQ & Contact Us
+Pricing
+Advertise
+Affiliate Program
+Remote Jobs
+Career
+AI Tools
+Resume Builder
+Talent
+Companies
+Salaries
+Career Advice
+Job Alerts
+More
+Post a Remote Job
+Hiring Plans
+Back Explore jobs Browse all jobs
+Job alerts
+Job categories Content & Editorial
+Customer Success
+Creative & Design
+DevOps & Infrastructure
+Software Engineering
+Finance & Accounting
+Data Science & Analytics
+Marketing & Sales
+All categories &rsaquo;
+Job locations 🇺🇸 USA
+🇨🇦 Canada
+🇪🇺 Europe
+All locations &rsaquo;
+Developer resources Jobs API / MCP / RSS
+Salary API
+For Candidates Stand out to top remote companies My Profile
+Back AI tools Resume Score Analyzer
+Resume Tailoring Tool
+Resume Summary Generator
+Mock Interview Practice
+Cover Letter Generator
+Thank You Email Generator
+Offer Negotiation Coach
+Job Description Generator
+Interview Questions
+All career tools
+Tools & prep Online Resume Builder
+Skill Assessments
+Interview Prep Hub
+Career Paths
+Insights Companies
+Cost of Living Index
+Remote Work Index
+Career Advice
+New Feature Supercharged prep with AI-powered coaching Explore AI Tools
+Back Jobicy About Jobicy
+Help Center
+FAQ & Contact Us
+Transparency
+Business Pricing
+Advertise
+Ads Platform
+Affiliate Program
+Submit a Guest Post
+Apps & extensions App Store
+Google Play
+Chrome Extension
+Firefox Extension
+Earn with us Get passive income by promoting Jobicy Join Affiliate Program
+Free extension Meet Jobicy Copilot AI autofill for job applications, plus remote job alerts. Get the extension
+Jobicy developer resource
+Remote Jobs API & RSS Feed
+Add current remote jobs to apps, websites, AI tools, and automated
+workflows with a public REST endpoint, MCP server, RSS feed, or widget.
+Test the API Quick start
+Public access REST API Structured JSON
+MCP AI tool access
+RSS Filtered feeds
+Widget Drop-in search
+On this page Overview
+Quick start
+Parameters
+Response fields
+API playground
+MCP server
+RSS feed
+Fair use
+Integrations
+FAQ
+Endpoint
+api/v2/remote-jobs Authentication
+Optional for direct ATS links Updated
+September 16, 2026
+01 · Overview One endpoint for current remote jobs.
+The public Jobs API returns the latest remote listings available on Jobicy.
+Use it for job discovery products, research tools, community websites,
+internal dashboards, and prototypes.
+FORMAT Clean JSON
+Structured fields for the employer, role, location, job type, description, and salary.
+ACCESS No API key
+Start with a simple GET request. No account or authentication header is required; url returns the Jobicy listing.
+RESULTS Up to 200 jobs
+Retrieve the latest records and combine location, category, and keyword filters.
+Base request Copy
+GET https://jobicy.com/api/v2/remote-jobs
+02 · Quick start From zero to the first response.
+Start with the public endpoint, add only the filters you need, and keep
+the Jobicy listing URL when displaying a listing.
+Send a GET request No token or account is required for the public Jobs API.
+Add optional filters Use count , geo , industry , and tag .
+Read the jobs array Store only what your interface needs and retain the Jobicy listing URL.
+Check whether a listing is still active Send a lightweight HEAD request to the Jobicy vacancy URL.
+An HTTP 404 or 410 response means the vacancy is no longer active.
+JavaScript Copy
+const response = await fetch(
+"https://jobicy.com/api/v2/remote-jobs?count=10&geo=usa&industry=engineering"
+);
+if (!response.ok) {
+throw new Error(`HTTP ${response.status}`);
+}
+const data = await response.json();
+console.log(data.jobs);
+i Optional Commercial Jobs API : direct application links The API key is optional. Without it, url always contains the Jobicy listing URL and the public API remains free.
+To receive the original ATS application URL in url , create an API key in your Jobicy API Dashboard and send it with every request as Authorization: Bearer API_KEY .
+A wallet is required: each job with an available direct application URL costs $0.01 once per API key. Repeated requests for the same job and key are free.
+Commercial request with a Bearer key Copy
+curl "https://jobicy.com/api/v2/remote-jobs?count=10&geo=usa&industry=engineering" \
+-H "Authorization: Bearer API_KEY" \
+-H "Accept: application/json"
+03 · Query parameters Request only the listings you need.
+All filters are optional. Combine them to narrow the results by count,
+geographic eligibility, job category, or text keyword.
+count Number of listings to return. Accepted range: 1–200.
+Default 200
+geo Location slug such as usa , europe , or apac .
+Optional
+industry Category slug such as engineering , marketing , or data-science .
+Optional
+tag Keyword search applied to the available job content.
+Optional
+i Use current slugs Load the location list and category list before storing values in a production integration.
+Request examples
+Keyword search
+Twenty recent jobs mentioning Python.
+GET /api/v2/remote-jobs?count=20&tag=python
+Country filter
+Fifteen recent jobs available in Canada.
+GET /api/v2/remote-jobs?count=15&geo=canada
+Category and location
+Marketing jobs available to applicants in the USA.
+GET /api/v2/remote-jobs?geo=usa&industry=marketing
+Customer success
+Five recent customer support opportunities.
+GET /api/v2/remote-jobs?count=5&industry=supporting
+04 · Response fields Data ready for display or analysis.
+Each job includes its source URL, employer, eligibility, employment type,
+description, publication date, and salary information when supplied.
+Field
+Type
+Description
+id
+integer
+Unique Jobicy listing ID.
+url
+string
+Jobicy listing URL for public requests. With a valid Commercial Jobs API Bearer key, it contains the original ATS application URL when one is available; otherwise it remains the Jobicy listing URL.
+jobTitle
+string
+Role title.
+companyName
+string
+Employer name.
+companyLogo
+string
+Employer logo URL when available.
+jobIndustry
+array
+Job category labels.
+jobType
+array
+Employment type values.
+jobGeo
+string
+Remote location eligibility.
+jobLevel
+string
+Experience or seniority level.
+jobExcerpt
+string
+Short listing summary, up to 55 characters.
+jobDescription
+HTML string
+Full job description.
+pubDate
+date-time
+Original publication date.
+salaryMin / salaryMax
+number
+Salary bounds when provided.
+salaryCurrency
+string
+ISO currency code.
+salaryPeriod
+string
+Salary interval, such as yearly or hourly.
+Job object Copy
+{
+"id": 123456,
+"url": "https://jobicy.com/jobs/example-role",
+"jobTitle": "Senior Product Designer",
+"companyName": "Example Company",
+"companyLogo": "https://example.com/logo.png",
+"jobIndustry": ["Creative & Design"],
+"jobType": ["full-time"],
+"jobGeo": "Anywhere",
+"jobLevel": "Senior",
+"jobExcerpt": "Short summary of the role",
+"jobDescription": "<p>Complete HTML job description</p>",
+"pubDate": "2026-07-30T12:00:00+00:00",
+"salaryMin": 90000,
+"salaryMax": 125000,
+"salaryCurrency": "USD",
+"salaryPeriod": "yearly"
+}
+i Checking listing availability To verify whether a previously retrieved vacancy is still active,
+send a lightweight HEAD request to the Jobicy listing URL returned by the public API.
+An HTTP 404 or 410 response indicates that
+the vacancy is no longer active. For cached or stored listings,
+checking availability once or twice per hour is generally sufficient.
+05 · Live API playground Build and run a request here.
+Choose filters, send the request, inspect the JSON response, and copy it
+into your development workflow.
+Live API GET /api/v2/remote-jobs
+Result count
+Location Any location APAC Australia China Hong Kong Japan New Zealand Philippines Singapore South Korea Thailand Vietnam EMEA Europe Austria Belgium Bulgaria Croatia Cyprus Czechia Denmark Estonia Finland France Germany Greece Hungary Ireland Italy Latvia Lithuania Netherlands Norway Poland Portugal Romania Serbia Slovakia Slovenia Spain Sweden Switzerland United Kingdom Ukraine Israel Türkiye United Arab Emirates LATAM Argentina Brazil Costa Rica Mexico Canada United States
+Category Any category Admin & Virtual Assistant Editorial & Content Customer Success Technical Support Cybersecurity Data Science & Analytics Creative & Design Web & App Design DevOps & Infrastructure Education & E-learning Finance & Accounting Healthcare & Medical HR & Recruiting Legal & Compliance Marketing & Sales Business Development Sales SEO Product & Operations Project Management Software Engineering QA & Testing
+Keyword
+Run request Reset
+Response Copy
+GET https://jobicy.com/api/v2/remote-jobs?count=5
+{
+"status": "Ready to send a request"
+}
+06 · MCP server Remote job search for AI tools.
+The public MCP server lets compatible assistants, agents, and IDEs
+discover valid filters and retrieve structured listings through the public
+Jobicy MCP endpoint.
+TOOL 01 get_jobs
+Retrieves jobs using optional count , geo , industry , and tag filters.
+TOOL 02 get_taxonomies
+Returns current location or category slugs before a tool applies strict filters.
+MCP configuration Copy
+{
+"mcpServers": {
+"jobicy-jobs": {
+"url": "https://jobicy.com/mcp"
+}
+}
+}
+Install in Cursor ↗ Install in VS Code ↗
+07 · RSS feed Build a filtered feed.
+RSS works well for readers, publishing workflows, and automation services
+that do not need a JSON integration.
+Category Any category Admin & Virtual Assistant Editorial & Content Customer Success Technical Support Cybersecurity Data Science & Analytics Creative & Design Web & App Design DevOps & Infrastructure Education & E-learning Finance & Accounting Healthcare & Medical HR & Recruiting Legal & Compliance Marketing & Sales Business Development Sales SEO Product & Operations Project Management Software Engineering QA & Testing
+Job type Any job type Full time Freelance Contract Part time
+Location Any location APAC Australia China Hong Kong Japan New Zealand Philippines Singapore South Korea Thailand Vietnam EMEA Europe Austria Belgium Bulgaria Croatia Cyprus Czechia Denmark Estonia Finland France Germany Greece Hungary Ireland Italy Latvia Lithuania Netherlands Norway Poland Portugal Romania Serbia Slovakia Slovenia Spain Sweden Switzerland United Kingdom Ukraine Israel Türkiye United Arab Emirates LATAM Argentina Brazil Costa Rica Mexico Canada United States
+Keyword
+Generated feed URL Copy
+https://jobicy.com/jobs/feed
+i Canonical and legacy URLs Use /jobs/feed for new integrations. The older /feed/job_feed address remains available for compatibility.
+Polling a few times per day is normally sufficient and must not exceed once per hour.
+08 · Fair use Build useful experiences with Jobicy data.
+The Jobicy API is designed for websites, applications, newsletters,
+research tools, AI products, and other services that help users discover
+remote work opportunities.
+You may use Jobicy listings in your own products and user experiences without requesting individual permission.
+Keep Jobicy as the original source and preserve the canonical Jobicy job URL when displaying listings.
+You may create your own interfaces, summaries, categories, search experiences, and additional context around listings.
+Do not present Jobicy listings as your own original job postings or remove source attribution.
+Avoid excessive API requests and cache responses where appropriate to provide a reliable experience for everyone.
+Do not use the API to create spam networks, misleading job databases, or services that negatively affect employers or candidates.
+i No approval required for normal integrations Most integrations, including job boards, newsletters, career tools,
+AI assistants, and internal applications, can use the public API
+without a separate agreement. Contact us only for high-volume
+commercial partnerships or custom data arrangements.
+i Earn commissions from your Jobicy referrals If you use Jobicy listings on your website, app, newsletter, or other product, you can turn the original Jobicy job URLs into referral links and earn a commission when users you refer make eligible purchases on Jobicy.
+Simply append your Jobicy user ID to the job URL: https://jobicy.com/jobs/example-job ?u=YOUR_USER_ID
+The job URL remains the same — the ?u= parameter simply attributes the referred user to your account.
+You earn a commission when your referred users complete eligible purchases on Jobicy.
+View your referral ID, referred users, earnings, and other affiliate details in your Affiliate account.
+Manage your affiliate account →
+Learn more about the Jobicy Affiliate Program →
+09 · Integrations Embed or automate without rebuilding everything.
+Use a small widget, the official WordPress plugin, or an automation
+recipe when a custom API client would add unnecessary work.
+01 IFTTT applets ›
+Send new remote jobs to LinkedIn, X, Facebook, Telegram, Slack, Discord, or WordPress.
+02 Embeddable widget
+Add a responsive job search interface with light and dark themes.
+03 WordPress plugin ›
+Display fresh Jobicy listings with the [jobicy_jobs] shortcode.
+Widget example
+HTML Copy
+<div id="jobicy-widget"></div>
+<script>
+window.jobicyWidgetConfig = {
+query: "Developer",
+theme: "light",
+autoSearch: true,
+limit: 10
+};
+</script>
+<script src="https://jobicy.com/api/prod/wg.js"></script>
+Get the WordPress plugin ↗ Jobicy to WordPress applet ↗ Publish to Slack ↗ Publish to Discord ↗
+10 · Frequently asked questions Before moving to production.
+The main operational details for a stable public API or feed integration.
+Does the Jobs API require an API key? No. The public remote jobs endpoint and taxonomy requests do not require authentication. A Bearer API key is only needed for Commercial Jobs API access, which returns direct ATS application URLs in url when available.
+How do I receive the original application link? Send Authorization: Bearer API_KEY with the Jobs API request. With an active key and sufficient API wallet balance, url returns the original ATS application URL. If a vacancy has no original application URL, url remains the Jobicy listing and no charge is made.
+How many jobs can one request return? The count parameter accepts values from 1 to 200. The endpoint returns the latest available matching jobs.
+How should a client discover valid filters? Use ?get=locations and ?get=industries instead of relying on a hard-coded list indefinitely.
+Can the job description contain HTML? Yes. Treat jobDescription as HTML and sanitize it according to the security rules of your application.
+How often should an integration poll? A few checks per day are usually enough. Automated checks must not run more frequently than once per hour.
+Integration examples on GitHub Build with the Jobicy Jobs API, RSS feeds and MCP using complete examples for Node.js, Python, Next.js, Telegram, Discord, Slack, WordPress, n8n, Zapier, Make and AI agents. View Jobicy API Examples on GitHub →
+Ready to test an integration?
+Start with the public endpoint, inspect current filter values, and move to MCP, RSS, or the widget when the use case is clear.
+Open playground Contact Jobicy
+Documentation On this page
+Overview
+Quick start
+Parameters
+Response fields
+API playground
+MCP server
+RSS feed
+Fair use
+Integrations
+FAQ
+Endpoint
+api/v2/remote-jobs Authentication
+Optional for direct ATS links Updated
+September 16, 2026
+Developer access Use Jobicy data in your product
+Test the public Jobs API, RSS feeds, MCP, or create a commercial API key for direct application URLs.
+Open API Dashboard →
+Developer resources
+Salary API
+Browse Jobs API data
+Integration support
+Jobs Talent AI Tools Salaries
+Menu
+AI‑Powered Career Growth with Jobicy!
+Hire Talent
+Jobicy
+About
+FAQ & Contact Us
+Pricing
+Advertise
+Transparency
+Community
+LinkedIn
+Facebook
+Twitter (X)
+Instagram
+Remote Talent
+Discover
+Job Listings
+Career Advice
+Remote Companies
+Interview Prep Hub
+Career Paths
+Salaries Directory
+Human Resources
+Remote Jobs API/RSS
+Affiliate Program
+Remote Work Index
+Sitemap
+Career Tools
+Online Resume Builder
+Resume Score Analyzer
+Resume Tailoring Tool
+Resume Summary Generator
+Mock Interview Practice
+Cover Letter Generator
+Thank You Email Generator
+Offer Negotiation Coach
+Job Description Generator
+Interview Question Generator
+Skill Assessments
+Remote job listings
+Remote Finance & Accounting Jobs
+Remote Creative & Design Jobs
+Remote Product & Operations Jobs
+Remote Software Engineering Jobs
+Remote Data Science & Analytics Jobs
+Remote Customer Success Jobs
+Remote Marketing & Sales Jobs
+Remote Healthcare & Medical Jobs
+Remote HR & Recruiting Jobs
+Remote Content & Editorial Jobs
+Remote DevOps & Infrastructure Jobs
+All categories →
+🇨🇦 Remote Canada Jobs
+🇺🇸 Remote USA Jobs
+🇪🇺 Remote Europe Jobs
+🇬🇧 Remote UK Jobs
+🇩🇪 Remote Germany Jobs
+🌍 Remote EMEA Jobs
+🌏 Remote APAC Jobs
+All remote locations →
+Remote Full Time Jobs
+Remote Part Time Jobs
+Remote Contract Jobs
+We use 🍪cookies to improve your browsing experience. All trademarks and service marks belong to their respective owners. Use of content requires a clickable source link.
+Apps & Extensions Browser Extensions
+Google Chrome Microsoft Edge Mozilla Firefox Mobile & Desktop
+App Store Windows App Google Play Get APK
+Scan to download
+Scan to download
+Privacy Policy
+Terms of Service
+Jobs API/RSS
+© 2026 Jobicy™. All rights reserved.
+KEY#0a410be61
+Feedback

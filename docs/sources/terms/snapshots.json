@@ -1,0 +1,17 @@
+{
+  "note": "Snapshots of the source terms pages under owner review, normalized by src/server/terms-fingerprint.ts. The offline test tests/unit/terms-fingerprint.test.ts checks that each source policy's terms_hash equals the sha256 recorded here and the committed snapshot's fingerprint. npm run terms:check compares them against the live pages (network, not part of npm run check).",
+  "snapshots": {
+    "himalayas": {
+      "url": "https://himalayas.app/terms",
+      "fetched_at": "2026-09-30T11:05:24.118Z",
+      "snapshot": "docs/sources/terms/himalayas-terms.txt",
+      "sha256": "d729e76417a9e06657387bafe2bcde8fb36ee0019ae170456abf9d64df1fad62"
+    },
+    "jobicy": {
+      "url": "https://jobicy.com/jobs-rss-feed",
+      "fetched_at": "2026-09-30T11:05:24.118Z",
+      "snapshot": "docs/sources/terms/jobicy-feed.txt",
+      "sha256": "feff80168fed52ef2ff4a25299f7ef160aee143ec9df667fb9fdfb5e5e0eace4"
+    }
+  }
+}

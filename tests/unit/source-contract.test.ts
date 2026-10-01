@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { isJobSnapshot, isSourcePolicy, type JobSnapshot, type SourcePolicy } from "../../src/domain/source-contracts.ts";
 import {
-  atlasFixturesPolicy, himalayasCandidatePolicy, getSourcePolicy, permissionFor,
+  atlasFixturesPolicy, himalayasCandidatePolicy, jobicyCandidatePolicy, getSourcePolicy, permissionFor,
+  maySendTextToProvider, partitionSourcesByProviderRights,
 } from "../../src/server/source-policies.ts";
 import {
   AdapterInputError, himalayasContractFixture, mapHimalayasFixture, mapHimalayasRecord,
@@ -40,14 +41,16 @@ test("acceptance 1: source policy fixes purpose, restrictions and owner review",
   assert.equal(himalayasCandidatePolicy.valid_until, "2026-12-23T00:00:00.000Z");
   assert.equal(himalayasCandidatePolicy.terms_urls.length > 0, true);
   // Approved matrix: API-documented reuse with attribution is allowed;
-  // full-text republication, ML/AI, direct apply and syndication are denied.
+  // full-text republication, direct apply and syndication are denied.
   for (const permission of ["fetch", "cache", "store_full_text", "store_excerpt",
-    "derive_fields", "publish_excerpt"] as const) {
+    "derive_fields", "publish_excerpt", "process_with_ml", "send_to_ai_provider"] as const) {
     assert.equal(himalayasCandidatePolicy.permissions[permission], "allowed", permission);
   }
-  for (const permission of ["publish_full_text", "process_with_ml", "send_to_ai_provider",
-    "send_email", "index_web_page", "syndicate_google_jobs", "train_model",
-    "direct_apply", "bulk_export"] as const) {
+  // Local ML inference was granted by the owner on 2026-09-30 and provider
+  // transfer on 2026-10-01 (both asserted in the decision test below); everything
+  // else about the rights is unchanged, and training on upstream text stays denied.
+  for (const permission of ["publish_full_text", "send_email", "index_web_page",
+    "syndicate_google_jobs", "train_model", "direct_apply", "bulk_export"] as const) {
     assert.equal(himalayasCandidatePolicy.permissions[permission], "denied", permission);
   }
   assert.equal(himalayasCandidatePolicy.apply_route, "source_required");
@@ -60,13 +63,58 @@ test("acceptance 1: source policy fixes purpose, restrictions and owner review",
   assert.equal(permissionFor(disabledClone, "fetch", NOW), "denied");
   assert.equal(permissionFor(disabledClone, "publish_excerpt", NOW), "denied");
   assert.equal(permissionFor(atlasFixturesPolicy, "publish_excerpt", NOW), "allowed");
-  assert.equal(permissionFor(atlasFixturesPolicy, "send_to_ai_provider", NOW), "denied");
+  assert.equal(permissionFor(atlasFixturesPolicy, "send_to_ai_provider", NOW), "allowed");
   assert.equal(getSourcePolicy("himalayas")?.source_id, "himalayas");
   // Structural mutations must be rejected by the contract validator.
   const broken: unknown = { ...himalayasCandidatePolicy, status: "maybe" };
   assert.equal(isSourcePolicy(broken), false);
   const extraKey: unknown = { ...atlasFixturesPolicy, surprise: 1 };
   assert.equal(isSourcePolicy(extraKey), false);
+});
+
+test("owner decision 2026-09-30 (brief 7.2): local ML inference covers fixtures and himalayas, not jobicy", () => {
+  // Granted: synthetic fixtures (the offline eval depends on it) and himalayas
+  // (API docs name "AI tools" as an intended audience; the owner accepted that
+  // reading — the full analysis lives in the 2026-09-30 decision document).
+  assert.equal(permissionFor(atlasFixturesPolicy, "process_with_ml", NOW), "allowed");
+  assert.equal(permissionFor(himalayasCandidatePolicy, "process_with_ml", NOW), "allowed");
+  // jobicy keeps the denial of LOCAL inference: its Fair Use text is the
+  // friendliest of the three, but the owner's 2026-09-30 grant did not cover it,
+  // and a silent flip must fail here. The provider-transfer grant below is a
+  // separate, later decision and does not change this line.
+  assert.equal(permissionFor(jobicyCandidatePolicy, "process_with_ml", NOW), "denied");
+  // Inference was never a licence to train on upstream text: that stays denied
+  // for every source.
+  for (const policy of [atlasFixturesPolicy, himalayasCandidatePolicy, jobicyCandidatePolicy]) {
+    assert.equal(permissionFor(policy, "train_model", NOW), "denied", policy.source_id);
+  }
+  // Unknown is not a licence either: the tri-state stays undecided, and the
+  // caller blocks exactly the disputed operation.
+  const unreviewed: SourcePolicy = {
+    ...atlasFixturesPolicy,
+    permissions: { ...atlasFixturesPolicy.permissions, process_with_ml: "unknown" },
+  };
+  assert.equal(permissionFor(unreviewed, "process_with_ml", NOW), "unknown");
+});
+
+test("owner decision 2026-10-01: provider transfer is granted, and the gate that enforces it exists", () => {
+  // Granted for all three sources: the operation is the same one the approved
+  // purposes need. Recorded honestly in the jobicy policy: on 2026-09-30 the owner
+  // withheld even the weaker local-inference grant there, so this is a later and
+  // stronger decision — narrowing it back is a one-line policy change plus this test.
+  for (const policy of [atlasFixturesPolicy, himalayasCandidatePolicy, jobicyCandidatePolicy]) {
+    assert.equal(permissionFor(policy, "send_to_ai_provider", NOW), "allowed", policy.source_id);
+    assert.equal(maySendTextToProvider(policy.source_id, NOW), true, policy.source_id);
+  }
+  // The gate is the executable form of the grant: unknown sources and rolled-back
+  // policies answer false, never "probably fine".
+  assert.equal(maySendTextToProvider("not-a-source", NOW), false);
+  assert.equal(maySendTextToProvider("himalayas", "2027-01-01T00:00:00.000Z"), false,
+    "an expired policy stops the transfer");
+  const partition = partitionSourcesByProviderRights(
+    ["atlas-fixtures", "himalayas", "jobicy", "not-a-source"], NOW);
+  assert.deepEqual(partition.allowed, ["atlas-fixtures", "himalayas", "jobicy"]);
+  assert.deepEqual(partition.denied, ["not-a-source"]);
 });
 
 test("acceptance 2: real contract validated and fixture is explicitly labelled", () => {
