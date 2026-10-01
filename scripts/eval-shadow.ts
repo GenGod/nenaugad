@@ -10,7 +10,7 @@
 import { GOLDEN_SET } from "../src/data/matching-golden.ts";
 import { dedupKey } from "../src/domain/dedup.ts";
 import { evaluateJob } from "../src/domain/matching.ts";
-import { RANKER_VERSION, type RankableJob } from "../src/domain/match-ranker.ts";
+import type { RankableJob } from "../src/domain/match-ranker.ts";
 import { FEED_DEFAULT_ORDER_ID, REGISTERED_RANKERS, rankerById } from "../src/domain/ranker-registry.ts";
 import { computeRankerShadow, type RankerShadowReport } from "../src/server/ranker-shadow-service.ts";
 
