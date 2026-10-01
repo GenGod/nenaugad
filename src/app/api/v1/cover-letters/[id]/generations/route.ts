@@ -7,10 +7,12 @@ import {
   executeGuardedOperation,
 } from "../../../../../../server/ai/gateway.ts";
 import { openAiTransport } from "../../../../../../server/ai/openai-transport.ts";
-import { GPT6_LUNA, worstCaseCostMicroCents } from "../../../../../../server/ai/provider.ts";
+import { GPT6_LUNA, reservationFor, worstCaseCostMicroCents } from "../../../../../../server/ai/provider.ts";
 import { snapshotPool, readSnapshotCardsData } from "../../../../../../server/storage/snapshots.ts";
 import { isJobSnapshot } from "../../../../../../domain/source-contracts.ts";
 import { latestProfile } from "../../../../../../server/profile-service.ts";
+import { maySendTextToProvider } from "../../../../../../server/source-policies.ts";
+import { assertNoCandidateFacts } from "../../../../../../server/ai/personal-data-boundary.ts";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -47,6 +49,11 @@ export async function POST(request: Request, { params }: Params) {
       return NextResponse.json({ error: "JOB_UNAVAILABLE" }, { status: 404 });
     }
     const job = snapshot.stored.snapshot;
+    // Rights before text: the posting's excerpt leaves the machine only if its
+    // source policy allows provider transfer right now (docs/OPEN_GAPS.md A2).
+    if (!maySendTextToProvider(job.id.split(":")[0] ?? "", new Date().toISOString())) {
+      return NextResponse.json({ error: "SOURCE_RIGHTS_DENIED" }, { status: 403 });
+    }
     jobTitle = job.title;
     jobCompany = job.company_name;
     const jobExcerpt = (snapshot.excerpt || job.description_text.slice(0, 500)).slice(0, 500);
@@ -56,13 +63,17 @@ export async function POST(request: Request, { params }: Params) {
   }
 
   try {
-    const worstCase = worstCaseCostMicroCents({
-      inputTokens: 1500, outputTokens: 3000,
-    });
+    // Personal-data boundary (owner decision 2026-10-01): a letter is written about
+    // the candidate, so the request cannot be expressed with job text alone.
+    assertNoCandidateFacts("cover_letter");
+    // Reserve the request's own envelope, not a guess at the answer: the input is
+    // bounded by the prompt's character count and the output by the transport's
+    // hard maximum (docs/OPEN_GAPS.md A4).
+    const worstCase = worstCaseCostMicroCents(reservationFor(prompt));
     const result = await executeGuardedOperation({
       pool,
       ownerId: user.id,
-      taskType: "cover_letter",
+      purpose: "cover_letter",
       idempotencyKey: `letter-${id}-${idempotencyKey}`,
       worstCaseMinor: worstCase,
       transport: openAiTransport,
@@ -116,6 +127,10 @@ export async function POST(request: Request, { params }: Params) {
     }
     if (error instanceof Error && error.message.includes("BUDGET")) {
       return NextResponse.json({ error: "BUDGET_EXCEEDED" }, { status: 402 });
+    }
+    if (error instanceof Error && (error.message === "PERSONAL_DATA_BOUNDARY"
+      || error.message === "AI_LIVE_DISABLED" || error.message === "AI_PROVIDER_NOT_CONFIGURED")) {
+      return NextResponse.json({ error: error.message }, { status: 503 });
     }
     if (error instanceof Error && error.message.includes("ATTEMPTS")) {
       return NextResponse.json({ error: "GENERATION_LIMIT" }, { status: 429 });

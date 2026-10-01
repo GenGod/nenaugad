@@ -12,12 +12,22 @@ test("starter defaults to fixture/local with all live features disabled", () => 
 test("production cannot be enabled through one environment switch", () => {
   assert.throws(() => readConfig({ ATLAS_ENV: "production" }), /PRODUCTION_NOT_IMPLEMENTED/u);
 });
-test("live AI and live sources fail closed, including malformed flags", () => {
-  for (const key of ["LIVE_AI_ENABLED","LIVE_SOURCES_ENABLED"]) {
-    for (const value of ["true","1","FALSE","", "enabled"]) {
-      assert.throws(() => readConfig({ [key]:value }), /NOT_IMPLEMENTED/u);
-    }
+test("live AI is a real switch: off by default, on only for the exact string \"true\"", () => {
+  // Owner decision 2026-10-01: the variable used to be rejected whenever it was
+  // set, which left the API key in the environment as the only switch. It now
+  // gates the gateway (src/server/ai/gateway.ts), and malformed values fail closed.
+  assert.equal(readConfig({}).liveAi, false);
+  assert.equal(readConfig({ LIVE_AI_ENABLED: "false" }).liveAi, false);
+  for (const value of ["1","FALSE","", "enabled", "yes"]) {
+    assert.throws(() => readConfig({ LIVE_AI_ENABLED:value }), /LIVE_AI_ENABLED_INVALID/u);
   }
+  assert.equal(readConfig({ LIVE_AI_ENABLED: "true" }).liveAi, true);
+});
+test("live sources have no switch of their own: the per-source policies are the control", () => {
+  for (const value of ["true","1","FALSE","", "enabled"]) {
+    assert.throws(() => readConfig({ LIVE_SOURCES_ENABLED:value }), /NOT_IMPLEMENTED/u);
+  }
+  assert.equal(readConfig({ LIVE_SOURCES_ENABLED: "false" }).liveSources, false);
 });
 test("uploads stay disabled by default and reject malformed flags; explicit local opt-in only", () => {
   assert.equal(readConfig({}).uploads, false);

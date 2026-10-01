@@ -1,7 +1,9 @@
 export type Config = Readonly<{
   environment: "local" | "test";
   backend: "fixture" | "postgres";
-  liveAi: false;
+  /** Live AI is off unless the owner turns it on explicitly. */
+  liveAi: boolean;
+  /** Live sources have no flag: the per-source policies are the control. */
   liveSources: false;
   uploads: boolean;
 }>;
@@ -18,10 +20,23 @@ export function readConfig(env: Record<string, string | undefined>): Config {
   if (environment !== "local" && environment !== "test") {
     throw new ConfigurationError("PRODUCTION_NOT_IMPLEMENTED");
   }
-  for (const key of ["LIVE_AI_ENABLED", "LIVE_SOURCES_ENABLED"]) {
-    if (env[key] !== undefined && env[key] !== "false") {
-      throw new ConfigurationError(`${key}_NOT_IMPLEMENTED`);
+  // The AI switch is real (owner decision 2026-10-01): absent or "false" means no
+  // provider call may spend, "true" means the owner has approved live AI, and any
+  // other value fails closed. Before this, the variable was rejected whenever it
+  // was set at all, which left the API key in the environment as the only —
+  // undocumented — switch (docs/OPEN_GAPS.md A1).
+  let liveAi = false;
+  if (env.LIVE_AI_ENABLED !== undefined && env.LIVE_AI_ENABLED !== "false") {
+    if (env.LIVE_AI_ENABLED !== "true") {
+      throw new ConfigurationError("LIVE_AI_ENABLED_INVALID");
     }
+    liveAi = true;
+  }
+  // Sources keep no flag of their own: a source runs when its policy is approved,
+  // enabled, unexpired and permits the operation. A second, weaker truth would be
+  // worse than none, so setting this variable stays an error.
+  if (env.LIVE_SOURCES_ENABLED !== undefined && env.LIVE_SOURCES_ENABLED !== "false") {
+    throw new ConfigurationError("LIVE_SOURCES_ENABLED_NOT_IMPLEMENTED");
   }
   // Uploads are implemented for the local offline intake only (S3-001) and
   // stay disabled unless explicitly enabled; malformed values fail closed.
@@ -36,7 +51,7 @@ export function readConfig(env: Record<string, string | undefined>): Config {
   if (backend !== "fixture" && backend !== "postgres") {
     throw new ConfigurationError("INVALID_DATA_BACKEND");
   }
-  return { environment, backend, liveAi: false, liveSources: false, uploads };
+  return { environment, backend, liveAi, liveSources: false, uploads };
 }
 
 export function localDatabaseUrl(raw: string | undefined, testOnly = false): string {

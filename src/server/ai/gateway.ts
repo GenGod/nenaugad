@@ -1,10 +1,13 @@
-// The single point where a future model call will enter the system
-// (AGENTS Boundaries). Without an owner-approved provider registration this
-// fails closed; the guards (worst-case reservation, persistent attempts,
-// deadline, uncertain handling, commit-time revalidation, kill switch) are
-// exercised through an injectable transport in tests only. SDK auto-retry
-// is off by contract: the transport interface makes exactly one attempt.
+// The single point where a model call enters the system (AGENTS Boundaries):
+// the approved purpose is checked here, before any money moves, and the guards
+// (worst-case reservation, persistent attempts, deadline, uncertain handling,
+// commit-time revalidation, kill switch) sit behind it. Without an
+// owner-approved provider registration this fails closed; the guards are
+// exercised through an injectable transport. SDK auto-retry is off by contract:
+// the transport interface makes exactly one attempt.
 import type { Pool } from "pg";
+import { readConfig } from "../config.ts";
+import { GPT6_LUNA, isPurposeApproved, type ApprovedPurpose } from "./provider.ts";
 import {
   BudgetError, beginAttempt, cancelOperation, ensureBudget, getOperation,
   markUncertain, reserveBudget, settleOperation,
@@ -26,19 +29,57 @@ export class ProviderNotConfiguredError extends Error {
   constructor() { super("AI_PROVIDER_NOT_CONFIGURED"); }
 }
 
-// No provider is registered in this repository; any attempt to reach here
-// without an explicit owner-supplied transport fails closed.
+export class PurposeNotApprovedError extends Error {
+  readonly code = "AI_PURPOSE_NOT_APPROVED";
+  constructor() { super("AI_PURPOSE_NOT_APPROVED"); }
+}
+
+export class LiveAiDisabledError extends Error {
+  readonly code = "AI_LIVE_DISABLED";
+  constructor() { super("AI_LIVE_DISABLED"); }
+}
+
+/**
+ * The spending bucket each approved purpose books into. The gateway derives the
+ * task type from the purpose instead of accepting both, so a purpose can never
+ * borrow another operation's attempt budget or mix up the two registries.
+ */
+const PURPOSE_TASK_TYPE: Readonly<Record<ApprovedPurpose, TaskType>> = {
+  cover_letter: "cover_letter",
+  job_matching: "job_matching",
+};
+
+/**
+ * The one guarded entry point.
+ *
+ * `purpose` is typed as a plain string on purpose: the whitelist must be checked
+ * at run time, because a purpose is data that can be revoked, not only a type.
+ * The check happens before the budget is touched, so an unapproved purpose costs
+ * nothing and leaves no operation row behind.
+ */
 export async function executeGuardedOperation(params: Readonly<{
   pool: Pool;
   ownerId: string;
-  taskType: TaskType;
+  purpose: string;
   idempotencyKey: string;
   worstCaseMinor: bigint;
   transport: ModelTransport | null; // null = fail closed (production today)
   prompt?: string; // the actual user message for the model
   now: string;
 }>): Promise<Readonly<{ output: string; settledMinor: bigint }>> {
+  // The switch the owner asked for: unless LIVE_AI_ENABLED is exactly "true", no
+  // provider call may spend — an API key in the environment is not approval
+  // (AGENTS.md). Checked here, in the single entry point, before any money moves.
+  if (!readConfig(process.env).liveAi) throw new LiveAiDisabledError();
+  if (!isPurposeApproved(params.purpose)) throw new PurposeNotApprovedError();
+  // The owner's per-operation ceiling, compared here because this is where the
+  // provider tariff meets a reservation. It used to be printed by a seed script
+  // and compared nowhere (docs/OPEN_GAPS.md A5).
+  if (params.worstCaseMinor > GPT6_LUNA.operationCeilingMicroCents) {
+    throw new BudgetError("OPERATION_CEILING_EXCEEDED");
+  }
   if (params.transport === null) throw new ProviderNotConfiguredError();
+  const taskType = PURPOSE_TASK_TYPE[params.purpose];
 
   const budget = await params.pool.query(
     "SELECT approved_limit_minor FROM ai_budgets WHERE id = $1",
@@ -52,7 +93,7 @@ export async function executeGuardedOperation(params: Readonly<{
     pool: params.pool,
     operationId: "",
     ownerId: params.ownerId,
-    taskType: params.taskType,
+    taskType,
     idempotencyKey: params.idempotencyKey,
     worstCaseMinor: params.worstCaseMinor,
     now: params.now,
@@ -60,7 +101,7 @@ export async function executeGuardedOperation(params: Readonly<{
 
   const attempt = await beginAttempt({
     pool: params.pool, ownerId: params.ownerId, operationId: operation.id,
-    taskType: params.taskType, now: params.now,
+    taskType, now: params.now,
   });
 
   // Persist the dispatch before the transport call (SP 9). After this

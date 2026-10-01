@@ -7,7 +7,7 @@ try {
     dependencyLockPresent: existsSync("package-lock.json"),
     dependenciesInstalled: existsSync("node_modules/next/package.json"),
     backend: config.backend, environment: config.environment,
-    realAi: "not_implemented", auth: "not_implemented",
+    realAi: config.liveAi, liveSources: false, auth: "not_implemented",
     uploads: "not_implemented", realSources: "not_implemented",
     databaseConnection: "not_probed",
     production: "blocked"

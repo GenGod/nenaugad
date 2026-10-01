@@ -1,19 +1,10 @@
 {
-  "task_id": "A10-001",
-  "file": "tasks/A10-001-ev-ghost-signal.md",
+  "task_id": "AI-007",
+  "file": "tasks/AI-007-owner-decisions-2026-10-01.md",
   "status": "implemented",
-  "repair_cycles_used": 2,
+  "repair_cycles_used": 0,
   "max_repair_cycles": 2,
-  "hypotheses": [
-    {
-      "text": "tsc после подключения слоя: обязательное поле RankedJob.ghost отсутствовало у псевдо-ранкера порядка каталога в реестре, у синтетического ранкера в matching-eval.test.ts и у записей collected в выдаче (они не несли closure); гипотеза — контракт расширился, все три места обязаны отдавать новый факт",
-      "recorded_at": "2026-09-29T13:35:13.642Z"
-    },
-    {
-      "text": "Первый прогон нового unit-теста: job.snapshot.closure не существует — сигнал проверки принят за поле снапшота; гипотеза — closure живёт в closure_checks, а не в контракте снапшота, и тест обязан проверять инертность слоя (нет сигнала → ghost 0), а не выдуманное поле",
-      "recorded_at": "2026-09-29T13:35:14.225Z"
-    }
-  ],
+  "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "A10 EV layer phase 1 (ghost): closure signals finally reach ranking and the candidate. src/domain/ev-multipliers.ts (suspectedInactive -20, pipelineStale -25, unknown/active = 0, honest note), RankableJob.closure + RankedJob.ghost, RANKER_VERSION v4, readSnapshotCardsData joins closure_checks, MatchedJob.closure carries the signal to the card. Urgency slot deliberately not duplicated: the A5 age demotion is phase-1 urgency, the survival model is B6. Verification: check 194/194, test:db 44/44 (2 new: one failed check keeps the posting with the note, two close it by the closure rule, unknown neither hides nor warns), build exit 0, e2e 96 passed, eval:matching unchanged (v4, NDCG@10 0.916), eval:shadow v4 moves 155/159 positions vs catalog order with guardrails passing; live check showed the note on a card while the posting stayed in the feed. The feed is still not ordered by the ranker - switching it is an owner decision (the page AI sort is decision #11). Counter 2/2. Group A complete: A1-A10."
+  "note": "Партия решений владельца 2026-10-01: A5 квота $1/мес + персональные бюджеты заводятся при регистрации и бэкфиллом + потолок операции 1 цент сравнивается в шлюзе (попутно найден и исправлен баг ensureBudget: ON CONFLICT по (scope,owner_id,period) не ловил конфликт по PK для глобальной строки с owner_id NULL, из-за чего повторный сид падал); A6 команда npm run ai:holds (список удержаний + --cancel=<id>, решение остаётся за человеком); A1 LIVE_AI_ENABLED стал настоящим выключателем (проверяется шлюзом до денег, .env сейчас false => живые вызовы отказывают), LIVE_SOURCES остаётся без флага осознанно, health/doctor отдают фактическое значение; A8 REINDEX TABLE job_snapshots 65 мс + REINDEX DATABASE 152 мс, аудит 0 недостижимых из 2182 (было 12/700), 12 векторов добраны (498/498); приватность: структурная граница personal-data-boundary.ts (PURPOSES_NEEDING_CANDIDATE_FACTS, assertNoCandidateFacts спрашивается обоими платящими местами по тесту, buildJobOnlyPrompt — единственный конструктор промпта) => обе AI-функции (скоринг, письма) закрыты до локальной модели, провайдеру больше не уходит ничего о кандидате. Проверки: check 235/235, test:db 55/55, build 0, e2e 96, seed:budgets x2 ok, ai:holds ok. Остаётся: месячный сброс квоты (period хранится, но окно не сбрасывается), журнал ручных решений по холдам, B14 (health про auth), план повторного включения батча."
 }

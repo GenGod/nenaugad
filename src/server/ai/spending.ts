@@ -25,7 +25,8 @@ export class BudgetError extends Error {
   constructor(code:
     | "BUDGET_EXCEEDED" | "BUDGET_UNAVAILABLE" | "ATTEMPTS_EXHAUSTED"
     | "DEADLINE_EXPIRED" | "OPERATION_NOT_FOUND" | "NOT_OWNER"
-    | "WRONG_STATE" | "IDEMPOTENCY_COLLISION") {
+    | "WRONG_STATE" | "IDEMPOTENCY_COLLISION" | "OWNER_BUDGET_MISSING"
+    | "OPERATION_CEILING_EXCEEDED") {
     super(code);
   }
 }
@@ -102,27 +103,29 @@ export async function reserveBudget(params: Readonly<{
       | undefined;
 
     type BudgetRow = { approved_limit_minor: string; settled_minor: string; held_minor: string };
-    const checkBudget = (row: BudgetRow | undefined) => {
-      if (!row) return; // a missing owner budget means "no owner-specific cap yet"
+    const checkBudget = (row: BudgetRow | undefined, scope: string) => {
+      // A missing owner row used to mean "no owner-specific cap yet", which made
+      // the approved per-user quota unenforceable (docs/OPEN_GAPS.md A5). Missing
+      // is now a refusal: the budget is provisioned when the user is created
+      // (src/server/users.ts) and backfilled by scripts/seed-ai-budgets.ts.
+      if (!row) throw new BudgetError(scope === "owner" ? "OWNER_BUDGET_MISSING" : "BUDGET_UNAVAILABLE");
       const settled = BigInt(row.settled_minor);
       const held = BigInt(row.held_minor);
       if (settled + held + params.worstCaseMinor > BigInt(row.approved_limit_minor)) {
         throw new BudgetError("BUDGET_EXCEEDED");
       }
     };
-    checkBudget(globalRow);
-    checkBudget(ownerRow);
+    checkBudget(globalRow, "global");
+    checkBudget(ownerRow, "owner");
 
     await client.query(
       "UPDATE ai_budgets SET held_minor = held_minor + $1 WHERE id = $2",
       [params.worstCaseMinor.toString(), GLOBAL_BUDGET_ID],
     );
-    if (ownerRow) {
-      await client.query(
-        "UPDATE ai_budgets SET held_minor = held_minor + $1 WHERE id = $2",
-        [params.worstCaseMinor.toString(), ownerBudgetId],
-      );
-    }
+    await client.query(
+      "UPDATE ai_budgets SET held_minor = held_minor + $1 WHERE id = $2",
+      [params.worstCaseMinor.toString(), ownerBudgetId],
+    );
 
     const id = `op_${randomBytes(12).toString("hex")}`;
     const deadline = new Date(Date.parse(params.now) + OPERATION_DEADLINE_MS).toISOString();
@@ -294,11 +297,19 @@ export async function getOperation(params: Readonly<{
 }
 
 export async function ensureBudget(params: Readonly<{
-  pool: Pool; budgetId: string; scope: "global" | "owner";
+  pool: Pick<Pool, "query">; budgetId: string; scope: "global" | "owner";
   ownerId?: string; approvedLimitMinor: bigint; period?: "total" | "monthly" | "daily";
 }>): Promise<void> {
+  // `Pick<Pool, "query">` so this can run inside a caller's transaction (a PoolClient
+  // has the same query method) — registration creates the user and its cap together.
+  //
+  // `ON CONFLICT DO NOTHING` with NO target on purpose: the unique key is
+  // (scope, owner_id, period) and the global row stores owner_id = NULL, which a
+  // unique index does not treat as a conflict — so a targeted ON CONFLICT let the
+  // same id hit the primary key instead and threw 23505. That made "ensure, safe to
+  // re-run" false for exactly the row the seed re-runs.
   await params.pool.query(
-    "INSERT INTO ai_budgets (id, scope, owner_id, period, approved_limit_minor) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (scope, owner_id, period) DO NOTHING",
+    "INSERT INTO ai_budgets (id, scope, owner_id, period, approved_limit_minor) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING",
     [params.budgetId, params.scope, params.ownerId ?? null, params.period ?? "total",
       params.approvedLimitMinor.toString()],
   );

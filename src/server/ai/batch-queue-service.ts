@@ -1,10 +1,17 @@
 // Batch queue management: submit, poll, retrieve, persist.
 // Event-driven: profile changes and new-job imports trigger batch submissions;
 // the worker polls pending batches and stores results automatically.
+//
+// **Closed (C0 part 1, 2026-10-01):** the OpenAI Batch path spends without the
+// budget guard, so submit and poll short-circuit here and say why instead of
+// pretending there was nothing to do (docs/OPEN_GAPS.md A3). The queue-row shape
+// and the server-side custom_id mapping stored with it are the pieces the
+// reviewed re-enable will reuse; the manual route path never had the mapping on
+// the server at all, which is the other half of why it is closed.
 import { randomBytes } from "node:crypto";
 import type { Pool } from "pg";
 import {
-  submitBatch, checkBatch, retrieveBatchResults, isBatchConfigured,
+  isBatchEnabled, submitBatch, checkBatch, retrieveBatchResults,
 } from "./openai-batch.ts";
 import { buildSinglePrompt } from "../relevance-service.ts";
 import { latestProfile } from "../profile-service.ts";
@@ -24,10 +31,13 @@ export type BatchQueueEntry = Readonly<{
 
 // Submit a batch for all eligible jobs that lack cached scores for the
 // current profile version. Returns the queue entry, or null if nothing to do.
+// While the path is closed it returns null immediately (nothing was submitted —
+// which is exactly what null means) and a caller that wants to explain why reads
+// `BATCH_DISABLED_REASON` from openai-batch.ts.
 export async function submitRelevanceBatch(params: Readonly<{
   pool: Pool; userId: string;
 }>): Promise<BatchQueueEntry | null> {
-  if (!isBatchConfigured()) return null;
+  if (!isBatchEnabled()) return null;
   const profile = await latestProfile(params.pool, params.userId);
   if (!profile) return null;
   const matched = await matchedForUser(params.userId);
@@ -84,9 +94,11 @@ export async function submitRelevanceBatch(params: Readonly<{
 }
 
 // Poll all pending batches; retrieve and persist results for completed ones.
+// Closed with the rest of the path: it returns zeros and touches nothing.
 export async function processPendingBatches(pool: Pool): Promise<Readonly<{
   checked: number; completed: number; stored: number;
 }>> {
+  if (!isBatchEnabled()) return { checked: 0, completed: 0, stored: 0 };
   const pending = await pool.query(
     "SELECT id, user_id, openai_batch_id, profile_version, custom_id_mapping FROM ai_batch_queue WHERE status = 'submitted' ORDER BY submitted_at LIMIT 10",
   );

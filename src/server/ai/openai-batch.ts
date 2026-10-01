@@ -1,27 +1,47 @@
-// OpenAI Batch API client for bulk relevance analysis (50% cost discount
-// vs synchronous calls). Workflow: upload JSONL → create batch → poll →
-// download results → parse by custom_id → store relevance scores.
-// The SDK's built-in retry is off (maxRetries: 0 everywhere).
-import OpenAI from "openai";
+// OpenAI Batch API client — CLOSED until it is brought behind the money guard
+// (C0 part 1, 2026-10-01, brief §C0 "или отключить до завода").
+//
+// Why closed rather than "just guarded": this path never went through
+// `executeGuardedOperation`, so its spending had no worst-case reservation, no
+// ai_operations row, no attempt counter, no deadline and no uncertain handling
+// (docs/OPEN_GAPS.md A3). Bringing it behind the guard is not a rename — an
+// asynchronous job needs a reservation that outlives the 120 s operation
+// deadline, a settle step in a *different* request, the operation id stored with
+// the queue row, and a ceiling decision, because a whole-catalog batch
+// (~1.05M input tokens ≈ 1.05 cents) exceeds the owner's 1-cent per-operation
+// ceiling. That is its own reviewed task; the brief explicitly allows closing
+// the path until then ("или отключить до завода").
+//
+// The SDK client is gone on purpose: this module no longer imports `openai` at
+// all, so the approved transport (src/server/ai/openai-transport.ts) is the only
+// file in the repository that can reach a provider. A guard that can be bypassed
+// by a stale import is not a guard.
+//
+// Kept, because it is the shape of the future work and is testable without a
+// network: `buildJsonl` (request building) and `parseBatchOutput` (result
+// parsing), plus `persistBatchResults` (the write step). Everything that would
+// touch the provider throws `BatchDisabledError` before any client exists.
 import type { Pool } from "pg";
 import { GPT6_LUNA } from "./provider.ts";
 import { storeScore, type RelevanceScore } from "../relevance-service.ts";
 
-let batchClient: OpenAI | null = null;
-function client(): OpenAI {
-  if (batchClient === null) {
-    batchClient = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY ?? "",
-      maxRetries: 0,
-      timeout: 60_000,
-    });
-  }
-  return batchClient;
+export class BatchDisabledError extends Error {
+  readonly code = "BATCH_DISABLED";
+  constructor() { super("BATCH_DISABLED"); }
 }
 
-export function isBatchConfigured(): boolean {
-  return typeof process.env.OPENAI_API_KEY === "string" &&
-    process.env.OPENAI_API_KEY.length > 0;
+/**
+ * Why the path is off, in one place, so every caller can say something true
+ * instead of "nothing to do".
+ */
+export const BATCH_DISABLED_REASON =
+  "the batch path spends without the budget guard (no reservation, attempts, deadline or"
+  + " uncertain handling) and stays closed until it is brought behind executeGuardedOperation;"
+  + " see docs/OPEN_GAPS.md A3";
+
+/** False by construction: see the module header for what must exist first. */
+export function isBatchEnabled(): boolean {
+  return false;
 }
 
 export type BatchJob = Readonly<{
@@ -66,40 +86,14 @@ export function buildJsonl(jobs: readonly BatchJob[]): string {
   ).join("\n");
 }
 
-// Upload the JSONL and create a batch. Returns immediately with batch_id.
-export async function submitBatch(jobs: readonly BatchJob[]): Promise<BatchSubmission> {
-  const jsonl = buildJsonl(jobs);
-  const blob = new Blob([jsonl], { type: "application/jsonl" });
-  const file = await client().files.create({
-    file: blob,
-    purpose: "batch",
-  });
-  const batch = await client().batches.create({
-    input_file_id: file.id,
-    endpoint: "/v1/chat/completions",
-    completion_window: "24h",
-    metadata: { purpose: "relevance", jobs: String(jobs.length) },
-  });
-  return {
-    batchId: batch.id,
-    inputFileId: file.id,
-    jobCount: jobs.length,
-  };
+/** Upload the JSONL and create a batch. Closed: see the module header. */
+export async function submitBatch(_jobs: readonly BatchJob[]): Promise<BatchSubmission> {
+  throw new BatchDisabledError();
 }
 
-export async function checkBatch(batchId: string): Promise<BatchStatus> {
-  const batch = await client().batches.retrieve(batchId);
-  return {
-    id: batch.id,
-    status: batch.status,
-    requestCounts: {
-      total: batch.request_counts?.total ?? 0,
-      completed: batch.request_counts?.completed ?? 0,
-      failed: batch.request_counts?.failed ?? 0,
-    },
-    outputFileId: batch.output_file_id ?? null,
-    errorFileId: batch.error_file_id ?? null,
-  };
+/** Poll a batch. Closed with the rest of the path. */
+export async function checkBatch(_batchId: string): Promise<BatchStatus> {
+  throw new BatchDisabledError();
 }
 
 export type BatchResultEntry = Readonly<{
@@ -108,57 +102,81 @@ export type BatchResultEntry = Readonly<{
   score: RelevanceScore | null;
 }>;
 
-// Download the output file and parse results, mapping custom_id → score.
-export async function retrieveBatchResults(
-  outputFileId: string,
+/**
+ * Parse a batch output file (JSONL). Pure: no network, no client — which is why
+ * it survives the closure and can be tested today. Malformed lines and results
+ * for unknown custom ids are counted, not silently dropped: `skipped` is what an
+ * operator needs to tell "the model returned nothing" from "we lost the answer".
+ */
+export function parseBatchOutput(
+  text: string,
   customIdToSnapshotId: ReadonlyMap<string, string>,
-): Promise<readonly BatchResultEntry[]> {
-  const response = await client().files.content(outputFileId);
-  const text = await response.text();
+): Readonly<{ entries: readonly BatchResultEntry[]; malformedLines: number; unknownCustomIds: number }> {
   const entries: BatchResultEntry[] = [];
+  let malformedLines = 0;
+  let unknownCustomIds = 0;
   for (const line of text.split("\n")) {
     if (line.trim().length === 0) continue;
+    let customId = "";
+    let snapshotId: string | undefined;
+    let content = "";
     try {
       const record = JSON.parse(line) as {
         custom_id?: string;
         response?: { body?: { choices?: { message?: { content?: string } }[] } };
       };
-      const customId = record.custom_id ?? "";
-      const snapshotId = customIdToSnapshotId.get(customId);
-      if (!snapshotId) continue;
-      const content = record.response?.body?.choices?.[0]?.message?.content ?? "";
-      if (content.length === 0) {
+      customId = record.custom_id ?? "";
+      snapshotId = customIdToSnapshotId.get(customId);
+      if (!snapshotId) {
+        unknownCustomIds += 1;
+        continue;
+      }
+      content = record.response?.body?.choices?.[0]?.message?.content ?? "";
+    } catch {
+      malformedLines += 1;
+      continue;
+    }
+    if (content.length === 0) {
+      entries.push({ customId, snapshotId, score: null });
+      continue;
+    }
+    try {
+      const parsed = JSON.parse(content) as {
+        score?: number; matched_skills?: string[];
+        missing_skills?: string[]; explanation?: string;
+      };
+      if (typeof parsed.score !== "number" || parsed.score < 0 || parsed.score > 100) {
         entries.push({ customId, snapshotId, score: null });
         continue;
       }
-      try {
-        const parsed = JSON.parse(content) as {
-          score?: number; matched_skills?: string[];
-          missing_skills?: string[]; explanation?: string;
-        };
-        if (typeof parsed.score !== "number" || parsed.score < 0 || parsed.score > 100) {
-          entries.push({ customId, snapshotId, score: null });
-          continue;
-        }
-        entries.push({
-          customId, snapshotId,
-          score: {
-            snapshotId,
-            score: Math.round(parsed.score),
-            matchedSkills: Array.isArray(parsed.matched_skills) ? parsed.matched_skills : [],
-            missingSkills: Array.isArray(parsed.missing_skills) ? parsed.missing_skills : [],
-            explanation: typeof parsed.explanation === "string" ? parsed.explanation.slice(0, 500) : "",
-          },
-        });
-      } catch {
-        entries.push({ customId, snapshotId, score: null });
-      }
-    } catch { /* skip malformed lines */ }
+      entries.push({
+        customId, snapshotId,
+        score: {
+          snapshotId,
+          score: Math.round(parsed.score),
+          matchedSkills: Array.isArray(parsed.matched_skills) ? parsed.matched_skills : [],
+          missingSkills: Array.isArray(parsed.missing_skills) ? parsed.missing_skills : [],
+          explanation: typeof parsed.explanation === "string" ? parsed.explanation.slice(0, 500) : "",
+        },
+      });
+    } catch {
+      // An unparseable score is a missing score, and it is reported as one.
+      entries.push({ customId, snapshotId, score: null });
+    }
   }
-  return entries;
+  return { entries, malformedLines, unknownCustomIds };
 }
 
-// Store all valid results in the DB.
+/** Download and parse a batch output file. Closed: see the module header. */
+export async function retrieveBatchResults(
+  _outputFileId: string,
+  _customIdToSnapshotId: ReadonlyMap<string, string>,
+): Promise<readonly BatchResultEntry[]> {
+  throw new BatchDisabledError();
+}
+
+// Store all valid results in the DB. Kept because it is the write step of the
+// reviewed plan above and touches no provider.
 export async function persistBatchResults(params: Readonly<{
   pool: Pool; userId: string; profileVersion: number;
   results: readonly BatchResultEntry[];

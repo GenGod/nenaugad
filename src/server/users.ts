@@ -18,10 +18,14 @@ export async function registerUser(pool: Pool, email: string, password: string):
   const normalized = email.trim().toLowerCase();
   validateRegistration(normalized, password);
   const { hashPassword } = await import("./password.ts");
+  const { ensureBudget } = await import("./ai/spending.ts");
+  const { ownerBudgetId, GPT6_LUNA } = await import("./ai/provider.ts");
   const id = `u_${randomBytes(12).toString("hex")}`;
   const passwordHash = hashPassword(password);
+  const client = await pool.connect();
   try {
-    const result = await pool.query(
+    await client.query("BEGIN");
+    const result = await client.query(
       "INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3) RETURNING id, email, password_hash",
       [id, normalized, passwordHash],
     );
@@ -29,12 +33,25 @@ export async function registerUser(pool: Pool, email: string, password: string):
       | { id: string; email: string; password_hash: string }
       | undefined;
     if (!row) throw new Error("REGISTER_RETURNED_NOTHING");
+    // A user is born with a spending cap. The ledger refuses a missing owner
+    // budget (docs/OPEN_GAPS.md A5: absence used to mean "no cap"), so the row has
+    // to exist before the first request — created in the same transaction as the
+    // user, so neither exists without the other.
+    await ensureBudget({
+      pool: client, budgetId: ownerBudgetId(row.id), scope: "owner",
+      ownerId: row.id, period: "monthly",
+      approvedLimitMinor: GPT6_LUNA.ownerMonthlyQuotaMicroCents,
+    });
+    await client.query("COMMIT");
     return { id: row.id, email: row.email, passwordHash: row.password_hash };
   } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
     if (typeof error === "object" && error !== null && (error as { code?: string }).code === "23505") {
       throw new RegistrationError("EMAIL_TAKEN");
     }
     throw error;
+  } finally {
+    client.release();
   }
 }
 

@@ -14,7 +14,7 @@ try {
   const result = await executeGuardedOperation({
     pool,
     ownerId: "u_smoke_ai_001",
-    taskType: "cover_letter",
+    purpose: "cover_letter",
     idempotencyKey: "smoke-" + Date.now(),
     worstCaseMinor: worstCase,
     transport: openAiTransport,
