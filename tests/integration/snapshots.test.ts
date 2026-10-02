@@ -63,7 +63,7 @@ test("snapshot tables reject foreign sources and non-snapshot payloads", async (
   ));
 });
 
-test("retention deletes snapshots whose last_seen passed the policy window", async () => {
+test("retention tombstones snapshots whose last_seen passed the policy window", async () => {
   await migrate(pool);
   await pool.query("DELETE FROM job_snapshots");
   await pool.query("DELETE FROM import_state");
@@ -75,10 +75,26 @@ test("retention deletes snapshots whose last_seen passed the policy window", asy
     "UPDATE job_snapshots SET snapshot = jsonb_set(snapshot, '{dates,last_seen_at}', $1) WHERE id = $2",
     [JSON.stringify("2020-01-01T00:00:00.000Z"), "himalayas:jobs-fixture-h-001"],
   );
-  const deleted = await persistence.deleteExpired("2026-09-24T12:00:00.000Z");
-  assert.equal(deleted, 1);
-  const remaining = await pool.query("SELECT id FROM job_snapshots");
-  assert.equal(remaining.rowCount, 2);
+  const tombstoned = await persistence.tombstoneExpired("2026-09-24T12:00:00.000Z");
+  assert.equal(tombstoned, 1);
+  // RET-001: the row stays — identifiers, dates and the hash survive, the prose
+  // does not, and the lifecycle says what happened. Nothing read-facing sees it:
+  // classifySnapshot excludes anything that is not active.
+  const rows = await pool.query<{ id: string; excerpt: string; lifecycle: string; title: string;
+    description: string; tombstoned_at: Date | null; content_hash: string; first_seen_at: Date }>(
+    "SELECT id, excerpt, snapshot->>'lifecycle' AS lifecycle, snapshot->>'title' AS title, snapshot->>'description_text' AS description, tombstoned_at, content_hash, first_seen_at FROM job_snapshots ORDER BY id");
+  assert.equal(rows.rowCount, 3, "nothing is deleted any more");
+  const tombstone = rows.rows.find(row => row.id === "himalayas:jobs-fixture-h-001");
+  assert.ok(tombstone, "the expired record is still there");
+  assert.equal(tombstone.lifecycle, "tombstoned");
+  assert.equal(tombstone.title, "");
+  assert.equal(tombstone.description, "");
+  assert.equal(tombstone.excerpt, "");
+  assert.ok(tombstone.tombstoned_at, "the tombstoning moment is recorded");
+  assert.ok(tombstone.content_hash.length > 0, "the hash survives for dedup/history");
+  assert.ok(tombstone.first_seen_at, "first_seen provenance survives");
+  // A second pass does not re-tombstone what is already a tombstone.
+  assert.equal(await persistence.tombstoneExpired("2026-09-24T12:00:00.000Z"), 0);
 });
 
 test("jobicy rows share the snapshot tables after migration 0004", async () => {

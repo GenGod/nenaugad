@@ -12,6 +12,15 @@
 export const EVENT_TYPES = ["impression", "click"] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
+/**
+ * The journal's own retention horizon (RET-001, owner decision No 4, 2026-10-02):
+ * impressions and clicks live twelve months. That is the horizon the ranking
+ * work (LTR/OPE) asked for; minimisation bounds the record at the same time.
+ * The seen-set reads its 7–14-day window and the digest its cursor from the same
+ * table, so nothing downstream depends on older rows.
+ */
+export const EVENT_RETENTION_MONTHS = 12;
+
 const SNAPSHOT_ID = /^(himalayas|jobicy):[a-z0-9-]{1,150}$/u;
 const MAX_EVENTS_PER_REQUEST = 50;
 

@@ -8,10 +8,11 @@ import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import { localPool, migrate } from "../../scripts/db.ts";
 import { registerUser } from "../../src/server/users.ts";
-import { countEventsForUser, deleteEventsForUser, recordClicks, recordImpressions } from "../../src/server/events-service.ts";
+import { countEventsForUser, deleteEventsForUser, purgeExpiredEvents, recordClicks, recordImpressions } from "../../src/server/events-service.ts";
 import { deleteAllProfiles, saveProfileVersion } from "../../src/server/profile-service.ts";
 import { storeScore } from "../../src/server/relevance-service.ts";
 import { FEED_ORDERS } from "../../src/domain/feed-order.ts";
+import { EVENT_RETENTION_MONTHS } from "../../src/domain/events.ts";
 import { createPostgresPersistence } from "../../src/server/storage/snapshots.ts";
 import { runJobicyImport } from "../../src/server/import/jobicy-adapter.ts";
 import { jobicyCandidatePolicy } from "../../src/server/source-policies.ts";
@@ -130,4 +131,24 @@ test("A8: an event for a snapshot that does not exist is rejected, not silently 
     (error: unknown) => typeof error === "object" && error !== null && (error as { code?: string }).code === "23503",
   );
   assert.equal(await countEventsForUser(pool, user.id), 0);
+});
+
+test("RET-001: the journal keeps twelve months and purges older events", async () => {
+  await migrate(pool);
+  const snapshotId = await seedSnapshot(new Date().toISOString());
+  const user = await registerUser(pool, uniqueEmail(), "long-enough-password");
+  await recordImpressions({ pool, userId: user.id, feed: "match", items: [{ snapshotId, position: 0 }] });
+  await recordImpressions({ pool, userId: user.id, feed: "match", items: [{ snapshotId, position: 1 }] });
+  // Age the first event past the horizon; the second stays fresh. Scoped to this
+  // user — the test database is shared, and the purge below is global.
+  await pool.query(
+    "UPDATE job_events SET created_at = now() - interval '13 months' WHERE user_id = $1 AND position = 0",
+    [user.id]);
+  const purged = await purgeExpiredEvents(pool, new Date().toISOString());
+  assert.equal(purged, 1);
+  const left = await pool.query<{ position: number }>(
+    "SELECT position FROM job_events WHERE user_id = $1", [user.id]);
+  assert.deepEqual(left.rows.map(row => row.position), [1], "inside the horizon stays");
+  // The horizon is the decided one — a named constant, not a magic number here.
+  assert.equal(EVENT_RETENTION_MONTHS, 12);
 });

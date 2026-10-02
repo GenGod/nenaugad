@@ -135,7 +135,7 @@ test("embeddings: a changed posting is re-embedded, an unchanged one is left alo
   assert.equal((await embeddingWork(pool, "himalayas", FAKE_MODEL_VERSION)).length, 0);
 });
 
-test("embeddings: retention deletes the posting's vector together with the snapshot", async () => {
+test("embeddings: retention blanks the posting's text, and the vector dies with it", async () => {
   await seedCatalog();
   const embedder = createFakeEmbedder();
   await indexSourceEmbeddings({ pool, sourceId: "himalayas", embedder, now: NOW });
@@ -145,15 +145,19 @@ test("embeddings: retention deletes the posting's vector together with the snaps
   await pool.query("UPDATE job_snapshots SET snapshot = jsonb_set(snapshot, '{dates,last_seen_at}', '\"2020-01-01T00:00:00.000Z\"') WHERE id = $1",
     ["himalayas:b1-welder"]);
   const persistence = createPostgresPersistence(pool, enabledPolicy);
-  const deleted = await persistence.deleteExpired("2026-09-24T12:00:00.000Z");
-  assert.equal(deleted, 1);
-  // The vector is derived from text with a retention window: it must not outlive it.
+  const tombstoned = await persistence.tombstoneExpired("2026-09-24T12:00:00.000Z");
+  assert.equal(tombstoned, 1);
+  // RET-001: the row survives as a tombstone, but the vector is derived from
+  // text that no longer exists — it must not outlive the text.
   assert.equal(await countJobEmbeddings(pool, FAKE_MODEL_VERSION), 1);
   const remaining = await loadJobEmbeddings({
     pool, snapshotIds: ["himalayas:b1-welder", "himalayas:b1-python"],
     modelVersion: FAKE_MODEL_VERSION, instructionVersion: embedder.instructionVersion,
   });
   assert.deepEqual([...remaining.keys()], ["himalayas:b1-python"]);
+  const title = await pool.query<{ title: string }>(
+    "SELECT snapshot->>'title' AS title FROM job_snapshots WHERE id = $1", ["himalayas:b1-welder"]);
+  assert.equal(title.rows[0]?.title, "", "the prose is blanked, the row stays");
 });
 
 test("embeddings: the profile vector is personal data and dies with the profile", async () => {

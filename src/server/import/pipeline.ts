@@ -14,7 +14,7 @@ export type FetchOutcome =
 
 export type ImportChange = Readonly<{
   id: string;
-  change: "created" | "seen" | "updated" | "stale" | "closed";
+  change: "created" | "seen" | "updated" | "stale" | "closed" | "revived";
   version: number;
 }>;
 
@@ -115,6 +115,22 @@ export function runSnapshotImport(params: Readonly<{
       changes.push({ id: candidate.id, change: "created", version: 1 });
       continue;
     }
+    if (existing.snapshot.lifecycle === "tombstoned") {
+      // A tombstoned record whose posting reappears comes back to life (RET-001):
+      // the text is restored from the source, the version moves (a re-listing is
+      // a new observation), and first_seen_at keeps the original provenance.
+      const version = existing.snapshot.version + 1;
+      records[candidate.id] = {
+        ...existing,
+        snapshot: withDates({ ...candidate, version }, now),
+        contentHash,
+        firstSeenAt: existing.firstSeenAt,
+        fullPassMisses: 0,
+        tombstonedAt: null,
+      };
+      changes.push({ id: candidate.id, change: "revived", version });
+      continue;
+    }
     if (existing.contentHash === contentHash) {
       // Same meaning: only observation dates move; version and first_seen stay.
       records[candidate.id] = {
@@ -147,6 +163,9 @@ export function runSnapshotImport(params: Readonly<{
           if (stored.fullPassMisses > 0) records[id] = { ...stored, fullPassMisses: 0 };
           continue;
         }
+        // A tombstone is absent by definition; retention owns its horizon, and a
+        // recount of misses would say nothing new (RET-001).
+        if (stored.snapshot.lifecycle === "tombstoned") continue;
         const misses = stored.fullPassMisses + 1;
         const staled = misses >= STALE_AFTER_FULL_PASS_MISSES &&
           stored.snapshot.lifecycle === "active";

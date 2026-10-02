@@ -5,6 +5,7 @@
 import type { JobSnapshot, SourcePolicy } from "../../domain/source-contracts.ts";
 import { permissionFor } from "../source-policies.ts";
 import type { SnapshotStore, StoredSnapshot } from "../../domain/snapshot-projection.ts";
+import { tombstoneSnapshot } from "../../domain/snapshot-projection.ts";
 import { runSnapshotImport } from "./pipeline.ts";
 import {
   AdapterInputError, mapHimalayasRecord, type HimalayasRawRecord,
@@ -28,7 +29,7 @@ export type SnapshotPersistence = Readonly<{
   saveImportState(state: ImportState): Promise<void>;
   loadStore(): Promise<{ store: SnapshotStore; excerpts: Record<string, string> }>;
   saveStore(store: SnapshotStore, excerpts: Record<string, string>): Promise<void>;
-  deleteExpired(now: string): Promise<number>;
+  tombstoneExpired(now: string): Promise<number>;
   recordAttempt(success: boolean, now: string): Promise<void>;
   resumeAttempts(): Promise<void>;
 }>;
@@ -41,7 +42,8 @@ export type AdapterReport = Readonly<{
   recordsMapped: number;
   recordsRejected: number;
   changes: readonly { id: string; change: string; version: number }[];
-  deletedExpired: number;
+  /** Records retention blanked into tombstones this run (RET-001). */
+  tombstoned: number;
   nextCursor: string | null;
   nextEligibleAt: string | null;
 }>;
@@ -71,21 +73,29 @@ export function createMemoryPersistence(retentionHours = 720): SnapshotPersisten
       this.store = store;
       this.excerpts = { ...this.excerpts, ...excerpts };
     },
-    async deleteExpired(now) {
-      // Same semantics as the PostgreSQL implementation: retention window on
-      // last_seen, plus listings that expired more than a week ago.
+    async tombstoneExpired(now) {
+      // Same semantics as the PostgreSQL implementation (RET-001, owner decision
+      // No 4): an expired record becomes a tombstone — the row, its hash and its
+      // dates stay, the prose does not — and a row already tombstoned is left
+      // alone.
       const lastSeenCutoff = Date.parse(now) - retentionHours * 3600 * 1000;
       const expiryCutoff = Date.parse(now) - 7 * 24 * 3600 * 1000;
-      const kept: Record<string, StoredSnapshot> = {};
-      let deleted = 0;
-      for (const [id, stored] of Object.entries(this.store.records)) {
+      const records: Record<string, StoredSnapshot> = { ...this.store.records };
+      const excerpts = { ...this.excerpts };
+      let tombstoned = 0;
+      for (const [id, stored] of Object.entries(records)) {
+        if (stored.tombstonedAt) continue;
         const expiresAt = stored.snapshot.dates.expires_at;
         const expired = expiresAt !== null && Date.parse(expiresAt) < expiryCutoff;
-        if (Date.parse(stored.snapshot.dates.last_seen_at) < lastSeenCutoff || expired) deleted += 1;
-        else kept[id] = stored;
+        if (Date.parse(stored.snapshot.dates.last_seen_at) < lastSeenCutoff || expired) {
+          records[id] = { ...stored, snapshot: tombstoneSnapshot(stored.snapshot), tombstonedAt: now };
+          excerpts[id] = "";
+          tombstoned += 1;
+        }
       }
-      this.store = { ...this.store, records: kept };
-      return deleted;
+      this.store = { ...this.store, records };
+      this.excerpts = excerpts;
+      return tombstoned;
     },
   };
 }
@@ -101,7 +111,7 @@ export async function runHimalayasImport(params: Readonly<{
   const maxPages = params.maxPages ?? DEFAULT_MAX_PAGES_PER_RUN;
   const emptyReport: AdapterReport = {
     result: "refused_disabled", pagesFetched: 0, recordsMapped: 0, recordsRejected: 0,
-    changes: [], deletedExpired: 0, nextCursor: null, nextEligibleAt: null,
+    changes: [], tombstoned: 0, nextCursor: null, nextEligibleAt: null,
   };
   // Approval alone activates nothing; fetch requires enabled+approved+allowed.
   if (permissionFor(policy, "fetch", now) !== "allowed") return emptyReport;
@@ -154,7 +164,7 @@ export async function runHimalayasImport(params: Readonly<{
     now,
   });
   await persistence.saveStore(imported.store, excerpts);
-  const deletedExpired = await persistence.deleteExpired(now);
+  const tombstoned = await persistence.tombstoneExpired(now);
 
   // A failed run must not consume the polling window.
   if (failure === null) {
@@ -170,7 +180,7 @@ export async function runHimalayasImport(params: Readonly<{
     recordsMapped: snapshots.length,
     recordsRejected: rejected,
     changes: imported.changes,
-    deletedExpired,
+    tombstoned,
     nextCursor: complete ? null : cursor,
     nextEligibleAt: null,
   };

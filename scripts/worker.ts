@@ -13,6 +13,7 @@ import { runHimalayasImport } from "../src/server/import/himalayas-adapter.ts";
 import { runJobicyImport } from "../src/server/import/jobicy-adapter.ts";
 import { fetchHimalayasPage, fetchJobicyWindow, headJobicyListing } from "../src/server/import/fetcher.ts";
 import { runClosureCheckPass, closureStatus } from "../src/server/import/closure-checks.ts";
+import { purgeExpiredEvents } from "../src/server/events-service.ts";
 import {
   isPaused, nextDueAt, shouldAttempt, PAUSE_AFTER_CONSECUTIVE_FAILURES,
 } from "../src/server/import/scheduler.ts";
@@ -68,7 +69,7 @@ async function attempt(setup: Setup): Promise<void> {
       recordsMapped: "recordsMapped" in report ? report.recordsMapped : undefined,
       recordsRejected: "recordsRejected" in report ? report.recordsRejected : undefined,
       changes: report.changes.length,
-      deletedExpired: report.deletedExpired,
+      tombstoned: report.tombstoned,
       consecutiveFailures: state?.consecutiveFailures ?? 0,
     });
     if ((state?.consecutiveFailures ?? 0) >= PAUSE_AFTER_CONSECUTIVE_FAILURES) {
@@ -190,6 +191,12 @@ async function main(): Promise<void> {
       if (report.result !== "nothing_due") {
         log({ event: "closure_pass", source: "jobicy", ...report });
       }
+    }
+    // Journal retention (RET-001): impressions and clicks older than the decided
+    // horizon leave here; the per-profile cascade is a separate, stricter path.
+    if (!flag("no-retention")) {
+      const purged = await purgeExpiredEvents(pool, new Date().toISOString());
+      if (purged > 0) log({ event: "events_purged", purged });
     }
     // Batch relevance: poll pending OpenAI Batches and persist results.
     if (!flag("no-batch")) {

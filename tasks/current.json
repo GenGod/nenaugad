@@ -1,10 +1,10 @@
 {
-  "task_id": "B23-001",
-  "file": "tasks/B23-001-ranker-in-product-path.md",
+  "task_id": "RET-001",
+  "file": "tasks/RET-001-retention-tombstones.md",
   "status": "implemented",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "B23 исполнен (решение владельца №4 п.1): /matched сортируется ранкером v4 (NDCG@10 0.892 против 0.421 у каталога); matching-service ранжирует обе вкладки одним порядком rankJobs с disliked- и ghost-понижением; страница не сортирует по AI-скору; журнал пишет RANKER_VERSION; тень — чемпион v4, кандидат опционален (null); eval-shadow переведён. Проверки: check 240/240, test:db 56/56, build 0, e2e 96, eval:matching 0.892/guards 0/0, eval:shadow guardrails pass. Осталось по партии №4: RET-001 (retention), MODEL-001 (оценка локальной модели), решения E.5-E.7."
+  "note": "RET-001 исполнен (решение владельца №4 п.4): миграция 0018 (job_snapshots.tombstoned_at); retention обезличивает вместо удаления (id/source/даты/content_hash остаются, текст и векторы уходят, lifecycle=tombstoned), повторный листинг возрождает запись (pipeline revived, first_seen сохранён); журнал 12 мес (EVENT_RETENTION_MONTHS) + purgeExpiredEvents в worker'е. Тест поймал баг setUTCFullYear(y-12)=12 лет -> setUTCMonth. Проверки: check 241/241, test:db 57/57, build 0, e2e 96, db:migrate +1. Осталось по партии №4: MODEL-001 (оценка локальной модели), решения E.5-E.7."
 }

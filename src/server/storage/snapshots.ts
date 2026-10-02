@@ -21,6 +21,9 @@ function toStored(row: Row): StoredSnapshot | null {
     contentHash: String(row.content_hash),
     firstSeenAt: new Date(row.first_seen_at as Date).toISOString(),
     fullPassMisses: Number(row.full_pass_misses),
+    tombstonedAt: row.tombstoned_at === null || row.tombstoned_at === undefined
+      ? null
+      : new Date(row.tombstoned_at as Date).toISOString(),
   };
 }
 
@@ -63,7 +66,7 @@ export function createPostgresPersistence(pool: Pool, policy: SourcePolicy): Sna
     },
     async loadStore(): Promise<{ store: SnapshotStore; excerpts: Record<string, string> }> {
       const result = await pool.query(
-        "SELECT id, source_id, content_hash, first_seen_at, full_pass_misses, excerpt, snapshot FROM job_snapshots WHERE source_id = $1",
+        "SELECT id, source_id, content_hash, first_seen_at, full_pass_misses, excerpt, snapshot, tombstoned_at FROM job_snapshots WHERE source_id = $1",
         [sourceId],
       );
       const records: Record<string, StoredSnapshot> = {};
@@ -82,10 +85,10 @@ export function createPostgresPersistence(pool: Pool, policy: SourcePolicy): Sna
         await client.query("BEGIN");
         for (const stored of Object.values(store.records)) {
           await client.query(
-            "INSERT INTO job_snapshots (id, source_id, content_hash, first_seen_at, full_pass_misses, excerpt, snapshot) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb) ON CONFLICT (id) DO UPDATE SET content_hash = EXCLUDED.content_hash, full_pass_misses = EXCLUDED.full_pass_misses, excerpt = EXCLUDED.excerpt, snapshot = EXCLUDED.snapshot",
+            "INSERT INTO job_snapshots (id, source_id, content_hash, first_seen_at, full_pass_misses, excerpt, snapshot, tombstoned_at) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8) ON CONFLICT (id) DO UPDATE SET content_hash = EXCLUDED.content_hash, full_pass_misses = EXCLUDED.full_pass_misses, excerpt = EXCLUDED.excerpt, snapshot = EXCLUDED.snapshot, tombstoned_at = EXCLUDED.tombstoned_at",
             [stored.snapshot.id, sourceId, stored.contentHash, stored.firstSeenAt,
               stored.fullPassMisses, excerpts[stored.snapshot.id] ?? "",
-              JSON.stringify(stored.snapshot)],
+              JSON.stringify(stored.snapshot), stored.tombstonedAt ?? null],
           );
         }
         await client.query("COMMIT");
@@ -96,16 +99,33 @@ export function createPostgresPersistence(pool: Pool, policy: SourcePolicy): Sna
         client.release();
       }
     },
-    async deleteExpired(now: string): Promise<number> {
-      // Retention: last_seen older than the policy window, or a listing that
-      // expired more than a week ago (grace for post-expiry re-checks).
+    async tombstoneExpired(now: string): Promise<number> {
+      // Retention (RET-001, owner decision No 4): a row past the policy window
+      // becomes a tombstone instead of disappearing — identifiers, dates and the
+      // content hash stay (dedup and history keep their trace; the candidate's
+      // journal rows are not cascaded away before their own TTL), while the
+      // posting's prose is blanked and the lifecycle says why. The derived
+      // vectors go: they were computed from text that no longer exists.
       const lastSeenCutoff = new Date(Date.parse(now) - retentionHours * 3600 * 1000);
       const expiryCutoff = new Date(Date.parse(now) - 7 * 24 * 3600 * 1000);
       const result = await pool.query(
-        "DELETE FROM job_snapshots WHERE source_id = $1 AND ((snapshot#>>'{dates,last_seen_at}')::timestamptz < $2 OR ((snapshot#>>'{dates,expires_at}') IS NOT NULL AND (snapshot#>>'{dates,expires_at}')::timestamptz < $3))",
-        [sourceId, lastSeenCutoff.toISOString(), expiryCutoff.toISOString()],
+        `UPDATE job_snapshots SET
+           tombstoned_at = $1,
+           excerpt = '',
+           snapshot = jsonb_set(jsonb_set(jsonb_set(snapshot, '{title}', '""'::jsonb), '{company_name}', '""'::jsonb), '{description_text}', '""'::jsonb) || jsonb_build_object('lifecycle', 'tombstoned')
+         WHERE source_id = $2 AND tombstoned_at IS NULL
+           AND ((snapshot#>>'{dates,last_seen_at}')::timestamptz < $3
+             OR ((snapshot#>>'{dates,expires_at}') IS NOT NULL AND (snapshot#>>'{dates,expires_at}')::timestamptz < $4))`,
+        [now, sourceId, lastSeenCutoff.toISOString(), expiryCutoff.toISOString()],
       );
-      return result.rowCount ?? 0;
+      const tombstoned = result.rowCount ?? 0;
+      if (tombstoned > 0) {
+        await pool.query(
+          "DELETE FROM job_embeddings WHERE snapshot_id IN (SELECT id FROM job_snapshots WHERE source_id = $1 AND tombstoned_at = $2)",
+          [sourceId, now],
+        );
+      }
+      return tombstoned;
     },
   };
 }

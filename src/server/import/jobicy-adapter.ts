@@ -19,7 +19,8 @@ export type JobicyReport = Readonly<{
   recordsMapped: number;
   recordsRejected: number;
   changes: readonly { id: string; change: string; version: number }[];
-  deletedExpired: number;
+  /** Records retention blanked into tombstones this run (RET-001). */
+  tombstoned: number;
   nextEligibleAt: string | null;
 }>;
 
@@ -32,7 +33,7 @@ export async function runJobicyImport(params: Readonly<{
   const { transport, persistence, policy, now } = params;
   const empty: JobicyReport = {
     result: "refused_disabled", recordsMapped: 0, recordsRejected: 0,
-    changes: [], deletedExpired: 0, nextEligibleAt: null,
+    changes: [], tombstoned: 0, nextEligibleAt: null,
   };
   if (permissionFor(policy, "fetch", now) !== "allowed") return empty;
 
@@ -72,7 +73,7 @@ export async function runJobicyImport(params: Readonly<{
     now,
   });
   await persistence.saveStore(imported.store, excerpts);
-  const deletedExpired = await persistence.deleteExpired(now);
+  const tombstoned = await persistence.tombstoneExpired(now);
   await persistence.saveImportState({
     lastRunAt: now,
     nextCursor: null,
@@ -83,7 +84,7 @@ export async function runJobicyImport(params: Readonly<{
     recordsMapped: snapshots.length,
     recordsRejected: rejected,
     changes: imported.changes,
-    deletedExpired,
+    tombstoned,
     nextEligibleAt: null,
   };
 }

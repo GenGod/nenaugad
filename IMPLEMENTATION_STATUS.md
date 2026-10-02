@@ -29,6 +29,17 @@ $1/мес заводится при регистрации, потолок оп�
 ([AI-007](tasks/AI-007-owner-decisions-2026-10-01.md)); полный список открытого —
 [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 
+**RET-001: retention без удаления (2026-10-02, решение владельца №4, пункт 4):**
+миграция 0018 (`job_snapshots.tombstoned_at`); просроченные записи источника
+**обезличиваются, а не исчезают**: id, source, даты и content_hash остаются, текст
+(title/company/description/excerpt) и производные векторы удаляются, lifecycle →
+`tombstoned`; повторный листинг **возрождает** запись с исходным `first_seen_at`
+(ветка pipeline `revived`). Журнал показов/кликов: TTL **12 месяцев**
+(`EVENT_RETENTION_MONTHS`) + проход `purgeExpiredEvents` в worker'е
+(`--no-retention` отключает). Проверки: `check` 241/241, `test:db` **57/57**,
+`build` 0, `e2e` 96; миграция применена локально. Детали —
+[tasks/RET-001](tasks/RET-001-retention-tombstones.md).
+
 **B23: ранкер в продуктовом пути (2026-10-02, решение владельца №4):** `/matched`
 сортируется шипнутым ранкером v4 — замер решения: NDCG@10 **0.892** против
 **0.421** у порядка каталога. Скрытия питают preference-понижение, closure —

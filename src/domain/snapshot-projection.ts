@@ -10,7 +10,29 @@ export type StoredSnapshot = Readonly<{
   contentHash: string;
   firstSeenAt: string;
   fullPassMisses: number;
+  /**
+   * When retention blanked this record into a tombstone (RET-001, owner decision
+   * No 4); null/absent for live records. Present so a re-listed posting revives
+   * its own record instead of being born again.
+   */
+  tombstonedAt?: string | null;
 }>;
+
+/**
+ * The redacted form retention leaves behind (RET-001): identifiers, dates and
+ * the content hash stay — dedup and history keep their trace — while the
+ * posting's prose is removed and the lifecycle says what happened. The excerpt
+ * is cleared by the caller, which owns the row's other text column.
+ */
+export function tombstoneSnapshot(snapshot: JobSnapshot): JobSnapshot {
+  return {
+    ...snapshot,
+    title: "",
+    company_name: "",
+    description_text: "",
+    lifecycle: "tombstoned",
+  };
+}
 
 export type SnapshotStore = Readonly<{
   records: Readonly<Record<string, StoredSnapshot>>;

@@ -112,7 +112,7 @@ test("cursor budget yields a partial run with a checkpoint and no misses", async
   }
 });
 
-test("two full passes 24h apart stale an absent record; retention deletes old ones", async () => {
+test("two full passes 24h apart stale an absent record; retention tombstones old ones", async () => {
   const persistence = createMemoryPersistence();
   const fullFeed = async () => ({
     status: "ok" as const, jobs: [...himalayasContractFixture], nextCursor: null,
@@ -134,12 +134,52 @@ test("two full passes 24h apart stale an absent record; retention deletes old on
   const afterThird = await persistence.loadStore();
   assert.equal(afterThird.store.records[absentId]?.snapshot.lifecycle, "stale");
 
+  // RET-001: the retention window now tombstones instead of deleting — the
+  // records stay with their identifiers and dates, their prose cleared.
   const shortRetention = createMemoryPersistence(1);
   await runHimalayasImport({
     transport: fullFeed, persistence: shortRetention, policy: enabledPolicy, now: NOW,
   });
-  const deleted = await shortRetention.deleteExpired("2026-09-25T13:00:00.000Z");
-  assert.equal(deleted, 3);
+  const tombstoned = await shortRetention.tombstoneExpired("2026-09-25T13:00:00.000Z");
+  assert.equal(tombstoned, 3);
   const remaining = await shortRetention.loadStore();
-  assert.equal(Object.keys(remaining.store.records).length, 0);
+  assert.equal(Object.keys(remaining.store.records).length, 3, "records stay as tombstones");
+  for (const stored of Object.values(remaining.store.records)) {
+    assert.equal(stored.snapshot.lifecycle, "tombstoned");
+    assert.equal(stored.snapshot.title, "");
+    assert.equal(stored.snapshot.description_text, "");
+    assert.equal(stored.tombstonedAt, "2026-09-25T13:00:00.000Z");
+  }
+  // A second pass leaves tombstones alone (idempotent retention).
+  assert.equal(await shortRetention.tombstoneExpired("2026-09-25T14:00:00.000Z"), 0);
+});
+
+test("RET-001: a re-listed posting revives its tombstone and keeps its provenance", async () => {
+  const persistence = createMemoryPersistence(1);
+  const feed = async () => ({
+    status: "ok" as const, jobs: [...himalayasContractFixture], nextCursor: null,
+  });
+  await runHimalayasImport({ transport: feed, persistence, policy: enabledPolicy, now: NOW });
+  const id = Object.keys(persistence.store.records)[0]!;
+  const original = persistence.store.records[id]!;
+  // A pass without the posting, well past the 1-hour window: it is tombstoned.
+  const silent = async () => ({ status: "ok" as const, jobs: [], nextCursor: null });
+  const second = await runHimalayasImport({
+    transport: silent, persistence, policy: enabledPolicy, now: "2026-10-30T12:00:00.000Z",
+  });
+  assert.ok(second.tombstoned >= 1, "the expired record is tombstoned");
+  assert.equal(persistence.store.records[id]?.snapshot.lifecycle, "tombstoned");
+
+  // The posting is listed again: it revives with the original first_seen_at and
+  // a fresh version — a re-listing is a new observation of the same posting.
+  const third = await runHimalayasImport({
+    transport: feed, persistence, policy: enabledPolicy, now: "2026-10-31T12:00:00.000Z",
+  });
+  assert.deepEqual(third.changes.filter(change => change.id === id),
+    [{ id, change: "revived", version: original.snapshot.version + 1 }]);
+  const revived = persistence.store.records[id]!;
+  assert.equal(revived.tombstonedAt, null);
+  assert.equal(revived.snapshot.lifecycle, "active");
+  assert.equal(revived.firstSeenAt, original.firstSeenAt, "provenance survives the tombstone");
+  assert.ok(revived.snapshot.title.length > 0, "the text is back");
 });

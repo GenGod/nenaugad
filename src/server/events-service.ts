@@ -12,7 +12,7 @@
 // no string-built SQL in this file at all (the write-time security gate flagged
 // the earlier placeholder-joining version, and it was right to).
 import type { Pool } from "pg";
-import { normalisePropensity, type EventItem } from "../domain/events.ts";
+import { normalisePropensity, EVENT_RETENTION_MONTHS, type EventItem } from "../domain/events.ts";
 import { FEED_ORDERS, type FeedKey } from "../domain/feed-order.ts";
 import { latestProfile } from "./profile-service.ts";
 
@@ -172,5 +172,22 @@ export async function lastImpressionAt(pool: Pool, userId: string): Promise<stri
  */
 export async function deleteEventsForUser(pool: Pool, userId: string): Promise<number> {
   const result = await pool.query("DELETE FROM job_events WHERE user_id = $1", [userId]);
+  return result.rowCount ?? 0;
+}
+
+/**
+ * The journal's own retention (RET-001, owner decision No 4): impressions and
+ * clicks older than the decided horizon are removed — twelve months, the span
+ * the ranking work asked for and the bound minimisation demands. One statement;
+ * the per-profile cascade above is untouched.
+ */
+export async function purgeExpiredEvents(pool: Pool, now: string): Promise<number> {
+  const cutoff = new Date(now);
+  // Months, not years: subtracting from the year number would subtract 12 YEARS.
+  cutoff.setUTCMonth(cutoff.getUTCMonth() - EVENT_RETENTION_MONTHS);
+  const result = await pool.query(
+    "DELETE FROM job_events WHERE created_at < $1",
+    [cutoff.toISOString()],
+  );
   return result.rowCount ?? 0;
 }
