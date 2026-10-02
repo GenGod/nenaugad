@@ -1,5 +1,6 @@
 import type { SnapshotCardView } from "../server/snapshot-catalog-service.ts";
 import { firstSeenLabel } from "../domain/freshness.ts";
+import { ghostNote } from "../domain/ev-multipliers.ts";
 import { Icon } from "./icon.tsx";
 
 function geographyLabel(card: SnapshotCardView): string {
@@ -20,6 +21,9 @@ function publishedDate(card: SnapshotCardView): string {
 // claimed publication date — the label is built by src/domain/freshness.ts.
 export function SnapshotCard({ card, now }: { card: SnapshotCardView; now: string }) {
   const age = firstSeenLabel(card.firstSeenAt, now);
+  // Item A10/B7: an unconfirmed posting is still shown, but the candidate is
+  // told — the same honest note the matched feed carries, not a silent demotion.
+  const availabilityNote = ghostNote(card.closure);
   return <article className="job-card">
     <div className="job-top">
       <span className="company-mark" aria-hidden="true">{card.company.slice(0, 1)}</span>
@@ -35,6 +39,9 @@ export function SnapshotCard({ card, now }: { card: SnapshotCardView; now: strin
       <span><Icon name="info" />Показан фрагмент; полностью — на источнике</span>
       {age !== null && <span><Icon name="clock" />{age}</span>}
     </div>
+    {availabilityNote !== null && <p className="small secondary" style={{ marginTop: 4 }}>
+      <Icon name="help-circle" size={16} /> {availabilityNote}
+    </p>}
     {card.excerpt && <p className="job-reason">{card.excerpt}</p>}
     <p className="source"><Icon name="source" size={16} />
       Источник: {card.source.displayName} · листинг от {publishedDate(card)} · данные обновляются регулярно ·

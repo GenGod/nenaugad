@@ -10,6 +10,7 @@ import { localPool, migrate } from "../../scripts/db.ts";
 import { registerUser } from "../../src/server/users.ts";
 import { saveProfileVersion } from "../../src/server/profile-service.ts";
 import { matchedForUser } from "../../src/server/matching-service.ts";
+import { readSnapshotCards } from "../../src/server/snapshot-catalog-service.ts";
 import { ghostNote } from "../../src/domain/ev-multipliers.ts";
 import { runClosureCheckPass } from "../../src/server/import/closure-checks.ts";
 import { createPostgresPersistence } from "../../src/server/storage/snapshots.ts";
@@ -52,6 +53,10 @@ test("A10: an unconfirmed posting stays in the feed with an honest note", async 
   const visible = [...before.eligible, ...before.needsReview];
   assert.ok(visible.length >= 1, "the fixture import must leave a visible posting");
   assert.ok(visible.every(job => job.closure === null), "no check has run yet");
+  // B5: the requirement assessment rides with every delivered job (the card
+  // renders it; the fixture backend e2e path never exercises this page).
+  assert.ok(visible.every(job => Array.isArray(job.requirements.rows) &&
+    typeof job.requirements.mustTotal === "number"), "requirements must be attached");
 
   // One failed availability check: still active in our store (two are needed to
   // close), so it must still be delivered — demotion is not hiding.
@@ -70,6 +75,14 @@ test("A10: an unconfirmed posting stays in the feed with an honest note", async 
   const suspected = stillVisible.find(job => job.closure?.lastResult === "inactive");
   assert.ok(suspected, "the closure signal must reach the feed");
   assert.match(ghostNote(suspected.closure) ?? "", /Возможно неактивна/u);
+
+  // B7: the catalog path must carry the same signal and note — the defect was
+  // that only the matched feed knew about it.
+  const catalog = await readSnapshotCards({ pool });
+  const catalogCard = catalog.cards.find(card => card.id === suspected.card.id);
+  assert.ok(catalogCard, "the suspected posting is in the catalog too");
+  assert.equal(catalogCard.closure?.lastResult, "inactive");
+  assert.match(ghostNote(catalogCard.closure) ?? "", /Возможно неактивна/u);
 
   // Only the closure rule itself takes it out of the feed.
   const second = await runClosureCheckPass({

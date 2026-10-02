@@ -1,18 +1,34 @@
 import { existsSync } from "node:fs";
 import { readConfig } from "../src/server/config.ts";
-try {
-  const config = readConfig(process.env);
-  console.log(JSON.stringify({
+
+/**
+ * What `npm run doctor` prints: facts about this local setup, never values from
+ * .env. Fields used to be hardcoded and had gone stale — auth and uploads are
+ * implemented, the live-source stance is the config's own (docs/OPEN_GAPS.md B14).
+ */
+export function doctorReport(env: Record<string, string | undefined>): Record<string, unknown> {
+  const config = readConfig(env);
+  return {
     node: process.version, envFilePresent: existsSync(".env"),
     dependencyLockPresent: existsSync("package-lock.json"),
     dependenciesInstalled: existsSync("node_modules/next/package.json"),
     backend: config.backend, environment: config.environment,
-    realAi: config.liveAi, liveSources: false, auth: "not_implemented",
-    uploads: "not_implemented", realSources: "not_implemented",
+    realAi: config.liveAi, liveSources: config.liveSources, auth: "implemented",
+    uploads: config.uploads, realSources: "implemented",
     databaseConnection: "not_probed",
     production: "blocked"
-  }, null, 2));
-} catch {
-  console.error("STARTER_CONFIGURATION_REJECTED: keep ATLAS_ENV local/test and live features false.");
-  process.exitCode = 1;
+  };
+}
+
+// Node exposes import.meta.main, but the pinned @types/node (22.x) does not type
+// it yet, so it is read through a narrow cast rather than a version bump.
+const isMain = (import.meta as ImportMeta & { main?: boolean }).main === true;
+
+if (isMain) {
+  try {
+    console.log(JSON.stringify(doctorReport(process.env), null, 2));
+  } catch {
+    console.error("STARTER_CONFIGURATION_REJECTED: keep ATLAS_ENV local/test and live features false.");
+    process.exitCode = 1;
+  }
 }

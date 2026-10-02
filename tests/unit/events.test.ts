@@ -2,13 +2,14 @@
 //
 // The parser is the only gate between a browser and a journal that later ranking
 // work will trust, so these tests are strict on purpose: fixed type codes,
-// snapshot ids in the source namespace, bounded batches, no duplicates, and a
-// propensity that is either a real probability or null — never a guess.
+// snapshot ids in the source namespace, bounded batches, no duplicates, and no
+// client-supplied probabilities — propensity is computed server-side (B2/B20).
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  EventValidationError, normalisePropensity, parseEventBatch, parseRankerVersion,
+  EventValidationError, normalisePropensity, parseEventBatch,
 } from "../../src/domain/events.ts";
+import { FEED_ORDERS, feedOrderLabel, isFeedKey } from "../../src/domain/feed-order.ts";
 
 function errorCode(fn: () => unknown): string {
   try {
@@ -20,14 +21,14 @@ function errorCode(fn: () => unknown): string {
   return "NO_ERROR";
 }
 
-const validItem = { snapshotId: "jobicy:senior-data-engineer", position: 0, propensity: 0.75 };
+const validItem = { snapshotId: "jobicy:senior-data-engineer", position: 0 };
 
 test("parseEventBatch accepts a valid batch and keeps the values", () => {
   const items = parseEventBatch({ type: "impression", items: [validItem] });
-  assert.deepEqual(items, [{ snapshotId: validItem.snapshotId, position: 0, propensity: 0.75 }]);
-  // Position and propensity are optional; a click usually has no propensity.
+  assert.deepEqual(items, [{ snapshotId: validItem.snapshotId, position: 0 }]);
+  // Position is optional; a click usually has none.
   const click = parseEventBatch({ type: "click", items: [{ snapshotId: validItem.snapshotId }] });
-  assert.deepEqual(click, [{ snapshotId: validItem.snapshotId, position: null, propensity: null }]);
+  assert.deepEqual(click, [{ snapshotId: validItem.snapshotId, position: null }]);
 });
 
 test("parseEventBatch rejects unknown types, bad ids, bad numbers and duplicates", () => {
@@ -38,14 +39,19 @@ test("parseEventBatch rejects unknown types, bad ids, bad numbers and duplicates
   assert.equal(errorCode(() => parseEventBatch({ type: "impression", items: [{ ...validItem, snapshotId: "jobicy:" }] })), "INVALID_SNAPSHOT_ID");
   assert.equal(errorCode(() => parseEventBatch({ type: "impression", items: [{ ...validItem, position: -1 }] })), "INVALID_POSITION");
   assert.equal(errorCode(() => parseEventBatch({ type: "impression", items: [{ ...validItem, position: 1.5 }] })), "INVALID_POSITION");
-  assert.equal(errorCode(() => parseEventBatch({ type: "impression", items: [{ ...validItem, propensity: 1.2 }] })), "INVALID_PROPENSITY");
-  assert.equal(errorCode(() => parseEventBatch({ type: "impression", items: [{ ...validItem, propensity: "high" }] })), "INVALID_PROPENSITY");
   assert.equal(errorCode(() => parseEventBatch({ type: "impression", items: [validItem, validItem] })), "DUPLICATE_EVENT_ITEM");
   // A batch is bounded: a client cannot flood the journal in one request.
-  const flood = Array.from({ length: 51 }, (_, index) => ({
-    snapshotId: `jobicy:job-${index}`, position: index, propensity: null,
-  }));
+  const flood = Array.from({ length: 51 }, (_, index) => ({ snapshotId: `jobicy:job-${index}`, position: index }));
   assert.equal(errorCode(() => parseEventBatch({ type: "impression", items: flood })), "INVALID_EVENT_ITEMS");
+});
+
+test("B20: a client-supplied propensity is refused, never stored or overridden", () => {
+  assert.equal(errorCode(() => parseEventBatch({
+    type: "impression", items: [{ ...validItem, propensity: 0.75 }],
+  })), "PROPENSITY_NOT_ACCEPTED");
+  assert.equal(errorCode(() => parseEventBatch({
+    type: "impression", items: [{ ...validItem, propensity: null }],
+  })), "PROPENSITY_NOT_ACCEPTED");
 });
 
 test("propensity normalisation never invents a probability", () => {
@@ -59,10 +65,12 @@ test("propensity normalisation never invents a probability", () => {
   assert.equal(normalisePropensity(Number.NaN, 100), null);
 });
 
-test("ranker version is optional, bounded and trimmed", () => {
-  assert.equal(parseRankerVersion(undefined), null);
-  assert.equal(parseRankerVersion(null), null);
-  assert.equal(parseRankerVersion(""), null);
-  assert.equal(parseRankerVersion("  v2-status  "), "v2-status");
-  assert.equal(errorCode(() => parseRankerVersion("x".repeat(81))), "INVALID_RANKER_VERSION");
+test("B3: feed order labels are a closed, server-owned set", () => {
+  assert.deepEqual(Object.keys(FEED_ORDERS).sort(), ["match", "review"]);
+  assert.equal(isFeedKey("match"), true);
+  assert.equal(isFeedKey("review"), true);
+  // The old placeholder labels and anything else are not accepted.
+  assert.equal(isFeedKey("v0-ai-score-then-catalog"), false);
+  assert.equal(isFeedKey("__proto__"), false, "prototype keys are not feed keys");
+  assert.equal(feedOrderLabel("match"), "feed-ai-score-then-catalog@1");
 });

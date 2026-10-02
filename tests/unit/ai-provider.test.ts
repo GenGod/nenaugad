@@ -6,7 +6,7 @@ import {
 import {
   BatchDisabledError, isBatchEnabled, checkBatch, parseBatchOutput, retrieveBatchResults, submitBatch,
 } from "../../src/server/ai/openai-batch.ts";
-import { isOpenAIConfigured, resetOpenAIClient, openAiTransport } from "../../src/server/ai/openai-transport.ts";
+import { openAiTransport } from "../../src/server/ai/openai-transport.ts";
 import {
   PURPOSES_NEEDING_CANDIDATE_FACTS, PersonalDataBoundaryError, assertNoCandidateFacts, buildJobOnlyPrompt,
 } from "../../src/server/ai/personal-data-boundary.ts";
@@ -130,8 +130,6 @@ test("personal-data boundary: operations that need candidate facts are refused (
 test("transport: unconfigured provider reports uncertain (fail-closed)", async () => {
   // No OPENAI_API_KEY in the test environment by design.
   delete process.env.OPENAI_API_KEY;
-  resetOpenAIClient();
-  assert.equal(isOpenAIConfigured(), false);
   // The transport returns uncertain without crashing — the gateway will
   // handle it as a hold-retained refusal.
   const result = await openAiTransport.dispatchOnce({

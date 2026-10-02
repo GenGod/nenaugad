@@ -5,7 +5,7 @@ import path from "node:path";
 import {
   DENSE_LEG_VERSION, EMBEDDING_MODEL, EMBEDDING_TASKS, INSTRUCTION_VERSION, PROFILE_TEXT_VERSION,
   QUERY_INSTRUCTION_TEMPLATE, assertComparable, assertEmbedderOutput, cosineSimilarity,
-  derivedModelVersion, embeddingCacheKey, embeddingInput, embeddingInputsFor, jobEmbeddingText,
+  derivedModelVersion, embeddingInput, embeddingInputsFor, jobEmbeddingText,
   l2Normalize, makeEmbeddingVector, profileEmbeddingText, taskInstruction,
   EmbeddingContractError, EmbeddingVersionMismatchError,
   type EmbeddingVector,
@@ -144,16 +144,6 @@ test("embedding: mixing artifacts, instructions or roles is refused (fail-closed
   const otherDim = vector([1, 0, 0], { role: "document" });
   assert.throws(() => assertComparable(query, [otherDim]), (error: unknown) =>
     error instanceof EmbeddingVersionMismatchError && error.message === "DIMENSION_MISMATCH");
-});
-
-test("embedding: the cache key carries model, instruction and profile versions", () => {
-  const base = embeddingCacheKey({ modelVersion: VERSION, instructionVersion: INSTRUCTION_VERSION, profileVersion: 3 });
-  assert.equal(base, `${VERSION}|${INSTRUCTION_VERSION}|p3`);
-  assert.notEqual(base, embeddingCacheKey({ modelVersion: "fake/other", instructionVersion: INSTRUCTION_VERSION, profileVersion: 3 }));
-  assert.notEqual(base, embeddingCacheKey({ modelVersion: VERSION, instructionVersion: "qwen3-instruct-l2", profileVersion: 3 }));
-  assert.notEqual(base, embeddingCacheKey({ modelVersion: VERSION, instructionVersion: INSTRUCTION_VERSION, profileVersion: 4 }));
-  // The key is about versions, never about content.
-  assert.ok(!base.includes("python"));
 });
 
 test("embedding: a lying embedder is caught before anything is stored", async () => {

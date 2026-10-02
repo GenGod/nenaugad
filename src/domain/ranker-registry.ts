@@ -66,7 +66,3 @@ export const REGISTERED_RANKERS: readonly RegisteredRanker[] = [
 export function rankerById(id: string): RegisteredRanker | null {
   return REGISTERED_RANKERS.find(ranker => ranker.id === id) ?? null;
 }
-
-export function registeredRankerIds(): readonly string[] {
-  return REGISTERED_RANKERS.map(ranker => ranker.id);
-}

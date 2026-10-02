@@ -32,6 +32,7 @@
     "worker": "node --experimental-strip-types --env-file-if-exists=.env scripts/worker.ts",
     "seed:budgets": "node --experimental-strip-types --env-file-if-exists=.env scripts/seed-ai-budgets.ts",
     "ai:holds": "node --experimental-strip-types --env-file-if-exists=.env scripts/ai-holds.ts",
+    "smoke:ai": "node --experimental-strip-types --env-file-if-exists=.env scripts/smoke-ai.ts",
     "smoke:himalayas": "node --experimental-strip-types scripts/smoke-himalayas.ts",
     "terms:check": "node --experimental-strip-types scripts/terms-check.ts",
     "models:fetch": "node --experimental-strip-types scripts/models-fetch.ts",

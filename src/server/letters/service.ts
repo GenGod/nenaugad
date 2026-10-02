@@ -8,6 +8,20 @@ export class LetterError extends Error {
     "SNAPSHOT_NOT_FOUND" | "GENERATION_FAILED") { super(code); }
 }
 
+/**
+ * The version an `If-Match` header names (B10). Accepts the standard strong
+ * ETag form (`"3"`) and `*` ("any current version"); anything else — including
+ * weak tags, which HTTP forbids for If-Match — is rejected. GET returns the
+ * ETag, so two tabs that hold the same stale version cannot silently overwrite
+ * each other: the second write gets 412 and reloads.
+ */
+export function versionFromIfMatch(header: string): number | "*" | null {
+  const value = header.trim();
+  if (value === "*") return "*";
+  const match = value.match(/^"(\d{1,9})"$/u);
+  return match ? Number(match[1]) : null;
+}
+
 export type LetterSummary = Readonly<{
   id: string;
   jobSnapshotId: string | null;

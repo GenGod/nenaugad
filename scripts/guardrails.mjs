@@ -39,6 +39,12 @@ for (const filename of source.filter(f => /\.(ts|tsx)$/.test(f))) {
   // unverified download into a request path (B1, docs/EMBEDDING_PLAYBOOK.md).
   if (/allowRemoteModels\s*=\s*true/.test(text))
     violations.push(`${filename}: remote model downloads must stay off; weights come from npm run models:fetch`);
+  // The uploads flag gates the WHOLE CV surface, not only intake (S3-001
+  // acceptance 5; docs/OPEN_GAPS.md B22). Every route handler needs the gate.
+  if (/src[\\/]app[\\/]api[\\/]v1[\\/]cv[\\/].*route\.ts$/.test(filename)
+      && /export async function (GET|POST|DELETE)/.test(text)
+      && !/uploadsDisabledResponse\s*\(/.test(text))
+    violations.push(`${filename}: every CV route must pass the uploads gate (docs/OPEN_GAPS.md B22)`);
 }
 const pkg = JSON.parse(await readFile("package.json","utf8"));
 // "openai" was owner-approved on 2026-09-25 (AI-002); all others remain banned.

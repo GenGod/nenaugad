@@ -76,11 +76,18 @@ async function attempt(setup: Setup): Promise<void> {
         hint: `npm run worker -- --resume ${setup.source}` });
     }
   } catch (error) {
-    await setup.persistence.recordAttempt(false, now).catch(() => undefined);
-    const state = await setup.persistence.loadImportState().catch(() => null);
+    // The failure streak must really grow. A swallowed write failure used to
+    // leave the pause threshold unreachable with an empty trail (B18), so the
+    // outcome of the record is logged instead of being discarded.
+    let attemptRecorded = true;
+    await setup.persistence.recordAttempt(false, now).catch(() => { attemptRecorded = false; });
+    const state = attemptRecorded
+      ? await setup.persistence.loadImportState().catch(() => null)
+      : null;
     log({
       source: setup.source, event: "failed", result: "exception",
       code: error instanceof ConfigurationError ? error.message : "IMPORT_ERROR",
+      attemptRecorded,
       consecutiveFailures: state?.consecutiveFailures ?? 1,
     });
   }

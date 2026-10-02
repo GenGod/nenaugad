@@ -6,7 +6,7 @@ import type { JobSnapshot, HiringOption } from "./source-contracts.ts";
 import type { ManualProfileInput } from "./profile.ts";
 import { extractSkills, skillOverlap, skillCategory } from "./skills.ts";
 
-export const RULESET_VERSION = 2;
+export const RULESET_VERSION = 3;
 
 export type RuleOutcome = "pass" | "fail" | "unknown" | "not_applicable";
 
@@ -39,14 +39,17 @@ function timezoneOffsetMinutes(timezone: string, date: Date): number | null {
   }
 }
 
-// Seasonal honesty (spec 11.3): a timezone has two offsets across the year.
-// v1 checks offset containment in the source's accepted set; full DST-correct
-// window-overlap math is a later, separately versioned rule.
-function seasonalOffsets(timezone: string): { january: number | null; july: number | null } {
-  return {
-    january: timezoneOffsetMinutes(timezone, new Date("2026-01-15T12:00:00Z")),
-    july: timezoneOffsetMinutes(timezone, new Date("2026-07-15T12:00:00Z")),
-  };
+// Seasonal honesty (spec 11.3; docs/OPEN_GAPS.md B12): a timezone has an offset
+// per moment, and transitions do not always land in March/October. Sampling only
+// January and July let zones with unusual rules (Ramadan shifts, southern
+// hemisphere) pass a check that does not hold all year. The rule samples the
+// 15th of every month of a fixed reference year — same inputs, same outcome,
+// no clock. This is a rule-behaviour change, hence RULESET_VERSION 3.
+const OFFSET_REFERENCE_YEAR = 2026;
+
+function monthlyOffsets(timezone: string): readonly (number | null)[] {
+  return Array.from({ length: 12 }, (_, month) =>
+    timezoneOffsetMinutes(timezone, new Date(Date.UTC(OFFSET_REFERENCE_YEAR, month, 15, 12, 0, 0))));
 }
 
 function ruleGeography(
@@ -235,23 +238,24 @@ function ruleOverlap(
       explanation: "Часовой пояс профиля не задан." };
   }
   const accepted = schedule.accepted_utc_offsets_minutes;
-  const { january, july } = seasonalOffsets(profile.timezone);
-  if (january === null || july === null) {
-    return { ...base, outcome: "unknown", reasonCodes: ["TIMEZONE_AMBIGUOUS"],
-      explanation: "Не удалось вычислить смещение часового пояса профиля." };
+  const inAccepted: boolean[] = [];
+  for (const offset of monthlyOffsets(profile.timezone)) {
+    if (offset === null) {
+      return { ...base, outcome: "unknown", reasonCodes: ["TIMEZONE_AMBIGUOUS"],
+        explanation: "Не удалось вычислить смещение часового пояса профиля." };
+    }
+    inAccepted.push(accepted.includes(offset));
   }
-  const winter = accepted.includes(january);
-  const summer = accepted.includes(july);
-  if (winter && summer) {
+  if (inAccepted.every(Boolean)) {
     return { ...base, outcome: "pass", reasonCodes: [],
-      explanation: "Часовой пояс профиля входит в принимаемые источником зоны (зима и лето)." };
+      explanation: "Часовой пояс профиля входит в принимаемые источником зоны весь год." };
   }
-  if (winter !== summer) {
-    return { ...base, outcome: "unknown", reasonCodes: ["TIMEZONE_AMBIGUOUS"],
-      explanation: "Зона профиля входит в принимаемые только в один из сезонов (переход на летнее время)." };
+  if (!inAccepted.some(Boolean)) {
+    return { ...base, outcome: "fail", reasonCodes: ["OVERLAP_INSUFFICIENT"],
+      explanation: "Часовой пояс профиля вне принимаемых источником зон." };
   }
-  return { ...base, outcome: "fail", reasonCodes: ["OVERLAP_INSUFFICIENT"],
-    explanation: "Часовой пояс профиля вне принимаемых источником зон." };
+  return { ...base, outcome: "unknown", reasonCodes: ["TIMEZONE_AMBIGUOUS"],
+    explanation: "Зона профиля входит в принимаемые только часть года (сезонные правила или переход на летнее время)." };
 }
 
 function aggregateOption(outcomes: readonly RuleOutcome[]): RuleOutcome {

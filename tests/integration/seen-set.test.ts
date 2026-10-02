@@ -70,8 +70,8 @@ test("A6: an impression records the fingerprint the server read, not one the cli
   const stored = await contentHash(snapshotId);
   assert.ok(stored, "the catalog must have a fingerprint for the imported snapshot");
   await recordImpressions({
-    pool, userId: owner.id, rankerVersion: null,
-    items: [{ snapshotId, position: 0, propensity: null }],
+    pool, userId: owner.id, feed: "match",
+    items: [{ snapshotId, position: 0 }],
   });
   const row = await pool.query("SELECT shown_content_hash FROM job_events WHERE user_id = $1", [owner.id]);
   assert.equal(row.rows[0]?.shown_content_hash, stored);
@@ -87,8 +87,8 @@ test("A6 (golden 9): the seen state of one candidate changes nothing for another
   const bob = await registerUser(pool, uniqueEmail(), "long-enough-password");
   const stored = await contentHash(snapshotId);
   await recordImpressions({
-    pool, userId: alice.id, rankerVersion: null,
-    items: [{ snapshotId, position: 0, propensity: null }],
+    pool, userId: alice.id, feed: "match",
+    items: [{ snapshotId, position: 0 }],
   });
   const forAlice = await suppressedSnapshotIds(decisionParams(snapshotId, stored, alice.id, now));
   const forBob = await suppressedSnapshotIds(decisionParams(snapshotId, stored, bob.id, now));
@@ -103,8 +103,8 @@ test("A6: an unchanged posting returns when the window expires, not before", asy
   const user = await registerUser(pool, uniqueEmail(), "long-enough-password");
   const stored = await contentHash(snapshotId);
   await recordImpressions({
-    pool, userId: user.id, rankerVersion: null,
-    items: [{ snapshotId, position: 0, propensity: null }],
+    pool, userId: user.id, feed: "match",
+    items: [{ snapshotId, position: 0 }],
   });
   const suppressedNow = await suppressedSnapshotIds(decisionParams(snapshotId, stored, user.id, now));
   assert.deepEqual([...suppressedNow], [snapshotId]);
@@ -128,8 +128,8 @@ test("A6: a posting whose content changed comes back immediately", async () => {
   const user = await registerUser(pool, uniqueEmail(), "long-enough-password");
   const before = await contentHash(snapshotId);
   await recordImpressions({
-    pool, userId: user.id, rankerVersion: null,
-    items: [{ snapshotId, position: 0, propensity: null }],
+    pool, userId: user.id, feed: "match",
+    items: [{ snapshotId, position: 0 }],
   });
   assert.equal((await suppressedSnapshotIds(decisionParams(snapshotId, before, user.id, now))).size, 1);
   // The source renames the posting: the import pipeline stores a new fingerprint
@@ -155,19 +155,19 @@ test("A6: a click or a save lifts the rule", async () => {
   const saver = await registerUser(pool, uniqueEmail(), "long-enough-password");
   const stored = await contentHash(snapshotId);
   await recordImpressions({
-    pool, userId: clicker.id, rankerVersion: null,
-    items: [{ snapshotId, position: 0, propensity: null }],
+    pool, userId: clicker.id, feed: "match",
+    items: [{ snapshotId, position: 0 }],
   });
   await recordClicks({
-    pool, userId: clicker.id, rankerVersion: null,
-    items: [{ snapshotId, position: 0, propensity: null }],
+    pool, userId: clicker.id, feed: "match",
+    items: [{ snapshotId, position: 0 }],
   });
   assert.deepEqual([...(await actedSnapshotIds(pool, clicker.id))], [snapshotId]);
   assert.equal((await suppressedSnapshotIds(decisionParams(snapshotId, stored, clicker.id, now))).size, 0,
     "a posting the candidate clicked is not hidden as 'already seen'");
   await recordImpressions({
-    pool, userId: saver.id, rankerVersion: null,
-    items: [{ snapshotId, position: 0, propensity: null }],
+    pool, userId: saver.id, feed: "match",
+    items: [{ snapshotId, position: 0 }],
   });
   await saveJobForUser(pool, saver.id, snapshotId);
   assert.equal((await suppressedSnapshotIds(decisionParams(snapshotId, stored, saver.id, now))).size, 0,
@@ -181,8 +181,8 @@ test("A6: deleting the profile deletes the seen state with it", async () => {
   const user = await registerUser(pool, uniqueEmail(), "long-enough-password");
   const stored = await contentHash(snapshotId);
   await recordImpressions({
-    pool, userId: user.id, rankerVersion: null,
-    items: [{ snapshotId, position: 0, propensity: null }],
+    pool, userId: user.id, feed: "match",
+    items: [{ snapshotId, position: 0 }],
   });
   assert.equal((await seenStatesForUser(pool, user.id)).size, 1);
   await deleteAllProfiles(pool, user.id);

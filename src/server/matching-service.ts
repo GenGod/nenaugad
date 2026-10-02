@@ -10,6 +10,7 @@ import { getSourcePolicy } from "./source-policies.ts";
 import { choosePrimary, groupDuplicates } from "../domain/dedup.ts";
 import { classifySnapshot, policyPublishes, projectCard, type PolicyBoundRecord } from "../domain/snapshot-projection.ts";
 import { evaluateJob, RULESET_VERSION, type JobEvaluation } from "../domain/matching.ts";
+import { assessSnapshotRequirements, type RequirementAssessment } from "../domain/requirements.ts";
 import type { RankableJob } from "../domain/match-ranker.ts";
 import type { ClosureSignal } from "../domain/ev-multipliers.ts";
 import type { RankedRequestItem } from "../domain/rank-guardrails.ts";
@@ -21,6 +22,9 @@ export type MatchedJob = Readonly<{
   /** Availability signal (item A10): shown as a candidate-facing note, and used by
    *  the ranker's ghost demotion. Null when no check has run. */
   closure: ClosureSignal | null;
+  /** Structured requirements with per-requirement verdicts (item A2). B5 gives
+   *  the computed data its consumer: the card's evidence block renders it. */
+  requirements: RequirementAssessment;
 }>;
 
 export type MatchedResult = Readonly<{
@@ -121,7 +125,10 @@ export async function matchedForUser(
       }))),
       excerpt: primary.excerpt,
     };
-    const matched: MatchedJob = { card, evaluation, closure: primary.closure };
+    const matched: MatchedJob = {
+      card, evaluation, closure: primary.closure,
+      requirements: assessSnapshotRequirements(primary.stored.snapshot, profile.input),
+    };
     if (evaluation.status === "eligible") eligible.push(matched);
     else if (evaluation.status === "needs_review") needsReview.push(matched);
     // ineligible stays hidden by default (spec 13.3) — and out of the shadow too:

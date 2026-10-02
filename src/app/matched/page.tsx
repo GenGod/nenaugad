@@ -13,22 +13,14 @@ import { firstSeenLabel } from "../../domain/freshness.ts";
 import { ghostNote } from "../../domain/ev-multipliers.ts";
 import { SEEN_TTL_DAYS } from "../../domain/seen-set.ts";
 import { ImpressionReporter } from "../../components/impression-reporter.tsx";
+import { TrackedJobLink } from "../../components/tracked-job-link.tsx";
+import { resolveFeedTab, type FeedKey } from "../../domain/feed-order.ts";
 import { latestProfile } from "../../server/profile-service.ts";
 import { snapshotPool } from "../../server/storage/snapshots.ts";
 import type { RelevanceScore } from "../../server/relevance-service.ts";
 
 export const metadata: Metadata = { title: "Подбор" };
 export const dynamic = "force-dynamic";
-
-// The order this feed actually shows today: cached AI relevance first when it
-// exists, catalog order otherwise (match tab), catalog order (review tab). No
-// versioned ranker is wired into the read path yet (item A9), so the journal is
-// given an explicit label of what produced the order rather than a made-up
-// ranker version.
-const FEED_ORDER_VERSION = {
-  match: "v0-ai-score-then-catalog",
-  review: "v0-review-catalog-order",
-} as const;
 
 const OUTCOME_LABELS: Readonly<Record<string, string>> = {
   pass: "совпадает", fail: "не подходит", unknown: "нужно уточнить", not_applicable: "не применимо",
@@ -58,8 +50,42 @@ function RulesList({ rules }: { rules: readonly RuleResult[] }) {
   </ul>;
 }
 
-function MatchedCard({ job, score, tone, now }: {
+const STRENGTH_LABELS: Readonly<Record<string, string>> = {
+  must: "обязательное", preferred: "желательное", unclear: "тип неясен",
+};
+const VERDICT_LABELS: Readonly<Record<string, string>> = {
+  covered: "подтверждено профилем", uncovered: "профилем не подтверждено", unknown: "неизвестно",
+};
+
+// B5: the requirement decomposition A2 computes reaches the candidate here —
+// inside «Основание», with the same honest verdicts the ranker uses. Unknown is
+// never silently turned into "covered" or into a rejection.
+function RequirementsList({ requirements }: { requirements: MatchedJob["requirements"] }) {
+  if (requirements.rows.length === 0) {
+    return <p className="small secondary">Структурные требования в опубликованном тексте не выделены.</p>;
+  }
+  return <>
+    <ul>
+      {requirements.rows.map((row, index) => (
+        <li key={`${row.requirement.id}-${index}`}>
+          <strong>{STRENGTH_LABELS[row.requirement.strength] ?? row.requirement.strength}</strong>
+          {" · "}{row.requirement.evidenceText}
+          {" — "}{VERDICT_LABELS[row.verdict] ?? row.verdict}
+          <span className="secondary"> ({row.reason})</span>
+        </li>
+      ))}
+    </ul>
+    {requirements.mustUncovered > 0 && <p className="small secondary">
+      Не хватает по обязательным: {requirements.missingSkills.length > 0
+        ? requirements.missingSkills.join(", ")
+        : `${requirements.mustUncovered} без подтверждения в профиле`}.
+    </p>}
+  </>;
+}
+
+function MatchedCard({ job, score, tone, now, feed, position }: {
   job: MatchedJob; score?: RelevanceScore | null; tone: "match" | "review"; now: string;
+  feed: FeedKey; position: number;
 }) {
   const card = job.card;
   const primary = job.evaluation.rules.find(rule => rule.explanation.trim().length > 0);
@@ -75,7 +101,8 @@ function MatchedCard({ job, score, tone, now }: {
       <span className={`company-mark ${tint(card.company)}`} aria-hidden="true">{card.company.slice(0, 1)}</span>
       <div className="job-title-area">
         <p className="company">{card.company}</p>
-        <h3><a href={card.apply.url} rel="nofollow noreferrer" target="_blank">{card.title}</a></h3>
+        <h3><TrackedJobLink snapshotId={card.id} feed={feed} position={position}
+          href={card.apply.url}>{card.title}</TrackedJobLink></h3>
       </div>
       <SaveButton snapshotId={card.id} variant="icon" />
     </div>
@@ -97,7 +124,11 @@ function MatchedCard({ job, score, tone, now }: {
         <p className="job-reason">{primary?.explanation ?? "Правила оценили вакансию по опубликованным условиям."}</p>
         <details>
           <summary>Основание</summary>
-          <div className="evidence"><RulesList rules={job.evaluation.rules} /></div>
+          <div className="evidence">
+            <RulesList rules={job.evaluation.rules} />
+            <p className="overline" style={{ marginTop: 8 }}>Требования вакансии</p>
+            <RequirementsList requirements={job.requirements} />
+          </div>
         </details>
       </div>
       <div className="stack" style={{ alignItems: "flex-end", gap: 12 }}>
@@ -181,10 +212,15 @@ async function MatchedResults({ userId, result, tab }: {
     contract || "Не задано",
   ].join(" · ");
   const roles = (input?.targetRoles ?? []).join(", ");
-  const suppressedHere = tab === "review" ? result.seenSuppressed.needsReview : result.seenSuppressed.eligible;
+  // The profile flag «Показывать вкладку „Нужно уточнить“» decides whether that
+  // tab exists (B4): with it off, a review request renders the match tab and no
+  // review link is offered anywhere on the page.
+  const showReviewTab = input?.showNeedsReview ?? true;
+  const activeTab = resolveFeedTab(tab, showReviewTab);
+  const suppressedHere = activeTab === "review" ? result.seenSuppressed.needsReview : result.seenSuppressed.eligible;
   // One normalised list: the rendered slice is also what the impression report
   // describes, so the positions in the journal match what the candidate saw.
-  const list: readonly { job: MatchedJob; score: RelevanceScore | null }[] = tab === "review"
+  const list: readonly { job: MatchedJob; score: RelevanceScore | null }[] = activeTab === "review"
     ? result.needsReview.slice(0, 50).map(job => ({ job, score: null }))
     : eligibleSorted.slice(0, 50);
   return <>
@@ -221,35 +257,35 @@ async function MatchedResults({ userId, result, tab }: {
           <Link className="btn secondary" href="/profile">Изменить</Link>
         </div>
         <nav className="tablist" aria-label="Результаты совместимости">
-          <Link href="/matched" aria-current={tab === "match" ? "page" : undefined}>
+          <Link href="/matched" aria-current={activeTab === "match" ? "page" : undefined}>
             Условия совпадают<span className="tabcount">{result.eligible.length}</span></Link>
-          <Link href="/matched?tab=review" aria-current={tab === "review" ? "page" : undefined}>
-            Нужно уточнить<span className="tabcount">{result.needsReview.length}</span></Link>
+          {showReviewTab && <Link href="/matched?tab=review" aria-current={activeTab === "review" ? "page" : undefined}>
+            Нужно уточнить<span className="tabcount">{result.needsReview.length}</span></Link>}
         </nav>
         <div className="results-meta">
-          <span>{tab === "match" ? result.eligible.length : result.needsReview.length} в выборке</span>
-          {analyzedCount > 0 && tab === "match" && <span>Сначала релевантные</span>}
+          <span>{activeTab === "match" ? result.eligible.length : result.needsReview.length} в выборке</span>
+          {analyzedCount > 0 && activeTab === "match" && <span>Сначала релевантные</span>}
         </div>
-        {tab === "match" && <div className="row" style={{ marginBottom: 16 }}>
+        {activeTab === "match" && <div className="row" style={{ marginBottom: 16 }}>
           <BatchAnalyzeButton count={result.eligible.length - analyzedCount} />
         </div>}
         {list.length === 0
           ? <div className="empty">
             {suppressedHere > 0
               ? <>
-                <h2>Новых {tab === "match" ? "совпадений" : "уточнений"} нет</h2>
+                <h2>Новых {activeTab === "match" ? "совпадений" : "уточнений"} нет</h2>
                 <p>Вакансии, которые вы уже видели, не показываются заново — скрыто
                   {" "}{suppressedHere}. Они вернутся, если вакансия изменится, или через
                   {" "}{SEEN_TTL_DAYS} дней.</p>
-                <Link className="btn tertiary" href={tab === "match" ? "/matched?tab=review" : "/matched"}>
-                  {tab === "match" ? "Нужно уточнить" : "Условия совпадают"}</Link>
+                <Link className="btn tertiary" href={activeTab === "match" ? "/matched?tab=review" : "/matched"}>
+                  {activeTab === "match" ? "Нужно уточнить" : "Условия совпадают"}</Link>
               </>
-              : tab === "match"
+              : activeTab === "match"
                 ? <>
                   <h2>Совпадений пока нет</h2>
                   <p>Правила не нашли полностью совместимых вакансий — это честный результат, а не ошибка.
-                    Проверьте вкладку «Нужно уточнить».</p>
-                  <Link className="btn tertiary" href="/matched?tab=review">Нужно уточнить</Link>
+                    {showReviewTab ? " Проверьте вкладку «Нужно уточнить»." : ""}</p>
+                  {showReviewTab && <Link className="btn tertiary" href="/matched?tab=review">Нужно уточнить</Link>}
                 </>
                 : <>
                   <h2>Уточнений нет</h2>
@@ -258,9 +294,9 @@ async function MatchedResults({ userId, result, tab }: {
                 </>}
           </div>
           : <div className="job-list">
-            {list.map(({ job, score }) =>
+            {list.map(({ job, score }, index) =>
               <MatchedCard key={job.card.id} job={job} score={score}
-                tone={tab === "review" ? "review" : "match"} now={now} />)}
+                tone={activeTab === "review" ? "review" : "match"} now={now} feed={activeTab} position={index} />)}
           </div>}
         {list.length > 0 && suppressedHere > 0 && <p className="small secondary" style={{ marginTop: 8 }}>
           Скрыто как уже показанное: {suppressedHere} — вернутся, если вакансия изменится,
@@ -270,7 +306,7 @@ async function MatchedResults({ userId, result, tab }: {
           Несовместимые вакансии скрыты; вне оценки (гейты remote/права/жизненный цикл):
           {" "}{result.notEvaluatedCount}.
         </p>
-        <ImpressionReporter rankerVersion={FEED_ORDER_VERSION[tab]}
+        <ImpressionReporter feed={activeTab}
           items={list.map(({ job }, index) => ({ snapshotId: job.card.id, position: index }))} />
       </section>
     </div>

@@ -98,8 +98,8 @@ test("A7: the window comes from the journal, and the seen-set keeps the digest h
   // A feed render records impressions (A8): that moment becomes the cursor.
   const shownId = visible[0]!;
   await recordImpressions({
-    pool, userId, rankerVersion: null,
-    items: [{ snapshotId: shownId, position: 0, propensity: null }],
+    pool, userId, feed: "match",
+    items: [{ snapshotId: shownId, position: 0 }],
   });
   const afterView = await digestFor(userId);
   assert.ok(afterView.cursor.lastFeedViewAt !== null, "the cursor must come from the journal");
@@ -147,8 +147,8 @@ test("A7: the window is per candidate, and deleting the profile removes it", asy
   const alice = await seededUser();
   const bob = await seededUser();
   await recordImpressions({
-    pool, userId: alice, rankerVersion: null,
-    items: [{ snapshotId: "jobicy:900001", position: 0, propensity: null }],
+    pool, userId: alice, feed: "match",
+    items: [{ snapshotId: "jobicy:900001", position: 0 }],
   });
   const forAlice = await digestFor(alice);
   const forBob = await digestFor(bob);

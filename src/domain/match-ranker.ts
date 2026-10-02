@@ -28,10 +28,10 @@
 //
 // Determinism: `now` is always passed in, never read from the clock, so the same
 // inputs and the same reference time produce the same order.
-import { assessSnapshotRequirements, REQUIREMENT_LAYER_VERSION } from "./requirements.ts";
+import { assessSnapshotRequirements } from "./requirements.ts";
 import { FRESHNESS_MAX_DEMOTION, freshnessDemotion } from "./freshness.ts";
-import { NEGATIVE_PREFERENCE_VERSION, preferenceDemotion, type DislikedPosting } from "./negative-preference.ts";
-import { EV_LAYER_VERSION, ghostDemotion, type ClosureSignal } from "./ev-multipliers.ts";
+import { preferenceDemotion, type DislikedPosting } from "./negative-preference.ts";
+import { ghostDemotion, type ClosureSignal } from "./ev-multipliers.ts";
 import { extractSkills, skillOverlap } from "./skills.ts";
 import type { ManualProfileInput } from "./profile.ts";
 import type { JobSnapshot } from "./source-contracts.ts";
@@ -82,6 +82,30 @@ export type Ranker = (
 
 type LayerOptions = Readonly<{ requirements: boolean; freshness: boolean; ghost: boolean }>;
 
+/**
+ * Whole-word role matching (docs/OPEN_GAPS.md B6). Substring matching both
+ * missed real roles and fired inside longer words: "frontend developer" never
+ * matched "Senior Frontend Engineer (React)", while "data engineer" matched
+ * "Data Engineering Manager". Role words are compared whole; one synonymy is
+ * documented: developer/engineer/programmer name the same job head. A title
+ * carrying a different framework (Angular vs React) still matches the role —
+ * that distinction is the skills layer's job, not a word rule's.
+ */
+const ROLE_WORD_CANONICAL: Readonly<Record<string, string>> = {
+  developer: "engineer", developers: "engineer",
+  programmer: "engineer", programmers: "engineer",
+};
+
+function canonicalWords(text: string): readonly string[] {
+  return text.toLowerCase().split(/[^\p{L}\p{N}+#]+/u).filter(Boolean)
+    .map(word => ROLE_WORD_CANONICAL[word] ?? word);
+}
+
+function containsRole(title: string, role: string): boolean {
+  const titleWords = new Set(canonicalWords(title));
+  return canonicalWords(role).every(word => titleWords.has(word));
+}
+
 function scoreJob(
   job: RankableJob,
   profile: ManualProfileInput,
@@ -92,8 +116,7 @@ function scoreJob(
 ): number {
   const jobSkills = extractSkills(`${job.snapshot.title} ${job.snapshot.description_text}`);
   const { matched } = skillOverlap(profile.skills, jobSkills);
-  const title = job.snapshot.title.toLowerCase();
-  const roleInTitle = profile.targetRoles.some(role => title.includes(role.toLowerCase()));
+  const roleInTitle = profile.targetRoles.some(role => containsRole(job.snapshot.title, role));
   let score = (job.status === "eligible" ? RANKER_WEIGHTS.eligibleStatus : 0)
     + matched.length * RANKER_WEIGHTS.perMatchedSkill
     + (roleInTitle ? RANKER_WEIGHTS.targetRoleInTitle : 0);
@@ -179,12 +202,3 @@ export function rankJobsBaselineV0(
 ): readonly RankedJob[] {
   return orderByScore(jobs, profile, { requirements: false, freshness: false, ghost: false }, _now, {});
 }
-
-export const RANKER_VERSIONS = {
-  current: RANKER_VERSION,
-  baselineWithoutRequirements: "v1-equivalent-status-skills-role-uncovered-must",
-  baselineWithoutFreshness: "v1-requirements-on",
-  requirementLayer: REQUIREMENT_LAYER_VERSION,
-  preferenceLayer: NEGATIVE_PREFERENCE_VERSION,
-  evLayer: EV_LAYER_VERSION,
-} as const;

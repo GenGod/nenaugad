@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "../../../../server/auth.ts";
-import { readConfig } from "../../../../server/config.ts";
 import {
   saveCvUpload, listCvUploads,
 } from "../../../../server/cv/service.ts";
+import { uploadsDisabledResponse } from "../../../../server/cv/gate.ts";
 import {
   parsePlainText, parseUploadedFile, CvParseError, MAX_FILE_BYTES,
 } from "../../../../server/cv/parse.ts";
@@ -39,6 +39,8 @@ function parseFailure(error: unknown): NextResponse | null {
 export async function GET() {
   const user = await currentUser();
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  const disabled = uploadsDisabledResponse();
+  if (disabled) return disabled;
   const uploads = await listCvUploads(snapshotPool(), user.id);
   return NextResponse.json({ items: uploads });
 }
@@ -46,9 +48,8 @@ export async function GET() {
 export async function POST(request: Request) {
   const user = await currentUser();
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
-  if (!readConfig(process.env).uploads) {
-    return NextResponse.json({ error: "UPLOADS_DISABLED" }, { status: 503 });
-  }
+  const disabled = uploadsDisabledResponse();
+  if (disabled) return disabled;
   const contentType = request.headers.get("content-type") ?? "";
   try {
     if (contentType.includes("application/json")) {

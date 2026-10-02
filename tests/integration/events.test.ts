@@ -9,7 +9,9 @@ import { randomBytes } from "node:crypto";
 import { localPool, migrate } from "../../scripts/db.ts";
 import { registerUser } from "../../src/server/users.ts";
 import { countEventsForUser, deleteEventsForUser, recordClicks, recordImpressions } from "../../src/server/events-service.ts";
-import { deleteAllProfiles } from "../../src/server/profile-service.ts";
+import { deleteAllProfiles, saveProfileVersion } from "../../src/server/profile-service.ts";
+import { storeScore } from "../../src/server/relevance-service.ts";
+import { FEED_ORDERS } from "../../src/domain/feed-order.ts";
 import { createPostgresPersistence } from "../../src/server/storage/snapshots.ts";
 import { runJobicyImport } from "../../src/server/import/jobicy-adapter.ts";
 import { jobicyCandidatePolicy } from "../../src/server/source-policies.ts";
@@ -24,6 +26,13 @@ function uniqueEmail(): string {
   return `ev-${randomBytes(6).toString("hex")}@example.invalid`;
 }
 
+const PROFILE_INPUT = {
+  residenceCountry: "DE", timezone: "Europe/Berlin",
+  targetRoles: ["engineer"], skills: [], employmentTypes: ["employment_full_time"],
+  availabilityWindows: [{ weekdays: [1, 2, 3, 4, 5], start: "09:00", end: "18:00" }],
+  zeroMandatoryAttendance: true, minimumCompensation: null, showNeedsReview: true,
+};
+
 async function seedSnapshot(now: string): Promise<string> {
   await runJobicyImport({
     transport: async () => ({ status: "ok" as const, jobs: [...jobicyContractFixture] }),
@@ -36,13 +45,14 @@ async function seedSnapshot(now: string): Promise<string> {
   return id;
 }
 
-test("A8: impressions carry position and an honest (nullable) propensity", async () => {
+test("A8/B2/B20: impressions carry position, a server-computed propensity and the feed label", async () => {
   await migrate(pool);
   const snapshotId = await seedSnapshot(new Date().toISOString());
   const owner = await registerUser(pool, uniqueEmail(), "long-enough-password");
+  // No profile and no scores yet: an unknown probability stays NULL, never 1.0.
   const written = await recordImpressions({
-    pool, userId: owner.id, rankerVersion: "v2-test",
-    items: [{ snapshotId, position: 0, propensity: 0.42 }],
+    pool, userId: owner.id, feed: "match",
+    items: [{ snapshotId, position: 0 }],
   });
   assert.equal(written, 1);
   const row = await pool.query(
@@ -52,18 +62,34 @@ test("A8: impressions carry position and an honest (nullable) propensity", async
   assert.equal(row.rows.length, 1);
   assert.equal(row.rows[0]?.event_type, "impression");
   assert.equal(row.rows[0]?.position, 0);
-  assert.equal(Number(row.rows[0]?.propensity), 0.42);
-  assert.equal(row.rows[0]?.ranker_version, "v2-test");
-  // A null propensity is stored as null: unknown stays unknown in the journal.
+  assert.equal(row.rows[0]?.propensity, null, "no score to normalise: null, not an invented number");
+  assert.equal(row.rows[0]?.ranker_version, FEED_ORDERS.match,
+    "the label is the server-owned feed order, not a client string");
+
+  // With cached scores the propensity is computed server-side from the batch's
+  // best score (B2): 80 -> 1, 40 -> 0.5. The client never supplies a number (B20).
+  await saveProfileVersion(pool, owner.id, PROFILE_INPUT);
+  const two = await pool.query("SELECT id FROM job_snapshots ORDER BY id LIMIT 2");
+  const ids = (two.rows as { id: string }[]).map(entry => entry.id);
+  assert.equal(ids.length, 2, "the fixture import must leave at least two snapshots");
+  for (const [index, id] of ids.entries()) {
+    await storeScore({
+      pool, userId: owner.id, profileVersion: 1, modelId: "test-model",
+      score: { snapshotId: id, score: index === 0 ? 80 : 40, matchedSkills: [], missingSkills: [], explanation: "" },
+    });
+  }
   await recordImpressions({
-    pool, userId: owner.id, rankerVersion: null,
-    items: [{ snapshotId, position: 1, propensity: null }],
+    pool, userId: owner.id, feed: "match",
+    items: ids.map((id, position) => ({ snapshotId: id, position })),
   });
-  const rows = await pool.query(
-    "SELECT propensity FROM job_events WHERE user_id = $1 AND position = 1",
+  const scored = await pool.query(
+    "SELECT snapshot_id, propensity FROM job_events WHERE user_id = $1 AND event_type = 'impression' AND propensity IS NOT NULL",
     [owner.id],
   );
-  assert.equal(rows.rows[0]?.propensity, null);
+  const byId = new Map((scored.rows as { snapshot_id: string; propensity: string }[])
+    .map(entry => [entry.snapshot_id, Number(entry.propensity)]));
+  assert.equal(byId.get(ids[0]!), 1, "the best score normalises to 1");
+  assert.equal(byId.get(ids[1]!), 0.5, "half the best score normalises to 0.5");
 });
 
 test("A8: ownership — one candidate's events are invisible and unwritable for another", async () => {
@@ -71,12 +97,12 @@ test("A8: ownership — one candidate's events are invisible and unwritable for 
   const snapshotId = await seedSnapshot(new Date().toISOString());
   const alice = await registerUser(pool, uniqueEmail(), "long-enough-password");
   const bob = await registerUser(pool, uniqueEmail(), "long-enough-password");
-  await recordClicks({ pool, userId: alice.id, rankerVersion: null, items: [{ snapshotId, position: 3, propensity: null }] });
+  await recordClicks({ pool, userId: alice.id, feed: "match", items: [{ snapshotId, position: 3 }] });
   assert.equal(await countEventsForUser(pool, alice.id), 1);
   assert.equal(await countEventsForUser(pool, bob.id), 0);
   // Bob's own write stays his: the service takes the owner from the caller
   // (the API route passes the session user), never from the payload.
-  await recordClicks({ pool, userId: bob.id, rankerVersion: null, items: [{ snapshotId, position: 1, propensity: null }] });
+  await recordClicks({ pool, userId: bob.id, feed: "match", items: [{ snapshotId, position: 1 }] });
   assert.equal(await countEventsForUser(pool, alice.id), 1);
   assert.equal(await countEventsForUser(pool, bob.id), 1);
 });
@@ -85,7 +111,7 @@ test("A8: deleting a profile deletes its behavioural trace", async () => {
   await migrate(pool);
   const snapshotId = await seedSnapshot(new Date().toISOString());
   const user = await registerUser(pool, uniqueEmail(), "long-enough-password");
-  await recordImpressions({ pool, userId: user.id, rankerVersion: null, items: [{ snapshotId, position: 0, propensity: null }] });
+  await recordImpressions({ pool, userId: user.id, feed: "review", items: [{ snapshotId, position: 0 }] });
   assert.equal(await countEventsForUser(pool, user.id), 1);
   await deleteAllProfiles(pool, user.id);
   assert.equal(await countEventsForUser(pool, user.id), 0, "profile deletion must leave no events behind");
@@ -98,8 +124,8 @@ test("A8: an event for a snapshot that does not exist is rejected, not silently 
   const user = await registerUser(pool, uniqueEmail(), "long-enough-password");
   await assert.rejects(
     () => recordImpressions({
-      pool, userId: user.id, rankerVersion: null,
-      items: [{ snapshotId: "jobicy:does-not-exist", position: 0, propensity: null }],
+      pool, userId: user.id, feed: "match",
+      items: [{ snapshotId: "jobicy:does-not-exist", position: 0 }],
     }),
     (error: unknown) => typeof error === "object" && error !== null && (error as { code?: string }).code === "23503",
   );

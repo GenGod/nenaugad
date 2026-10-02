@@ -12,7 +12,9 @@
 // no string-built SQL in this file at all (the write-time security gate flagged
 // the earlier placeholder-joining version, and it was right to).
 import type { Pool } from "pg";
-import type { EventItem } from "../domain/events.ts";
+import { normalisePropensity, type EventItem } from "../domain/events.ts";
+import { FEED_ORDERS, type FeedKey } from "../domain/feed-order.ts";
+import { latestProfile } from "./profile-service.ts";
 
 type JournalRow = Readonly<{
   snapshotId: string;
@@ -64,25 +66,62 @@ async function shownHashes(pool: Pool, snapshotIds: readonly string[]): Promise<
 }
 
 /**
- * Impressions with their show-time propensities. Propensity is NULL while no
- * ranker is wired into the read path (item A10) — an unknown probability stays
- * unknown, it is never invented as 1.0. The content fingerprint records WHAT was
- * shown, which is what the seen-set rule (A6) compares against the posting's
- * fingerprint today.
+ * Show-time propensities, computed HERE from the cached relevance scores that
+ * ordered the feed (B2/B20): the client never supplies a number, and an item
+ * without a score keeps an honest null instead of an invented probability. The
+ * reference is the batch's best score — the same normalisation the A8 design
+ * fixed ("the item's score relative to the best score of the same list").
+ */
+async function showPropensities(
+  pool: Pool, userId: string, snapshotIds: readonly string[],
+): Promise<ReadonlyMap<string, number>> {
+  const propensities = new Map<string, number>();
+  if (snapshotIds.length === 0) return propensities;
+  const profile = await latestProfile(pool, userId);
+  if (!profile) return propensities;
+  const result = await pool.query(
+    "SELECT snapshot_id, score FROM job_relevance_scores WHERE user_id = $1 AND profile_version = $2 AND snapshot_id = ANY($3::text[])",
+    [userId, profile.version, [...snapshotIds]],
+  );
+  const scores = new Map<string, number>();
+  let best: number | null = null;
+  for (const row of result.rows as readonly Record<string, unknown>[]) {
+    const score = Number(row.score);
+    if (!Number.isFinite(score)) continue;
+    scores.set(String(row.snapshot_id), score);
+    if (best === null || score > best) best = score;
+  }
+  for (const [snapshotId, score] of scores) {
+    const value = normalisePropensity(score, best);
+    if (value !== null) propensities.set(snapshotId, value);
+  }
+  return propensities;
+}
+
+/**
+ * Impressions with their show-time propensities. Propensity stays NULL when no
+ * score exists for the item (a catalog-ordered tail) — an unknown probability
+ * stays unknown, it is never invented as 1.0. The content fingerprint records
+ * WHAT was shown, which is what the seen-set rule (A6) compares against the
+ * posting's fingerprint today.
  */
 export async function recordImpressions(params: Readonly<{
   pool: Pool;
   userId: string;
   items: readonly EventItem[];
-  rankerVersion: string | null;
+  feed: FeedKey;
 }>): Promise<number> {
-  const hashes = await shownHashes(params.pool, params.items.map(item => item.snapshotId));
+  const ids = params.items.map(item => item.snapshotId);
+  const [hashes, propensities] = await Promise.all([
+    shownHashes(params.pool, ids),
+    showPropensities(params.pool, params.userId, ids),
+  ]);
   return insertRows(params.pool, params.userId, params.items.map(item => ({
     snapshotId: item.snapshotId,
     eventType: "impression" as const,
     position: item.position,
-    propensity: item.propensity,
-    rankerVersion: params.rankerVersion,
+    propensity: propensities.get(item.snapshotId) ?? null,
+    rankerVersion: FEED_ORDERS[params.feed],
     shownContentHash: hashes.get(item.snapshotId) ?? null,
   })));
 }
@@ -91,14 +130,14 @@ export async function recordClicks(params: Readonly<{
   pool: Pool;
   userId: string;
   items: readonly EventItem[];
-  rankerVersion: string | null;
+  feed: FeedKey;
 }>): Promise<number> {
   return insertRows(params.pool, params.userId, params.items.map(item => ({
     snapshotId: item.snapshotId,
     eventType: "click" as const,
     position: item.position,
     propensity: null,
-    rankerVersion: params.rankerVersion,
+    rankerVersion: FEED_ORDERS[params.feed],
     shownContentHash: null,
   })));
 }

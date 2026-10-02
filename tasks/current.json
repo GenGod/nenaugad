@@ -1,10 +1,10 @@
 {
-  "task_id": "AI-007",
-  "file": "tasks/AI-007-owner-decisions-2026-10-01.md",
+  "task_id": "BFIX-001",
+  "file": "tasks/BFIX-001-b-defects-closure.md",
   "status": "implemented",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Партия решений владельца 2026-10-01: A5 квота $1/мес + персональные бюджеты заводятся при регистрации и бэкфиллом + потолок операции 1 цент сравнивается в шлюзе (попутно найден и исправлен баг ensureBudget: ON CONFLICT по (scope,owner_id,period) не ловил конфликт по PK для глобальной строки с owner_id NULL, из-за чего повторный сид падал); A6 команда npm run ai:holds (список удержаний + --cancel=<id>, решение остаётся за человеком); A1 LIVE_AI_ENABLED стал настоящим выключателем (проверяется шлюзом до денег, .env сейчас false => живые вызовы отказывают), LIVE_SOURCES остаётся без флага осознанно, health/doctor отдают фактическое значение; A8 REINDEX TABLE job_snapshots 65 мс + REINDEX DATABASE 152 мс, аудит 0 недостижимых из 2182 (было 12/700), 12 векторов добраны (498/498); приватность: структурная граница personal-data-boundary.ts (PURPOSES_NEEDING_CANDIDATE_FACTS, assertNoCandidateFacts спрашивается обоими платящими местами по тесту, buildJobOnlyPrompt — единственный конструктор промпта) => обе AI-функции (скоринг, письма) закрыты до локальной модели, провайдеру больше не уходит ничего о кандидате. Проверки: check 235/235, test:db 55/55, build 0, e2e 96, seed:budgets x2 ok, ai:holds ok. Остаётся: месячный сброс квоты (period хранится, но окно не сбрасывается), журнал ручных решений по холдам, B14 (health про auth), план повторного включения батча."
+  "note": "Кампания закрытия дефектов раздела B (18 из 22): B1-B8, B10, B12, B14-B20, B22. B6 дал измеренный прирост NDCG@5 0.914340→0.918614 и NDCG@10 0.916478→0.920153 (пороги ratchet подняты); B12 поднял RULESET_VERSION до 3 (DST-точное окно). Проверки: check 240/240, test:db 55/55, build 0, e2e 96 (3 базлайна письма обновлены осознанно), eval:matching guards 0/0. Отложены с причиной: B9 (письма закрыты personal-data-boundary), B11 (удаление аккаунта — отдельный review владельца), B13 (право process_with_ml для jobicy — решение владельца), B23 (переключение продуктовой выдачи — решение владельца, OPEN_GAPS E.3)."
 }

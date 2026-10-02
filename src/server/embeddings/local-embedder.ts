@@ -17,7 +17,7 @@
 //     Embedding is a decoder used as an embedder: the sentence vector is the last
 //     non-padding token (contract: EMBEDDING_MODEL.pooling). A convenience
 //     pipeline would mean-pool and silently produce a different space.
-import { access, stat } from "node:fs/promises";
+import { stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -172,29 +172,5 @@ export function createEmbedder(tokenizer: TokenizerLike, model: ModelLike): Embe
       }
       return vectors;
     },
-  };
-}
-
-/** Human-readable status for a CLI header; contains no user data. */
-export async function describeLocalArtifact(): Promise<Readonly<{
-  modelVersion: string;
-  repository: string;
-  dtype: string;
-  dim: number;
-  present: boolean;
-}>> {
-  let present = false;
-  try {
-    await access(MODEL_FILE_PATH);
-    present = true;
-  } catch {
-    present = false;
-  }
-  return {
-    modelVersion: EMBEDDING_MODEL.version,
-    repository: EMBEDDING_MODEL.repository,
-    dtype: EMBEDDING_MODEL.dtype,
-    dim: EMBEDDING_MODEL.dim,
-    present,
   };
 }

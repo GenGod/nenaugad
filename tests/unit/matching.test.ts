@@ -176,7 +176,7 @@ test("rules are deterministic and versioned", () => {
   assert.equal(typeof RULESET_VERSION, "number");
 });
 
-test("rule TIME-01: unpublished schedule is not_applicable; accepted zones checked seasonally", () => {
+test("rule TIME-01: unpublished schedule is not_applicable; accepted zones checked across the whole year", () => {
   const profile = profileWith({});
   const base = mapHimalayasFixture(NOW)[0]!;
   assert.equal(ruleOf(evaluateJob(base, profile), "TIME-01")?.outcome, "not_applicable");
@@ -197,4 +197,14 @@ test("rule TIME-01: unpublished schedule is not_applicable; accepted zones check
   const farAway = ruleOf(evaluateJob(withZones([780]), profile), "TIME-01");
   assert.equal(farAway?.outcome, "fail");
   assert.deepEqual(farAway?.reasonCodes, ["OVERLAP_INSUFFICIENT"]);
+
+  // DST-exact (B12): Africa/Casablanca is UTC+1 except during Ramadan, when the
+  // zone shifts to UTC+0 for a few weeks. The old two-point (January/July) check
+  // saw +1 in both months and passed a match that does not hold all year.
+  const ramadanShift = ruleOf(evaluateJob(
+    withZones([60]), profileWith({ timezone: "Africa/Casablanca" })), "TIME-01");
+  assert.equal(ramadanShift?.outcome, "unknown");
+  // A zero-offset zone is a whole-year match when UTC+0 is accepted.
+  const utcZero = ruleOf(evaluateJob(withZones([0]), profileWith({ timezone: "UTC" })), "TIME-01");
+  assert.equal(utcZero?.outcome, "pass");
 });

@@ -1,13 +1,19 @@
+import type { Pool } from "pg";
 import { readConfig } from "./config.ts";
 import { getSourcePolicy } from "./source-policies.ts";
 import { choosePrimary, groupDuplicates } from "../domain/dedup.ts";
+import type { ClosureSignal } from "../domain/ev-multipliers.ts";
 import {
   classifySnapshot, policyPublishes, projectCard, type PolicyBoundRecord,
   type CatalogCardProjection,
 } from "../domain/snapshot-projection.ts";
 import { readSnapshotCardsData, snapshotPool } from "./storage/snapshots.ts";
 
-export type SnapshotCardView = CatalogCardProjection & Readonly<{ excerpt: string }>;
+export type SnapshotCardView = CatalogCardProjection & Readonly<{
+  excerpt: string;
+  /** Availability signal (B7): the same closure the matched feed shows. */
+  closure: ClosureSignal | null;
+}>;
 export type SnapshotCatalogResult = Readonly<{
   cards: readonly SnapshotCardView[];
   unavailable: boolean;
@@ -20,19 +26,23 @@ export type SnapshotCatalogResult = Readonly<{
 // Rows from every source are collected first and grouped by the cross-source
 // dedup key (item A4), so a posting syndicated to two boards yields one card
 // whose provenance lists the other board with a working link.
-export async function readSnapshotCards(): Promise<SnapshotCatalogResult> {
+export async function readSnapshotCards(
+  options: Readonly<{ pool?: Pool }> = {},
+): Promise<SnapshotCatalogResult> {
   const now = new Date().toISOString();
   const config = readConfig(process.env);
   if (config.backend !== "postgres") return { cards: [], unavailable: false };
-  const pool = snapshotPool();
-  const collected: (PolicyBoundRecord & { excerpt: string })[] = [];
+  const pool = options.pool ?? snapshotPool();
+  const collected: (PolicyBoundRecord & { excerpt: string; closure: ClosureSignal | null })[] = [];
   let unavailable = false;
   for (const sourceId of ["himalayas", "jobicy"]) {
     const policy = getSourcePolicy(sourceId);
     if (!policy || !policyPublishes(policy, now)) continue;
     try {
       const rows = await readSnapshotCardsData(pool, sourceId);
-      for (const row of rows) collected.push({ stored: row.stored, policy, excerpt: row.excerpt });
+      for (const row of rows) {
+        collected.push({ stored: row.stored, policy, excerpt: row.excerpt, closure: row.closure });
+      }
     } catch {
       // The synthetic catalog keeps its own hard failure path; a broken
       // source degrades visibly instead of faking an empty success.
@@ -55,6 +65,7 @@ export async function readSnapshotCards(): Promise<SnapshotCatalogResult> {
         url: record.stored.snapshot.source_url,
       }))),
       excerpt: primary.excerpt,
+      closure: primary.closure,
     };
     cards.push(card);
   }

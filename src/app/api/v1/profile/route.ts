@@ -30,12 +30,17 @@ export async function PUT(request: Request) {
   }
   try {
     const saved = await saveProfileVersion(snapshotPool(), user.id, body);
-    // Event trigger: profile changed → cached relevance scores are stale.
-    // Fire-and-forget: submit an async OpenAI Batch (50% discount) so fresh
-    // scores are ready when the user next opens /matched.
+    // Event trigger: the profile changed → cached relevance scores are stale.
+    // The async batch submitter is closed for now (AI-006) and returns null
+    // without spending; the hook stays so it works again once the batch is
+    // re-enabled. A failure here must be visible, never silently dropped (B18).
     const { submitRelevanceBatch } = await import("../../../../server/ai/batch-queue-service.ts");
-    void submitRelevanceBatch({ pool: snapshotPool(), userId: user.id })
-      .catch(() => undefined);
+    void submitRelevanceBatch({ pool: snapshotPool(), userId: user.id }).catch((error: unknown) => {
+      console.error(JSON.stringify({
+        code: "RELEVANCE_BATCH_SUBMIT_FAILED",
+        name: error instanceof Error ? error.constructor.name : typeof error,
+      }));
+    });
     return NextResponse.json({ ok: true, version: saved.version });
   } catch (error) {
     const code = error instanceof Error ? error.message : "PROFILE_SAVE_FAILED";

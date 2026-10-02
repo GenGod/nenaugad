@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readConfig, localDatabaseUrl } from "../../src/server/config.ts";
 import { sourceAllowed } from "../../src/server/policy.ts";
-import { generateCoverLetter } from "../../src/server/ai/disabled.ts";
+import { assertNoCandidateFacts } from "../../src/server/ai/personal-data-boundary.ts";
 
 test("starter defaults to fixture/local with all live features disabled", () => {
   assert.deepEqual(readConfig({}), {
@@ -49,8 +49,12 @@ test("SP-T03 only synthetic catalog display is permitted", () => {
   }
   assert.equal(sourceAllowed("himalayas", "catalog", config), false);
 });
-test("generation refuses without making a paid or fake call", async () => {
-  await assert.rejects(generateCoverLetter, /AI_NOT_IMPLEMENTED/u);
+test("generation refuses without making a paid or fake call", () => {
+  // The pre-transport stub (src/server/ai/disabled.ts) is gone. The refusal now
+  // lives on the real path: both paying call sites must ask the personal-data
+  // boundary, which refuses cover_letter and job_matching
+  // (per-call-site assertion: tests/unit/ai-provider.test.ts).
+  assert.throws(() => assertNoCandidateFacts("cover_letter"), /PERSONAL_DATA_BOUNDARY/u);
 });
 test("database scripts reject remote hosts and unsafe options", () => {
   for (const url of [

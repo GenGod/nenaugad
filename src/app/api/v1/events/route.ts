@@ -2,10 +2,12 @@
 //
 // The user id comes from the session only: a client cannot write events for
 // somebody else, and there is no GET on purpose — nothing in the candidate-facing
-// UI reads the journal back.
+// UI reads the journal back. The `feed` key names which rendered feed the events
+// come from; the server maps it to the journal label itself (B3/B20).
 import { NextResponse } from "next/server";
 import { currentUser } from "../../../../server/auth.ts";
-import { parseEventBatch, parseRankerVersion, EventValidationError } from "../../../../domain/events.ts";
+import { parseEventBatch, EventValidationError } from "../../../../domain/events.ts";
+import { isFeedKey } from "../../../../domain/feed-order.ts";
 import { recordClicks, recordImpressions } from "../../../../server/events-service.ts";
 import { snapshotPool } from "../../../../server/storage/snapshots.ts";
 
@@ -20,12 +22,15 @@ export async function POST(request: Request) {
   }
   try {
     const items = parseEventBatch(body);
-    const rankerVersion = parseRankerVersion((body as { rankerVersion?: unknown }).rankerVersion);
+    const feed = (body as { feed?: unknown }).feed;
+    if (!isFeedKey(feed)) {
+      return NextResponse.json({ error: "INVALID_FEED" }, { status: 400 });
+    }
     const type = (body as { type: string }).type;
     const pool = snapshotPool();
     const written = type === "impression"
-      ? await recordImpressions({ pool, userId: user.id, items, rankerVersion })
-      : await recordClicks({ pool, userId: user.id, items, rankerVersion });
+      ? await recordImpressions({ pool, userId: user.id, items, feed })
+      : await recordClicks({ pool, userId: user.id, items, feed });
     return NextResponse.json({ recorded: written }, { status: 201 });
   } catch (error) {
     if (error instanceof EventValidationError) {

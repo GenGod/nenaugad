@@ -8,8 +8,17 @@ type Revision = {
   modelId: string | null; createdAt: string;
 };
 
-export function LetterEditor({ letterId, initialRevision, initialVersions }: {
+type Evidence = {
+  profileRoles: readonly string[];
+  profileCountry: string | null;
+  jobTitle: string | null;
+  jobCompany: string | null;
+  generalMode: boolean;
+};
+
+export function LetterEditor({ letterId, initialRevision, initialVersions, evidence }: {
   letterId: string; initialRevision: Revision | null; initialVersions: readonly Revision[];
+  evidence: Evidence;
 }) {
   const router = useRouter();
   const [text, setText] = useState(initialRevision?.body ?? "");
@@ -19,6 +28,7 @@ export function LetterEditor({ letterId, initialRevision, initialVersions }: {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
+  const [compareVersion, setCompareVersion] = useState<number | null>(null);
   const [generating, setGenerating] = useState(false);
   const [needsInput, setNeedsInput] = useState<string[] | null>(null);
 
@@ -78,8 +88,11 @@ export function LetterEditor({ letterId, initialRevision, initialVersions }: {
     try {
       const response = await fetch(`/api/v1/cover-letters/${letterId}`, {
         method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ body: text, expectedVersion: currentVersion }),
+        // Conditional write (B10): the version this editor was loaded with goes
+        // into If-Match, so a second tab holding a stale version gets 412 instead
+        // of silently overwriting the newer text.
+        headers: { "content-type": "application/json", "if-match": `"${currentVersion}"` },
+        body: JSON.stringify({ body: text }),
       });
       const body = (await response.json().catch(() => ({}))) as {
         version?: number; error?: string;
@@ -170,6 +183,23 @@ export function LetterEditor({ letterId, initialRevision, initialVersions }: {
     <output id="letter-word-count" className="small secondary" aria-live="off">
       Слов: {text.trim() ? text.trim().split(/\s+/u).length : 0}
     </output>
+    {/* Evidence panel (B8): what a letter may be based on, from the confirmed
+        profile and the job card — the same facts the generation API reports. */}
+    <div className="aside-card" style={{ marginTop: 16 }}>
+      <p className="overline">На чём основано</p>
+      <ul className="stack" style={{ marginTop: 8, paddingLeft: 18 }}>
+        <li>Роли из подтверждённого профиля:{" "}
+          {evidence.profileRoles.length > 0 ? evidence.profileRoles.join(", ") : "не заданы"}</li>
+        <li>Страна профиля: {evidence.profileCountry ?? "не указана"}</li>
+        <li>{evidence.generalMode
+          ? "Вакансия не выбрана — это общий черновик."
+          : `Вакансия: ${evidence.jobTitle ?? "недоступна"}${evidence.jobCompany ? ` · ${evidence.jobCompany}` : ""}`}</li>
+      </ul>
+      <p className="small secondary" style={{ marginTop: 8 }}>
+        Основания — подтверждённый профиль и карточка вакансии; сам текст письма никуда
+        не отправляется автоматически.
+      </p>
+    </div>
     {error && <p className="field-error" role="alert">{error}</p>}
     {status && <output className="small secondary" aria-live="polite">{status}</output>}
     {showVersions && <div style={{ marginTop: 16 }}>
@@ -190,9 +220,40 @@ export function LetterEditor({ letterId, initialRevision, initialVersions }: {
               onClick={() => { setText(rev.body); setCurrentVersion(rev.version); setStatus(`Показана версия ${rev.version}.`); }}>
               Открыть
             </button>
+            <button type="button" className="btn secondary"
+              onClick={() => setCompareVersion(rev.version)}>
+              Сравнить
+            </button>
           </article>
         ))}
       </div>
     </div>}
+    {compareVersion !== null && (() => {
+      const other = versions.find(rev => rev.version === compareVersion);
+      if (!other) return null;
+      return <div style={{ marginTop: 16 }}>
+        <div className="section-head" style={{ marginTop: 8 }}>
+          <h3>Сравнение: версия {other.version} и текущий текст</h3>
+          <button type="button" className="btn secondary" onClick={() => setCompareVersion(null)}>
+            Закрыть сравнение</button>
+        </div>
+        <div className="row" style={{ alignItems: "flex-start", gap: 16 }}>
+          <div style={{ flex: 1 }}>
+            <p className="small secondary">Версия {other.version}
+              {" "}({other.origin === "generated" ? "AI" : "правка"}) ·{" "}
+              {other.createdAt.slice(0, 16).replace("T", " ")}</p>
+            <pre className="aside-card"
+              style={{ whiteSpace: "pre-wrap", maxHeight: "20rem", overflow: "auto" }}>
+              {other.body}</pre>
+          </div>
+          <div style={{ flex: 1 }}>
+            <p className="small secondary">Текущий текст (версия {currentVersion})</p>
+            <pre className="aside-card"
+              style={{ whiteSpace: "pre-wrap", maxHeight: "20rem", overflow: "auto" }}>
+              {text}</pre>
+          </div>
+        </div>
+      </div>;
+    })()}
   </>;
 }

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { currentUser } from "../../../server/auth.ts";
 import { getLetterDetail } from "../../../server/letters/service.ts";
+import { latestProfile } from "../../../server/profile-service.ts";
 import { snapshotPool, readSnapshotCardsData } from "../../../server/storage/snapshots.ts";
 import { isJobSnapshot } from "../../../domain/source-contracts.ts";
 import { LetterEditor } from "../../../components/letter-editor.tsx";
@@ -31,6 +32,9 @@ export default async function LetterPage({ params }: { params: Promise<{ id: str
   const snapshotRow = rows.find(row => row.stored.snapshot.id === detail.summary.jobSnapshotId);
   const job = snapshotRow && isJobSnapshot(snapshotRow.stored.snapshot)
     ? snapshotRow.stored.snapshot : null;
+  // Evidence panel (B8): the same facts the generation API reports — the
+  // confirmed profile and the job card — rendered where the candidate writes.
+  const profile = await latestProfile(snapshotPool(), user.id);
 
   return <>
     <header className="page-head">
@@ -46,6 +50,13 @@ export default async function LetterPage({ params }: { params: Promise<{ id: str
     <div className="panel">
       <LetterEditor
         letterId={detail.summary.id}
+        evidence={{
+          profileRoles: profile?.input.targetRoles ?? [],
+          profileCountry: profile?.input.residenceCountry ?? null,
+          jobTitle: job?.title ?? null,
+          jobCompany: job?.company_name ?? null,
+          generalMode: isGeneral,
+        }}
         initialRevision={detail.current ? {
           id: detail.current.id, version: detail.current.version,
           body: detail.current.body, origin: detail.current.origin,

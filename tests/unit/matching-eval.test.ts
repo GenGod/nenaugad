@@ -39,14 +39,18 @@ import { isJobSnapshot } from "../../src/domain/source-contracts.ts";
 //     freshness pair) — see tasks/A5-001; the freshness layer itself was
 //     measured to raise the aggregate on that same set (0.912941 -> 0.914340
 //     NDCG@5, 0.915359 -> 0.916478 NDCG@10) and is guarded by its own ratchet.
+//   * BFIX-001 (B6): raised after the role boost became whole-word matching with
+//     head synonymy — a measured raise, not a rule change for its own sake
+//     (NDCG@5 0.914340 -> 0.918614, NDCG@10 0.916478 -> 0.920153;
+//     p-frontend-latam 0.974 -> 1.000; no profile moved down) — see tasks/BFIX-001.
 // The guarantees that may NOT move are the relative ones below: neither the
 // requirement layer nor the freshness layer may score worse than the same
 // ranker without it, per profile and in aggregate.
 const THRESHOLDS = {
   recallAt5: 0.742261,
   recallAt10: 0.877380,
-  ndcgAt5: 0.914340,
-  ndcgAt10: 0.916478,
+  ndcgAt5: 0.918614,
+  ndcgAt10: 0.920153,
   mrr: 1.0,
 } as const;
 

@@ -23,11 +23,7 @@ function getClient(): OpenAI {
   return client;
 }
 
-export function resetOpenAIClient(): void {
-  client = null;
-}
-
-export function isOpenAIConfigured(): boolean {
+function isOpenAIConfigured(): boolean {
   return typeof process.env.OPENAI_API_KEY === "string" &&
     process.env.OPENAI_API_KEY.length > 0;
 }

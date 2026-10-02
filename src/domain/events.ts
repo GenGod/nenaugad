@@ -5,20 +5,19 @@
 // deliberately strict: a journal a client can pollute with arbitrary strings is
 // worse than no journal, because later ranking decisions would trust it.
 //
-// Privacy: nothing here accepts free text. Ids, a type, a position and a
-// probability — that is the whole vocabulary.
+// Privacy: nothing here accepts free text. Ids, a type and a position — that is
+// the whole vocabulary. Show-time propensities are computed server-side from the
+// scores the feed ordered by (B2/B20): the client does not get to send them.
 
 export const EVENT_TYPES = ["impression", "click"] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
 const SNAPSHOT_ID = /^(himalayas|jobicy):[a-z0-9-]{1,150}$/u;
 const MAX_EVENTS_PER_REQUEST = 50;
-const MAX_TITLE_LENGTH = 80;
 
 export type EventItem = Readonly<{
   snapshotId: string;
   position: number | null;
-  propensity: number | null;
 }>;
 
 export class EventValidationError extends Error {
@@ -46,13 +45,6 @@ export function normalisePropensity(score: number | null, bestScore: number | nu
   return value > 1 ? 1 : value;
 }
 
-export function parseRankerVersion(value: unknown): string | null {
-  if (value === null || value === undefined) return null;
-  if (typeof value !== "string" || value.trim().length === 0) return null;
-  if (value.length > MAX_TITLE_LENGTH) throw new EventValidationError("INVALID_RANKER_VERSION");
-  return value.trim();
-}
-
 /** Validates one journal batch. Throws EventValidationError with a fixed code. */
 export function parseEventBatch(value: unknown): readonly EventItem[] {
   if (!isRecord(value)) throw new EventValidationError("INVALID_EVENT_BODY");
@@ -78,15 +70,11 @@ export function parseEventBatch(value: unknown): readonly EventItem[] {
       }
       position = raw.position as number;
     }
-    let propensity: number | null = null;
-    if (raw.propensity !== null && raw.propensity !== undefined) {
-      if (typeof raw.propensity !== "number" || !Number.isFinite(raw.propensity) ||
-        raw.propensity < 0 || raw.propensity > 1) {
-        throw new EventValidationError("INVALID_PROPENSITY");
-      }
-      propensity = Math.round(raw.propensity * 100000) / 100000;
-    }
-    parsed.push({ snapshotId, position, propensity });
+    // The journal's propensity is computed by the server from the cached scores
+    // the feed ordered by (B2/B20). A payload that carries one is refused, not
+    // quietly overridden: a client must not even appear to supply it.
+    if ("propensity" in raw) throw new EventValidationError("PROPENSITY_NOT_ACCEPTED");
+    parsed.push({ snapshotId, position });
   }
   // One snapshot per batch: duplicates would double-count the same interaction.
   const seen = new Set(parsed.map(item => item.snapshotId));

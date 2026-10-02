@@ -220,20 +220,6 @@ export function assertComparable(
 }
 
 /**
- * Cache key part for a profile vector (decision §6.5): the version of the model,
- * the instruction and the profile all belong in the key, so a change in any of
- * them cannot serve a stale vector. Profile text is not part of the key and
- * never appears in it.
- */
-export function embeddingCacheKey(params: Readonly<{
-  modelVersion: string;
-  instructionVersion: string;
-  profileVersion: number;
-}>): string {
-  return `${params.modelVersion}|${params.instructionVersion}|p${params.profileVersion}`;
-}
-
-/**
  * Bumped whenever the dense leg's own behaviour changes, the way RANKER_VERSION
  * works for the ranker: a measurement is only comparable inside one version.
  */
