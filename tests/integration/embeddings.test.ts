@@ -78,10 +78,10 @@ async function seedCatalog(): Promise<void> {
   await insertSnapshot("himalayas", "himalayas:b1-welder",
     snapshotWith(template, "himalayas:b1-welder", "Welder for an offshore oil platform, on-site."));
   await insertSnapshot("jobicy", "jobicy:b1-denied",
-    snapshotWith(template, "jobicy:b1-denied", "Python developer role (this source has no ML grant)."));
+    snapshotWith(template, "jobicy:b1-denied", "Python developer role on jobicy (dense-leg fixture)."));
 }
 
-test("embeddings: an approved source is indexed; a source without the ML grant is skipped whole", async () => {
+test("embeddings: an approved source is indexed; an expired (or unlicensed) policy is skipped whole", async () => {
   await seedCatalog();
   const embedder = createFakeEmbedder();
   const report = await indexSourceEmbeddings({ pool, sourceId: "himalayas", embedder, now: NOW });
@@ -96,12 +96,21 @@ test("embeddings: an approved source is indexed; a source without the ML grant i
   assert.equal(again.outcome, "nothing_to_do");
   assert.equal(again.current, 2);
 
-  // jobicy's process_with_ml is denied (owner decision 2026-09-30): no vectors,
-  // not even for the postings already stored.
-  const denied = await indexSourceEmbeddings({ pool, sourceId: "jobicy", embedder, now: NOW });
-  assert.equal(denied.outcome, "no_permission");
-  assert.equal(denied.embedded, 0);
-  assert.equal(await countJobEmbeddings(pool, FAKE_MODEL_VERSION), 2);
+  // jobicy's process_with_ml was granted on 2026-10-02 (owner decision No 4), so
+  // the source that used to be skipped whole is now indexed like any other.
+  const jobicy = await indexSourceEmbeddings({ pool, sourceId: "jobicy", embedder, now: NOW });
+  assert.equal(jobicy.outcome, "indexed");
+  assert.equal(jobicy.embedded, 1);
+  assert.equal(await countJobEmbeddings(pool, FAKE_MODEL_VERSION), 3);
+
+  // The skip-whole branch still exists and stays tested through the policy's
+  // validity window: after 2026-12-23 jobicy's policy is expired, and an expired
+  // policy is denied exactly like a missing grant.
+  const expired = await indexSourceEmbeddings({
+    pool, sourceId: "jobicy", embedder, now: "2027-01-01T00:00:00.000Z",
+  });
+  assert.equal(expired.outcome, "no_permission");
+  assert.equal(expired.embedded, 0);
 
   const unknown = await indexSourceEmbeddings({ pool, sourceId: "not-a-source", embedder, now: NOW });
   assert.equal(unknown.outcome, "unknown_source");
@@ -189,7 +198,7 @@ test("embeddings: the profile vector is personal data and dies with the profile"
   );
 });
 
-test("embeddings: dense search covers gated candidates, caches the query vector and refuses a denied source", async () => {
+test("embeddings: dense search covers gated candidates, caches the query vector and refuses an expired policy", async () => {
   await seedCatalog();
   const embedder = createFakeEmbedder();
   await indexSourceEmbeddings({ pool, sourceId: "himalayas", embedder, now: NOW });
@@ -224,13 +233,24 @@ test("embeddings: dense search covers gated candidates, caches the query vector 
     assert.ok(Math.abs(entry.similarity - reference.similarity) < 1e-6);
   });
 
-  // jobicy has no dense representation, so the leg returns nothing at all.
-  const denied = await denseSearchForProfile({
+  // jobicy is served like any source since the 2026-10-02 grant. This test
+  // indexed himalayas only, so its candidate is covered by no vector —
+  // "uncovered", which is not a refusal.
+  const granted = await denseSearchForProfile({
     pool, sourceId: "jobicy", userId: user.id, profileVersion: 1, profile: PROFILE_INPUT,
     candidateIds: ["jobicy:b1-denied"], embedder, now: NOW,
   });
-  assert.equal(denied.outcome, "no_permission");
-  assert.deepEqual(denied.ranking.ranked, []);
+  assert.equal(granted.outcome, "ok");
+  assert.deepEqual(granted.ranking.uncovered, ["jobicy:b1-denied"]);
+
+  // The refusal branch stays tested through the policy's validity window: an
+  // expired policy is denied exactly like a missing grant.
+  const expired = await denseSearchForProfile({
+    pool, sourceId: "jobicy", userId: user.id, profileVersion: 1, profile: PROFILE_INPUT,
+    candidateIds: ["jobicy:b1-denied"], embedder, now: "2027-01-01T00:00:00.000Z",
+  });
+  assert.equal(expired.outcome, "no_permission");
+  assert.deepEqual(expired.ranking.ranked, []);
 });
 
 test("embeddings: a posting the database cannot resolve is stepped over and named, not retried forever", async () => {

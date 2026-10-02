@@ -11,6 +11,7 @@ import { registerUser } from "../../src/server/users.ts";
 import { saveProfileVersion } from "../../src/server/profile-service.ts";
 import { matchedForUser } from "../../src/server/matching-service.ts";
 import type { ShadowRequest } from "../../src/server/ranker-shadow-service.ts";
+import { rankJobs, RANKER_VERSION } from "../../src/domain/match-ranker.ts";
 import { createPostgresPersistence } from "../../src/server/storage/snapshots.ts";
 import { runJobicyImport } from "../../src/server/import/jobicy-adapter.ts";
 import { jobicyCandidatePolicy } from "../../src/server/source-policies.ts";
@@ -84,9 +85,28 @@ test("A9: the shadow runs on exactly the delivered postings and logs counts, not
   assert.equal(typeof parsed.compared, "number");
   assert.equal(typeof parsed.moved, "number");
   assert.equal(typeof parsed.guardrailsPass, "boolean");
-  assert.ok(typeof parsed.champion === "string" && typeof parsed.candidate === "string");
+  assert.equal(parsed.champion, RANKER_VERSION,
+    "the shipped ranker is the champion since B23");
+  assert.equal(parsed.candidate, null,
+    "no candidate ranker is registered, and the log says so instead of inventing one");
   assert.ok(!line.includes("jobicy:"), "no posting id in the log");
   assert.ok(!line.includes(userId), "no user id in the log");
+});
+
+test("B23: the delivered feed follows the shipped ranker's order", async () => {
+  const userId = await seed();
+  const captured: ShadowRequest[] = [];
+  const result = await matchedForUser(userId, { pool, shadow: request => { captured.push(request); } });
+  const request = captured[0];
+  assert.ok(request, "the feed read must run the ranking pass");
+  // Independent computation over exactly the postings the feed delivered.
+  const ranked = rankJobs(request.jobs, request.profile, request.now, {}).map(entry => entry.snapshot.id);
+  const eligibleIds = new Set(result.eligible.map(job => job.card.id));
+  assert.deepEqual(result.eligible.map(job => job.card.id), ranked.filter(id => eligibleIds.has(id)),
+    "the eligible tab is the ranked order restricted to eligible postings");
+  // Determinism: a second read delivers the same order.
+  const again = await matchedForUser(userId, { pool, shadow: () => {} });
+  assert.deepEqual(again.eligible.map(job => job.card.id), result.eligible.map(job => job.card.id));
 });
 
 test("A9: a shadow that throws cannot change the feed", async () => {

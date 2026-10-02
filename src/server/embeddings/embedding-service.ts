@@ -167,8 +167,9 @@ export async function indexSourceEmbeddings(params: Readonly<{
   const empty = { embedded: 0, current: 0, invalid: 0, modelVersion: embedder.modelVersion };
   if (!policy) return { sourceId, outcome: "unknown_source", ...empty };
   if (permissionFor(policy, "process_with_ml", now) !== "allowed") {
-    // Not an error: jobicy is denied today by the owner's decision, and a denied
-    // source simply has no dense representation.
+    // Not an error: a source whose policy withholds or has revoked the right —
+    // a disabled or expired policy, or a grant the owner never made — simply has
+    // no dense representation.
     return { sourceId, outcome: "no_permission", ...empty };
   }
 

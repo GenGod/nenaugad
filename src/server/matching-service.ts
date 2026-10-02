@@ -11,7 +11,8 @@ import { choosePrimary, groupDuplicates } from "../domain/dedup.ts";
 import { classifySnapshot, policyPublishes, projectCard, type PolicyBoundRecord } from "../domain/snapshot-projection.ts";
 import { evaluateJob, RULESET_VERSION, type JobEvaluation } from "../domain/matching.ts";
 import { assessSnapshotRequirements, type RequirementAssessment } from "../domain/requirements.ts";
-import type { RankableJob } from "../domain/match-ranker.ts";
+import { rankJobs, type RankableJob } from "../domain/match-ranker.ts";
+import { dislikedPosting, type DislikedPosting } from "../domain/negative-preference.ts";
 import type { ClosureSignal } from "../domain/ev-multipliers.ts";
 import type { RankedRequestItem } from "../domain/rank-guardrails.ts";
 import { computeRankerShadow, logRankerShadow, type ShadowRequest } from "./ranker-shadow-service.ts";
@@ -72,6 +73,9 @@ export async function matchedForUser(
   const shownForRanker: RankableJob[] = [];
   const guardrailItems: RankedRequestItem[] = [];
   const deliveredGroupKeys = new Set<string>();
+  // Hidden postings: they leave the feed, but their neighbourhood is demoted by
+  // the ranker (A6-002) — that signal needs their company and stack, not just ids.
+  const disliked: DislikedPosting[] = [];
   const collected: (PolicyBoundRecord & { excerpt: string; closure: ClosureSignal | null })[] = [];
   for (const sourceId of ["himalayas", "jobicy"]) {
     const policy = getSourcePolicy(sourceId);
@@ -104,8 +108,13 @@ export async function matchedForUser(
   // to the whole group — the candidate said "not this posting", not "not this
   // copy of it".
   for (const group of groupDuplicates(collected, record => record.stored.snapshot)) {
-    if (group.members.some(record => hidden.has(record.stored.snapshot.id))) continue;
     const primary = choosePrimary(group.members, record => record.stored.snapshot);
+    // A hidden posting stays hidden — but it is no longer invisible to the
+    // ranking: it feeds the preference demotion below (B23).
+    if (group.members.some(record => hidden.has(record.stored.snapshot.id))) {
+      disliked.push(dislikedPosting(primary.stored.snapshot));
+      continue;
+    }
     const others = group.members.filter(record => record !== primary);
     const evaluation = evaluateJob(primary.stored.snapshot, profile.input);
     // A posting the candidate already saw and did not act on is not a result
@@ -152,9 +161,20 @@ export async function matchedForUser(
     });
     deliveredGroupKeys.add(group.key);
   }
-  // Item A9: run the ranker in shadow over exactly these inputs. What the feed
-  // returns is unchanged — the shadow only reports, and a shadow failure is
-  // swallowed on purpose: a candidate's feed must never depend on it.
+  // B23 (owner decision No 4, 2026-10-02): the feed is ordered by the shipped
+  // deterministic ranker, not by the cached AI scores. One ranking over exactly
+  // the delivered postings; the two tabs keep their split and inherit its order.
+  const ranked = rankJobs(shownForRanker, profile.input, now, { disliked });
+  const rankPosition = new Map(ranked.map((entry, index) => [entry.snapshot.id, index]));
+  const byRanker = (a: MatchedJob, b: MatchedJob): number =>
+    (rankPosition.get(a.card.id) ?? 0) - (rankPosition.get(b.card.id) ?? 0);
+  eligible.sort(byRanker);
+  needsReview.sort(byRanker);
+  // Item A9: the per-request run over exactly these inputs. Since B23 the feed
+  // itself is the ranker, so there is no candidate to diff against — the call
+  // keeps the guardrails and logs counts only; a future candidate ranker plugs
+  // in through candidateId. A shadow failure is swallowed on purpose: a
+  // candidate's feed must never depend on it.
   const shadow = options.shadow
     ?? ((request: ShadowRequest) => logRankerShadow(computeRankerShadow(request)));
   try {

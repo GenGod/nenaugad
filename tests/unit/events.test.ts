@@ -10,6 +10,7 @@ import {
   EventValidationError, normalisePropensity, parseEventBatch,
 } from "../../src/domain/events.ts";
 import { FEED_ORDERS, feedOrderLabel, isFeedKey } from "../../src/domain/feed-order.ts";
+import { RANKER_VERSION } from "../../src/domain/match-ranker.ts";
 
 function errorCode(fn: () => unknown): string {
   try {
@@ -72,5 +73,8 @@ test("B3: feed order labels are a closed, server-owned set", () => {
   // The old placeholder labels and anything else are not accepted.
   assert.equal(isFeedKey("v0-ai-score-then-catalog"), false);
   assert.equal(isFeedKey("__proto__"), false, "prototype keys are not feed keys");
-  assert.equal(feedOrderLabel("match"), "feed-ai-score-then-catalog@1");
+  // Since B23 both tabs are ordered by the shipped ranker, so the journal label
+  // is its version string — not a made-up feed-order name.
+  assert.equal(feedOrderLabel("match"), RANKER_VERSION);
+  assert.equal(feedOrderLabel("review"), RANKER_VERSION);
 });

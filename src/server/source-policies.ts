@@ -128,17 +128,18 @@ export const himalayasCandidatePolicy: SourcePolicy = {
 // terms_hash = sha256 of the NORMALIZED terms text (src/server/terms-fingerprint.ts);
 // the revision reviewed on 2026-09-30 is committed at
 // docs/sources/terms/jobicy-feed.txt, listed in docs/sources/terms/snapshots.json.
-// send_to_ai_provider was granted by the owner on 2026-10-01. Recorded honestly:
-// on 2026-09-30 the owner withheld even the weaker process_with_ml grant here, so
-// this is a separate, later and stronger decision — the only one for jobicy that
-// rests on the Fair Use text that explicitly welcomes "AI assistants" and
-// "search experiences". `process_with_ml` stays denied (no local inference over
-// jobicy text is granted today) and training stays denied.
+// send_to_ai_provider was granted by the owner on 2026-10-01, and process_with_ml
+// on 2026-10-02 (owner decision 04) after the Fair Use section was read in full:
+// the same text that names "AI assistants" also names "AI products" and
+// "research tools" and requires no separate agreement, so local embedding
+// inference is granted too — this closes B13 (the dense leg could not index
+// jobicy at all). training stays denied; attribution and the canonical Jobicy
+// URL are preserved.
 export const jobicyCandidatePolicy: SourcePolicy = {
   kind: "source_policy",
   schema_version: "1.0.0",
   id: "policy/jobicy/1",
-  version: 4,
+  version: 5,
   source_id: "jobicy",
   status: "approved",
   enabled: true,
@@ -147,13 +148,15 @@ export const jobicyCandidatePolicy: SourcePolicy = {
     "https://github.com/Jobicy/remote-jobs-api",
   ],
   terms_hash: "feff80168fed52ef2ff4a25299f7ef160aee143ec9df667fb9fdfb5e5e0eace4",
-  reviewed_at: "2026-10-01T00:00:00.000Z",
+  reviewed_at: "2026-10-02T00:00:00.000Z",
   approved_by: "owner",
   approval_reference:
     "Owner-approved permission matrix 2026-09-25 (live review of API docs); " +
     "activated 2026-09-25 after the S1-003 review; paid direct links and affiliate out of scope; " +
     "owner decision 2026-10-01: provider transfer allowed for approved purposes " +
     "(Fair Use names AI assistants and search experiences); " +
+    "owner decision 2026-10-02 (No 4): local ML inference (process_with_ml) granted — " +
+    "the Fair Use section read in full names \"AI products\" and \"research tools\"; " +
     "terms fingerprint re-baselined 2026-09-30 (normalized text + committed snapshot); " +
     "re-review by 2026-12-23",
   valid_until: "2026-12-23T00:00:00.000Z",
@@ -163,7 +166,7 @@ export const jobicyCandidatePolicy: SourcePolicy = {
     store_full_text: "allowed",
     store_excerpt: "allowed",
     derive_fields: "allowed",
-    process_with_ml: "denied",
+    process_with_ml: "allowed",
     send_to_ai_provider: "allowed",
     publish_full_text: "denied",
     publish_excerpt: "allowed",

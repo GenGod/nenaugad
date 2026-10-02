@@ -72,17 +72,17 @@ test("acceptance 1: source policy fixes purpose, restrictions and owner review",
   assert.equal(isSourcePolicy(extraKey), false);
 });
 
-test("owner decision 2026-09-30 (brief 7.2): local ML inference covers fixtures and himalayas, not jobicy", () => {
+test("local ML inference is granted per source by explicit owner decisions (fixtures/himalayas 2026-09-30, jobicy 2026-10-02)", () => {
   // Granted: synthetic fixtures (the offline eval depends on it) and himalayas
   // (API docs name "AI tools" as an intended audience; the owner accepted that
   // reading — the full analysis lives in the 2026-09-30 decision document).
   assert.equal(permissionFor(atlasFixturesPolicy, "process_with_ml", NOW), "allowed");
   assert.equal(permissionFor(himalayasCandidatePolicy, "process_with_ml", NOW), "allowed");
-  // jobicy keeps the denial of LOCAL inference: its Fair Use text is the
-  // friendliest of the three, but the owner's 2026-09-30 grant did not cover it,
-  // and a silent flip must fail here. The provider-transfer grant below is a
-  // separate, later decision and does not change this line.
-  assert.equal(permissionFor(jobicyCandidatePolicy, "process_with_ml", NOW), "denied");
+  // jobicy was granted later (owner decision No 4, 2026-10-02) after the Fair
+  // Use section was read in full: it names "AI products" and "research tools"
+  // and requires no separate agreement. The line still has to be an explicit
+  // decision — a silent flip fails here.
+  assert.equal(permissionFor(jobicyCandidatePolicy, "process_with_ml", NOW), "allowed");
   // Inference was never a licence to train on upstream text: that stays denied
   // for every source.
   for (const policy of [atlasFixturesPolicy, himalayasCandidatePolicy, jobicyCandidatePolicy]) {

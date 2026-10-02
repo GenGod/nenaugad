@@ -194,13 +194,9 @@ async function MatchedResults({ userId, result, tab }: {
   // One reference time for the whole render: age labels (item A5) stay
   // consistent with each other and do not depend on load duration.
   const now = new Date().toISOString();
-  // Sort eligible by AI score (desc), then by no-score, preserving stable order.
-  const eligibleSorted = result.eligible.map(withScore).sort((a, b) => {
-    if (a.score && b.score) return b.score.score - a.score.score;
-    if (a.score) return -1;
-    if (b.score) return 1;
-    return 0;
-  });
+  // B23: the order arrives from the matching service, which ranks both tabs with
+  // the shipped deterministic ranker. The cached AI scores are shown as badges
+  // only — they no longer sort, so nothing on this page reorders the feed.
   const analyzedCount = result.eligible.filter(job => relevanceMap.has(job.card.id)).length;
   const input = profile?.input;
   const hours = input?.availabilityWindows[0];
@@ -222,13 +218,13 @@ async function MatchedResults({ userId, result, tab }: {
   // describes, so the positions in the journal match what the candidate saw.
   const list: readonly { job: MatchedJob; score: RelevanceScore | null }[] = activeTab === "review"
     ? result.needsReview.slice(0, 50).map(job => ({ job, score: null }))
-    : eligibleSorted.slice(0, 50);
+    : result.eligible.slice(0, 50).map(withScore);
   return <>
     <header className="page-head">
       <p className="overline">Подбор с основаниями</p>
       <h1>Вакансии для вас</h1>
-      <p>Правила v{result.rulesetVersion} по опубликованным условиям; AI-рейтинг релевантности
-        кэшируется до смены профиля.</p>
+      <p>Правила v{result.rulesetVersion} по опубликованным условиям; порядок выдаёт
+        детерминированный ранкер, AI-рейтинг релевантности показывается справочно.</p>
     </header>
     <div className="mode-switch">
       <Link href="/matched" aria-current="page">Для вас</Link>
@@ -264,7 +260,7 @@ async function MatchedResults({ userId, result, tab }: {
         </nav>
         <div className="results-meta">
           <span>{activeTab === "match" ? result.eligible.length : result.needsReview.length} в выборке</span>
-          {analyzedCount > 0 && activeTab === "match" && <span>Сначала релевантные</span>}
+          <span>Порядок — детерминированный ранкер по условиям, роли и свежести</span>
         </div>
         {activeTab === "match" && <div className="row" style={{ marginBottom: 16 }}>
           <BatchAnalyzeButton count={result.eligible.length - analyzedCount} />

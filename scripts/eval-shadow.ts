@@ -1,17 +1,18 @@
 // CLI for shadow ranker comparison (design item A9).
 //
-//   npm run eval:shadow                                  champion = the feed's default order, all other versions as candidates
+//   npm run eval:shadow                                  champion = the shipped ranker, every other registered version as a candidate
 //   npm run eval:shadow -- --candidate=v0-status-skills-role
 //   npm run eval:shadow -- --json
 //
 // Read-only: golden-set fixtures only, no database, no network. Exit code 1 if a
 // candidate trips a guardrail — that is the gate a ranker must pass before it is
-// allowed anywhere near the read path (item A10 switches the feed only behind it).
+// allowed anywhere near the read path (B23 switched the feed behind it on
+// 2026-10-02; the champion of this comparison is that shipped ranker).
 import { GOLDEN_SET } from "../src/data/matching-golden.ts";
 import { dedupKey } from "../src/domain/dedup.ts";
 import { evaluateJob } from "../src/domain/matching.ts";
-import type { RankableJob } from "../src/domain/match-ranker.ts";
-import { FEED_DEFAULT_ORDER_ID, REGISTERED_RANKERS, rankerById } from "../src/domain/ranker-registry.ts";
+import { RANKER_VERSION, type RankableJob } from "../src/domain/match-ranker.ts";
+import { REGISTERED_RANKERS, rankerById } from "../src/domain/ranker-registry.ts";
 import { computeRankerShadow, type RankerShadowReport } from "../src/server/ranker-shadow-service.ts";
 
 /** The postings one golden profile can see, with the flags the guardrails check. */
@@ -53,7 +54,7 @@ function requestedCandidates(): readonly string[] {
   }
   return REGISTERED_RANKERS
     .map(ranker => ranker.id)
-    .filter(id => id !== FEED_DEFAULT_ORDER_ID);
+    .filter(id => id !== RANKER_VERSION);
 }
 
 const candidates = requestedCandidates();
@@ -67,7 +68,7 @@ if (candidates.length > 0) {
         report: computeRankerShadow({
           jobs, items, profile: golden.profile, now: GOLDEN_SET.evaluatedAt,
           poolSize: GOLDEN_SET.jobs.length,
-          championId: FEED_DEFAULT_ORDER_ID,
+          championId: RANKER_VERSION,
           candidateId: candidate,
         }),
       });
@@ -77,22 +78,22 @@ if (candidates.length > 0) {
   if (process.argv.includes("--json")) {
     console.log(JSON.stringify(reports.map(entry => ({
       profile: entry.profileId,
-      candidate: entry.report.diff.candidateId,
-      moved: entry.report.diff.moved,
-      top10Changed: entry.report.diff.top10Changed,
-      maxShift: entry.report.diff.maxShift,
+      candidate: entry.report.diff?.candidateId ?? null,
+      moved: entry.report.diff?.moved ?? 0,
+      top10Changed: entry.report.diff?.top10Changed ?? 0,
+      maxShift: entry.report.diff?.maxShift ?? 0,
       guardrails: entry.report.guardrails,
     })), null, 2));
   } else {
     console.log(`Ranker shadow over the golden set (${GOLDEN_SET.jobs.length} postings × ${GOLDEN_SET.profiles.length} profiles)`);
-    console.log(`Champion: ${FEED_DEFAULT_ORDER_ID} (what candidates get today)\n`);
+    console.log(`Champion: ${RANKER_VERSION} (the shipped order since B23)\n`);
     let failed = false;
     for (const candidate of candidates) {
-      const rows = reports.filter(entry => entry.report.diff.candidateId === candidate);
-      const moved = rows.reduce((sum, entry) => sum + entry.report.diff.moved, 0);
-      const compared = rows.reduce((sum, entry) => sum + entry.report.diff.compared, 0);
-      const top10 = rows.reduce((sum, entry) => sum + entry.report.diff.top10Changed, 0);
-      const maxShift = Math.max(0, ...rows.map(entry => entry.report.diff.maxShift));
+      const rows = reports.filter(entry => entry.report.diff?.candidateId === candidate);
+      const moved = rows.reduce((sum, entry) => sum + (entry.report.diff?.moved ?? 0), 0);
+      const compared = rows.reduce((sum, entry) => sum + (entry.report.diff?.compared ?? 0), 0);
+      const top10 = rows.reduce((sum, entry) => sum + (entry.report.diff?.top10Changed ?? 0), 0);
+      const maxShift = Math.max(0, ...rows.map(entry => entry.report.diff?.maxShift ?? 0));
       const violations = rows.flatMap(entry =>
         entry.report.guardrails.violations.map(
           violation => `${entry.profileId}:${violation.metric}=${violation.value.toFixed(3)}>${violation.limit}`));

@@ -25,14 +25,16 @@ test("policy: jobicy matrix approved and activated; a disabled clone denies ever
     "derive_fields", "publish_excerpt"] as const) {
     assert.equal(jobicyCandidatePolicy.permissions[permission], "allowed", permission);
   }
-  // Provider transfer is granted (owner decision 2026-10-01); local ML inference
-  // stays denied here, and full-text republication stays denied.
-  for (const permission of ["publish_full_text", "process_with_ml",
+  // Provider transfer (2026-10-01) and local ML inference (2026-10-02, owner
+  // decision No 4 — the Fair Use section names AI products and research tools)
+  // are granted; full-text republication and everything else stays denied.
+  for (const permission of ["publish_full_text",
     "send_email", "index_web_page", "syndicate_google_jobs", "train_model",
     "direct_apply", "bulk_export"] as const) {
     assert.equal(jobicyCandidatePolicy.permissions[permission], "denied", permission);
   }
   assert.equal(jobicyCandidatePolicy.permissions.send_to_ai_provider, "allowed");
+  assert.equal(jobicyCandidatePolicy.permissions.process_with_ml, "allowed");
   assert.equal(jobicyCandidatePolicy.min_poll_interval_seconds, 21600);
   // Rollback without code changes: disabling the policy denies fetch again.
   assert.equal(permissionFor({ ...jobicyCandidatePolicy, enabled: false }, "fetch", NOW), "denied");
