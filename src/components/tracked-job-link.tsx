@@ -1,6 +1,6 @@
 "use client";
 import type { FeedKey } from "../domain/feed-order.ts";
-import { clickReport } from "./click-reporter.ts";
+import { clickReport } from "./journal-reporter.ts";
 
 // The posting's primary link in the matched feed: a normal external link that
 // also journals the click (B1) before the browser leaves the page. Styling and

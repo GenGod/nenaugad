@@ -47,6 +47,13 @@ const restricted = (countries: readonly string[], regionText: string | null = nu
   allowed_subdivisions: [], region_text: regionText, exhaustive: true, evidence_ids: [],
 });
 
+// Geography the source did not state at all (the A2 coverage gap): GEO-01 must
+// stay unknown — neither worldwide nor a refusal.
+const unspecifiedGeography = (): Geography => ({
+  scope: "unspecified", allowed_countries: [], excluded_countries: [],
+  allowed_subdivisions: [], region_text: null, exhaustive: false, evidence_ids: [],
+});
+
 const scheduleNotStated = (): Schedule => ({
   status: "not_stated", timezone: null, zone_semantics: "not_stated", mode: "not_stated",
   local_windows: [], required_overlap_minutes: null, accepted_utc_offsets_minutes: [],
@@ -148,10 +155,12 @@ function snapshot(spec: Readonly<{
 
 // --- Jobs ----------------------------------------------------------------
 // Coverage cells: stack families (backend/frontend/mobile/data/ML/devops/QA/
-// design/games), languages (en/ru), geography (worldwide/restricted, allowed
-// and excluded), contract types, salary shapes (annual/monthly/hourly/daily,
-// absent, non-comparable currency), schedules (not stated/offset set/
-// ambiguous), mandatory onsite, and one two-option posting (OR path).
+// design/games), languages (en/ru), geography (worldwide/restricted/unspecified,
+// allowed and excluded), contract types, salary shapes (annual/monthly/hourly/
+// daily, absent, non-comparable currency), schedules (not stated/offset set/
+// ambiguous), mandatory onsite, one two-option posting (OR path), two freshness
+// pairs at different ages, and two cross-lingual semantic postings (no Latin
+// tokens) that lexical legs cannot match by design of the case.
 export const GOLDEN_JOBS: readonly GoldenJob[] = [
   { note: "backend core stack, worldwide, salary present", snapshot: snapshot({
     id: "golden-j01", title: "Senior Node.js Engineer", company: "Nordwind Labs",
@@ -346,6 +355,36 @@ export const GOLDEN_JOBS: readonly GoldenJob[] = [
     description: "Batch pipelines with Python, SQL, Airflow and Data Engineering on AWS.",
     geography: worldwide(), ranges: [annualGross("80000", "100000", "EUR")],
   }), firstSeenAt: "2026-09-29T08:00:00.000Z" },
+  // Coverage additions of 2026-10-02 (the deferred-measurement gaps of the audit,
+  // docs/OPEN_GAPS.md section D): the geography-unknown path measured by a metric
+  // (A2 п.4), two cross-lingual semantic cases lexical legs cannot match at all
+  // (B1/B2), and a second freshness pair at a different age for a different
+  // profile (A5 п.2).
+  { note: "geography NOT stated — GEO-01 unknown (not worldwide): honest review material, graded 2 for devops", snapshot: snapshot({
+    id: "golden-j35", title: "Platform Engineer (Kubernetes)", company: "Northwind Systems",
+    description: "Platform work with Kubernetes, Terraform, Go, PostgreSQL and CI/CD pipelines.",
+    geography: unspecifiedGeography(), ranges: [monthlyGross("5500", "7000", "USD")],
+  }) },
+  { note: "cross-lingual semantic case: Russian-only ML posting, no Latin tokens for lexical legs", snapshot: snapshot({
+    id: "golden-j36", title: "Инженер по машинному обучению", company: "Синтезлаб",
+    description: "Разработка рекомендательных моделей и обработка естественного языка, обучение нейронных сетей, эксперименты и внедрение в продакшен.",
+    language: "ru", geography: worldwide(), ranges: [monthlyGross("500000", "650000", "KZT")],
+  }) },
+  { note: "cross-lingual semantic case #2: Russian-only QA automation posting, no Latin tool names", snapshot: snapshot({
+    id: "golden-j37", title: "Инженер по автоматизации тестирования", company: "ТестПолис",
+    description: "Автотесты для веб-приложений: написание и поддержка тестов, регрессии, работа с требованиями и отчётность.",
+    language: "ru", geography: worldwide(), ranges: [monthlyGross("400000", "500000", "KZT")],
+  }) },
+  { note: "freshness pair #2 — stale copy (first seen 100 days before the evaluation)", snapshot: snapshot({
+    id: "golden-j38", title: "Senior React Developer", company: "Beacon Interfaces",
+    description: "Product interface in React, TypeScript and Redux, HTML/CSS layout, GraphQL data layer.",
+    geography: worldwide(), ranges: [annualGross("70000", "90000", "EUR")],
+  }), firstSeenAt: "2026-06-21T08:00:00.000Z" },
+  { note: "freshness pair #2 — fresh copy (first seen two days before the evaluation)", snapshot: snapshot({
+    id: "golden-j39", title: "Senior React Developer", company: "Northline Studio",
+    description: "Product interface in React, TypeScript and Redux, HTML/CSS layout, GraphQL data layer.",
+    geography: worldwide(), ranges: [annualGross("70000", "90000", "EUR")],
+  }), firstSeenAt: "2026-09-27T08:00:00.000Z" },
 ];
 
 // --- Profiles ------------------------------------------------------------
@@ -414,12 +453,13 @@ export const GOLDEN_PROFILES: readonly GoldenProfile[] = [
 
 // --- Grades --------------------------------------------------------------
 // Some postings carry must/nice marker words (golden-j30/j31/j32) so the
-// requirement layer (item A2) is measured rather than assumed, and two identical
-// postings differ only in when our pipeline first saw them (golden-j33/j34) so
-// the freshness layer (item A5) is measured the same way.
+// requirement layer (item A2) is measured rather than assumed, and two pairs of
+// identical postings differ only in when our pipeline first saw them
+// (golden-j33/j34, golden-j38/j39) so the freshness layer (item A5) is measured
+// the same way.
 //
 // Every judged pair is a written judgment about desirability for that
-// candidate (see the legend in the header). All 32 jobs are judged for all 6
+// candidate (see the legend in the header). All 37 jobs are judged for all 6
 // profiles so the "unjudged shown" guard stays meaningful: if a gate change
 // starts showing a job nobody judged, the harness fails loudly instead of
 // scoring it as 0.
@@ -434,6 +474,7 @@ export const GOLDEN_JUDGMENTS: readonly GoldenJudgment[] = [
     "golden-j28": 0, "golden-j29": 0,
     "golden-j30": 2, "golden-j31": 3, "golden-j32": 1,
     "golden-j33": 2, "golden-j34": 3,
+    "golden-j35": 1, "golden-j36": 1, "golden-j37": 1, "golden-j38": 1, "golden-j39": 1,
   } },
   { profileId: "p-frontend-latam", grades: {
     "golden-j01": 1, "golden-j02": 1, "golden-j03": 1, "golden-j04": 1, "golden-j05": 2,
@@ -445,6 +486,7 @@ export const GOLDEN_JUDGMENTS: readonly GoldenJudgment[] = [
     "golden-j28": 0, "golden-j29": 0,
     "golden-j30": 1, "golden-j31": 1, "golden-j32": 1,
     "golden-j33": 1, "golden-j34": 1,
+    "golden-j35": 1, "golden-j36": 1, "golden-j37": 1, "golden-j38": 2, "golden-j39": 3,
   } },
   { profileId: "p-data-asia", grades: {
     "golden-j01": 1, "golden-j02": 1, "golden-j03": 1, "golden-j04": 1, "golden-j05": 1,
@@ -456,6 +498,7 @@ export const GOLDEN_JUDGMENTS: readonly GoldenJudgment[] = [
     "golden-j28": 0, "golden-j29": 0,
     "golden-j30": 1, "golden-j31": 1, "golden-j32": 3,
     "golden-j33": 2, "golden-j34": 3,
+    "golden-j35": 1, "golden-j36": 2, "golden-j37": 1, "golden-j38": 1, "golden-j39": 1,
   } },
   { profileId: "p-devops-eu", grades: {
     "golden-j01": 1, "golden-j02": 2, "golden-j03": 1, "golden-j04": 1, "golden-j05": 1,
@@ -467,6 +510,7 @@ export const GOLDEN_JUDGMENTS: readonly GoldenJudgment[] = [
     "golden-j28": 0, "golden-j29": 0,
     "golden-j30": 1, "golden-j31": 1, "golden-j32": 1,
     "golden-j33": 1, "golden-j34": 1,
+    "golden-j35": 2, "golden-j36": 1, "golden-j37": 1, "golden-j38": 1, "golden-j39": 1,
   } },
   { profileId: "p-qa-us", grades: {
     "golden-j01": 1, "golden-j02": 1, "golden-j03": 1, "golden-j04": 1, "golden-j05": 1,
@@ -478,6 +522,7 @@ export const GOLDEN_JUDGMENTS: readonly GoldenJudgment[] = [
     "golden-j28": 0, "golden-j29": 0,
     "golden-j30": 1, "golden-j31": 1, "golden-j32": 1,
     "golden-j33": 1, "golden-j34": 1,
+    "golden-j35": 1, "golden-j36": 1, "golden-j37": 2, "golden-j38": 1, "golden-j39": 1,
   } },
   { profileId: "p-ru-ml", grades: {
     "golden-j01": 1, "golden-j02": 1, "golden-j03": 1, "golden-j04": 1, "golden-j05": 1,
@@ -489,12 +534,13 @@ export const GOLDEN_JUDGMENTS: readonly GoldenJudgment[] = [
     "golden-j28": 0, "golden-j29": 0,
     "golden-j30": 1, "golden-j31": 1, "golden-j32": 2,
     "golden-j33": 1, "golden-j34": 1,
+    "golden-j35": 1, "golden-j36": 3, "golden-j37": 1, "golden-j38": 1, "golden-j39": 1,
   } },
 ];
 
 export const GOLDEN_SET: GoldenSet = {
   id: "matching-golden",
-  version: 3,
+  version: 4,
   gradesLegend: "3 strong / 2 good (minor gaps, unclear conditions) / 1 neighbouring specialisation or blocked by own hard conditions / 0 outside software engineering. Relevant for recall and MRR: grade >= 2.",
   // Fixed reference time for the freshness term and age labels (item A5): the
   // harness never reads the clock, so results stay reproducible.

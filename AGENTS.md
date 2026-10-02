@@ -17,10 +17,17 @@ Approved appearance: [Atlas 1.1](docs/solo/context/ATLAS_DESIGN_LANGUAGE.md).
 Use `src/app/tokens.css`, generated from the original tokens. Do not redesign Nenaugad.
 
 ## What exists
-One Next.js TypeScript app. Public read-only synthetic catalog. Fixture repository,
-optional local PostgreSQL repository, migration/seed, tests and workflow instructions.
-No authentication, CV upload, live source, paid AI, financial ledger or worker yet.
-`docs/ARCHITECTURE.md` distinguishes the starter contract from target contracts.
+One Next.js TypeScript app. Public read-only synthetic catalog plus snapshots from
+two approved live sources (Himalayas, Jobicy). Fixture repository or local
+PostgreSQL, migrations/seed, import worker, tests and workflow instructions.
+Auth and private versioned profiles (S2), CV intake behind `UPLOADS_ENABLED` (S3),
+private letters (S4) and the guarded AI contour with its spending ledger
+(AI-001…AI-007) exist locally. Live AI is off (`LIVE_AI_ENABLED=false`): relevance
+scoring and letter generation refuse until a local model serves them, and nothing
+about the candidate leaves the contour. Not beta: no restore, no public deploy,
+no owner acceptance.
+`docs/ARCHITECTURE.md` distinguishes the starter contract from target contracts;
+`docs/OPEN_GAPS.md` is the audit of what is still open.
 Do not call stubbed features implemented.
 
 ## Working loop

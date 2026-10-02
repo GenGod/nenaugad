@@ -7,6 +7,8 @@
 | Next.js | 16.3.6 | Официальное сообщение об обновлении безопасности от 22.09.2026 |
 | React / React DOM | 19.3.0 | Официальный выпуск React 19.3 и метаданные react/latest |
 | pg | 8.23.0 | Страница пакета владельца node-postgres |
+| next-auth | 4.24.15 | Реализация auth S2-001 (scrypt-креденшелы, owner только из сессии); версия закреплена точно, без диапазона |
+| openai | 7.23.0 | AI-002 (решение владельца 2026-09-25): единственный разрешённый provider SDK. Импорт разрешён статически только `src/server/ai/openai-transport.ts` (`npm run guardrails`); SDK auto-retry выключен по контракту |
 | @huggingface/transformers | 4.3.0 | Решение владельца 2026-09-30 (бриф §7.2, задача B1): локальный инференс эмбеддингов. Версия закреплена точно (без диапазона) и проверяется `npm run guardrails`; тянет `onnxruntime-node` 1.30.0, `sharp`, `@huggingface/tokenizers` — нативные бинарники |
 | Модель эмбеддингов | `onnx-community/Qwen3-Embedding-0.6B-ONNX` @ `c25a394d`, int8, 1024 dim | Решение владельца №2 (2026-09-30, §6.2): Apache-2.0, 32K контекст, last-token pooling, инструкция только на стороне запроса. Веса — не npm-пакет: скачиваются `npm run models:fetch` с закреплённым sha256 (`src/domain/embeddings.ts`), в git не хранятся; смена — по `docs/EMBEDDING_PLAYBOOK.md` |
 | PostgreSQL local image | pgvector/pgvector:0.8.6-pg17 | Решение владельца 2026-09-30 (пункт 1 §7): векторы хранятся в pgvector. Образ везёт PostgreSQL 17.11 (Debian 12) — та же версия, что и прежний `postgres:17.11-alpine`, поэтому каталог данных совместим напрямую (проверено репетицией на копии тома); расширение `vector` 0.8.6 включается миграцией 0016 |
@@ -22,6 +24,10 @@ Peer dependencies, transitive dependencies, установка native binaries �
 всей комбинации должны быть проверены в S0. npm-проба в среде поставки дала
 DNS EAI_AGAIN; lockfile и npm audit не выполнялись. Нельзя заявлять отсутствие
 уязвимостей по списку direct dependencies.
+*(Обновление 2026-10-02: в среде подготовки S0 эти проверки действительно не
+выполнялись; на рабочей машине владельца установка выполнена, настоящий
+`package-lock.json` создан и лежит в git, S0-001 принят 2026-09-24. Актуальные
+факты и числа — `IMPLEMENTATION_STATUS.md`.)*
 
 ## Первичные источники
 - https://nextjs.org/blog/nextjs-security-update-september-22-2026

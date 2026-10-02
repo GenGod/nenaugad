@@ -1,12 +1,19 @@
 "use client";
 import type { FeedKey } from "../domain/feed-order.ts";
 
-// Click reporting (B1, the other half of the journal A8 started): when the
-// candidate follows a posting's primary link, the journal records ONE click for
-// that snapshot. The payload carries an id, a position and the feed key — the
-// server attaches the label and the owner. Reporting must never affect the
-// navigation, so the request is fire-and-forget and failure is swallowed here by
-// the same rule as impressions.
+// Journal payloads (items A8/B1, pinned by tests): what the candidate's browser
+// is allowed to say to /api/v1/events. Ids, positions and the feed key — no
+// profile data, no free text, no probabilities (propensity and the journal label
+// are computed server-side, B2/B3/B20). Kept out of the .tsx components so the
+// shapes are unit-testable without a DOM.
+
+/** The exact request body for one impression batch. */
+export function impressionPayload(
+  items: readonly { snapshotId: string; position: number }[],
+  feed: FeedKey,
+): string {
+  return JSON.stringify({ type: "impression", feed, items });
+}
 
 /** The exact request body for one click; exported so tests can pin its shape. */
 export function clickPayload(snapshotId: string, feed: FeedKey, position: number | null): string {

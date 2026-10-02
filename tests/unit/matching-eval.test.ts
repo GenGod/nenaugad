@@ -6,11 +6,12 @@
 // counter: a number that can quietly move down measures nothing.
 //
 // What is at ceiling today (be honest about it):
-//   * R@10 and MRR are 1.000 for every profile — the shown pools are small
-//     (19-24 jobs) and every relevant job still fits into the top ten.
-//   * NDCG@5/@10 and R@5 carry the real signal. They are pulled down by the
-//     two keyword-trap postings (golden-j28/j29) and by the naive role-substring
-//     boost in the v0 ranker, which is exactly the headroom A2/A3 exist for.
+//   * MRR is still 1.000 for every profile; R@10 stays >= 0.727. The pools are
+//     small (29-34 jobs), so NDCG@5/@10 and R@5 carry the real signal.
+//   * They are pulled down by the two keyword-trap postings (golden-j28/j29),
+//     the geography-unknown posting (golden-j35) and the cross-lingual semantic
+//     cases (golden-j36/j37), which the v4 ranker is known NOT to solve — that
+//     is exactly the headroom the dense/rerank work (B3+) is measured against.
 // When the golden set grows or a better ranker lands, re-baseline these floors
 // upward and note the change.
 import assert from "node:assert/strict";
@@ -43,14 +44,22 @@ import { isJobSnapshot } from "../../src/domain/source-contracts.ts";
 //     head synonymy — a measured raise, not a rule change for its own sake
 //     (NDCG@5 0.914340 -> 0.918614, NDCG@10 0.916478 -> 0.920153;
 //     p-frontend-latam 0.974 -> 1.000; no profile moved down) — see tasks/BFIX-001.
+//   * DGAP-001 (section D): re-baselined DOWNWARD with this recorded reason — the
+//     SET grew from 34 to 39 jobs with hard cases the v4 ranker is known not to
+//     handle: geography-unknown golden-j35 (devops R@5 1.000 -> 0.800) and the
+//     cross-lingual semantic golden-j36/j37 (qa R@5 1.000 -> 0.500, p-ru-ml
+//     NDCG@5 0.827 -> 0.732). Floors: R@5 0.742261 -> 0.610606,
+//     R@10 0.877380 -> 0.850378, NDCG@5 0.918614 -> 0.874763,
+//     NDCG@10 0.920153 -> 0.892047. The ranker did not change — only the
+//     benchmark did, and the new cases are the ones B3/dense work must move.
 // The guarantees that may NOT move are the relative ones below: neither the
 // requirement layer nor the freshness layer may score worse than the same
 // ranker without it, per profile and in aggregate.
 const THRESHOLDS = {
-  recallAt5: 0.742261,
-  recallAt10: 0.877380,
-  ndcgAt5: 0.918614,
-  ndcgAt10: 0.920153,
+  recallAt5: 0.610606,
+  recallAt10: 0.850378,
+  ndcgAt5: 0.874763,
+  ndcgAt10: 0.892047,
   mrr: 1.0,
 } as const;
 

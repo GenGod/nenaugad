@@ -1,6 +1,7 @@
 "use client";
 import { useEffect } from "react";
 import type { FeedKey } from "../domain/feed-order.ts";
+import { impressionPayload } from "./journal-reporter.ts";
 
 // The feed tells the journal what it showed (item A6, completing the half A8
 // deferred). The batch carries ids, positions and WHICH FEED it was — no profile
@@ -22,11 +23,7 @@ export function ImpressionReporter({ items, feed }: {
 }) {
   // The payload is a plain string, so the effect below re-runs only when its
   // CONTENT changes — not on every re-render of the list.
-  const payload = JSON.stringify({
-    type: "impression",
-    feed,
-    items: items.slice(0, MAX_ITEMS_PER_REQUEST),
-  });
+  const payload = impressionPayload(items.slice(0, MAX_ITEMS_PER_REQUEST), feed);
   useEffect(() => {
     if (items.length === 0) return;
     const controller = new AbortController();
