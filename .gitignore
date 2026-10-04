@@ -6,6 +6,10 @@ dist/
 # `npm run models:fetch`, never committed. The pins live in
 # src/domain/embeddings.ts and scripts/models-fetch.ts.
 models/
+# ESCO skills artifact (ESCO-001): dataset v1.2.1 pages + concept documents,
+# fetched and hash-verified by `npm run esco:fetch`, never committed. The pins
+# live in data/esco-manifest.json (committed).
+data/esco/
 .env
 .env.*
 !.env.example

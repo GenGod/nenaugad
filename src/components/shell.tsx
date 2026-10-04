@@ -37,6 +37,11 @@ export function Footer() {
     <footer className="wrap">
       <div className="demo-note">
         Ненаугад · Демо-интерфейс. Автоматические отклики не выполняются; профиль, резюме и письма приватны.
+        <br />
+        {/* Обязательная атрибуция ESCO (handbook §5); словарь псевдонимов —
+            адаптированная версия skills-части: см. src/domain/skills-esco.ts. */}
+        <span lang="en">This service uses the ESCO classification of the European Commission.</span>{" "}
+        Словарь псевдонимов навыков — адаптированная версия ESCO (v1.2.1).
       </div>
     </footer>
     <MobileNav />

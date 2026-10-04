@@ -52,6 +52,11 @@ import { isJobSnapshot } from "../../src/domain/source-contracts.ts";
 //     R@10 0.877380 -> 0.850378, NDCG@5 0.918614 -> 0.874763,
 //     NDCG@10 0.920153 -> 0.892047. The ranker did not change — only the
 //     benchmark did, and the new cases are the ones B3/dense work must move.
+//   * ESCO-001 (2026-10-04): the ESCO alias delta (dictionary v2 -> v3, eleven
+//     reviewed labels) measured EXACTLY neutral on this set — none of the added
+//     labels occurs in the 39 postings, and the extraction guards stay 0/0.
+//     Floors are unchanged: the delta buys coverage for future postings, not a
+//     better score on today's benchmark. See src/domain/skills-esco.ts.
 // The guarantees that may NOT move are the relative ones below: neither the
 // requirement layer nor the freshness layer may score worse than the same
 // ranker without it, per profile and in aggregate.

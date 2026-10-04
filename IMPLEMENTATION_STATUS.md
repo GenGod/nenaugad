@@ -41,6 +41,24 @@ skills-части с атрибуцией). Зарегистрирована
 [MODEL-002](tasks/MODEL-002-gpu-spike.md) — спайк локального скоринга на CUDA
 (7–8B, той же матрицей замеров). Проверки: `check` 241/241, `build` 0, `e2e` 96.
 
+**ESCO-001: skills-часть ESCO подключена (2026-10-04, решение владельца E.6):**
+артефакт — полные документы **13 939 навыков ESCO v1.2.1** через открытый REST API
+(`selectedVersion=v1.2.1`; у API есть и «latest», но это другая, меньшая выборка),
+140 страниц / 180 МБ, sha256-пины в `data/esco-manifest.json` (в git не хранится;
+сборка и проверка — `npm run esco:fetch`, режимы `--check` и `--propose`). Review
+дал **50 связей** канонов со 33 концептами и **дельту алиасов v3: 8 канонов,
+11 алиасов** (business intelligence, information security, supervised learning,
+programme management…); ложные друзья ESCO («.NET» под Visual Basic, «Canvas» под
+LMS и др.) отклонены поштучно и записаны. В ESCO **нет русского языка** — RU-часть
+остаётся собственной работой проекта, worklist не изменился (95 unknown). Атрибуция
+«This service uses the ESCO classification of the European Commission.» + пометка
+адаптации — в футере (e2e-тест), условия — в `docs/DEPENDENCIES.md` (Decision
+2011/833/EU, CC BY 4.0; occupations/ISCO вне scope). Измерения: `eval:matching`
+до/после **точно нейтрален** (NDCG@10 0.892, guards 0/0), пороги не менялись.
+Проверки: `check` 244/244, `test:db` 57/57, `build` 0, `e2e` 99 (визуальные
+базалайны обновлены — изменился футер). Детали —
+[tasks/ESCO-001](tasks/ESCO-001-import-skills.md).
+
 **MODEL-001: локальная генеративная модель — оценка (2026-10-02, решение №4 п.2):**
 на этой машине (i5-13450HX, 31.6 ГБ RAM; RTX 5060 8 ГБ установленным
 CPU-рантаймом не используется) кандидаты Qwen3-1.7B и Qwen2.5-1.5B (ONNX q8,

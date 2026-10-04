@@ -28,6 +28,15 @@ test("starter security headers survive the redesign", async ({ request }) => {
   expect(home.headers()["referrer-policy"]).toBe("no-referrer");
 });
 
+test("footer carries the mandatory ESCO attribution and the adaptation note", async ({ page }) => {
+  // ESCO-001: the licence requires this exact sentence plus a clear marking of
+  // adapted versions; both live in the footer, so they are asserted here.
+  await page.goto("/");
+  const footer = page.locator("footer");
+  await expect(footer).toContainText("This service uses the ESCO classification of the European Commission.");
+  await expect(footer).toContainText("адаптированная версия ESCO");
+});
+
 test("header lockup, favicon wiring and decorative icons", async ({ page }, testInfo) => {
   await page.goto("/jobs");
   await expect(page.locator(".brand-logo")).toHaveAttribute("alt", "ненаугад");

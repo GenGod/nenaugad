@@ -36,6 +36,7 @@
     "smoke:himalayas": "node --experimental-strip-types scripts/smoke-himalayas.ts",
     "terms:check": "node --experimental-strip-types scripts/terms-check.ts",
     "models:fetch": "node --experimental-strip-types scripts/models-fetch.ts",
+    "esco:fetch": "node --experimental-strip-types scripts/esco-fetch.ts",
     "models:fetch-llm": "node --experimental-strip-types scripts/models-fetch-llm.ts",
     "eval:local-llm": "node --experimental-strip-types scripts/eval-local-llm.ts",
     "embeddings:index": "node --experimental-strip-types --env-file-if-exists=.env scripts/embeddings-index.ts",

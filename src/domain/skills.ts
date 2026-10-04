@@ -7,8 +7,15 @@
 // forms live in ALIAS_DELTA_V2 below, and ambiguous one-word aliases (go, docs,
 // rest, rust, spring…) now require capitalisation — the golden harness measured
 // the cost of reading ordinary prose as skills ("We go fast" -> ["Go"]).
+//
+// v3 (2026-10-04, ESCO-001): alias additions accepted from the ESCO v1.2.1
+// skills part live in src/domain/skills-esco.ts (ESCO_ALIAS_DELTA), next to the
+// concept mapping that traces each one back to the fetched artifact. The merge
+// below is the only place they enter the dictionary; licence and review rules
+// are in that file's header and docs/DEPENDENCIES.md.
+import { ESCO_ALIAS_DELTA } from "./skills-esco.ts";
 
-export const SKILLS_DICTIONARY_VERSION = 2;
+export const SKILLS_DICTIONARY_VERSION = 3;
 
 export type SkillCategory =
   | "frontend" | "backend" | "database" | "devops" | "mobile"
@@ -162,7 +169,7 @@ const ALIAS_DELTA_V2: Readonly<Record<string, readonly string[]>> = {
 // belongs to a different canonical in the list above.
 export const ALIAS_DELTA_V2_ENTRIES = ALIAS_DELTA_V2;
 
-// Build a lookup map: lowercase alias → canonical skill. The v2 delta is merged
+// Build a lookup map: lowercase alias → canonical skill. Both deltas are merged
 // in the same pass (no mutation afterwards), so a name collision would be a
 // reviewable conflict rather than a silent overwrite in the tests.
 const aliasMap: ReadonlyMap<string, string> = new Map<string, string>([
@@ -171,6 +178,9 @@ const aliasMap: ReadonlyMap<string, string> = new Map<string, string>([
       .map(alias => [alias, entry.canonical] as const),
   ),
   ...Object.entries(ALIAS_DELTA_V2).flatMap(([canonical, aliases]) =>
+    aliases.map(alias => [alias.toLowerCase(), canonical] as const),
+  ),
+  ...Object.entries(ESCO_ALIAS_DELTA).flatMap(([canonical, aliases]) =>
     aliases.map(alias => [alias.toLowerCase(), canonical] as const),
   ),
 ]);

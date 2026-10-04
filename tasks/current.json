@@ -1,10 +1,10 @@
 {
-  "task_id": "EDEC-002",
-  "file": "tasks/EDEC-002-decision-followups.md",
+  "task_id": "ESCO-001",
+  "file": "tasks/ESCO-001-import-skills.md",
   "status": "implemented",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Доводка партии решений №4 (2026-10-02): зарегистрированы MODEL-002 (спайк локального скоринга на CUDA, модель 7-8B, RTX 5060, той же матрицей) и ESCO-001 (подключение skills-части ESCO; условия прочитаны дословно из официального handbook §5: обязательная строка атрибуции + пометка адаптации, occupations-часть ISCO/ILO вне задачи). E.5 (фильтры компаний) - решение: оставить как есть; E.7 (email) - решение: остаётся in-app. UI: кнопки AI-анализа убраны с /matched (при закрытом скоринге всегда отвечали 503), бейджи помечены 'AI-оценка (справочно)'. Проверки: check 241/241, build 0, e2e 96."
+  "note": "Skills-часть ESCO подключена (решение E.6). Артефакт: полные документы 13 939 навыков ESCO v1.2.1 через открытый REST API (selectedVersion=v1.2.1), 140 страниц / 180 МБ, sha256-пины в data/esco-manifest.json (сам артефакт gitignored); сборка/проверка — npm run esco:fetch (--check, --propose). Review: 50 связей канонов со 33 концептами, дельта алиасов v3 (8 канонов, 11 алиасов); ложные друзья ESCO отклонены поштучно и записаны. В ESCO нет русского языка — RU-часть остаётся собственной работой проекта, worklist не изменился. Атрибуция в футере (e2e) + docs/DEPENDENCIES.md (Decision 2011/833/EU, CC BY 4.0). eval:matching до/после точно нейтрален (NDCG@10 0.892, guards 0/0), пороги не менялись. Проверки: check 244/244, test:db 57/57, build 0, e2e 99, esco:fetch 0."
 }
