@@ -1,10 +1,10 @@
 {
-  "task_id": "RET-001",
-  "file": "tasks/RET-001-retention-tombstones.md",
+  "task_id": "MODEL-001",
+  "file": "tasks/MODEL-001-local-generative-eval.md",
   "status": "implemented",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "RET-001 исполнен (решение владельца №4 п.4): миграция 0018 (job_snapshots.tombstoned_at); retention обезличивает вместо удаления (id/source/даты/content_hash остаются, текст и векторы уходят, lifecycle=tombstoned), повторный листинг возрождает запись (pipeline revived, first_seen сохранён); журнал 12 мес (EVENT_RETENTION_MONTHS) + purgeExpiredEvents в worker'е. Тест поймал баг setUTCFullYear(y-12)=12 лет -> setUTCMonth. Проверки: check 241/241, test:db 57/57, build 0, e2e 96, db:migrate +1. Осталось по партии №4: MODEL-001 (оценка локальной модели), решения E.5-E.7."
+  "note": "MODEL-001 исполнен (решение владельца №4 п.2): кандидаты Qwen3-1.7B и Qwen2.5-1.5B (ONNX q8, Apache-2.0, пины+sha256, models/ 3.7 ГБ) на CPU-рантайме эту рубрику не обслуживают — 0/6 валидных JSON без обвязки; с предзаполнением JSON 8/8 валидных, но Spearman -0.156 и грубые ошибки (дизайн-вакансия 85, keyword-ловушка 85), 6.7 tok/s. GPU RTX 5060 8 ГБ установленным рантаймом не используется (CUDA = новая зависимость). Рекомендация: скоринг остаётся закрытым; локальный путь — отдельная задача с решением по GPU-рантайму и моделью 7-8B. Проверки: check 241/241, guardrails pass."
 }
