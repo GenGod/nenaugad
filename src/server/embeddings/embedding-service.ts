@@ -26,7 +26,7 @@ import {
   assertEmbedderOutput, jobEmbeddingText, makeEmbeddingVector,
   type Embedder, type EmbeddingVector,
 } from "../../domain/embeddings.ts";
-import { isJobSnapshot } from "../../domain/source-contracts.ts";
+import { isJobSnapshot, type JobSnapshot } from "../../domain/source-contracts.ts";
 import { getSourcePolicy, permissionFor } from "../source-policies.ts";
 
 /**
@@ -48,6 +48,14 @@ export class EmbeddingStoreError extends Error {
     this.name = "EmbeddingStoreError";
   }
 }
+
+/** One stored posting with its vector: the near-dup queue input (B5). */
+export type EmbeddedPosting = Readonly<{
+  snapshotId: string;
+  sourceId: string;
+  snapshot: JobSnapshot;
+  vector: EmbeddingVector;
+}>;
 
 /**
  * pgvector's text form: numbers only, in brackets. These numbers travel to
@@ -282,6 +290,41 @@ export async function loadJobEmbeddings(params: Readonly<{
     }));
   }
   return map;
+}
+
+/**
+ * Every stored posting that has a vector for this artifact, with its snapshot
+ * body: the input of the near-dup queue (design item B5). Tombstoned rows are
+ * excluded explicitly — retention deletes their text and vectors, so the join
+ * would drop them anyway, and the predicate keeps that fact visible. A row whose
+ * snapshot JSON is invalid is refused, not skipped: a corrupted row must not
+ * make the queue quietly incomplete.
+ */
+export async function loadEmbeddedPostings(pool: Pool, params: Readonly<{
+  modelVersion: string;
+  instructionVersion: string;
+}>): Promise<readonly EmbeddedPosting[]> {
+  const { modelVersion, instructionVersion } = params;
+  const result = await pool.query(`
+    SELECT s.id AS snapshot_id, s.source_id, s.snapshot, e.embedding::text AS literal
+    FROM job_snapshots s
+    JOIN job_embeddings e ON e.snapshot_id = s.id
+    WHERE e.model_version = $1 AND e.instruction_version = $2 AND s.tombstoned_at IS NULL
+    ORDER BY s.id`,
+  [modelVersion, instructionVersion]);
+  const postings: EmbeddedPosting[] = [];
+  for (const row of result.rows as { snapshot_id: string; source_id: string; snapshot: unknown; literal: string }[]) {
+    if (!isJobSnapshot(row.snapshot)) throw new EmbeddingStoreError("INVALID_SNAPSHOT");
+    postings.push({
+      snapshotId: row.snapshot_id,
+      sourceId: row.source_id,
+      snapshot: row.snapshot,
+      vector: fromVectorLiteral({
+        modelVersion, instructionVersion, role: "document", literal: row.literal, dim: 1024,
+      }),
+    });
+  }
+  return postings;
 }
 
 /**

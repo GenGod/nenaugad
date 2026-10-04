@@ -85,6 +85,9 @@ The order matters; steps 1–3 are read-only with respect to the product.
    * if there is no measurable gain, the new model is **not** switched on. The
      retrieval work then belongs to B2 (BM25 + RRF), and that preference is
      written down rather than guessed.
+   * the near-dup queue's thresholds (§5b) are a property of the artifact as
+     well: if B5 is in use, repeat that measurement — a model change with a
+     stale threshold is an unmeasured queue.
 4. **Shadow column / dual write.** Re-run `npm run embeddings:index` after
    changing the version: rows for the new artifact are written alongside the old
    ones (`PRIMARY KEY (snapshot_id, model_version)`), which is exactly the dual
@@ -121,6 +124,23 @@ budget in `src/domain/rank-guardrails.ts` (250 ms). The decision then needs: a
 measured scan time at that size, the index built (`vector_cosine_ops`), and a
 recall check against the exact scan. No index is added on speculation.
 
+## 5b. Near-dup queue (B5) and its scan boundary
+
+`npm run dedup:candidates` (`src/domain/near-dup.ts`) scans the stored document
+vectors pairwise, because cross-source near-duplicates are what A4's exact keys
+cannot see. Measured 2026-10-04 on this machine: ~0.24M pairs/s — 700 postings
+≈ 1 s, 5 000 ≈ 53 s, 20 000 ≈ 14 min. LSH/MinHash (research part 2 D2) replaces
+the full scan when the catalog approaches ~5 000 postings; `textNeighbours()` is
+the function where that swap happens.
+
+The thresholds (text 0.70 / title 0.75) were measured with the **reference
+artifact** on a synthetic pair set — an EN/RU translation, an EN paraphrase, two
+roles of one company, a same-title template twin, an unrelated pair; the numbers
+live in the module header. `npm run dedup:candidates -- --min-text= --min-title=`
+overrides them for a single run, and the measured pair set is the review material
+for a new default. The queue merges nothing: it is a human worklist (an LLM
+confirmation behind the same queue is C5).
+
 ## 6. What this playbook does not cover
 
 * **The feed is not ordered by this leg.** It produces retrieval positions; B2
@@ -132,9 +152,13 @@ recall check against the exact scan. No index is added on speculation.
 * **No reranker, no BM25** — B2/B3.
 * **No cross-lingual quality claim.** Today the golden set has 4 Russian postings
   and no language field in the profile contract; the cross-lingual extension is
-  a separate small task (brief §11.4). Any statement about RU↔EN quality before
-  that extension is unmeasured.
-* **Jobicy has no vectors** until the owner grants `process_with_ml`.
+  a separate small task (brief §11.4). Any statement about RU↔EN ranking quality
+  before that extension is unmeasured. What IS measured (B5, 2026-10-04): the
+  reference artifact puts a synthetic EN/RU translation pair at text cosine 0.81
+  / title 0.85 — enough for the near-dup queue, and nothing about ranking.
+* **Jobicy's vectors exist** since the owner's grant (2026-10-02; 202/202
+  indexed, B13). A source without the grant still contributes none: the leg
+  reports `no_permission` instead of a partial signal.
 * **Retention and rights are per source.** `terms_hash` detects a changed terms
   page; a matching fingerprint means "the terms text is the same", never "the
   terms still allow this".
