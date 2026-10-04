@@ -4,7 +4,7 @@ import { currentUser } from "../../server/auth.ts";
 import { matchedForUser, type MatchedJob } from "../../server/matching-service.ts";
 import type { RuleResult } from "../../domain/matching.ts";
 import { HideButton } from "../../components/feedback-buttons.tsx";
-import { RelevanceButton, BatchAnalyzeButton, ScoreBadge } from "../../components/relevance-buttons.tsx";
+import { ScoreBadge } from "../../components/relevance-buttons.tsx";
 import { SaveButton } from "../../components/save-button.tsx";
 import { Icon } from "../../components/icon.tsx";
 import { tint } from "../../components/job-card.tsx";
@@ -136,9 +136,7 @@ function MatchedCard({ job, score, tone, now, feed, position }: {
           <Link className="btn secondary" href={`/letters/new?job=${card.id}`}>Составить письмо</Link>
           <HideButton snapshotId={card.id} />
         </div>
-        {score
-          ? <ScoreBadge score={score} />
-          : <RelevanceButton snapshotId={card.id} />}
+        {score && <ScoreBadge score={score} />}
       </div>
     </div>
     <p className="source"><Icon name="source" size={16} />
@@ -195,9 +193,9 @@ async function MatchedResults({ userId, result, tab }: {
   // consistent with each other and do not depend on load duration.
   const now = new Date().toISOString();
   // B23: the order arrives from the matching service, which ranks both tabs with
-  // the shipped deterministic ranker. The cached AI scores are shown as badges
-  // only — they no longer sort, so nothing on this page reorders the feed.
-  const analyzedCount = result.eligible.filter(job => relevanceMap.has(job.card.id)).length;
+  // the shipped deterministic ranker. AI scores are reference only — scoring is
+  // closed by the personal-data boundary until a local model serves it (AI-007 +
+  // MODEL-001 measured), so no button offers what the boundary refuses.
   const input = profile?.input;
   const hours = input?.availabilityWindows[0];
   const contract = (input?.employmentTypes ?? [])
@@ -262,9 +260,10 @@ async function MatchedResults({ userId, result, tab }: {
           <span>{activeTab === "match" ? result.eligible.length : result.needsReview.length} в выборке</span>
           <span>Порядок — детерминированный ранкер по условиям, роли и свежести</span>
         </div>
-        {activeTab === "match" && <div className="row" style={{ marginBottom: 16 }}>
-          <BatchAnalyzeButton count={result.eligible.length - analyzedCount} />
-        </div>}
+        {activeTab === "match" && <p className="small secondary" style={{ marginBottom: 16 }}>
+          AI-оценки показываются справочно (сохранены с прошлых прогонов): новые не считаются —
+          скоринг закрыт до локальной модели, персональные данные не покидают контур.
+        </p>}
         {list.length === 0
           ? <div className="empty">
             {suppressedHere > 0
