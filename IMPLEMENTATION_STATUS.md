@@ -7,7 +7,7 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-10-05 by [DEVX-001](tasks/DEVX-001-claude-code-process.md).
+**Updated:** 2026-10-05 by [DEVX-002](tasks/DEVX-002-ci-github-actions.md).
 
 ## Switches and boundaries
 - **Live AI is off** (`LIVE_AI_ENABLED=false`, a real switch since AI-007): no provider
@@ -53,14 +53,16 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   owner-accepted 2026-09-27); visual baselines are recorded on Windows.
 - **Documentation:** English since DOC-EN-001 (2026-10-05).
 - **Development process:** Claude Code setup, model and effort policy, CI on pushes
-  to `main` that change more than Markdown (DEVX-001, 2026-10-05).
+  to `main` that change more than Markdown (DEVX-001, 2026-10-05). The CI job was
+  rehearsed locally and fixed before its first run; workflow lint; `npm run ci:status`
+  reads results compactly (DEVX-002).
 
 ## Latest checks
-- 2026-10-05 (DEVX-001): `npm run check` exit 0 — 273/273 unit, Biome, tsc.
-- Last recorded for the rest: `test:db` 69/69 and `build` exit 0 (C1-002,
-  2026-10-04); `test:e2e` 99 passed (B5-001, 2026-10-04).
-- CI never ran before 2026-10-05 (it triggered on pull requests only). The first run
-  comes with the next push to `main`.
+- 2026-10-05 (DEVX-002): `npm run check` exit 0 — 275/275 unit, Biome, tsc. A CI
+  rehearsal on a clean clone without `.env` against a fresh pgvector database:
+  `build` exit 0, `test:db` 69/69, `test:e2e` 99 passed.
+- CI on GitHub has never run (before 2026-10-05 it triggered on pull requests only).
+  The first run comes with the next push to `main`.
 
 ## Waiting for the owner
 - The first live extraction run: `LIVE_AI_ENABLED=true` plus a key, then

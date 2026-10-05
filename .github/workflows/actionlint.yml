@@ -1,0 +1,28 @@
+name: Workflow lint
+on:
+  # Runs only when a workflow changes. actionlint checks syntax, expressions and
+  # action inputs, and shellcheck (bundled in the image) checks the run: scripts.
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/**"
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      # rhysd/actionlint 1.7.12 (shellcheck 0.11.0), pinned by digest.
+      - uses: docker://rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
+        with:
+          args: -color

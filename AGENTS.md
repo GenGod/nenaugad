@@ -49,6 +49,9 @@ A key in the environment is not approval. Do not print `.env`.
 After dependency installation: `npm run check`, `npm run build`, `npm run test:e2e`.
 `npm run check:agent` runs the same checks as `check` but omits passing tests from
 the output: use it while iterating, and `npm run check` once before the report.
+CI runs on pushes to `main`, except those that touch only Markdown or `Reference/`.
+After a push, `npm run ci:status` shows this commit's runs; a failed run prints only
+the tail of each failed step's log.
 Database: `npm run db:migrate`, `npm run db:seed`, `npm run test:db` (isolated test DB).
 `npm run doctor` never prints secrets. `npm run task -- show` shows the current task.
 Never claim a missing/skipped command passed. See `reports/DELIVERY.md`.

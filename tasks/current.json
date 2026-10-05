@@ -1,10 +1,10 @@
 {
-  "task_id": "DEVX-001",
-  "file": "tasks/DEVX-001-claude-code-process.md",
+  "task_id": "DEVX-002",
+  "file": "tasks/DEVX-002-ci-github-actions.md",
   "status": "implemented",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Claude Code process set up per owner decisions of 2026-10-05 (Opus main + Sonnet executor / Opus reviewer, effort by task risk, status snapshot + frozen log, CI on pushes to main; GitHub default branch switched to main). check:agent 273/273, exit 0. Owner action pending: apply .claude/settings.json (hook registration, permissions, CLAUDE_CODE_SUBAGENT_MODEL). Uncommitted."
+  "note": "CI rehearsed on a clean clone before its first run: the DB suite needed DATA_BACKEND=postgres (8/69 failed under the job's fixture backend), fixed in ci.yml; plus npm cache, TCP health check, failure artifact, an actionlint workflow and npm run ci:status. Rehearsal: check, build, test:db 69/69, e2e 99 passed; check:agent 275/275. Committed and pushed with owner approval (2026-10-05); this push starts CI's first run on GitHub."
 }

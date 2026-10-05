@@ -39,29 +39,46 @@ jobs:
           POSTGRES_DB: atlas_starter_test
         ports:
           - 5432:5432
+        # Over TCP: the temporary server of the first-boot init answers only on the socket.
         options: >-
-          --health-cmd "pg_isready -U atlas -d atlas_starter_test"
+          --health-cmd "pg_isready -h 127.0.0.1 -U atlas -d atlas_starter_test"
           --health-interval 5s --health-timeout 3s --health-retries 10
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
+      # Before setup-node: its npm cache needs the lock and would fail less clearly.
       - name: Require an actual dependency lock
         run: |
           if [ ! -f package-lock.json ]; then
             echo "S0 incomplete: run npm install locally, review and commit the real package-lock.json."
             exit 1
           fi
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
       - run: npm ci
       - run: npm run check
       - run: npm run build
-      - run: npm run test:db
+      - name: Run npm run test:db
+        # The DB suite exercises the PostgreSQL backend; under the job's fixture
+        # backend those services refuse with `fixture_backend`. The tests bring
+        # their own pool on TEST_DATABASE_URL, so DATABASE_URL is not needed.
+        env:
+          DATA_BACKEND: postgres
+        run: npm run test:db
       - run: npx playwright install --with-deps chromium
       - name: Playwright needs DB and a session secret
         env:
           DATABASE_URL: postgresql://atlas:atlas_ci_synthetic@127.0.0.1:5432/atlas_starter_test
           AUTH_SECRET: ci-only-ephemeral-session-secret-not-production
         run: npm run test:e2e
+      - name: Keep the Playwright failure output
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore

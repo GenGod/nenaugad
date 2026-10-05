@@ -8,6 +8,7 @@
 | `npm run build` | Next production compilation | the right and readiness for a public launch |
 | `npm run test:db` | An isolated real PostgreSQL | RLS/auth of future personal entities |
 | `npm run test:e2e` | A real local Next + Chromium at 3 widths | full accessibility/all browsers |
+| CI on GitHub Actions (`npm run ci:status`) | `check`, `build`, `test:db` on a fresh pgvector DB and `test:e2e` on Linux, from a clean checkout without `.env` | the visual baselines: they are Windows-only, so CI skips pixel comparisons |
 | A future live benchmark | Real usage receipts + independent labelling | unlimited safety and universal accuracy |
 
 SP-T03/06/07 have small starting checks; this is not full coverage of the requirements
