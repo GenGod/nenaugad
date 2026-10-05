@@ -40,6 +40,7 @@
     "models:fetch-llm": "node --experimental-strip-types scripts/models-fetch-llm.ts",
     "eval:local-llm": "node --experimental-strip-types scripts/eval-local-llm.ts",
     "embeddings:index": "node --experimental-strip-types --env-file-if-exists=.env scripts/embeddings-index.ts",
+    "extract:fields": "node --experimental-strip-types --env-file-if-exists=.env scripts/extract-fields.ts",
     "dedup:candidates": "node --experimental-strip-types --env-file-if-exists=.env scripts/dedup-candidates.ts",
     "eval:matching": "node --experimental-strip-types scripts/eval-matching.ts",
     "eval:dense": "node --experimental-strip-types scripts/eval-dense.ts",

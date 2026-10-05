@@ -67,7 +67,7 @@ export async function executeGuardedOperation(params: Readonly<{
   transport: ModelTransport | null; // null = fail closed (production today)
   prompt?: string; // the actual user message for the model
   now: string;
-}>): Promise<Readonly<{ output: string; settledMinor: bigint }>> {
+}>): Promise<Readonly<{ output: string; settledMinor: bigint; operationId: string }>> {
   // The switch the owner asked for: unless LIVE_AI_ENABLED is exactly "true", no
   // provider call may spend — an API key in the environment is not approval
   // (AGENTS.md). Checked here, in the single entry point, before any money moves.
@@ -117,7 +117,9 @@ export async function executeGuardedOperation(params: Readonly<{
     pool: params.pool, ownerId: params.ownerId, operationId: operation.id,
     actualMinor: outcome.actualMinor, now: params.now,
   });
-  return { output: outcome.output, settledMinor: settled.settledMinor };
+  // The operation id travels out for provenance: a stored result must be able
+  // to name the paid operation that produced it (job_extractions.operation_id).
+  return { output: outcome.output, settledMinor: settled.settledMinor, operationId: operation.id };
 }
 
 export {

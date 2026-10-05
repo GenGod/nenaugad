@@ -1,10 +1,10 @@
 {
-  "task_id": "C0-002",
-  "file": "tasks/C0-002-purposes-and-property-tests.md",
+  "task_id": "C1-001",
+  "file": "tasks/C1-001-llm-extraction.md",
   "status": "implemented",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "C0 ч.2: свойства шлюза покрыты тестами (+4; test:db 63/63), пакет purposes готов, и исполнено решение владельца 2026-10-04 «одобряю purpose extraction»: whitelist (три purpose), маппинг на job_extraction, явный false у границы ПД, тесты (одобренный садится в свой бакет; cv_extraction по-прежнему отказ до денег). Вызывающего кода нет — следующий шаг C1; LIVE_AI_ENABLED/потолки не менялись. Поправка: send_to_ai_provider выдан AI-005; квота $1/мес."
+  "note": "Ядро LLM-извлечения полей под одобренным purpose extraction: domain-схема+строгий валидатор (grounding цитат, unknown-правила, любое нарушение отклоняет всю запись), миграция 0019 job_llm_fields (неизменяемые строки с провенансом), guarded-сервис (идемпотентный ключ — повтор не платит; send_to_ai_provider в точке использования), шлюз возвращает operationId, CLI extract:fields (--prompt-only проверен на реальном посте: резерв 473 мкцента при потолке 10000; live-режим честно отказывает при выключенном флаге). Тесты: check 273/273 (обе половины V4), test:db 66/66. Проводка в pipeline и живой прогон — следующий шаг. Хук Mimosa: ложное 'SQL-инъекция' на DO UPDATE SET и SQL в константах — обойдено дизайном (DO NOTHING + инлайн-литералы), записано в задаче."
 }
