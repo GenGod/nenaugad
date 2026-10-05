@@ -425,3 +425,31 @@ test("deadline stops new steps; it does not block settling an already dispatched
   assert.equal(settled.status, "settled");
   assert.equal(settled.settledMinor, 120n);
 });
+
+test("the approved extraction purpose books into job_extraction (owner decision 2026-10-04)", async () => {
+  await migrate(pool);
+  const owner = await registerUser(pool, email(), "long-enough-password");
+  await freshBudgets(owner.id, 10_000n, null);
+  // The purpose→task-type mapping is the gateway's own, not the caller's: an
+  // extraction call must land in the job_extraction bucket (attempt limit 2),
+  // never borrow the cover_letter bucket.
+  const mock: Parameters<typeof executeGuardedOperation>[0]["transport"] = {
+    async dispatchOnce() {
+      return { kind: "result", actualMinor: 90n, output: "{\"salary\":\"unknown\"}" };
+    },
+  };
+  const result = await executeGuardedOperation({
+    pool: pool, ownerId: owner.id, purpose: "extraction", idempotencyKey: "ext-1",
+    worstCaseMinor: 500n, transport: mock, now: NOW,
+  });
+  assert.equal(result.settledMinor, 90n);
+  const row = await pool.query(
+    "SELECT task_type, status FROM ai_operations WHERE idempotency_key = $1", ["ext-1"]);
+  assert.equal((row.rows[0] as { task_type: string }).task_type, "job_extraction");
+  assert.equal((row.rows[0] as { status: string }).status, "settled");
+  // And the neighbouring unapproved purpose is still refused before money.
+  await assert.rejects(executeGuardedOperation({
+    pool: pool, ownerId: owner.id, purpose: "cv_extraction", idempotencyKey: "ext-2",
+    worstCaseMinor: 500n, transport: mock, now: NOW,
+  }), PurposeNotApprovedError);
+});

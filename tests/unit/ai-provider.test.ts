@@ -37,12 +37,14 @@ test("worst-case cost uses integer ceiling, never float", () => {
     "worst case must fit inside the 1-cent ceiling");
 });
 
-test("purpose whitelist: cover_letter and job_matching are approved, nothing else", () => {
-  // job_matching was approved by the owner on 2026-10-01; the whitelist is now
-  // enforced in the gateway before dispatch (tests/integration/ai-guards.test.ts).
-  assert.deepEqual([...GPT6_LUNA.approvedPurposes], ["cover_letter", "job_matching"]);
+test("purpose whitelist: cover_letter, job_matching and extraction are approved, nothing else", () => {
+  // job_matching was approved by the owner on 2026-10-01; extraction on
+  // 2026-10-04 (job-only, ≈0.03 cent per posting). The whitelist is enforced in
+  // the gateway before dispatch (tests/integration/ai-guards.test.ts).
+  assert.deepEqual([...GPT6_LUNA.approvedPurposes], ["cover_letter", "job_matching", "extraction"]);
   assert.equal(isPurposeApproved("cover_letter"), true);
   assert.equal(isPurposeApproved("job_matching"), true);
+  assert.equal(isPurposeApproved("extraction"), true);
   assert.equal(isPurposeApproved("cv_extraction"), false);
   assert.equal(isPurposeApproved("job_extraction"), false);
   assert.equal(isPurposeApproved("anything_else"), false);
@@ -98,12 +100,15 @@ test("personal-data boundary: operations that need candidate facts are refused (
   // All personal data stays inside the contour — otherwise the product risks being
   // banned under GDPR or similar law. The two shipped purposes cannot be expressed
   // without candidate facts, so both are refused; the gate is a switch, not a
-  // blanket ban: a job-only operation would pass (and would have to be listed).
+  // blanket ban: `extraction` (approved 2026-10-04) is job-only and is listed
+  // with an explicit `false` — a review record, not a missing row.
   assert.equal(PURPOSES_NEEDING_CANDIDATE_FACTS.cover_letter, true);
   assert.equal(PURPOSES_NEEDING_CANDIDATE_FACTS.job_matching, true);
+  assert.equal(PURPOSES_NEEDING_CANDIDATE_FACTS.extraction, false);
   for (const purpose of ["cover_letter", "job_matching"]) {
     assert.throws(() => assertNoCandidateFacts(purpose), PersonalDataBoundaryError, purpose);
   }
+  assert.doesNotThrow(() => assertNoCandidateFacts("extraction"));
   assert.doesNotThrow(() => assertNoCandidateFacts("job_only_rerank"));
 
   const prompt = buildJobOnlyPrompt(

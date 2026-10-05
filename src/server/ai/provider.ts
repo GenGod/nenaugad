@@ -1,7 +1,8 @@
 import { OWNER_BUDGET_PREFIX } from "./spending.ts";
 
 // Owner-approved provider registration (AI-002, 2026-09-25; purpose set extended
-// by the owner on 2026-10-01, per-user quota raised the same day).
+// by the owner on 2026-10-01 and again on 2026-10-04, per-user quota raised to
+// $1 on 2026-10-01).
 // Prices are integer micro-cents per MILLION tokens; all cost math uses
 // integer ceiling — never float (spec SP 9). The purpose whitelist is the
 // ONLY set of operations this model may serve; everything else is refused.
@@ -12,15 +13,17 @@ import { OWNER_BUDGET_PREFIX } from "./spending.ts";
  * A purpose is not a task type (that is the spending bucket). `cover_letter` was
  * approved 2026-09-25 (AI-002); `job_matching` was approved by the owner on
  * 2026-10-01 — the relevance path already ran under it, and the approval makes
- * that explicit instead of implicit. The whitelist is enforced in the gateway
- * before dispatch (src/server/ai/gateway.ts), not only here.
+ * that explicit instead of implicit. `extraction` was approved on 2026-10-04
+ * (the C0-002 packet): field extraction from a posting's text, job-only by
+ * construction, ≈0.03 cent per posting. The whitelist is enforced in the
+ * gateway before dispatch (src/server/ai/gateway.ts), not only here.
  *
  * **Approving a purpose does not approve sending a source's text.** That is the
- * source policy's `send_to_ai_provider`, `denied` for every source today
- * (src/server/source-policies.ts). Both approvals are required, and neither
- * implies the other.
+ * source policy's `send_to_ai_provider`, which the owner granted for all three
+ * sources on 2026-10-01 (AI-005, src/server/source-policies.ts). Both approvals
+ * are required, and neither implies the other.
  */
-export type ApprovedPurpose = "cover_letter" | "job_matching";
+export type ApprovedPurpose = "cover_letter" | "job_matching" | "extraction";
 
 export type ProviderConfig = Readonly<{
   provider: "openai";
@@ -45,7 +48,7 @@ export const GPT6_LUNA: ProviderConfig = {
   inputMicroCentsPerMTok: 10_000n,
   outputMicroCentsPerMTok: 50_000n,
   maxOutputTokens: 8_192,
-  approvedPurposes: ["cover_letter", "job_matching"],
+  approvedPurposes: ["cover_letter", "job_matching", "extraction"],
   operationCeilingMicroCents: 10_000n,
   ownerMonthlyQuotaMicroCents: 1_000_000n,
   globalBudgetMicroCents: 10_000_000n,

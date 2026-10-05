@@ -47,6 +47,7 @@ export class LiveAiDisabledError extends Error {
 const PURPOSE_TASK_TYPE: Readonly<Record<ApprovedPurpose, TaskType>> = {
   cover_letter: "cover_letter",
   job_matching: "job_matching",
+  extraction: "job_extraction",
 };
 
 /**
