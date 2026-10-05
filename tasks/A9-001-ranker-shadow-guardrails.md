@@ -1,132 +1,143 @@
-# A9-001 — инфраструктура ранкеров: реестр версий, теневой прогон, guardrails на запрос
+# A9-001 — ranker infrastructure: a version registry, a shadow run, per-request guardrails
 
-**Результат:** ранкер перестал быть неподключённым модулем-заготовкой. Появился
-реестр версий с устойчивыми id (включая «то, что кандидаты получают сегодня»),
-теневой прогон на тех же входах с диффом позиций и логом только из чисел, и
-guardrails на каждый запрос (пустые выдачи, закрытые/дубли/неодобренные источники
-в топ-10, p95 задержки) — с порогами, которые падают тестом. Продуктовая выдача
-сознательно **не** меняется: чемпион — тот порядок, который отдаётся сейчас, а
-тень лишь сообщает, что изменилось бы. Это предусловие A10: менять порядок выдачи
-можно только за этими воротами.
+**Result:** the ranker stopped being an unwired stub module. There is now a
+version registry with stable ids (including "what candidates receive today"), a
+shadow run on the same inputs with a diff of positions and a log of numbers only,
+and per-request guardrails (empty feeds, closed/duplicate/unapproved sources in
+the top-10, p95 latencies) — with thresholds that fail a test. The production feed
+deliberately does **not** change: the champion is the ordering served now, and the
+shadow only reports what would change. This is the precondition for A10: the feed
+order may be changed only behind these gates.
 
-**Не входит:** EV-множители и переключение выдачи на ранкер (A10); реранк (B3);
-онлайн A/B и canary (нужен трафик; research D10 — процентный canary при росте);
-shadow-колонки/dual-write (B1).
+**Out of scope:** EV multipliers and switching the feed to the ranker (A10);
+rerank (B3); online A/B and canary (traffic is needed; research D10 — a percentage
+canary at growth); shadow columns/dual-write (B1).
 
-**Зависимости:** A1 (измерения и baseline), A2/A5/A6-002 (слои, которые ранкер
-несёт), A8 (журнал — источник фактов о показах).
+**Dependencies:** A1 (measurements and baseline), A2/A5/A6-002 (the layers the
+ranker carries), A8 (the journal — the source of facts about impressions).
 
-## Что добавлено
+## What was added
 
 - `src/domain/ranker-registry.ts` — `REGISTERED_RANKERS`: `feed-default-order`
-  (не ранкер: порядок каталога, то есть то, что кандидаты получают сегодня),
-  `v0-status-skills-role` (baseline A1), `v1-plus-requirements`,
-  `v0-plus-freshness` (контроль A5), `v3-...` (текущий, все слои). У каждого
-  версии — id, описание и функция; `RegistryRanker` принимает необязательные
-  предпочтения (A6-002), поэтому старые версии не переписывались.
-- `src/domain/rank-guardrails.ts` — метрики и пороги: `maxEmptyShare 0.5`,
+  (not a ranker: the catalog order, that is, what candidates receive today),
+  `v0-status-skills-role` (the A1 baseline), `v1-plus-requirements`,
+  `v0-plus-freshness` (the A5 control), `v3-...` (current, all layers). Each
+  version has an id, a description and a function; `RegistryRanker` takes
+  optional preferences (A6-002), so older versions were not rewritten.
+- `src/domain/rank-guardrails.ts` — metrics and thresholds: `maxEmptyShare 0.5`,
   `maxClosedInTop10Share 0`, `maxDuplicateInTop10Share 0`,
-  `maxUnapprovedSourceShare 0`, `maxP95LatencyMs 250`. Три нулевых порога —
-  абсолютные правила (закрытое, дубль, неодобренный источник не доставляются
-  никогда), пустая доля и задержка — широкие границы, которые честная выдача не
-  задевает. Пустой пул (нечего ранжировать) **не** считается пустой выдачей:
-  иначе seen-set (A6), честно скрывший всё, валил бы guardrail — это поймано
-  живой проверкой и зафиксировано тестом.
-- `src/domain/ranker-shadow.ts` — `shadowDiff`: сколько позиций сдвинулось, как
-  изменился топ-10, максимальный сдвиг, первое расхождение. Позиции, а не скоры —
-  шкалы версий несравнимы.
-- `src/server/ranker-shadow-service.ts` — `computeRankerShadow` (чемпион против
-  кандидата на одних входах) и `logRankerShadow` (**только числа**: ни id вакансий,
-  ни профиля — тест это проверяет).
-- `src/server/matching-service.ts` — теневая строка в конце чтения выдачи, внутри
-  `try/catch`: упавшая тень не влияет на выдачу (тест сравнивает выдачу со
-  «сломанной» тенью и без неё), а вход тени — ровно доставленные вакансии
-  (ineligible в тень не попадают).
-- `scripts/eval-shadow.ts` + `npm run eval:shadow` (`--candidate=<id>`, `--json`):
-  теневой прогон по golden-набору, exit 1 при нарушении guardrail'а — это ворота
-  для A10.
-- Тесты: `tests/unit/rank-guardrails.test.ts` (9 тестов: каждая деградация
-  ловится — пустая выдача, закрытая/дубль/неодобренный источник в топ-10,
-  медленный ранкер; граница топ-10; пустой пул), `tests/integration/ranker-shadow.test.ts`
-  (2 теста на живой БД: тень видит ровно доставленное и логирует числа без данных;
-  упавшая тень не меняет выдачу).
+  `maxUnapprovedSourceShare 0`, `maxP95LatencyMs 250`. The three zero thresholds
+  are absolute rules (closed, duplicate, unapproved source are never delivered),
+  the empty share and the latency are wide bounds that an honest feed does not
+  touch. An empty pool (nothing to rank) is **not** counted as an empty feed:
+  otherwise the seen-set (A6), having honestly hidden everything, would fail the
+  guardrail — this was caught by a live check and pinned by a test.
+- `src/domain/ranker-shadow.ts` — `shadowDiff`: how many positions moved, how the
+  top-10 changed, the maximum shift, the first divergence. Positions, not scores
+  — the scales of versions are incomparable.
+- `src/server/ranker-shadow-service.ts` — `computeRankerShadow` (the champion
+  against the candidate on the same inputs) and `logRankerShadow` (**numbers
+  only**: no job ids, no profile — a test checks this).
+- `src/server/matching-service.ts` — the shadow line at the end of the feed read,
+  inside a `try/catch`: a failed shadow does not affect the feed (a test compares
+  the feed with a "broken" shadow and without one), and the shadow's input is
+  exactly the delivered jobs (ineligible do not enter the shadow).
+- `scripts/eval-shadow.ts` + `npm run eval:shadow` (`--candidate=<id>`,
+  `--json`): a shadow run over the golden set, exit 1 on a guardrail violation —
+  this is the gate for A10.
+- Tests: `tests/unit/rank-guardrails.test.ts` (9 tests: every degradation is
+  caught — an empty feed, a closed/duplicate/unapproved source in the top-10, a
+  slow ranker; the top-10 boundary; an empty pool),
+  `tests/integration/ranker-shadow.test.ts` (2 tests on a live DB: the shadow
+  sees exactly what was delivered and logs numbers without data; a failed shadow
+  does not change the feed).
 
-## Измерения (2026-09-29)
+## Measurements (2026-09-29)
 
-- `npm run eval:shadow` на golden-наборе: против порядка каталога кандидат
-  `v0-status-skills-role` двигает 150 из 159 позиций (топ-10 меняется на 68
-  записей, максимальный сдвиг 22), `v1-plus-requirements` — 156/159, текущий — см.
-  ниже; все версии проходят guardrails.
-- Живая выдача (локальная БД, 46 доставленных вакансий, 700 снапшотов в каталоге):
+- `npm run eval:shadow` on the golden set: against the catalog order the
+  candidate `v0-status-skills-role` moves 150 of 159 positions (the top-10
+  changes by 68 entries, the maximum shift 22), `v1-plus-requirements` — 156/159,
+  the current one — see below; all versions pass the guardrails.
+- The live feed (local DB, 46 delivered jobs, 700 snapshots in the catalog):
   `{"code":"RANKER_SHADOW","champion":"feed-default-order","candidate":"v3-...","compared":46,"moved":43,"top10Changed":18,"maxShift":39,"guardrailsPass":true,"violations":[]}`
-  — то есть переключение выдачи на текущий ранкер изменило бы почти весь порядок
-  (это и есть решение владельца по A10, теперь оно измеримо).
-- Стоимость тени: ~0–25 мс на 46 доставленных вакансий (замер на той же машине,
-  три прогона; порог guardrail'а 250 мс с запасом).
+  — that is, switching the feed to the current ranker would change almost the
+  whole order (that is exactly the owner decision on A10, now it is measurable).
+- The cost of the shadow: ~0–25 ms for 46 delivered jobs (measured on the same
+  machine, three runs; the guardrail threshold of 250 ms with margin).
 
-## Протокол V0–V6
+## Protocol V0–V6
 
-- **V0.** Отдельная задача; схема БД не менялась; продуктовая выдача не менялась.
-- **V1.** Ч.2 D7/D10 перечитан: guardrails считаются на запрос, а не средним по
-  пользователям (трафика нет), shadow-прогон — без влияния на выдачу. Подтверждено
-  по коду: ранкера в read path нет вообще, «чемпион» поэтому — порядок каталога;
-  это и записано честно отдельным id, а не выдано за ранкер.
-- **V2.** Принципы: тень ничего не решает (тест с бросающей тенью), в лог не
-  попадают ни id вакансий, ни пользователь (тест на строку лога); пороги — константы
-  с тестами, деградация падает suite'ом; ничего фейкового — guardrail'ы считают
-  реальные факты выдачи, а «нечего ранжировать» не выдаётся за «пустую выдачу».
-- **V3.** `npm run check` → exit 0 (**189/189** unit, было 180; biome 178 файлов;
-  tsc чисто); **`npm run test:db` → exit 0 (42/42**, 2 новых A9 на живой БД);
-  `npm run build` → exit 0; **`npm run test:e2e` → 96 passed**; `npm run eval:matching`
-  → пороги A1 не двигались; `npm run eval:shadow` → exit 0, все кандидаты проходят
-  guardrails. Живой прогон: см. измерения выше.
-- **V4.** Специфичные случаи A9: «новый ранкер с деградацией порогов ловится
-  guardrail'ом» — пять отдельных деградаций (пустая выдача, закрытая, дубль,
-  неодобренный источник, медленный ранкер); «теневой прогон не влияет на
-  пользовательскую выдачу» — тест со сломанной тенью + детерминизм двух чтений.
-- **V5.** Существующие тесты не ослаблены (единственная правка в них — уже
-  сделанное в A6-002 поле `preference`); пороги A1 не двигались; diff просмотрен.
-- **V6.** Этот файл + запись в `IMPLEMENTATION_STATUS.md`.
+- **V0.** A separate task; the DB schema was not changed; the production feed was
+  not changed.
+- **V1.** Part 2 D7/D10 re-read: the guardrails are computed per request, not as
+  an average over users (there is no traffic), the shadow run — without
+  influencing the feed. Confirmed in the code: there is no ranker in the read
+  path at all, so the "champion" is the catalog order; this is recorded honestly
+  as a separate id, not passed off as a ranker.
+- **V2.** Principles: the shadow decides nothing (a test with a throwing shadow),
+  neither job ids nor the user reach the log (a test on the log line); thresholds
+  are constants with tests, a degradation fails the suite; nothing fake — the
+  guardrails count real facts of the feed, and "nothing to rank" is not passed
+  off as "an empty feed".
+- **V3.** `npm run check` → exit 0 (**189/189** unit, previously 180; biome 178
+  files; tsc clean); **`npm run test:db` → exit 0 (42/42**, 2 new A9 tests on a
+  live DB); `npm run build` → exit 0; **`npm run test:e2e` → 96 passed**;
+  `npm run eval:matching` → the A1 thresholds did not move;
+  `npm run eval:shadow` → exit 0, all candidates pass the guardrails. Live run:
+  see the measurements above.
+- **V4.** A9-specific cases: "a new ranker with degraded thresholds is caught by
+  the guardrail" — five separate degradations (an empty feed, closed, duplicate,
+  unapproved source, slow ranker); "a shadow run does not influence the user's
+  feed" — a test with a broken shadow + the determinism of two reads.
+- **V5.** Existing tests were not weakened (the only edit in them — the
+  `preference` field already done in A6-002); the A1 thresholds did not move; the
+  diff reviewed.
+- **V6.** This file + a record in `IMPLEMENTATION_STATUS.md`.
 
-## Циклы ремонта: счётчик 2/2, раундов проверки было 4
+## Repair cycles: counter 2/2, there were 4 checking rounds
 
-Счётчик израсходован целиком; ниже — все раунды, каждый с новой диагностикой и без
-повтора одной и той же ошибки:
+The counter is spent in full; below are all the rounds, each with a new diagnosis
+and no repeat of the same error:
 
-1. `npm run check` упал на tsc: реестр типизировал ранкеры тремя аргументами, а
-   тень передаёт четвёртый (предпочтения A6-002). Гипотеза: у реестра должен быть
-   собственный тип с необязательными предпочтениями. Подтвердилось.
-2. `test:db`: тень получала вакансию, которую выдача не доставляет (ineligible).
-   Гипотеза: тень обязана видеть ровно доставленное — учёт должен стоять за тем же
-   условием, что и пуши в eligible/needsReview. Подтвердилось.
-3. `test:db`: ожидание пула (3 фикстуры) не совпало с фактом (2) — одна фикстура
-   отсекается гейтом каталога. Гипотеза: пул = то, что прошло гейт, а не размер
-   файла. Подтвердилось — и в том же раунде уточнено до «пул = вход ранкера».
-4. Живая проверка: guardrail сработал на **честно** пустой выдаче (seen-set скрыл
-   все 46 после первого показа) — ложное срабатывание, которое обесценило бы ворота.
-   Гипотеза: пустой пул ≠ пустая выдача; метрика должна считать только запросы, где
-   ранкеру было что упорядочивать. Подтвердилось: пустая выдача без данных о
-   показе проходит, а ранкер, выкидывающий всё из непустого входа, падает (тест).
+1. `npm run check` failed on tsc: the registry typed rankers with three
+   arguments, while the shadow passes a fourth (the A6-002 preferences).
+   Hypothesis: the registry must have its own type with optional preferences.
+   Confirmed.
+2. `test:db`: the shadow received a job the feed does not deliver (ineligible).
+   Hypothesis: the shadow must see exactly what was delivered — the accounting
+   must stand behind the same condition as the pushes into eligible/needsReview.
+   Confirmed.
+3. `test:db`: the expected pool (3 fixtures) did not match the fact (2) — one
+   fixture is cut off by the catalog gate. Hypothesis: the pool is what passed
+   the gate, not the size of the file. Confirmed — and in the same round refined
+   to "the pool = the ranker's input".
+4. A live check: the guardrail fired on an **honestly** empty feed (the seen-set
+   hid all 46 after the first showing) — a false positive that would devalue the
+   gate. Hypothesis: an empty pool ≠ an empty feed; the metric must count only
+   requests where the ranker had something to order. Confirmed: an empty feed
+   without impression data passes, while a ranker that throws everything out of a
+   non-empty input fails (test).
 
-## Ограничения
+## Limitations
 
-1. **Выдача по-прежнему не ранжируется ранкером** — тень только сообщает. Переключение
-   (и EV-множители) — A10, за этими же guardrails.
-2. Три «жёстких» guardrail-метрики сегодня структурно нулевые (гейты, дедуп и
-   матрицы источников не пускают закрытое/дубли/чужие источники) — это сети против
-   регрессий, а не измерение текущего качества; живые метрики сегодня — пустая доля,
-   задержка и дифф тени.
-3. p95 задержки измерен на одной машине и одном профиле (46 вакансий); при росте
-   каталога порог надо перемерить (или ранжировать инкрементально).
-4. `eval:shadow` считает синтетические фикстуры одобренными источниками: у них нет
-   source-политики, поэтому этот guardrail проверяется только на живом пути
-   (и покрыт тестами матриц).
-5. Чемпион в продуктовой тени — порядок каталога, а не страница: AI-сортировка
-   страницы `/matched` живёт выше сервиса и в дифф не входит. Это записано, а не
-   замаскировано.
+1. **The feed is still not ranked by the ranker** — the shadow only reports. The
+   switch (and the EV multipliers) is A10, behind the same guardrails.
+2. The three "hard" guardrail metrics are structurally zero today (the gates,
+   dedup and the source matrices do not let closed/duplicates/foreign sources
+   through) — these are nets against regressions, not a measurement of current
+   quality; the live metrics today are the empty share, the latency and the
+   shadow diff.
+3. The p95 latency was measured on one machine and one profile (46 jobs); as the
+   catalog grows the threshold must be re-measured (or ranking made incremental).
+4. `eval:shadow` counts the synthetic fixtures as approved sources: they have no
+   source policy, so this guardrail is checked only on the live path (and covered
+   by the matrix tests).
+5. The champion in the production shadow is the catalog order, not the page: the
+   AI sorting of the `/matched` page lives above the service and does not enter
+   the diff. This is recorded, not masked.
 
-## Риск и откат
+## Risk and rollback
 
-Риск обычный: новые чтения/логирование, порядок выдачи не менялся. Откат —
-`git revert` коммита A9 (тень и guardrails исчезают, выдача остаётся прежней;
-`eval:shadow` и реестр — служебные).
+Ordinary risk: new reads/logging, the feed order was not changed. Rollback —
+`git revert` of the A9 commit (the shadow and the guardrails disappear, the feed
+stays as it was; `eval:shadow` and the registry are auxiliary).

@@ -1,136 +1,145 @@
-# AI-007 — решения владельца 2026-10-01, партия 2: квота, холды, выключатель, REINDEX, приватность
+# AI-007 — owner decisions 2026-10-01, batch 2: quota, holds, switch, REINDEX, privacy
 
-**Результат:** пять решений владельца исполнены, и ни одно не осталось декларацией.
-Все пять закрытых пунктов инвентаря (`A1`, `A5`, `A6`, `A8`, `E9`) теперь либо
-исполняются кодом, либо выполнены на данных.
+**Result:** five owner decisions implemented, and not one remained a declaration.
+All five closed inventory items (`A1`, `A5`, `A6`, `A8`, `E9`) are now either
+enforced by code or executed on the data.
 
-**Порядок и независимость:** REINDEX — операция на БД (нужна была разово), остальные
-четыре — код. Все проверки прогнаны после каждой правки.
+**Order and independence:** REINDEX is a DB operation (needed once), the other
+four are code. All checks were run after each change.
 
-## A5 — квота $1/мес, персональные бюджеты заведены, потолок операции сравнивается
+## A5 — the $1/month quota, personal budgets created, the operation ceiling compared
 
-- `GPT6_LUNA.ownerMonthlyQuotaMicroCents`: 500 000 → **1 000 000** ($1), с датой и
-  причиной в комментарии.
-- **Квота перестала быть незаведённой.** Раньше строка владельца создавалась только
-  для тестов, а её отсутствие леджер трактовал как «нет персонального потолка» — то
-  есть одобренная квота не действовала. Теперь:
-  * `registerUser` создаёт строку квоты **в той же транзакции**, что и пользователя
-    (`ensureBudget` принимает `Pick<Pool,"query">`, поэтому работает с `PoolClient`);
-  * `scripts/seed-ai-budgets.ts` бэкфиллит всех существующих владельцев;
-  * отсутствие строки — отказ `OWNER_BUDGET_MISSING`, а не «безлимит».
-- **Потолок операции (1 цент) сравнивается** в шлюзе, где тариф провайдера встречается
-  с резервом: `OPERATION_CEILING_EXCEEDED` до всяких денег. Раньше значение печатал
-  только сид-скрипт.
+- `GPT6_LUNA.ownerMonthlyQuotaMicroCents`: 500 000 → **1 000 000** ($1), with the
+  date and the reason in a comment.
+- **The quota stopped being uncreated.** Previously the owner row was created only
+  for tests, and its absence made the ledger read it as "no personal ceiling" —
+  that is, the approved quota had no effect. Now:
+  * `registerUser` creates the quota row **in the same transaction** as the user
+    (`ensureBudget` takes `Pick<Pool,"query">`, so it works with `PoolClient`);
+  * `scripts/seed-ai-budgets.ts` backfills all existing owners;
+  * a missing row is a `OWNER_BUDGET_MISSING` refusal, not "unlimited".
+- **The operation ceiling (1 cent) is compared** in the gateway, where the
+  provider's rate meets the reservation: `OPERATION_CEILING_EXCEEDED` before any
+  money. Before, only the seed script printed the value.
 
-**Найдено и исправлено по ходу:** `ensureBudget` использовал
-`ON CONFLICT (scope, owner_id, period) DO NOTHING`, а глобальная строка хранит
-`owner_id = NULL`, который уникальный индекс конфликтом не считает, — поэтому
-повторное заведение **падало** на первичном ключе. Заявление «сид безопасно
-перезапускать» было неверным для ровно той строки, которую сид и заводит.
-Исправлено на `ON CONFLICT DO NOTHING` без цели; проверено двумя прогонами сида
-подряд (427 пользователей → 427 строк квот, оба прогона `ok: true`).
+**Found and fixed along the way:** `ensureBudget` used
+`ON CONFLICT (scope, owner_id, period) DO NOTHING`, and the global row stores
+`owner_id = NULL`, which the unique index does not count as a conflict — so
+re-creation **failed** on the primary key. The claim "the seed is safe to rerun"
+was wrong for exactly the row that the seed creates. Fixed to
+`ON CONFLICT DO NOTHING` without a target; verified by two seed runs in a row
+(427 users → 427 quota rows, both runs `ok: true`).
 
-## A6 — `npm run ai:holds`: разбор зависших холдов
+## A6 — `npm run ai:holds`: triage of stuck holds
 
-Новая команда (`scripts/ai-holds.ts`):
-- без аргументов — список операций, которые держат деньги (`reserved`, `in_flight`,
-  `uncertain`): id, тип, статус, число попыток, сумма, возраст, плюс строки бюджетов
-  как источник истины по удержанному;
-- `--cancel=<operationId>` — освобождает **один названный** холд через
-  `cancelOperation` и печатает освобождённую сумму.
+A new command (`scripts/ai-holds.ts`):
+- with no arguments — a list of the operations holding money (`reserved`,
+  `in_flight`, `uncertain`): id, type, status, attempt count, amount, age, plus
+  the budget rows as the source of truth on what is held;
+- `--cancel=<operationId>` — releases **one named** hold via `cancelOperation` and
+  prints the released amount.
 
-Почему команда, а не автоочистка: освободить холд — значит решить, что провайдер НЕ
-списал. Автоматика может ошибиться в эту сторону (и тогда бюджет разойдётся со
-счётом), поэтому решение остаётся за человеком, и в выводе стоит соответствующая
-оговорка. Первый прогон на рабочей БД: `holdingOperations: 0`, квоты владельцев
-видны как `1000000` микроцентов.
+Why a command and not auto-cleanup: releasing a hold means deciding that the
+provider did NOT charge. Automation can err in that direction (and then the budget
+diverges from the invoice), so the decision stays with a human, and the output
+carries the corresponding caveat. First run on the working DB: `holdingOperations:
+0`, the owners' quotas visible as `1000000` microcents.
 
-## A1 — `LIVE_AI_ENABLED` стал настоящим выключателем
+## A1 — `LIVE_AI_ENABLED` became a real switch
 
-- `readConfig`: флаг читается (`"true"` → включено, отсутствие/`"false"` → выключено,
-  любое другое значение → `LIVE_AI_ENABLED_INVALID`, fail-closed). Раньше переменная
-  отвергалась при любой установке, и единственным включателем была наличием ключа в
-  окружении.
-- Шлюз проверяет флаг **первым**, до purpose, потолка, бюджета и транспорта:
-  выключено → `LiveAiDisabledError`, ноль движения денег. Роуты отвечают
-  `503 AI_LIVE_DISABLED`.
-- LIVE_SOURCES остаётся без флага осознанно: источник работает по своей политике
-  (approved + enabled + не истёк + разрешение на операцию), а второй, более слабый
-  выключатель был бы хуже отсутствия. Установка переменной по-прежнему ошибка.
-- `health` и `doctor` больше не врут про AI: отдают фактическое значение флага.
-- **Следствие, о котором надо знать:** в `.env` стоит `LIVE_AI_ENABLED=false`, значит
-  после этой правки живые вызовы отказывают, пока владелец не поставит `true`. Это и
-  есть смысл выключателя; ключ в окружении больше ничего не включает.
+- `readConfig`: the flag is read (`"true"` → enabled, absence/`"false"` →
+  disabled, any other value → `LIVE_AI_ENABLED_INVALID`, fail-closed). Previously
+  the variable was rejected under any setting, and the only enabler was the
+  presence of the key in the environment.
+- The gateway checks the flag **first**, before purpose, ceiling, budget and
+  transport: disabled → `LiveAiDisabledError`, zero movement of money. The routes
+  answer `503 AI_LIVE_DISABLED`.
+- LIVE_SOURCES deliberately remains without a flag: a source works by its own
+  policy (approved + enabled + not expired + permission for the operation), and a
+  second, weaker switch would be worse than its absence. Setting the variable is
+  still an error.
+- `health` and `doctor` no longer lie about AI: they report the actual value of
+  the flag.
+- **A consequence to know about:** `.env` has `LIVE_AI_ENABLED=false`, which means
+  that after this change live calls refuse until the owner sets `true`. That is
+  the point of the switch; a key in the environment no longer enables anything.
 
-## A8 — дефект индекса вылечен
+## A8 — the index defect cured
 
-1. `REINDEX TABLE job_snapshots` → **65 мс**; контрольный поиск по id, который до
-   этого возвращал 0 строк, снова находит строку.
-2. Аудит достижимости по всем основным путям: **0 недостижимых из 2182** (было 12 из
-   700 только в `job_snapshots.id`; `users`, `candidate_profiles`,
-   `job_embeddings`, `saved_jobs` были чисты).
-3. `REINDEX DATABASE atlas_starter` → **152 мс** — страховка от той же порчи в
-   индексах, которые я не проверял поимённо (репетиция оценивала её в 35 мс).
-4. `npm run embeddings:index -- --embedder=local` → **12/12** добраны, `exit 0`:
-   пропущенных из-за дефекта векторов больше нет, у himalayas 498/498.
+1. `REINDEX TABLE job_snapshots` → **65 ms**; a control lookup by id, which before
+   returned 0 rows, finds the row again.
+2. A reachability audit over all the main paths: **0 unreachable out of 2182**
+   (previously 12 out of 700 in `job_snapshots.id` alone; `users`,
+   `candidate_profiles`, `job_embeddings`, `saved_jobs` were clean).
+3. `REINDEX DATABASE atlas_starter` → **152 ms** — insurance against the same
+   corruption in the indexes I did not check by name (the rehearsal estimated it
+   at 35 ms).
+4. `npm run embeddings:index -- --embedder=local` → **12/12** picked up,
+   `exit 0`: there are no more vectors skipped because of the defect; himalayas
+   is at 498/498.
 
-## Приватность — граница персональных данных стала структурной
+## Privacy — the personal-data boundary became structural
 
-Решение владельца: все персональные данные остаются внутри контура, иначе продукт
-рискует быть запрещён по GDPR и аналогичным законам. Реализовано не комментарием, а
-кодом (`src/server/ai/personal-data-boundary.ts`):
+Owner decision: «все персональные данные остаются внутри контура, иначе продукт
+рискует быть запрещён по GDPR и аналогичным законам» ["all personal data stays
+inside the contour, otherwise the product risks being banned under GDPR and
+similar laws"]. Implemented not by a comment but by code
+(`src/server/ai/personal-data-boundary.ts`):
 
-- `PURPOSES_NEEDING_CANDIDATE_FACTS` фиксирует, какие операции невыразимы без данных
-  кандидата. Обе текущие (`cover_letter`, `job_matching`) — там, и значение `true`
-  означает запрет вызова.
-- `assertNoCandidateFacts(purpose)` — проверка, которую обязаны пройти платящие
-  места; бросает `PersonalDataBoundaryError` (`503 PERSONAL_DATA_BOUNDARY`).
-- `buildJobOnlyPrompt` — **единственный** конструктор промпта для провайдера: только
-  текст вакансии (заголовок, компания, описание). Ни одного поля профиля.
-- Обе точки вызова (relevance-скоринг, генерация письма) спрашивают границу **до**
-  сборки промпта; тест проверяет и сам гейт, и то, что оба места его вызывают
-  (текстовая проверка — иначе гейт остался бы «мёртвым одобрением», на котором
-  проект уже дважды обжигался).
+- `PURPOSES_NEEDING_CANDIDATE_FACTS` records which operations are inexpressible
+  without candidate data. Both current ones (`cover_letter`, `job_matching`) are
+  there, and a value of `true` means a forbidden call.
+- `assertNoCandidateFacts(purpose)` — a check that the paying places must pass;
+  throws `PersonalDataBoundaryError` (`503 PERSONAL_DATA_BOUNDARY`).
+- `buildJobOnlyPrompt` — the **only** prompt builder for the provider: the job
+  text only (title, company, description). Not a single profile field.
+- Both call sites (relevance scoring, letter generation) ask the boundary
+  **before** assembling the prompt; a test checks the gate itself and that both
+  places call it (a textual check — otherwise the gate would remain a "dead
+  approval", on which the project has already been burned twice).
 
-**Следствие, которое надо сказать прямо: этим закрыты обе оставшиеся AI-функции.**
-Скоринг релевантности и генерация письма требуют данных кандидата, поэтому обе
-отказывают, пока нет локальной модели (или пока владелец не сузит решение, например
-до «согласен отправлять роли и страну без идентификаторов»). Вместе с закрытым
-батч-путём (AI-006) это значит: **ни один запрос приложения больше не отправляет
-провайдеру ничего о кандидате.** Локальная часть контура (эмбеддинги B1, BM25 B2)
-продолжает работать.
+**A consequence to say plainly: with this, both remaining AI functions are
+closed.** Relevance scoring and letter generation require candidate data, so both
+refuse while there is no local model (or until the owner narrows the decision, for
+example to "agree to send roles and country without identifiers"). Together with
+the closed batch path (AI-006) this means: **not a single request of the
+application any longer sends the provider anything about the candidate.** The
+local part of the contour (embeddings B1, BM25 B2) keeps working.
 
-## Проверки
+## Checks
 
-`npm run check` → exit 0 (**235/235** unit, было 233); `npm run guardrails` → pass;
-`npm run test:db` → exit 0 (**55/55**, было 52: выключатель, потолок операции,
-первичное заведение квоты); `npm run build` → exit 0; `npm run test:e2e` → **96
-passed**; `npm run seed:budgets` ×2 → оба `ok: true`; `npm run ai:holds` → показывает
-0 удержаний и заведённые квоты; `REINDEX`-проверки и добор векторов — выше.
+`npm run check` → exit 0 (**235/235** unit, previously 233); `npm run guardrails`
+→ pass; `npm run test:db` → exit 0 (**55/55**, previously 52: the switch, the
+operation ceiling, the initial creation of the quota); `npm run build` → exit 0;
+`npm run test:e2e` → **96 passed**; `npm run seed:budgets` ×2 → both `ok: true`;
+`npm run ai:holds` → shows 0 holdings and the created quotas; the `REINDEX`
+checks and the vector backfill — above.
 
-## Ограничения
+## Limitations
 
-1. **Живые AI-функции сейчас отказывают** — по двум независимым причинам: выключатель
-   (`LIVE_AI_ENABLED=false` в `.env`) и граница персональных данных. Это записанное
-   следствие решений, а не поломка; чтобы вернуть скоринг и письма, нужна локальная
-   модель, а не смена флага.
-2. Квота пока не «месячная» в строгом смысле: `period = 'monthly'` хранится, но
-   сброса по календарю нет — потолок действует как накопительный. Это следующий
-   маленький шаг, если владелец хочет именно месячные окна.
-3. `ai:holds` освобождает холд, но не пишет, что провайдер всё-таки списал: команда
-   печатает предупреждение и оставляет решение человеку. Журнал ручных решений не
-   ведётся.
-4. Граница приватности — про данные кандидата. Текст вакансий уходить провайдеру
-   по-прежнему может (это данные работодателя), и это разрешено политиками
-   источников (AI-005); при желании владельца это тоже можно закрыть.
-5. `auth: "not_implemented"` в `health`/`doctor` остался (пункт B14 инвентаря): auth
-   реализован, но отчётность об этом не поправлена — вне этой партии решений.
+1. **The live AI functions currently refuse** — for two independent reasons: the
+   switch (`LIVE_AI_ENABLED=false` in `.env`) and the personal-data boundary. This
+   is a recorded consequence of the decisions, not a breakage; to bring back
+   scoring and letters a local model is needed, not a flag change.
+2. The quota is not "monthly" in the strict sense yet: `period = 'monthly'` is
+   stored, but there is no calendar reset — the ceiling acts as cumulative. That
+   is the next small step if the owner wants exactly monthly windows.
+3. `ai:holds` releases the hold but does not record that the provider charged
+   after all: the command prints a warning and leaves the decision to a human. No
+   journal of manual decisions is kept.
+4. The privacy boundary is about candidate data. Job text can still go to the
+   provider (that is employer data), and the source policies permit it (AI-005);
+   if the owner wishes, this can be closed too.
+5. `auth: "not_implemented"` in `health`/`doctor` remains (inventory item B14):
+   auth is implemented, but the reporting of it is not fixed — outside this batch
+   of decisions.
 
-## Риск и откат
+## Risk and rollback
 
-Риск: закрытие AI-функций уменьшает возможности продукта — это следствие
-приватностного решения, и оно откатывается одним из двух способов: локальная модель
-(правильный путь) или сужение решения владельцем (тогда
-`PURPOSES_NEEDING_CANDIDATE_FACTS` меняется в одном месте). Технический откат —
-`git revert` задачи; REINDEX обратим по последствиям (индексы перестраиваются),
-добор векторов — тоже (их можно удалить, `job_embeddings` следует за снапшотами).
+The risk: closing the AI functions reduces the product's capabilities — that is a
+consequence of the privacy decision, and it is rolled back in one of two ways: a
+local model (the right path) or a narrowing of the decision by the owner (then
+`PURPOSES_NEEDING_CANDIDATE_FACTS` changes in one place). The technical rollback —
+`git revert` of the task; REINDEX is reversible in its consequences (the indexes
+are rebuilt), and so is the vector backfill (they can be deleted;
+`job_embeddings` follows the snapshots).

@@ -1,151 +1,161 @@
-# B1-001 — контракт эмбеддингов, хранилище векторов, dense-нога, playbook
+# B1-001 — embedding contract, vector store, dense retrieval leg, playbook
 
-**Результат:** эмбеддинги перестали быть решением на бумаге и стали работающим
-слоем: контракт с артефактом-как-версией, хранилище в pgvector с удалением по
-ретенции и вместе с профилем, индексация с проверкой права источника,
-dense-нога извлечения и измерение на замороженном наборе A1. Модель
-`Qwen3-Embedding-0.6B` (int8, ревизия `c25a394d`) реально запущена на этой машине:
-индексирование каталога, поиск и замер выполнены, а не описаны.
+**Result:** embeddings stopped being a paper decision and became a working layer: a
+contract with the artifact-as-version, storage in pgvector with deletion by
+retention and together with the profile, indexing with a source-permission check, a
+dense retrieval leg, and measurement on the frozen A1 set. The model
+`Qwen3-Embedding-0.6B` (int8, revision `c25a394d`) actually ran on this machine:
+catalog indexing, search and the measurement were executed, not described.
 
-**Главный честный итог замера: одна dense-нога **хуже** текущего ранкера**
-(NDCG@10 0.829 против 0.916), и по правилу §6.4 это означает «не переключать».
-Ценность замера именно в этом: вместо ожидания, что «векторы лучше», получено
-число и следующий шаг — слияние с BM25 (B2), а не переключение.
+**The main honest outcome of the measurement: one dense leg is **worse** than the
+current ranker** (NDCG@10 0.829 against 0.916), and by the rule of §6.4 this means
+"do not switch". The value of the measurement is exactly this: instead of expecting
+that "vectors are better", a number was obtained and the next step — fusion with
+BM25 (B2), not a switch.
 
-**Не входит:** переключение продуктовой выдачи (решение владельца №11 в силе;
-страница по-прежнему живёт на AI-сортировке), BM25/RRF (B2), реранкер (B3),
-кросс-язычное расширение golden-набора (отдельная маленькая задача, §11.4).
+**Out of scope:** switching the production feed (owner decision #11 stands; the
+page still lives on AI sorting), BM25/RRF (B2), the reranker (B3), the
+cross-language extension of the golden set (a separate small task, §11.4).
 
-**Зависимости:** A1 (порог не тронут), решение владельца №2 от 2026-09-30
-(модель, зависимость, приватность), решение №1 (pgvector, образ в compose.yaml —
-владельцем), A9 (guardrails и shadow-дисциплина).
+**Dependencies:** A1 (threshold untouched), owner decision #2 of 2026-09-30 (the
+model, the dependency, privacy), decision #1 (pgvector, the image in compose.yaml —
+by the owner), A9 (guardrails and shadow discipline).
 
-## Что добавлено
+## What was added
 
-- `src/domain/embeddings.ts` — контракт: `EMBEDDING_MODEL` (id, ревизия, dtype,
-  файл, sha256, dim, pooling последнего непаддингового токена, окно), версия
-  **выводится из артефакта** и проверяется тестом против литерала; асимметрия
-  инструкции (`Instruct: {task}\nQuery: {query}` только на запросе, документ без
-  инструкции) с отказами в обе стороны; `assertComparable` — fail-closed на
-  смешении версий/инструкций/ролей; `profileEmbeddingText` (версионированный
-  текст запроса); `Embedder` как порт и `embeddingInputsFor`, чтобы инструкцию
-  нельзя было потерять в реализации.
-- `src/domain/dense-retrieval.ts` — нога извлечения: позиции по косинусу,
-  детерминированный тай-брейк по id, `uncovered` отдельно от `refusals`
-  (нет вектора — не подозрение; чужой вектор — отказ всего запроса).
-- `migrations/0017_job_embeddings.sql` — `job_embeddings` (FK на снапшот,
-  `ON DELETE CASCADE` — вектор не переживает текст по ретенции) и
-  `profile_embeddings` (составной FK на `candidate_profiles(user_id, version)` —
-  «удалить профиль» и «удалить его вектор» это один оператор). `model_version` в
-  первичном ключе: две версии сосуществуют при переиндексации. `profile_text_version`
-  отдельным полем: правка формулировки запроса не должна инвалидировать 700
-  векторов документов.
-- `src/server/embeddings/embedding-service.ts` — SQL и индексация; право
-  `process_with_ml` спрашивается в точке использования, источник без гранта
-  пропускается целиком; переиндексация по `content_hash`; в логах только счётчики.
-- `src/server/embeddings/local-embedder.ts` — реальная модель: динамический
-  импорт, `allowRemoteModels = false` (никаких скачиваний в рантайме), пулинг
-  последнего непаддингового токена считается по маске, а не через удобный
-  pipeline (mean-pooling дал бы другое пространство).
-- `src/server/embeddings/dense-search-service.ts` — вертикальный срез «профиль →
-  вектор (кэш по версии профиля/модели/инструкции) → порядок по кандидатам»;
-  им же проверяются приватность и версии на живой БД.
-- `scripts/models-fetch.ts` + `npm run models:fetch` — единственное место,
-  которое скачивает веса: ревизия закреплена коммитом, каждый файл сверяется с
-  sha256 до переименования в целевое имя, чужой файл не перезаписывается молча.
+- `src/domain/embeddings.ts` — the contract: `EMBEDDING_MODEL` (id, revision, dtype,
+  file, sha256, dim, pooling of the last non-padding token, window), the version is
+  **derived from the artifact** and checked by a test against the literal; the
+  instruction asymmetry (`Instruct: {task}\nQuery: {query}` on the query only, the
+  document without the instruction) with refusals in both directions;
+  `assertComparable` — fail-closed on mixing versions/instructions/roles;
+  `profileEmbeddingText` (a versioned query text); `Embedder` as a port and
+  `embeddingInputsFor`, so that the instruction cannot be lost in an implementation.
+- `src/domain/dense-retrieval.ts` — the retrieval leg: positions by cosine, a
+  deterministic tie-break by id, `uncovered` separate from `refusals` (no vector —
+  not a suspicion; a foreign vector — a refusal of the whole query).
+- `migrations/0017_job_embeddings.sql` — `job_embeddings` (FK to the snapshot,
+  `ON DELETE CASCADE` — the vector does not outlive the text under retention) and
+  `profile_embeddings` (a composite FK to `candidate_profiles(user_id, version)` —
+  "delete the profile" and "delete its vector" are one statement). `model_version`
+  in the primary key: two versions coexist during reindexing. `profile_text_version`
+  as a separate field: editing the query wording must not invalidate 700 document
+  vectors.
+- `src/server/embeddings/embedding-service.ts` — SQL and indexing; the
+  `process_with_ml` permission is asked at the point of use, a source without the
+  grant is skipped entirely; reindexing by `content_hash`; the logs carry counters
+  only.
+- `src/server/embeddings/local-embedder.ts` — the real model: dynamic import,
+  `allowRemoteModels = false` (no downloads at runtime), pooling of the last
+  non-padding token computed from the mask, not through the convenient pipeline
+  (mean-pooling would give a different space).
+- `src/server/embeddings/dense-search-service.ts` — a vertical slice "profile →
+  vector (cached by profile/model/instruction version) → ordering over candidates";
+  the same slice checks privacy and versions against the live DB.
+- `scripts/models-fetch.ts` + `npm run models:fetch` — the only place that
+  downloads weights: the revision is pinned by a commit, every file is verified
+  against sha256 before being renamed to its target name, a foreign file is never
+  silently overwritten.
 - `scripts/embeddings-index.ts` + `npm run embeddings:index -- --embedder=local` —
-  индексация с progress-строками (только счётчики), `--limit` для порционного
-  прогона; фейковый эмбеддер из CLI недостижим намеренно.
-- `scripts/eval-dense.ts` + `npm run eval:dense` — замер ноги на A1.
-- `docs/EMBEDDING_PLAYBOOK.md` — инварианты, порядок включения, playbook смены
-  модели (артефакт → замер → dual-write → переключение → окно откатa → чистка),
-  порог перехода к ANN, что не покрыто.
-- `scripts/guardrails.mjs` — закрепление версии `@huggingface/transformers` и
-  запрет `allowRemoteModels = true` в `src/`.
-- Тесты: `tests/unit/embedding-contract.test.ts` (15 тестов), `tests/unit/dense-retrieval.test.ts`
-  (8), `tests/integration/embeddings.test.ts` (6 на живой БД), `tests/support/fake-embedder.ts`
-  (помеченный детерминированный двойник; тест проверяет, что `src/` его не импортирует).
+  indexing with progress lines (counters only), `--limit` for a portioned run; the
+  fake embedder is unreachable from the CLI on purpose.
+- `scripts/eval-dense.ts` + `npm run eval:dense` — measurement of the leg on A1.
+- `docs/EMBEDDING_PLAYBOOK.md` — the invariants, the enablement order, the model
+  swap playbook (artifact → measurement → dual-write → switch → rollback window →
+  cleanup), the threshold for moving to ANN, what is not covered.
+- `scripts/guardrails.mjs` — pinning the version of `@huggingface/transformers` and
+  forbidding `allowRemoteModels = true` in `src/`.
+- Tests: `tests/unit/embedding-contract.test.ts` (15 tests),
+  `tests/unit/dense-retrieval.test.ts` (8), `tests/integration/embeddings.test.ts`
+  (6 on a live DB), `tests/support/fake-embedder.ts` (a labelled deterministic
+  double; a test checks that `src/` does not import it).
 
-## Протокол V0–V6
+## Protocol V0–V6
 
-- **V0.** Отдельная задача (первая в группе B), схема расширена аддитивно
-  (миграция 0017), выдача не менялась.
-- **V1.** Формулы не изобретались: косинус/нормализация — по карточке модели
-  (§6.2), пулинг last-token зафиксирован в контракте и проверяется тестом на
-  версию, ID.
-- **V2.** Инструкция только на запросе (тест на обе ошибки), понижение/отсутствие
-  вектора не скрывает вакансию, вектор профиля — производное персональных данных
-  и удаляется вместе с профилем (integration-тест), текст не попадает в логи
-  (`describeDenseRanking` печатает только счётчики — тест), источник без гранта не
-  индексируется вовсе (integration-тест на jobicy).
-- **V3.** `npm run check` → exit 0 (**219/219** unit, было 194; biome 201 файл;
-  tsc чисто); **`npm run test:db` → exit 0 (50/50**, 6 новых на живой БД);
+- **V0.** A separate task (the first in group B), the schema was extended additively
+  (migration 0017), the feed was not changed.
+- **V1.** No formulas were invented: cosine/normalization per the model card
+  (§6.2), last-token pooling fixed in the contract and checked by a test on the
+  version and the ID.
+- **V2.** The instruction on the query only (a test for both mistakes), a
+  lowered/missing vector does not hide the job, the profile vector is a derivative
+  of personal data and is deleted together with the profile (integration test),
+  text does not reach the logs (`describeDenseRanking` prints counters only —
+  test), a source without a grant is not indexed at all (integration test on
+  jobicy).
+- **V3.** `npm run check` → exit 0 (**219/219** unit, previously 194; biome 201
+  files; tsc clean); **`npm run test:db` → exit 0 (50/50**, 6 new on a live DB);
   `npm run build` → exit 0; **`npm run test:e2e` → 96 passed**;
-  `npm run models:fetch` → 6 файлов, 624 963 871 байт, каждый сверен с sha256;
-  `npm run embeddings:index -- --embedder=local` → exit 0 (himalayas индексируется,
-  jobicy `no_permission`); `npm run eval:dense` → exit 0.
-- **V4.** Специфичные случаи B1: смешение `model_version`/инструкции/роли →
-  отказ (unit), смена версии без переиндексации → нога не отдаёт ничего чужого, а
-  две версии сосуществуют и не смешиваются (integration); удаление профиля и
-  удаление снапшота по ретенции уносят вектор (integration); модель недоступна →
-  слой инертен, `check:offline` зелёный.
-- **V5.** Существующие проверки не ослаблены: пороги A1 не двигались, `eval:matching`
-  до и после даёт те же числа (ранкер не тронут), ратчет-тесты зелёные.
-- **V6.** Этот файл + `IMPLEMENTATION_STATUS.md` + `tasks/current.json`.
+  `npm run models:fetch` → 6 files, 624 963 871 bytes, each verified against
+  sha256; `npm run embeddings:index -- --embedder=local` → exit 0 (himalayas is
+  indexed, jobicy `no_permission`); `npm run eval:dense` → exit 0.
+- **V4.** B1-specific cases: mixing `model_version`/instruction/role → a refusal
+  (unit); a version change without reindexing → the leg returns nothing foreign,
+  and two versions coexist without mixing (integration); deleting the profile and
+  deleting a snapshot under retention take the vector with them (integration); the
+  model unavailable → the layer is inert, `check:offline` green.
+- **V5.** Existing checks were not weakened: the A1 thresholds did not move,
+  `eval:matching` before and after gives the same numbers (the ranker untouched),
+  the ratchet tests are green.
+- **V6.** This file + `IMPLEMENTATION_STATUS.md` + `tasks/current.json`.
 
-### Измерения (2026-09-30, эта машина, i5-13450HX, int8)
+### Measurements (2026-09-30, this machine, i5-13450HX, int8)
 
-| Прогон | Число |
+| Run | Number |
 |---|---|
-| Индексирование golden-набора (34 документа) | 950–1169 мс, 28–34 мс на документ (два прогона) |
-| Запрос профиля (без кэша) | медиана 114–138 мс, максимум 136–142 мс (два прогона) |
-| Индексирование живого каталога (493 документа) | ~6 минут, ≈0.7 с на документ 4.5–6.6k символов |
-| Dense-нога на A1 | R@5 0.680 · R@10 0.836 · NDCG@5 0.789 · NDCG@10 0.829 · MRR 0.833 |
-| Ранкер v4 на том же наборе | R@5 0.742 · R@10 0.877 · NDCG@5 0.914 · NDCG@10 0.916 · MRR 1.000 |
-| Скачанный артефакт | 624 963 871 байт (модель 613 527 539), все sha256 совпали |
+| Indexing the golden set (34 documents) | 950–1169 ms, 28–34 ms per document (two runs) |
+| Profile query (uncached) | median 114–138 ms, maximum 136–142 ms (two runs) |
+| Indexing the live catalog (493 documents) | ~6 minutes, ≈0.7 s per document of 4.5–6.6k characters |
+| Dense leg on A1 | R@5 0.680 · R@10 0.836 · NDCG@5 0.789 · NDCG@10 0.829 · MRR 0.833 |
+| Ranker v4 on the same set | R@5 0.742 · R@10 0.877 · NDCG@5 0.914 · NDCG@10 0.916 · MRR 1.000 |
+| Downloaded artifact | 624 963 871 bytes (the model 613 527 539), all sha256 matched |
 
-## Циклы ремонта: 2/2 (оба — на реальном запуске, не на тестах)
+## Repair cycles: 2/2 (both on a real run, not on tests)
 
-1. **Скачивание модели падало с ENOENT**: подкаталог `onnx/` не создавался перед
-   потоковой записью. Гипотеза о `max_length` как причине роста памяти
-   **опровергнута замером** (при 602 токенах 32768/4096/1024 → 735/711/731 мс,
-   RSS ~1.4 ГБ): настоящий механизм — паддинг до самого длинного в батче плюс
-   KV-выходы всех 28 слоёв, которые ONNX-граф отдаёт на каждом проходе.
-2. **Первый полный индексирующий прогон съел 19 ГБ RSS** (батч 8 × 2002 токена:
-   39 с на проход, RSS 14.5 → 20 ГБ). Замер: тот же текст батчем 1 — 4.1–5.5 с и
-   стабильные ~3 ГБ при той же суммарной скорости. Исправлено: документы
-   обрабатываются по одному, прогресс чанками по 25, в комментарии — числа и
-   следствие (полная переиндексация каталога ≈ полчаса CPU).
+1. **The model download failed with ENOENT**: the `onnx/` subdirectory was not
+   created before the streamed write. The hypothesis that `max_length` was the
+   cause of the memory growth **was refuted by measurement** (at 602 tokens,
+   32768/4096/1024 → 735/711/731 ms, RSS ~1.4 GB): the real mechanism is padding to
+   the longest in the batch plus the KV outputs of all 28 layers, which the ONNX
+   graph returns on every pass.
+2. **The first full indexing run ate 19 GB of RSS** (batch 8 × 2002 tokens: 39 s
+   per pass, RSS 14.5 → 20 GB). Measurement: the same text with batch 1 — 4.1–5.5 s
+   and a stable ~3 GB at the same total throughput. Fixed: documents are processed
+   one at a time, progress in chunks of 25, with the numbers and the consequence in
+   a comment (a full reindex of the catalog ≈ half an hour of CPU).
 
-## Ограничения
+## Limitations
 
-1. **Dense-нога измеренно слабее ранкера.** Это не дефект реализации: нога не
-   знает ни допуска, ни словаря навыков, ни роли в заголовке. Переключение
-   выдачи не предлагается; B2 даёт основание для следующего замера.
-2. **Кросс-язычная часть не измерена**: 4 русских вакансии из 34 и профиль без
-   языкового поля — этого мало, чтобы различить модели. Расширение набора —
-   отдельная задача, и в ней открыт вопрос, кто размечает пары (A1 требует
-   суждения человека, а не вычисления).
-3. **Полная переиндексация каталога ≈ 30 минут CPU** и версионируется только
-   целиком (артефакт = версия). Порционность — `--limit` + идемпотентность по
-   `content_hash`; параллельного индексирования нет.
-4. **KV-кэш в ONNX-графе** — главный расход памяти (≈4.6 ГБ на батч 8 при 2000
-   токенов). Экспорт без него — другой артефакт, то есть отдельное решение
-   владельца, а не оптимизация исполнителя.
-5. **`onnxruntime-node@1.30.0` ставится без postinstall-скрипта** (npm-политика
-   окружения заблокировала скрипты `onnxruntime-node` и `protobufjs`); инференс
-   при этом работает — проверено фактическим запуском. Это наблюдение о среде, не
-   подтверждение для другой машины.
-6. **jobicy не индексируется** — его `process_with_ml` = `denied`, грант за
-   владельцем (§6.1). Dense-нога по нему не работает вовсе, а не частично.
-7. Замеры — на golden-наборе (34 документа) и на текущем каталоге; качество на
-   живом каталоге не измерялось (нет разметки), latency указана для холодного
-   запроса (в продукте вектор профиля кэшируется по версии).
+1. **The dense leg is measurably weaker than the ranker.** This is not an
+   implementation defect: the leg knows neither the eligibility gate, nor the
+   skills dictionary, nor the role in the title. Switching the feed is not
+   proposed; B2 provides the basis for the next measurement.
+2. **The cross-language part is not measured**: 4 Russian jobs out of 34 and a
+   profile without a language field — too little to distinguish the models.
+   Extending the set is a separate task, and it leaves open who labels the pairs
+   (A1 requires human judgement, not computation).
+3. **A full reindex of the catalog ≈ 30 minutes of CPU** and is versioned only as
+   a whole (artifact = version). Portioning — `--limit` + idempotency by
+   `content_hash`; there is no parallel indexing.
+4. **The KV cache in the ONNX graph** is the main memory cost (≈4.6 GB per batch
+   of 8 at 2000 tokens). An export without it is a different artifact, that is, a
+   separate owner decision, not an implementer optimization.
+5. **`onnxruntime-node@1.30.0` installs without a postinstall script** (the npm
+   policy of the environment blocked the `onnxruntime-node` and `protobufjs`
+   scripts); inference works nevertheless — verified by an actual run. This is an
+   observation about the environment, not a confirmation for another machine.
+6. **jobicy is not indexed** — its `process_with_ml` = `denied`, the grant rests
+   with the owner (§6.1). The dense leg does not work on it at all, not partially.
+7. The measurements are on the golden set (34 documents) and on the current
+   catalog; quality on the live catalog was not measured (no labels), the latency
+   is given for a cold query (in the product the profile vector is cached by
+   version).
 
-## Риск и откат
+## Risk and rollback
 
-Риск низкий: слой не в горячем пути выдачи, право источника проверяется в точке
-использования, вектора удаляются вместе с источником своего существования.
-Откат — `git revert` коммита B1 плюс (если нужно) `DROP TABLE job_embeddings,
-profile_embeddings` и удаление `models/`; выдача при этом не меняется ни на одном
-шаге, потому что она по-прежнему не ранжируется этим слоем.
+The risk is low: the layer is not in the hot path of the feed, the source
+permission is checked at the point of use, the vectors are deleted together with
+the source of their existence. Rollback — `git revert` of the B1 commit plus (if
+needed) `DROP TABLE job_embeddings, profile_embeddings` and the removal of
+`models/`; the feed does not change at any step, because it is still not ranked by
+this layer.

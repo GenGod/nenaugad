@@ -1,31 +1,31 @@
-# S2-002 — скрытие вакансий с причинами и ручная пометка отклика
+# S2-002 — hiding jobs with reasons and a manual applied mark
 
-**Результат:** пользователь скрывает вакансию из подбора с причиной
-нерелевантности (фиксированный код), видит и возвращает скрытые на странице
-«Сохранённое»; на сохранённых вручную отмечает факт отправки отклика
-(клик по внешней ссылке ничего не отмечает — ТЗ 4.3).
+**Result:** the user hides a job from matching with an irrelevance reason (a
+fixed code), sees and returns the hidden ones on the «Сохранённое» page; on
+the saved ones they manually mark that an application was sent (a click on
+the external link marks nothing — spec 4.3).
 
-**Не входит:** свободный текст причины (privacy-минимум, v1 — только коды),
-скрытие в публичном каталоге (он не персонализирован), напоминания о
-откликах, авто-детект отправки.
+**Not included:** a free-text reason (a privacy minimum, v1 — codes only),
+hiding in the public catalog (it is not personalized), application reminders,
+send auto-detection.
 
-**Контекст:** ТЗ 4.3; SP 8 (ownership); S2-001 (saved_jobs, matched).
+**Context:** spec 4.3; SP 8 (ownership); S2-001 (saved_jobs, matched).
 
-## Приёмка
-1. Миграция 0008: `hidden_jobs` (PK user+snapshot, FK cascade, reason-код
+## Acceptance
+1. Migration 0008: `hidden_jobs` (PK user+snapshot, FK cascade, a reason-code
    CHECK) + `saved_jobs.marked_applied_at timestamptz NULL`.
-2. Причины — фиксированный набор кодов (зарплата/география/уровень/стек/
-   компания/неясные условия/другое); невалидный код → 400.
-3. Скрытие: из карточки подбора (инлайн-выбор причины → скрыть); скрытая
-   вакансия исчезает из eligible и needs_review; возврат — из раздела
-   «Скрытые» на /saved. Скрыть можно и несохранённую.
-4. Пометка отклика: кнопка на сохранённых «Отклик отправлен ✓ (дата)»;
-   снятие — повторным нажатием; ставится только действием пользователя.
-5. Ownership: все операции через сессию; B не видит/не возвращает/не меняет
-   A (негативные тесты); чужой/несуществующий snapshot → 404.
-6. e2e: скрыть из /matched с причиной → исчезла из подбора → видна в
-   «Скрытых» с причиной → вернуть → снова в подборе; пометить отклик →
-   бейдж с датой; 401 анонимно.
+2. The reasons — a fixed set of codes (salary/geography/level/stack/company/
+   unclear conditions/other); an invalid code → 400.
+3. Hiding: from a matching card (an inline reason selection → hide); the
+   hidden job disappears from eligible and needs_review; returning — from the
+   «Скрытые» section on /saved. A non-saved job can be hidden too.
+4. The applied mark: a button on the saved ones, «Отклик отправлен ✓ (дата)»;
+   removal — by pressing again; it is set only by a user action.
+5. Ownership: all operations via the session; B does not see/return/change
+   A's data (negative tests); someone else's/nonexistent snapshot → 404.
+6. e2e: hide from /matched with a reason → gone from matching → visible in
+   the «Скрытых» with the reason → return → back in matching; mark applied →
+   a badge with the date; 401 anonymously.
 
-**Риск:** обычный. **Откат:** миграцию не откатывать вслепую; фичей UI
-не ломает существующие сценарии.
+**Risk:** ordinary. **Rollback:** do not roll back the migration blindly; a UI
+feature does not break the existing scenarios.

@@ -1,111 +1,121 @@
-# A7-001 — «Что нового»: детерминированный дайджест (push-MVP без email)
+# A7-001 — «Что нового»: a deterministic digest (push-MVP without email)
 
-**Результат:** у подбора появился честный in-app дайджест «что нового»: кандидат
-видит вакансии, появившиеся **после его последнего просмотра подбора**, и ничего
-больше. Окно берётся из фактов, которые продукт уже записывает: когда мы впервые
-увидели вакансию (`firstSeenAt`, A5) и когда кандидат последний раз видел выдачу
-(свежий показ в журнале, A8). Ни новой таблицы, ни записи на рендере страницы —
-GET, который двигал бы курсор, мог бы быть вызван префетчем, а дайджест, который
-врёт про «новое», хуже отсутствия дайджеста. Закрытая вакансия не может попасть в
-дайджест: он считается в момент чтения из тех же гейтов, что выдача.
+**Result:** matching now has an honest in-app «what's new» digest: the candidate
+sees the jobs that appeared **after their last view of matching**, and nothing
+more. The window comes from facts the product already records: when we first
+saw the job (`firstSeenAt`, A5) and when the candidate last saw the feed (a
+fresh impression in the journal, A8). No new table, no writes on page render —
+a GET that moved the cursor could be triggered by a prefetch, and a digest that
+lies about «new» is worse than no digest. A closed job cannot enter the digest:
+it is computed at read time from the same gates as the feed.
 
-**Не входит:** email/внешние каналы (`send_email` — denied в матрицах источников;
-канал доставки — решение владельца), предвычисленная таблица candidate-set
-(осмысленна только с внешней доставкой и трафиком — research D9), frequency cap
-(ограничивать нечего: in-app страницу открывает сам кандидат), push-уведомления.
+**Not included:** email/external channels (`send_email` — denied in the source
+matrices; the delivery channel is an owner decision), a precomputed
+candidate-set table (meaningful only with external delivery and traffic —
+research D9), a frequency cap (nothing to limit: the candidate opens the in-app
+page themselves), push notifications.
 
-**Зависимости:** A1, A4, A5, A8 (журнал как источник окна), A6 (seen-set как
-фильтр «не повторять»).
+**Dependencies:** A1, A4, A5, A8 (the journal as the window source), A6 (the
+seen-set as the «do not repeat» filter).
 
-## Что добавлено
+## What was added
 
-- `src/domain/digest.ts` — чистые правила: `classifyFreshness` (`new` /
-  `earlier` / `unknown_age`), `compareForDigest` (свежие первыми, бездатные
-  последними, id как тай-брейк), `lastFeedViewLabel` (честная метка окна в UTC
-  или null для первого обзора). Без часов внутри — время передаётся.
-- `src/server/digest-service.ts` — `digestForUser`: строит дайджест из
-  `matchedForUser` (те же гейты, дедуп, скрытия и seen-set) и курсора из журнала;
-  `MAX_DIGEST_ITEMS = 50`.
-- `src/server/events-service.ts` — `lastImpressionAt` (владельческое чтение
-  журнала): время последнего показа выдачи.
-- `src/server/matching-service.ts` — `matchedForUser(userId, { pool })`: пул стал
-  инъектируемым, чтобы продуктовый путь и тесты шли одним кодом (аддитивно,
-  значение по умолчанию прежнее).
-- `src/app/api/v1/digest/route.ts` — `GET` (401 без сессии; 409 без профиля;
-  200 с `status`, `since`, `newCount`, `earlierCount`, `seenSuppressed`, `items`).
-  POST отсутствует: страница ничего не пишет.
-- `src/app/whats-new/page.tsx` — страница «Что нового»: первый обзор честно
-  назван первым обзором, есть блок «Новое с прошлого просмотра» и блок «Совпадения
-  из прошлых обзоров»; пустое состояние объясняет причину, включая скрытые
-  seen-set'ом (A6) с их сроком возврата.
-- `src/app/matched/page.tsx` — ссылка «Что нового» в переключателе режимов
-  (рендерится только в postgres-режиме с данными, поэтому визуальные базлайны
-  fixture-режима не меняются).
-- Тесты: `tests/unit/digest.test.ts` (4 теста), `tests/integration/digest.test.ts`
-  (3 теста на живой БД), `tests/e2e/s2b.spec.ts` — контракт API (401 аноним,
-  200 и честная пустота на fixture-бэкенде, страница без фейкового списка).
+- `src/domain/digest.ts` — pure rules: `classifyFreshness` (`new` / `earlier` /
+  `unknown_age`), `compareForDigest` (fresh first, dateless last, id as the
+  tie-break), `lastFeedViewLabel` (an honest window label in UTC or null for
+  the first view). No clock inside — time is passed in.
+- `src/server/digest-service.ts` — `digestForUser`: builds the digest from
+  `matchedForUser` (the same gates, dedup, hidings and seen-set) and the cursor
+  from the journal; `MAX_DIGEST_ITEMS = 50`.
+- `src/server/events-service.ts` — `lastImpressionAt` (an owner-scoped journal
+  read): the time of the last feed impression.
+- `src/server/matching-service.ts` — `matchedForUser(userId, { pool })`: the
+  pool became injectable so the product path and the tests run one code path
+  (additive, the default value unchanged).
+- `src/app/api/v1/digest/route.ts` — `GET` (401 without a session; 409 without
+  a profile; 200 with `status`, `since`, `newCount`, `earlierCount`,
+  `seenSuppressed`, `items`). No POST: the page writes nothing.
+- `src/app/whats-new/page.tsx` — the «Что нового» page: the first view is
+  honestly named the first view; there is a «Новое с прошлого просмотра» block
+  and a «Совпадения из прошлых обзоров» block; the empty state explains the
+  reason, including items hidden by the seen-set (A6) with their return date.
+- `src/app/matched/page.tsx` — a «Что нового» link in the mode switcher
+  (rendered only in postgres mode with data, so the fixture-mode visual
+  baselines do not change).
+- Tests: `tests/unit/digest.test.ts` (4 tests), `tests/integration/digest.test.ts`
+  (3 tests on the live DB), `tests/e2e/s2b.spec.ts` — the API contract (401
+  anonymous, 200 and honest emptiness on the fixture backend, a page without a
+  fake list).
 
-## Протокол V0–V6
+## Protocol V0–V6
 
-- **V0.** Отдельная задача (пункт A7); схема БД не менялась — новой миграции нет.
-- **V1.** Ч.2 D1 перечитан: push-матчинг как генератор пользы при нулевом трафике;
-  при отправке фильтровать по статусу вакансии. Проверено по коду: закрытие живёт
-  в `lifecycle`, а `classifySnapshot` отсекает всё, кроме `active` — значит,
-  считая дайджест в момент чтения, мы получаем фильтр по статусу «бесплатно» и не
-  можем отправить закрытую вакансию. Решение о «предвычисленной candidate-set»
-  отложено осознанно (research D9: реалтайм дёшев при малом каталоге; таблица
-  актуальна, когда доставка выйдет из приложения).
-- **V2.** Принципы: письма/уведомления не покидают локальный контур (канал — только
-  страница; зафиксировано явно); дайджест не показывает то, что кандидат уже видел
-  (seen-set A6 — тест); неизвестный возраст не «новое»; сигналы одного кандидата не
-  влияют на другого (тест двух пользователей); удаление профиля удаляет окно
-  (журнал) — тест; закрытая вакансия не выдаётся (golden 7 — тест через реальный
-  механизм closure-checks).
-- **V3.** `npm run check` → exit 0 (**180/180** unit, было 176; biome 171 файл; tsc
-  чисто); **`npm run test:db` → exit 0 (40/40**, 3 новых A7 на живой тестовой БД);
-  `npm run build` → exit 0 (маршруты `/api/v1/digest`, `/whats-new` собраны);
-  **`npm run test:e2e` → 96 passed** (93 + 3 вьюпорта нового контракт-теста).
-  Сценарий пройден вручную на локальной dev-БД (postgres): первый обзор — «подбор
-  ещё не открывался, «новым» считается всё»; после просмотра подбора (46 показов
-  записаны клиентом A6) дайджест показал окно «2026-09-29 13:20 UTC», 0 новых и
-  честную причину («скрыто 46, вернутся при изменении или через 14 дней»).
-  Записи тестового пользователя после проверки удалены.
-- **V4.** Золотые случаи A7: golden 7 — закрытая вакансия исключена (тест: две
-  разнесённые inactive-проверки закрывают записи, дайджест пуст); «новое»
-  появляется только после окна (тест: поздний импорт — единственный new);
-  дедуп/скрытия/допуск наследуются от выдачи по построению.
-- **V5.** Существующие тесты не ослаблены; новый сброс каталога в тестах дайджеста
-  затрагивает только тестовую БД и выполняется до собственных вставок каждого
-  файла; guardrails/check зелёные; diff просмотрен.
-- **V6.** Этот файл + запись в `IMPLEMENTATION_STATUS.md`.
+- **V0.** A separate task (item A7); the DB schema was not changed — no new
+  migration.
+- **V1.** Part 2 D1 re-read: push matching as a value generator at zero
+  traffic; filter by job status when sending. Verified against the code:
+  closure lives in `lifecycle`, and `classifySnapshot` cuts everything except
+  `active` — so computing the digest at read time gives us the status filter
+  «for free» and we cannot send a closed job. The «precomputed candidate-set»
+  decision is deliberately postponed (research D9: realtime is cheap with a
+  small catalog; the table becomes relevant when delivery leaves the app).
+- **V2.** Principles: letters/notifications do not leave the local contour (the
+  channel is the page only; recorded explicitly); the digest does not show what
+  the candidate has already seen (the A6 seen-set — a test); unknown age is not
+  «new»; one candidate's signals do not affect another (a two-user test);
+  deleting the profile deletes the window (the journal) — a test; a closed job
+  is not served (golden 7 — a test through the real closure-checks mechanism).
+- **V3.** `npm run check` → exit 0 (**180/180** unit, was 176; biome 171 files;
+  tsc clean); **`npm run test:db` → exit 0 (40/40**, 3 new A7 tests on the live
+  test DB); `npm run build` → exit 0 (the routes `/api/v1/digest`,
+  `/whats-new` built); **`npm run test:e2e` → 96 passed** (93 + 3 viewports of
+  the new contract test). The scenario was walked manually on the local dev DB
+  (postgres): the first view — «подбор ещё не открывался, «новым» считается
+  всё»; after viewing matching (46 impressions recorded by the A6 client) the
+  digest showed the window «2026-09-29 13:20 UTC», 0 new, and the honest reason
+  («скрыто 46, вернутся при изменении или через 14 дней»). The test user's
+  records were deleted after the check.
+- **V4.** A7 golden cases: golden 7 — a closed job excluded (test: two spaced
+  inactive checks close the records, the digest is empty); «new» appears only
+  after the window (test: a late import is the only new one);
+  dedup/hidings/the eligibility gate are inherited from the feed by
+  construction.
+- **V5.** Existing tests not weakened; the new catalog reset in the digest
+  tests touches only the test DB and runs before each file's own inserts;
+  guardrails/check green; the diff reviewed.
+- **V6.** This file + an entry in `IMPLEMENTATION_STATUS.md`.
 
-## Циклы ремонта: 2/2 (лимит исчерпан, работа зелёная)
+## Repair cycles: 2/2 (limit exhausted, work green)
 
-1. Первый `test:db` дайджеста вернул `no_profile`: сервис ходил в `snapshotPool()`
-   (DATABASE_URL, dev-база), а тесты работают с `TEST_DATABASE_URL`. Гипотеза: пул
-   должен быть инъектируемым — тогда продуктовый путь и тест идут одним кодом.
-   Подтвердилось (правка аддитивная, поведение по умолчанию не изменилось).
-2. Второй прогон: жёстко зашитые ожидания (3 видимые вакансии, конкретный id) не
-   соответствуют данным: часть jobicy-фикстур отсекается правилами (договор,
-   remote-конфликт), а в общей тестовой БД остаются снапшоты himalayas от других
-   файлов. Гипотеза: видимый набор надо выводить тем же гейт-пайплайном
-   (`matchedForUser`), а каталог в тесте — чистить целиком. Подтвердилось.
+1. The digest's first `test:db` returned `no_profile`: the service went to
+   `snapshotPool()` (DATABASE_URL, the dev database), while the tests run
+   against `TEST_DATABASE_URL`. Hypothesis: the pool must be injectable — then
+   the product path and the test run one code path. Confirmed (the change is
+   additive, the default behavior unchanged).
+2. Second run: hard-coded expectations (3 visible jobs, a specific id) do not
+   match the data: part of the jobicy fixtures is cut by the rules (contract,
+   remote conflict), and snapshots from himalayas of other files remain in the
+   shared test DB. Hypothesis: the visible set must be derived by the same
+   gate pipeline (`matchedForUser`), and the catalog must be cleaned entirely
+   in the test. Confirmed.
 
-## Ограничения
+## Limitations
 
-1. Канал доставки — только страница в приложении. Email невозможен: `send_email`
-   denied в матрицах источников; решение владельца (бриф, решения №7).
-2. Frequency cap не реализован: ограничивать нечего, пока нет отправок; появится
-   вместе с внешним каналом.
-3. «Новое» определяется по нашему первому наблюдению (`firstSeenAt`), а не по
-   заявленной источником дате — это осознанно (анти-гейминг A5); вакансия, давно
-   висящая у источника, но впервые увиденная нами, будет «новой» честно.
-4. Окно = последний *показ выдачи*, а не «последний визит на сайт»: если кандидат
-   открывал только каталог, окно не сдвинется. Это заявлено в тексте страницы.
-5. Дайджест показывает до 50 записей (как и выдача).
+1. The delivery channel is the in-app page only. Email is impossible:
+   `send_email` is denied in the source matrices; an owner decision (brief,
+   decisions №7).
+2. No frequency cap implemented: there is nothing to limit while there are no
+   send-outs; it will come with the external channel.
+3. «New» is defined by our first observation (`firstSeenAt`), not by the date
+   the source claims — this is deliberate (A5 anti-gaming); a job that has hung
+   on the source for a long time but was first seen by us will honestly be
+   «new».
+4. The window = the last *feed impression*, not «the last visit to the site»:
+   if the candidate only opened the catalog, the window does not move. This is
+   stated in the page copy.
+5. The digest shows up to 50 items (like the feed).
 
-## Риск и откат
+## Risk and rollback
 
-Риск обычный: новые чтения + страница/маршрут; продуктовое поведение подбора не
-менялось (только ссылка в переключателе). Откат — `git revert` коммита A7; схема
-не менялась, откат данных не требуется.
+Ordinary risk: new reads + a page/route; the matching product behavior was not
+changed (only the link in the switcher). Rollback — `git revert` of the A7
+commit; the schema was not changed, no data rollback required.

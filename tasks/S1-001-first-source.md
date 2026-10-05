@@ -1,36 +1,40 @@
-# S1-001 — первый разрешённый источник, один сквозной сценарий
+# S1-001 — the first approved source, one end-to-end scenario
 
-**Результат:** один одобренный источник -> сохранение -> публичный каталог/detail
-без личных данных и без AI.
+**Result:** one approved source -> saving -> a public catalog/detail without personal
+data and without AI.
 
-**Зависимость:** принят S0. Это следующая задача, не указание обойти установку.
-**Кандидат:** Himalayas из старого ТЗ; актуальные доступ, поля и права перепроверяются.
-Рабочий URL не доказывает разрешение. Без approval разрешена только контрактная
-фикстура будущего адаптера, а live-функция остаётся выключенной.
+**Dependency:** S0 accepted. This is the next task, not an instruction to bypass the
+installation.
+**Candidate:** Himalayas from the old spec; the current access, fields and rights are
+rechecked. A working URL does not prove permission. Without approval only a contract
+fixture of the future adapter is allowed, and the live feature stays off.
 
-## Не входит
-Второй источник, profiles, зарплатная аналитика, embeddings, NLP-агенты, public deploy.
+## Not included
+A second source, profiles, salary analytics, embeddings, NLP agents, a public deploy.
 
-## Контекст
-Продуктовое ТЗ разделы 3–6 и 14, source registry, domain schema; SP разделы 2,6–9.
-StarterJob / atlas_demo_jobs не использовать как реальный canonical контракт.
-Перед изменением схемы сопоставить настоящие SourceRecord/JobSnapshot и UI-проекцию.
+## Context
+Product spec sections 3–6 and 14, the source registry, the domain schema; SP sections
+2,6–9.
+StarterJob / atlas_demo_jobs must not be used as the real canonical contract.
+Before changing the schema, map the actual SourceRecord/JobSnapshot and the UI projection.
 
-## Приёмка
-1. Действующий source policy фиксирует purpose, ограничения и review владельца.
-2. Настоящий контракт проверен/фикстура явно маркирована, ID и версии стабильны.
-3. Повтор одного импорта не создаёт дубль и не обновляет смысл без изменения текста.
-4. Remote и география не смешиваются; неизвестные/противоречивые данные не получают
-   фиктивный verified status.
-5. Карточка имеет фактический источник, даты и разрешённый маршрут отклика.
-6. 429/5xx/неполный снимок не закрывают массово вакансии; есть конечный retry.
-7. Выключение источника работает без правки UI и не включает ложные mock результаты.
+## Acceptance
+1. A valid source policy fixes the purpose, the restrictions and the owner review.
+2. The real contract is verified / the fixture is explicitly marked, IDs and versions stable.
+3. Repeating one import creates no duplicate and does not update the meaning without a
+   text change.
+4. Remote and geography are not mixed; unknown/contradictory data receive no fictitious
+   verified status.
+5. The card has the actual source, dates and an approved application route.
+6. 429/5xx/an incomplete snapshot do not close jobs in bulk; there is a finite retry.
+7. Disabling the source works without UI edits and does not turn on false mock results.
 
-## Риск / лимит
-Высокий (права источника, внешний ingress). Нужен отдельный review до live.
-Без внешнего допуска продолжать локальные контракты, не запрашивать каждый файл.
-Одна задача / максимум два цикла исправлений; новый current task назначает владелец.
+## Risk / limit
+High (source rights, external ingress). A separate review is needed before live.
+Without an external eligibility gate, continue local contracts, do not request every
+file.
+One task / at most two repair cycles; the owner assigns the new current task.
 
-## Откат
-Выключить источник; убрать из публичной выдачи неподтверждённые records;
-не удалять provenance и чужие данные. Не сбрасывать schema вслепую.
+## Rollback
+Disable the source; remove unconfirmed records from the public feed;
+do not delete provenance or other people's data. Do not reset the schema blindly.

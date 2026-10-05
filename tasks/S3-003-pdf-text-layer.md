@@ -1,33 +1,34 @@
-# S3-003 — PDF-парсер: текстовый слой офлайн с честной деградацией
+# S3-003 — the PDF parser: the text layer offline with honest degradation
 
-**Результат:** загрузка `.pdf` извлекает текстовый слой тем же приватным
-конвейером (лимиты/предупреждения/минимизация); скан/шифрование/нет слоя →
-понятный отказ с предложением текстовой формы — не тихий мусор.
+**Result:** a `.pdf` upload extracts the text layer through the same private
+pipeline (limits/warnings/minimization); scan/encryption/no layer → a clear
+refusal with a suggestion of the text form — not silent garbage.
 
-**Не входит:** OCR, рендеринг, макеты (колонки/таблицы — построчная
-эвристика), LibreOffice-класс точности; замена на pdfjs-dist — отдельное
-решение владельца, если DIY-качество окажется недостаточным на реальных CV.
+**Not included:** OCR, rendering, layouts (columns/tables — a line-by-line
+heuristic), LibreOffice-class accuracy; replacing it with pdfjs-dist is a
+separate owner decision if the DIY quality proves insufficient on real CVs.
 
-**Контекст:** ТЗ 9.1 (30 PDF-страниц; скан → текст/ручная форма), 9.3
-(deterministic сначала); S3-001 (parse.ts, лимиты).
+**Context:** spec 9.1 (30 PDF pages; a scan → text/manual form), 9.3
+(deterministic first); S3-001 (parse.ts, the limits).
 
-## Приёмка
-1. Guards: сигнатура %PDF; `/Encrypt` → PDF_ENCRYPTED; страниц >30 →
-   PDF_TOO_MANY_PAGES (счёт /Type /Page; 0 — без счёта, но с лимитом
-   символов); распаковка FlateDecode с потолком (maxOutputLength).
-2. Текст: Tj/TJ/'-операторы из контент-потоков (escape-последовательности,
-   октальные); ToUnicode CMap (beginbfchar/beginbfrange, 2-байтовые коды)
-   для сабсет-шрифтов — эвристика «печатаемый ASCII напрямую, иначе карта»;
-   непокрытые коды → замена, при >30% мусора поток отбрасывается.
-3. Качество: 0 символов → PDF_NO_TEXT_LAYER (скан?) с текстовой формой;
-   тонкий слой (<200) и необычные символы — предупреждения как в S3-001.
-4. Интеграция: parseUploadedFile маршрутизирует PDF в парсер; человекочитаемые
-   ошибки; существующие лимиты (10 МБ / 150k) поверх.
-5. Тесты: программные PDF-фикстуры (простой ASCII; кириллица через CMap;
-   encrypted; 31 страница; только-изображение → NO_TEXT_LAYER; бомба
-   inflate); e2e — загрузка .pdf с текстом.
-6. Никаких новых зависимостей; ничего не исполняется; PDF остаётся
-   непривилегированным входом.
+## Acceptance
+1. Guards: the %PDF signature; `/Encrypt` → PDF_ENCRYPTED; more than 30 pages
+   → PDF_TOO_MANY_PAGES (a count of /Type /Page; 0 — without a count, but with
+   a character limit); FlateDecode decompression with a ceiling
+   (maxOutputLength).
+2. Text: the Tj/TJ/' operators from content streams (escape sequences,
+   octal); the ToUnicode CMap (beginbfchar/beginbfrange, 2-byte codes) for
+   subset fonts — the "printable ASCII directly, otherwise the map" heuristic;
+   uncovered codes → a replacement, with >30% garbage the stream is discarded.
+3. Quality: 0 characters → PDF_NO_TEXT_LAYER (a scan?) with the text form; a
+   thin layer (<200) and unusual characters — warnings as in S3-001.
+4. Integration: parseUploadedFile routes PDFs into the parser; human-readable
+   errors; the existing limits (10 MB / 150k) on top.
+5. Tests: programmatic PDF fixtures (simple ASCII; Cyrillic via a CMap;
+   encrypted; 31 pages; image-only → NO_TEXT_LAYER; an inflate bomb); e2e —
+   uploading a .pdf with text.
+6. No new dependencies; nothing is executed; the PDF remains an
+   unprivileged input.
 
-**Риск:** обычный (парсер — чистая функция над буфером). **Откат:** вернуть
-PDF_NOT_SUPPORTED в роутинге.
+**Risk:** ordinary (the parser is a pure function over a buffer).
+**Rollback:** return PDF_NOT_SUPPORTED in the routing.

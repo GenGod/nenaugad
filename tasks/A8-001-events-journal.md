@@ -1,82 +1,83 @@
-# A8-001 — журнал взаимодействий и propensities
+# A8-001 — the interaction journal and propensities
 
-**Результат:** появился журнал показов и кликов с честными propensities: миграция
-0014 `job_events`, владельческая запись через сессию, API `POST /api/v1/events`,
-удаление журнала вместе с профилем. Показы и клики — факты, у которых нет другой
-таблицы; состояние (сохранено/скрыто/отклик) остаётся в своих таблицах, чтобы у
-каждого факта был один источник правды.
+**Result:** an impressions and clicks journal with honest propensities appeared:
+migration 0014 `job_events`, ownership-scoped writing through the session, the
+`POST /api/v1/events` API, deletion of the journal together with the profile.
+Impressions and clicks are facts for which no other table exists; the state
+(saved/hidden/response) stays in its own tables so that every fact has one
+source of truth.
 
-**Не входит:** клиентская отправка показов/кликов из UI (нужен клиентский
-компонент и решение о моментах отправки — следующая малая задача), чтение
-журнала в UI (его нет намеренно), off-policy оценка (D7).
+**Out of scope:** client-side sending of impressions/clicks from the UI (a client
+component and a decision on the sending moments are needed — the next small task),
+reading the journal in the UI (deliberately absent), off-policy evaluation (D7).
 
-**Контекст:** [бриф](../docs/design/2026-09-27-matching-implementation-brief.md)
-(пункт A8); [исследование](../docs/research/2026-09-26-job-matching-research.md)
-ч.1 («Feedback loop»), ч.2 D6 («логировать propensities с первого дня»).
+**Context:** [the brief](../docs/design/2026-09-27-matching-implementation-brief.md)
+(item A8); [the research](../docs/research/2026-09-26-job-matching-research.md)
+part 1 ("Feedback loop"), part 2 D6 («логировать propensities с первого дня»
+["log propensities from day one"]).
 
-## Что добавлено
+## What was added
 
-- `migrations/0014_job_events.sql` — таблица `job_events` (user FK cascade,
+- `migrations/0014_job_events.sql` — the `job_events` table (user FK cascade,
   snapshot FK cascade, `event_type IN ('impression','click')`, position ≥ 0,
-  `propensity numeric(6,5)` с CHECK 0..1, `ranker_version`), индексы
-  (user_id, created_at DESC) и (snapshot_id), комментарии к таблице и колонкам.
-- `src/domain/events.ts` — строгий разбор батча: фиксированные типы, id в
-  пространстве источников (`himalayas:`/`jobicy:`), границы (≤50 событий, без
-  дублей), `normalisePropensity` (относительный скор, клампится; null при
-  отсутствии/нулевом максимуме — вероятность не выдумывается),
-  `parseRankerVersion`.
+  `propensity numeric(6,5)` with CHECK 0..1, `ranker_version`), the indexes
+  (user_id, created_at DESC) and (snapshot_id), comments on the table and columns.
+- `src/domain/events.ts` — strict batch parsing: fixed types, ids in the
+  source namespace (`himalayas:`/`jobicy:`), the bounds (≤50 events, no
+  duplicates), `normalisePropensity` (a relative score, clamped; null on
+  absence/a zero maximum — the probability is not invented), `parseRankerVersion`.
 - `src/server/events-service.ts` — `recordImpressions`, `recordClicks`,
-  `countEventsForUser`, `deleteEventsForUser`. Все вставки — один
-  параметризованный `INSERT ... SELECT ... FROM unnest(...)`: строкового SQL в
-  файле нет вообще.
-- `src/app/api/v1/events/route.ts` — `POST` (сессия → 401; разбор → 400; FK на
-  исчезнувший снапшот → 404; иначе 201). `GET` отсутствует намеренно.
-- `src/server/profile-service.ts` — `deleteAllProfiles` теперь удаляет и журнал
-  (профиль не оставляет поведенческого следа).
-- Тесты: `tests/unit/events.test.ts` (4 теста), `tests/integration/events.test.ts`
-  (4 теста на живой БД).
+  `countEventsForUser`, `deleteEventsForUser`. All inserts are one
+  parameterized `INSERT ... SELECT ... FROM unnest(...)`: there is no
+  string SQL in the file at all.
+- `src/app/api/v1/events/route.ts` — `POST` (session → 401; parsing → 400; an FK to
+  a vanished snapshot → 404; otherwise 201). `GET` is deliberately absent.
+- `src/server/profile-service.ts` — `deleteAllProfiles` now deletes the journal too
+  (a profile leaves no behavioral trace).
+- Tests: `tests/unit/events.test.ts` (4 tests), `tests/integration/events.test.ts`
+  (4 tests on the live DB).
 
-## Протокол V0–V6
+## V0–V6 protocol
 
-- **V0.** Отдельная задача; миграция 0014 — единственное изменение схемы.
-- **V1.** Пункт A8 перечитан; подтверждено из исследования: propensity нужно
-  логировать с первого дня, восстановить его после факта нельзя — поэтому
-  колонка появляется сейчас, даже пока ранкер в продуктовый путь не подключён.
-- **V2.** Принципы: события принадлежат пользователю и пишутся только от сессии
-  (тест: A не видит/не пишет B); удаление профиля удаляет журнал (тест);
-  `propensity` = NULL, пока нет ранкера — выдуманных вероятностей нет (тест на
-  null в хранилище и на `normalisePropensity`); свободного текста в схеме нет;
-  чтения в UI нет.
+- **V0.** A separate task; migration 0014 is the only schema change.
+- **V1.** Item A8 was re-read; confirmed from the research: propensity must
+  be logged from day one, it cannot be restored after the fact — hence
+  the column appears now, even while the ranker is not yet wired into the product path.
+- **V2.** Principles: events belong to the user and are written only from the session
+  (test: A does not see/write B); profile deletion deletes the journal (test);
+  `propensity` = NULL while there is no ranker — no invented probabilities (a test
+  on null in storage and on `normalisePropensity`); no free text in the schema;
+  no reads in the UI.
 - **V3.** `npm run check` → exit 0 (163/163 unit, biome, tsc); **`npm run test:db`
-  → exit 0 (все интеграционные, включая 4 новых A8 — на живой тестовой БД)**;
-  `npm run build` → exit 0 (маршрут `/api/v1/events` собран). `test:e2e` —
-  `not_run`: UI не менялся.
-- **V4.** Случаи: владельческая изоляция, удаление с профилем, отказ на
-  несуществующий снапшот (FK 23503, а не молчаливая запись), null-propensity.
-- **V5.** Существующие тесты не ослаблены, все прошли; пороги не двигались.
-- **V6.** Этот файл + запись в `IMPLEMENTATION_STATUS.md`.
+  → exit 0 (all the integration tests, including the 4 new A8 ones — on the live
+  test DB)**; `npm run build` → exit 0 (the `/api/v1/events` route built).
+  `test:e2e` — `not_run`: the UI was not changed.
+- **V4.** Cases: ownership isolation, deletion with the profile, rejection on
+  a nonexistent snapshot (FK 23503, not a silent write), null-propensity.
+- **V5.** Existing tests not weakened, all passed; the thresholds were not moved.
+- **V6.** This file + the entry in `IMPLEMENTATION_STATUS.md`.
 
-## Цикл ремонта: 1/2
+## Repair cycle: 1/2
 
-1. Гейт записи Mimosa заблокировал первую версию `events-service.ts`: сборка
-   SQL-текста из плейсхолдеров (`rows.join(", ")`). Гипотеза: тот же интент
-   выражается одним параметризованным `INSERT ... FROM unnest($1::text[], ...)`
-   без строкового SQL вообще — то есть правка не «обход», а более безопасная
-   форма. Подтвердилось: файл прошёл гейт, тесты на живой БД зелёные.
+1. The Mimosa write gate blocked the first version of `events-service.ts`: building
+   SQL text from placeholders (`rows.join(", ")`). Hypothesis: the same intent
+   is expressed by a single parameterized `INSERT ... FROM unnest($1::text[], ...)`
+   with no string SQL at all — that is, the edit is not a "workaround" but a safer
+   form. Confirmed: the file passed the gate, the live-DB tests are green.
 
-## Ограничения
+## Limitations
 
-1. Клиентская отправка показов/кликов не подключена: API и сервис готовы и
-   протестированы, но продукт пока их не вызывает (следующая малая задача;
-   нужен клиентский компонент и решение по моментам отправки).
-2. `propensity` в продукте будет NULL до A10 — это заявлено в комментарии
-   колонки, чтобы никто не прочитал NULL как «вероятность 0».
-3. Retention журнала не ограничен политикой (в отличие от снапшотов): для
-   событий пользователя срок хранения — решение владельца, зафиксировано в
-   брифe (раздел «Решения владельца», п. 8).
+1. Client-side sending of impressions/clicks is not wired: the API and the service
+   are ready and tested, but the product does not call them yet (the next small
+   task; a client component and a decision on the sending moments are needed).
+2. `propensity` in the product will be NULL until A10 — this is stated in the
+   column comment so that nobody reads NULL as "probability 0".
+3. Journal retention is not bounded by a policy (unlike the snapshots): for user
+   events the retention period is an owner decision, recorded in the brief
+   (the «Решения владельца» ["Owner decisions"] section, item 8).
 
-## Риск и откат
+## Risk and rollback
 
-Риск обычный: новая таблица + новый маршрут, продуктовое поведение не менялось.
-Откат — `git revert` коммита A8 (миграция аддитивная; откат схемы не требуется,
-таблица просто перестанет использоваться).
+Ordinary risk: a new table + a new route; product behavior was not changed.
+Rollback — `git revert` of the A8 commit (the migration is additive; no schema
+rollback is required, the table simply stops being used).

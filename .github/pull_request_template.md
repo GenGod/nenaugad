@@ -1,20 +1,20 @@
-## Пользовательский результат
+## User result
 Task ID:
-Один сценарий:
-Что НЕ входит:
+One scenario:
+What is NOT included:
 
-## Проверка
-Команды, exit codes, фактические результаты:
-Не запускалось / почему:
-Mock или live:
-Изменения schema/прав/зависимостей:
-Расходы / unknown:
+## Verification
+Commands, exit codes, actual results:
+Not run / why:
+Mock or live:
+Changes to schema/rights/dependencies:
+Spend / unknown:
 
 ## Review
-- [ ] Нет секретов, CV и model prompts в diff/log.
-- [ ] Нет ослабления security/finance тестов.
-- [ ] Ручной/no-AI путь не сломан.
-- [ ] Для высокого риска отдельный review выполнен или указан как blocker.
-- [ ] Владелец принимает активацию отдельно.
+- [ ] No secrets, CVs and model prompts in the diff/log.
+- [ ] No weakening of security/finance tests.
+- [ ] The manual/no-AI path is not broken.
+- [ ] For high risk, a separate review has been done or is named as a blocker.
+- [ ] The owner accepts activation separately.
 
-## Откат и остаточные ограничения
+## Rollback and residual limitations

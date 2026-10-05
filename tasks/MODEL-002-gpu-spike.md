@@ -1,42 +1,44 @@
-# MODEL-002 — спайк локального скоринга на GPU (решение владельца 2026-10-02)
+# MODEL-002 — a local scoring spike on GPU (owner decision 2026-10-02)
 
-**Статус: зарегистрирована (planned).** Основание: решение владельца от 2026-10-02
-после MODEL-001 — на CPU-рантайме модели 1.5–1.7B рубрику не обслуживают (0/6
-валидных JSON без обвязки; с предзаполнением — Spearman −0.156), поэтому спайк
-на GPU выделен в отдельную задачу. Скоринг до её отчёта остаётся закрытым.
+**Status: planned.** Basis: the owner decision of 2026-10-02 after MODEL-001 —
+on a CPU runtime, 1.5–1.7B models do not serve the rubric (0/6 valid JSON
+without scaffolding; with prefill — Spearman −0.156), so the GPU spike is
+split out into a separate task. Scoring stays closed until its report.
 
-**Цель.** Измерить, обслуживает ли рубрику скоринга локальная модель **7–8B** на
-**RTX 5060 Laptop (8 ГБ)** с GPU-рантаймом — **той же матрицей**, что MODEL-001:
-профиль p-ru-ml, 8 пар, shipped-рубрика и предзаполнение JSON, валидность,
-tok/s, память, Spearman против ручных оценок.
+**Goal.** Measure whether a local **7–8B** model on an **RTX 5060 Laptop
+(8 GB)** with a GPU runtime serves the scoring rubric — **with the same
+matrix** as MODEL-001: the p-ru-ml profile, 8 pairs, the shipped rubric and
+JSON prefill, validity, tok/s, memory, Spearman against the manual scores.
 
-**Решение зависимости (часть решения владельца «спайк на CUDA»).** GPU-рантайм —
-единственная новая зависимость этой задачи; конкретный вариант выбирается и
-фиксируется в отчёте:
-1. **Node WebGPU** — если рантайм Node 26 предоставляет WebGPU, transformers.js
-   работает с `device: "webgpu"` **без новых npm-зависимостей** (проверить первым);
-2. **llama.cpp (prebuilt CUDA, Windows)** + GGUF-модель q4 — проверенный путь,
-   внешний бинарь, запуск CLI/локальным сервером;
-3. onnxruntime CUDA EP — вне npm-пакета `onnxruntime-node`; потребует отдельного
-   сборки/обвязки, рассматривается последним.
+**Dependency decision (part of the owner decision «спайк на CUDA» [a CUDA
+spike]).** The GPU runtime is the only new dependency of this task; the
+concrete variant is chosen and pinned in the report:
+1. **Node WebGPU** — if the Node 26 runtime provides WebGPU, transformers.js
+   works with `device: "webgpu"` **without new npm dependencies** (check first);
+2. **llama.cpp (prebuilt CUDA, Windows)** + a GGUF q4 model — a proven path,
+   an external binary, run via CLI/a local server;
+3. onnxruntime CUDA EP — outside the `onnxruntime-node` npm package; it would
+   require a separate build/wiring, considered last.
 
-**Кандидаты-модели (лицензии проверить при выборе):** Qwen2.5-7B-Instruct /
-Qwen3-8B (Apache-2.0), Llama-3.1-8B (Llama Community License — только если
-владелец одобрит отдельно). q4 ≈ 4–5 ГБ — влезает в 8 ГБ VRAM; артефакт идёт в
-`models/` (gitignore) с пинами ревизии и sha256, как в B1/MODEL-001.
+**Candidate models (check the licenses when choosing):** Qwen2.5-7B-Instruct /
+Qwen3-8B (Apache-2.0), Llama-3.1-8B (Llama Community License — only if the
+owner approves separately). q4 ≈ 4–5 GB — fits into 8 GB VRAM; the artifact
+goes to `models/` (gitignore) with revision pins and sha256, as in B1/MODEL-001.
 
-**План.**
-1. Пробник WebGPU в Node (нулевые зависимости) → иначе llama.cpp CUDA.
-2. Скачать кандидата 7–8B q4; пины и хэши — в отчёт (fetch-скрипт расширить
-   в reviewed-виде; см. оговорку MODEL-001 о статическом сканере).
-3. Расширить `scripts/eval-local-llm.ts` на device/транспорт (по образцу
-   `--model=`), прогнать ту же матрицу; сравнить с CPU-числами MODEL-001.
-4. Отчёт: скорость, VRAM/RAM, качество (валидность + Spearman), вывод
-   «локальный скоринг: да/нет» и что это значит для судьбы батча и скоринга.
+**Plan.**
+1. A WebGPU probe in Node (zero dependencies) → otherwise llama.cpp CUDA.
+2. Download a 7–8B q4 candidate; pins and hashes — into the report (the fetch
+   script extended in a reviewed form; see the MODEL-001 caveat about the
+   static scanner).
+3. Extend `scripts/eval-local-llm.ts` with device/transport (modeled on
+   `--model=`), run the same matrix; compare with the CPU numbers of MODEL-001.
+4. Report: speed, VRAM/RAM, quality (validity + Spearman), the conclusion
+   "local scoring: yes/no" and what that means for the fate of the batch and
+   scoring.
 
-**Границы.** Ничего в `src/` не меняется до отчёта — спайк остаётся замером.
-Скоринг и письма закрыты (AI-007). Провайдер не вызывается.
+**Boundaries.** Nothing in `src/` changes until the report — the spike remains
+a measurement. Scoring and letters are closed (AI-007). No provider is called.
 
-**Проверки при исполнении:** живой замер модели; `check`/`guardrails` для любых
-изменённых скриптов; честные числа, включая отрицательный результат, если он
-получится.
+**Checks at execution:** a live measurement of the model; `check`/`guardrails`
+for any changed scripts; honest numbers, including a negative result if one
+comes out.

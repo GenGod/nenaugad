@@ -1,86 +1,91 @@
-# B4-001 — NLI-пре-чек противоречий (карточка B4 брифа): оценка модели
+# B4-001 — NLI contradiction pre-check (brief card B4): model evaluation
 
-**Статус: исполнена как оценка (evaluated), 2026-10-04 — отрицательный результат:
-интеграция НЕ выполнена, и это измеренное решение, а не осторожность.** Основание:
-карточка B4 брифа §6 («NLI pre-check противоречий (опционально, решение владельца)»;
-research ч.2 A1). Карточка сама предусматривает оба исхода: новую зависимость модели
-(решение владельца) и отложение в C2.
+**Status: done as an evaluation (evaluated), 2026-10-04 — a negative result:
+the integration is NOT done, and this is a measured decision, not caution.** Basis:
+brief card B4 §6 («NLI pre-check противоречий (опционально, решение владельца)»
+["NLI pre-check of contradictions (optional, an owner decision)"]; research
+part 2 A1). The card itself provides for both outcomes: a new model dependency
+(an owner decision) and deferral to C2.
 
-## Что требовала карточка
+## What the card required
 
-- пары «требование ↔ фрагмент профиля» → DeBERTa-mnli **локально**;
-- contradiction → **барьер в объяснении** (не в допуске); neutral — НЕ противоречие;
-- (V4) «требуется гражданство США» + профиль без него → contradiction в объяснении;
-  «нужен Kubernetes» + «5 лет Docker» → neutral, не contradiction;
-- (V2) результат NLI **никогда** не меняет статус допуска.
+- the pairs «требование ↔ фрагмент профиля» ["requirement ↔ profile fragment"] → DeBERTa-mnli **locally**;
+- contradiction → **a barrier in the explanation** (not in eligibility); neutral is NOT a contradiction;
+- (V4) «требуется гражданство США» ["US citizenship required"] + a profile without it → contradiction in the explanation;
+  «нужен Kubernetes» ["Kubernetes needed"] + "5 years of Docker" → neutral, not contradiction;
+- (V2) the NLI result **never** changes the eligibility status.
 
-## Что измерено (реальная модель, локально, 2026-10-04)
+## What was measured (a real model, locally, 2026-10-04)
 
-Кандидат: **MoritzLaurer/mDeBERTa-v3-base-mnli-xnli** — MIT, мультиязычная (включая
-ru), ONNX. Артефакт скачан с проверкой sha256 (тот же дисциплинарный образец, что B1):
+Candidate: **MoritzLaurer/mDeBERTa-v3-base-mnli-xnli** — MIT, multilingual (including
+ru), ONNX. The artifact was downloaded with a sha256 check (the same disciplinary
+pattern as B1):
 - revision `8adb042d524ecd5c26d3e3ba0e3fbcf7e2d0864c`;
-- `onnx/model_quantized.onnx` — 338 679 133 байта, sha256
+- `onnx/model_quantized.onnx` — 338 679 133 bytes, sha256
   `27c39e884c14b03cf46cfc5485971b6db70ff330220d93dfe729c63fde43af0e` — **VERIFIED**;
-- `tokenizer.json` — 16 331 396 байт, sha256
+- `tokenizer.json` — 16 331 396 bytes, sha256
   `3aca3ce69a0a35aeb144a52c4f1d41c4246b8785f8f398315cc8fb6b24057810` — **VERIFIED**;
-- машина: i5-13450HX, CPU; загрузка ≈ 1.6 с, RSS ≈ 674 МБ, одна пара 11–21 мс (q8).
+- machine: i5-13450HX, CPU; load ≈ 1.6 s, RSS ≈ 674 MB, one pair 11–21 ms (q8).
 
-**Санитарная проверка — модель работает, вызов корректен** (стандартный формат
+**Sanity check — the model works, the call is correct** (the standard format
 `tokenizer(premise, text_pair=hypothesis)`, id2label {entailment, neutral,
-contradiction}): «кошка на коврике / кошка не на коврике» → contradiction 0.991;
-«играет на гитаре → играет на инструменте» → entailment 0.871; «Эйфелева башня в
-Париже / в Берлине» → contradiction 0.826.
+contradiction}): «кошка на коврике / кошка не на коврике» ["the cat is on the mat /
+the cat is not on the mat"] → contradiction 0.991; «играет на гитаре → играет на
+инструменте» ["plays guitar → plays an instrument"] → entailment 0.871; «Эйфелева
+башня в Париже / в Берлине» ["the Eiffel Tower in Paris / in Berlin"] → contradiction 0.826.
 
-**Рабочие пары** (premise = фрагмент профиля, hypothesis = требование; q8):
+**Working pairs** (premise = the profile fragment, hypothesis = the requirement; q8):
 
-| пара | entail | neutral | contra |
+| pair | entail | neutral | contra |
 |---|---|---|---|
-| V4-a «Требуется гражданство США» ↔ профиль (DE) | 0.104 | **0.817** | 0.079 |
-| V4-a то же по-английски | 0.049 | **0.845** | 0.106 |
-| V4-b «Kubernetes required» ↔ «5 лет Docker» | 0.041 | **0.845** | 0.115 |
-| жёсткий конфликт: «офис 5 дней» ↔ «без обязательного присутствия» | 0.008 | **0.961** | 0.032 |
-| «10 лет Java» ↔ «Python, Docker» | 0.054 | 0.687 | 0.258 |
-| «контрактор» ↔ «полная занятость» | 0.022 | **0.936** | 0.042 |
-| RU-язык: «требуется свободный русский» ↔ English/German | 0.016 | **0.954** | 0.029 |
-| B2 немецкий ↔ B1 немецкий | 0.031 | **0.925** | 0.043 |
-| «fluent in English» ↔ Languages: English | 0.051 | **0.921** | 0.028 |
+| V4-a «Требуется гражданство США» ["US citizenship required"] ↔ the profile (DE) | 0.104 | **0.817** | 0.079 |
+| V4-a the same in English | 0.049 | **0.845** | 0.106 |
+| V4-b "Kubernetes required" ↔ "5 years of Docker" | 0.041 | **0.845** | 0.115 |
+| a hard conflict: «офис 5 дней» ["office 5 days"] ↔ «без обязательного присутствия» ["no mandatory presence"] | 0.008 | **0.961** | 0.032 |
+| "10 years of Java" ↔ "Python, Docker" | 0.054 | 0.687 | 0.258 |
+| «контрактор» ["contractor"] ↔ «полная занятость» ["full-time employment"] | 0.022 | **0.936** | 0.042 |
+| RU language: «требуется свободный русский» ["fluent Russian required"] ↔ English/German | 0.016 | **0.954** | 0.029 |
+| B2 German ↔ B1 German | 0.031 | **0.925** | 0.043 |
+| "fluent in English" ↔ Languages: English | 0.051 | **0.921** | 0.028 |
 
-Обратный порядок (premise = требование) — лучший для конфликтов: жёсткий конфликт по
-присутствию 0.392, V4-a 0.128, «job requires US citizenship» ↔ «candidate can work in
-the US without a visa» 0.254 — но последняя фраза не выводима из наших фактов профиля
-(в профиле нет ни гражданства, ни визы).
+The reverse order (premise = the requirement) — the better one for conflicts: the hard
+presence conflict 0.392, V4-a 0.128, "job requires US citizenship" ↔ "candidate can work in
+the US without a visa" 0.254 — but the last phrase is not derivable from our profile
+facts (the profile has neither citizenship nor a visa).
 
-## Вывод: почему интеграция не выполнена
+## Conclusion: why the integration was not done
 
-1. **V4-a карточки моделью не выполняется**: «требуется гражданство США» + профиль без
-   него даёт neutral 0.817/0.845 при contradiction 0.079/0.106. Прескрипция «отсутствие
-   → contradiction» не подтверждается.
-2. **Порог, который поймал бы V4-a (~0.1), начал бы ловить ОТСУТСТВИЕ**: «Java» vs
-   «Python» = 0.258, «Kubernetes» vs «Docker» = 0.115 — ровно тот отказ, который
-   research документирует («тихие отрицания ненадёжны»), а карточка запрещает.
-3. **Даже настоящие конфликты слабы**: жёсткое противоречие «офис 5 дней» vs «без
-   обязательного присутствия» — 0.032 в рабочем порядке (0.392 в обратном), ниже
-   любого осмысленного барьера. Слой либо не срабатывал бы никогда, либо врал бы.
-4. По собственным правилам проекта **отсутствие факта в профиле — не доказательство
-   противоположного** («профиль — свидетельство подтверждённого, а не доказательство
-   отсутствия», `requirements.ts`): строить барьер на отсутствии значило бы выдумывать
-   негативные факты о кандидате.
+1. **V4-a of the card is not satisfied by the model**: "US citizenship required" + a
+   profile without it gives neutral 0.817/0.845 with contradiction at 0.079/0.106.
+   The prescription "absence → contradiction" is not confirmed.
+2. **A threshold that would catch V4-a (~0.1) would start catching ABSENCE**: "Java" vs
+   "Python" = 0.258, "Kubernetes" vs "Docker" = 0.115 — exactly the failure the
+   research documents («тихие отрицания ненадёжны» ["silent negations are
+   unreliable"]) and the card forbids.
+3. **Even real conflicts are weak**: the hard contradiction "office 5 days" vs "no
+   mandatory presence" — 0.032 in the working order (0.392 in the reverse), below
+   any meaningful barrier. The layer would either never fire or would lie.
+4. By the project's own rules **the absence of a fact in the profile is not proof of
+   the opposite** («профиль — свидетельство подтверждённого, а не доказательство
+   отсутствия» ["the profile is testimony to what is confirmed, not proof of
+   absence"], `requirements.ts`): building a barrier on absence would mean inventing
+   negative facts about the candidate.
 
-**Решение: реализацию не подключать; пере-попытку отнести к C2** (LLM-скоринг
-покрывает ту же задачу — карточка это прямо допускает). Пин артефакта сохранён ниже,
-сам артефакт лежит в `models/` (gitignored) — повторный замер не потребует повторного
-поиска модели. Иной путь (домен-специфичная NLI, другой формат пар, zero-shot-шаблон
-из карточки модели) — новая задача с новым замером.
+**Decision: do not wire in the implementation; move the re-attempt to C2** (LLM
+scoring covers the same task — the card explicitly allows this). The artifact pin is
+preserved below; the artifact itself lives in `models/` (gitignored) — a re-measurement
+will not require finding the model again. A different path (domain-specific NLI, another
+pair format, the zero-shot template from the model card) — a new task with a new measurement.
 
-## Проверки
+## Checks
 
-Продуктовый код **не менялся**: измерение выполнено временными скриптами в
+Product code was **not changed**: the measurement was done by temporary scripts in
 `reports/local/` (gitignored: `fetch-nli.mjs`, `measure-nli.mjs`, `sanity-nli.mjs`).
-На этом же дереве повторно прогнан `npm run check` — зелёный (см. отчёт задачи);
-`test:db`/`build`/`e2e` не затронуты отсутствием изменений в `src`/`tests` — это
-зафиксировано честно, а не выдано за прогнанное.
+On the same tree `npm run check` was re-run — green (see the task report);
+`test:db`/`build`/`e2e` were not affected by the absence of changes in `src`/`tests` —
+this is recorded honestly, not presented as run.
 
-## Откат
+## Rollback
 
-В продукте откатывать нечего (изменений нет). Артефакт модели: удалить
-`models/MoritzLaurer/` при нежелании хранить 339 МБ; пин останется в этой задаче.
+There is nothing to roll back in the product (no changes). The model artifact: delete
+`models/MoritzLaurer/` if storing 339 MB is unwanted; the pin will remain in this task.

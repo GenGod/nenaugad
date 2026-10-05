@@ -1,35 +1,39 @@
-# S1-003 — второй источник Jobicy (права → адаптер → активация)
+# S1-003 — the second source Jobicy (rights → adapter → activation)
 
-**Результат:** источник Jobicy подключён по той же колее, что Himalayas:
-owner-approve матрицы прав → адаптер (окно 200 записей) → карточки с
-атрибуцией в каталоге и подборе → активация отдельным решением владельца.
+**Result:** the Jobicy source is connected on the same track as Himalayas:
+an owner approval of the rights matrix → an adapter (a 200-record window) →
+cards with attribution in the catalog and matching → activation by a separate
+owner decision.
 
-**Не входит:** paid Bearer-опция прямых ссылок ($0.01/запись — без бюджета и
-отдельного одобрения), affiliate `?u=`, HEAD-проверки закрытия (следующая
-задача lifecycle), taxonomy-фильтры, MCP.
+**Not included:** the paid Bearer option of direct links ($0.01/record —
+without a budget and a separate approval), the affiliate `?u=`, closure HEAD
+checks (the next lifecycle task), taxonomy filters, MCP.
 
-**Контекст:** ТЗ 5.1/5.2 (Jobicy), 6 (права), 11.1 (география: регион ≠
-список стран); registry jobicy (S02); живой smoke 2026-09-25: id — число,
-pubDate ISO+00:00, jobGeo = USA/UK/Anywhere/Europe…, jobDescription HTML,
-salary nullable, окно 200 ≠ полный снимок. Документация: «normal integrations
-do not require a separate agreement»; атрибуция + канонический URL
-обязательны; polling ≤1/час.
+**Context:** spec 5.1/5.2 (Jobicy), 6 (rights), 11.1 (geography: a region ≠ a
+list of countries); the registry jobicy (S02); a live smoke 2026-09-25: id — a
+number, pubDate ISO+00:00, jobGeo = USA/UK/Anywhere/Europe…, jobDescription
+HTML, salary nullable, a 200 window ≠ a full snapshot. Documentation: «normal
+integrations do not require a separate agreement»; attribution + a canonical
+URL are mandatory; polling ≤1/hour.
 
-## Приёмка
-1. Политика jobicy утверждена владельцем (матрица, terms_hash, valid_until);
-   до enabled=false ничего не работает, откат — без правки UI.
-2. Маппер под живой контракт: jobGeo «Anywhere»→worldwide; конкретная страна →
-   restricted ISO; регионы (Europe/APAC) → region_text без выдуманного списка
-   стран; pubDate ISO-валидация; excerpt=jobExcerpt; зарплата без выдуманной
-   валюты; HTML-описание только в текст.
-3. Импорт: окно 200 всегда partial (absence ≠ closure, miss-счётчики не
-   растут); идемпотентность и версии — как у Himalayas; poll-гейт 6ч.
-4. Карточки Jobicy в каталоге/подборе/сохранённом с атрибуцией и backlink на
-   канонический URL Jobicy; гейты проекции и правила подбора работают без
-   правок.
-5. Отрицательные тесты: disabled-политика → 0 карточек; invalid-записи
-   отвергаются; transport только в allowlist (fetcher расширить на jobicy.com).
-6. Активация — отдельное решение владельца; e2e fixture-бэкенда не меняется.
+## Acceptance
+1. The jobicy policy is approved by the owner (the matrix, terms_hash,
+   valid_until); until then enabled=false and nothing works, rollback —
+   without UI edits.
+2. The mapper per the live contract: jobGeo "Anywhere"→worldwide; a concrete
+   country → restricted ISO; regions (Europe/APAC) → region_text without an
+   invented list of countries; pubDate ISO validation; excerpt=jobExcerpt; a
+   salary without an invented currency; the HTML description only as text.
+3. Import: the 200 window is always partial (absence ≠ closure, miss counters
+   do not grow); idempotency and versions — as for Himalayas; a 6h poll gate.
+4. Jobicy cards in the catalog/matching/saved with attribution and a backlink
+   to the canonical Jobicy URL; the projection gates and the matching rules
+   work without edits.
+5. Negative tests: a disabled policy → 0 cards; invalid records are rejected;
+   transport only in the allowlist (extend the fetcher with jobicy.com).
+6. Activation is a separate owner decision; the e2e fixture backend does not
+   change.
 
-**Риск:** высокий (права источника). **Откат:** enabled=false; таблицы общие.
-**Данные:** публичные объявления Jobicy; персональные данные не участвуют.
+**Risk:** high (source rights). **Rollback:** enabled=false; the tables are
+shared.
+**Data:** public Jobicy listings; personal data are not involved.

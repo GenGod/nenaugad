@@ -1,47 +1,48 @@
-# A1-001 — golden set и eval-харнесс подбора (Recall@k / NDCG@k / MRR)
+# A1-001 — golden set and eval harness for matching (Recall@k / NDCG@k / MRR)
 
-**Результат:** качество подбора стало измеримым. Появился синтетический
-golden-набор (29 вакансий × 6 профилей-сегментов = 174 рукописные оценки
-релевантности) и детерминированный харнесс, который считает Recall@5/@10,
-NDCG@5/@10 и MRR поверх реальных гейтов (`src/domain/matching.ts`) и
-baseline-ранкера v0. Пороги зафиксированы как ратчет-тест: деградация падает
-тестом. Это фундамент для всех остальных пунктов реестра — без него изменения
-ранжирования нечем измерять.
+**Result:** matching quality became measurable. There is now a synthetic golden
+set (29 jobs × 6 segment profiles = 174 handwritten relevance judgements) and a
+deterministic harness that computes Recall@5/@10, NDCG@5/@10 and MRR on top of
+the real gates (`src/domain/matching.ts`) and the v0 baseline ranker. The
+thresholds are pinned as a ratchet test: a degradation fails the test. This is
+the foundation for all the other items of the registry — without it there is
+nothing to measure ranking changes with.
 
-**Не входит:** эмбеддинги/BM25/реранк (B1–B3), LLM-скоринг и HyDE (C1–C3),
-изменение правил допуска, UI, реальные данные пользователей.
+**Out of scope:** embeddings/BM25/rerank (B1–B3), LLM scoring and HyDE (C1–C3),
+changes to the eligibility gate rules, UI, real user data.
 
-**Контекст:** [бриф](../docs/design/2026-09-27-matching-implementation-brief.md)
-(пункт A1, протокол V0–V6);
-[исследование](../docs/research/2026-09-26-job-matching-research.md) (ч.1
-«Датасеты, бенчмарки, метрики», ч.2 D3/D4).
+**Context:** [the brief](../docs/design/2026-09-27-matching-implementation-brief.md)
+(item A1, the V0–V6 protocol);
+[the research](../docs/research/2026-09-26-job-matching-research.md) (part 1
+«Датасеты, бенчмарки, метрики» ["Datasets, benchmarks, metrics"], part 2 D3/D4).
 
-## Что добавлено
+## What was added
 
 - `src/domain/eval-metrics.ts` — `dcgAtK` / `ndcgAtK` / `recallAtK` /
-  `reciprocalRank` / `meanOfApplicable`. Формулы сверены по первоисточникам
-  (V1, 2026-09-27): Wikipedia DCG (экспоненциальный gain, позиции 1-based,
-  дисконт log2(i+1)), Wikipedia MRR, Stanford IR book (recall как множественная
-  мера по top-k). «Неприменимо» = `null` и исключается из среднего, а не
-  превращается в 0.
-- `src/domain/match-ranker.ts` — baseline v0: статус допуска (30) + число
-  совпавших словарных навыков × 10 + целевая роль в заголовке (15), тай-брейк
-  по id. Версия зафиксирована (`RANKER_VERSION`). Заменяется пунктами
-  A2/A5/A10/B3 за тем же интерфейсом.
-- `src/domain/matching-eval.ts` — раннер `runMatchingEval(set, ranker)`.
-  Гейты и ранжирование измеряются раздельно: NDCG не наказывается за
-  спрятанное (это дело guard'а), а guard «relevant but hidden» = 0 ловит
-  реальную ошибку допуска. Типы golden-набора и отчёта здесь же.
-- `src/data/matching-golden.ts` — набор: 29 вакансий (синтетика,
-  `example.invalid`), 6 профилей-сегментов (backend EU, frontend LATAM, data
-  APAC, devops EU, QA US, ML CIS), легенда оценок 0–3.
+  `reciprocalRank` / `meanOfApplicable`. The formulas were verified against
+  primary sources (V1, 2026-09-27): Wikipedia DCG (exponential gain, 1-based
+  positions, the log2(i+1) discount), Wikipedia MRR, the Stanford IR book (recall
+  as a set measure over top-k). "Not applicable" = `null` and is excluded from
+  the mean, not turned into 0.
+- `src/domain/match-ranker.ts` — the v0 baseline: eligibility status (30) + the
+  number of matched dictionary skills × 10 + the target role in the title (15),
+  a tie-break by id. The version is pinned (`RANKER_VERSION`). Replaced by items
+  A2/A5/A10/B3 behind the same interface.
+- `src/domain/matching-eval.ts` — the runner `runMatchingEval(set, ranker)`.
+  Gating and ranking are measured separately: NDCG is not punished for what is
+  hidden (that is the guard's business), and the guard "relevant but hidden" = 0
+  catches a real eligibility mistake. The golden set and report types live here
+  too.
+- `src/data/matching-golden.ts` — the set: 29 jobs (synthetic,
+  `example.invalid`), 6 segment profiles (backend EU, frontend LATAM, data APAC,
+  devops EU, QA US, ML CIS), a 0–3 judgement legend.
 - `scripts/eval-matching.ts` + `npm run eval:matching` (`--json`, `--verbose`).
-- `tests/unit/matching-eval.test.ts` — 11 тестов: формулы с ручными значениями,
-  валидность контрактов фикстур (`isJobSnapshot`, `parseManualProfileInput`),
-  полнота разметки, guard'ы, детерминизм, контрольный «плохой» ранкер,
-  ратчет-пороги.
+- `tests/unit/matching-eval.test.ts` — 11 tests: formulas with hand-computed
+  values, the validity of fixture contracts (`isJobSnapshot`,
+  `parseManualProfileInput`), labelling completeness, guards, determinism, a
+  control "bad" ranker, ratchet thresholds.
 
-## Измеренный baseline (2026-09-27, 6 профилей)
+## Measured baseline (2026-09-27, 6 profiles)
 
 | profile | shown | relevant | R@5 | R@10 | NDCG@5 | NDCG@10 | MRR |
 |---|---|---|---|---|---|---|---|
@@ -51,72 +52,78 @@ baseline-ранкера v0. Пороги зафиксированы как ра�
 | p-devops-eu | 23 | 4 | 1.000 | 1.000 | 0.995 | 0.995 | 1.000 |
 | p-qa-us | 23 | 1 | 1.000 | 1.000 | 1.000 | 0.939 | 1.000 |
 | p-ru-ml | 20 | 6 | 0.500 | 1.000 | 0.818 | 0.906 | 1.000 |
-| **агрегат** | | | **0.821** | **1.000** | **0.909** | **0.933** | **1.000** |
+| **aggregate** | | | **0.821** | **1.000** | **0.909** | **0.933** | **1.000** |
 
-Ратчет-пороги теста = эти значения (округление вниз до 6 знаков). Контрольный
-тест: заведомо плохой ранкер даёт NDCG@10 0.269 против 0.933 — метрики
-чувствительны к деградации, а не «зелёные по построению».
+The test's ratchet thresholds = these values (rounded down to 6 decimal places).
+The control test: a deliberately bad ranker gives NDCG@10 0.269 against 0.933 —
+the metrics are sensitive to degradation, not "green by construction".
 
-## Протокол V0–V6
+## Protocol V0–V6
 
-- **V0.** Отдельная задача, план до кода, минимальный объём; правила SP 1.0.
-- **V1.** Формулы сверены по первоисточникам до написания кода (ссылки в шапке
-  `eval-metrics.ts`). Пункт A1 исследования перечитан: «Recall@k и NDCG@k как
-  продуктовые метрики» — подтверждено. Стек-ограничения ADR-001 не затронуты
-  (чистый TS, без БД, сети и новых зависимостей).
-- **V2.** Принципы: unknown/fail/pass-семантика не менялась (тесты matching.ts
-  без правок); фикстуры синтетические и помечены; персональных данных нет;
-  AI не вызывается. Дополнительно guard «relevant but hidden = 0» фиксирует
-  продуктовый инвариант «заметно подходящее не скрывается молча».
-- **V3.** `npm run check` → exit 0 (128/128 unit, biome 145 файлов, tsc);
+- **V0.** A separate task, the plan before the code, a minimal scope; the SP 1.0
+  rules.
+- **V1.** The formulas were verified against primary sources before writing code
+  (references in the header of `eval-metrics.ts`). Item A1 of the research
+  re-read: «Recall@k и NDCG@k как продуктовые метрики» ["Recall@k and NDCG@k as
+  product metrics"] — confirmed. The stack constraints of ADR-001 untouched
+  (pure TS, no DB, no network, no new dependencies).
+- **V2.** Principles: the unknown/fail/pass semantics was not changed (the
+  matching.ts tests without edits); the fixtures are synthetic and labelled; no
+  personal data; AI is not called. Additionally the guard "relevant but hidden =
+  0" pins the product invariant «заметно подходящее не скрывается молча»
+  ["noticeably suitable is not silently hidden"].
+- **V3.** `npm run check` → exit 0 (128/128 unit, biome 145 files, tsc);
   `npm run build` → exit 0; `npm run eval:matching` → exit 0. `npm run test:db`
-  и `npm run test:e2e` — `not_run`: схема, запросы, UI и API не менялись.
-- **V4.** Golden-случаи: контракты фикстур, полнота разметки, три состояния
-  гейтов (j25 unknown-контракт → needs_review; j26 ambiguous-часовой пояс →
-  needs_review; j27 обязательный офис → needs_review; j18 нулевое пересечение
-  навыков → needs_review, не скрытие), плюс ручной аудит `--verbose`
-  «глазами кандидата» по всем шести профилям.
-- **V5.** Существующие тесты не ослаблены и не менялись (diff: только
-  `package.json` +1 строка и новые файлы); `guardrails` зелёный; чужие файлы не
-  тронуты. Линт-проход поймал дубли ключей от моей же вставки оценок — удалены.
-- **V6.** Этот файл + запись в `IMPLEMENTATION_STATUS.md`.
+  and `npm run test:e2e` — `not_run`: the schema, the queries, the UI and the
+  API were not changed.
+- **V4.** Golden cases: fixture contracts, labelling completeness, three gate
+  states (j25 unknown contract → needs_review; j26 ambiguous time zone →
+  needs_review; j27 mandatory office → needs_review; j18 zero skill intersection
+  → needs_review, not hiding), plus a manual `--verbose` audit "through the
+  candidate's eyes" over all six profiles.
+- **V5.** Existing tests were not weakened and were not changed (diff: only
+  `package.json` +1 line and new files); `guardrails` green; foreign files not
+  touched. The lint pass caught duplicate keys from my own insertion of
+  judgements — removed.
+- **V6.** This file + a record in `IMPLEMENTATION_STATUS.md`.
 
-## Циклы ремонта (2/2, записаны задним числом)
+## Repair cycles (2/2, recorded retroactively)
 
-1. Первый `npm run check` упал: 12 lint-ошибок (дубли ключей j26/j27 от
-   скрипта-вставки) + падение собственного теста «контрольный плохой ранкер».
-   Гипотеза: падение контроля — не дефект метрик, а реальный баг раннера
-   (`rankJobs` был зашит в `evaluateProfile`, инжектированный ранкер не
-   использовался). Подтвердилось: после инжекции контроль даёт 0.269.
-2. Второй проход: строгие TS-ошибки новых файлов (indexed access, экспорт
-   типов). Гипотеза: это проверки типов, а не логика; локальные
-   `?? 0`/type-guard правки закрывают без изменения поведения. Подтвердилось:
-   значения метрик до и после совпали до последнего знака.
+1. The first `npm run check` failed: 12 lint errors (duplicate j26/j27 keys from
+   the insertion script) + a failure of the suite's own "control bad ranker"
+   test. Hypothesis: the control's failure is not a defect of the metrics but a
+   real bug in the runner (`rankJobs` was hard-wired into `evaluateProfile`, the
+   injected ranker was not used). Confirmed: after the injection the control
+   gives 0.269.
+2. The second pass: strict TS errors in the new files (indexed access, type
+   exports). Hypothesis: these are type checks, not logic; local `?? 0`/
+   type-guard fixes close them without changing behavior. Confirmed: the metric
+   values before and after matched to the last digit.
 
-## Наблюдения и follow-up (не в объёме A1)
+## Observations and follow-up (outside A1's scope)
 
-1. **Экстрактор навыков ловит обычные английские слова** (проверено,
-   воспроизводимо): `extractSkills("We go fast and ship daily")` → `["Go"]`,
+1. **The skills extractor catches ordinary English words** (verified,
+   reproducible): `extractSkills("We go fast and ship daily")` → `["Go"]`,
    `"Read the docs carefully"` → `["Technical Writing"]`, `"Strong BI mindset"`
-   → `["Analytics"]`. Влияет на ранжирование и на SKILL-01. Кандидат в A3
-   (дизамбигуация alias'ов) — решение владельца о приоритете.
-2. **Keyword-ловушки** (j28 «Technical Recruiter», j29 «Data Science
-   Instructor») намеренно набиты Python/SQL/ML и попадают в топ выдачи
-   v0-ранкера, будучи оценёнными в 0. Это закодированная слабость из research
-   ч.1 §10; чинится A2 (декомпозиция требований) и A3.
-3. **Роль по подстроке**: буст за «frontend developer» не срабатывает на
-   «Frontend Engineer» и ошибочно срабатывает на «Angular Frontend Developer» —
-   видно по NDCG@5 профиля p-frontend-latam (0.855).
-4. **Русскоязычные навыки**: «машинное обучение» в j21 не извлекается (в
-   словаре только англоязычные алиасы) — A3.
-5. **`showNeedsReview` хранится, но не применяется ни на одном пути чтения**
-   (страница `/matched` рендерит обе вкладки без проверки флага). Вопрос
-   поведения продукта — решение владельца, не самовольная правка.
-6. Пороги R@10 и MRR насыщены (1.000 у всех профилей) из-за малых пулов;
-   чувствительные сегодня — NDCG@5/@10 и R@5. При росте набора (A2+) пороги
-   поднимаются, опускать нельзя.
+   → `["Analytics"]`. It affects ranking and SKILL-01. A candidate for A3
+   (alias disambiguation) — an owner decision on priority.
+2. **Keyword traps** (j28 "Technical Recruiter", j29 "Data Science Instructor")
+   are deliberately stuffed with Python/SQL/ML and reach the top of the v0
+   ranker's feed while judged 0. This is a coded weakness from research part 1
+   §10; fixed by A2 (requirement decomposition) and A3.
+3. **Role by substring**: the boost for "frontend developer" does not fire on
+   "Frontend Engineer" and wrongly fires on "Angular Frontend Developer" —
+   visible in the NDCG@5 of the p-frontend-latam profile (0.855).
+4. **Russian-language skills**: «машинное обучение» ["machine learning"] in j21
+   is not extracted (the dictionary has English-only aliases) — A3.
+5. **`showNeedsReview` is stored but not applied on any read path** (the
+   `/matched` page renders both tabs without checking the flag). A product
+   behavior question — an owner decision, not an unauthorized edit.
+6. The R@10 and MRR thresholds are saturated (1.000 for all profiles) because
+   the pools are small; the sensitive ones today are NDCG@5/@10 and R@5. As the
+   set grows (A2+) the thresholds rise; lowering them is not allowed.
 
-## Риск и откат
+## Risk and rollback
 
-Риск обычный: аддитивные файлы, поведение продукта не менялось. Откат —
-удалить новые файлы и строку скрипта из `package.json` (ветка не слита).
+Ordinary risk: additive files, product behavior unchanged. Rollback — delete the
+new files and the script line from `package.json` (the branch is not merged).

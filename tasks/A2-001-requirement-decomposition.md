@@ -1,46 +1,48 @@
-# A2-001 — декомпозиция требований вакансии (детерминированный слой)
+# A2-001 — job requirement decomposition (a deterministic layer)
 
-**Результат:** вакансия раскладывается в список отдельных требований с вердиктом
-на пару «профиль ↔ требование» (`covered` / `uncovered` / `unknown`) и честной
-формулировкой причины, вместо одного непрозрачного числа похожести. Слой
-детерминированный (без модели), живёт рядом с гейтами, но НЕ влияет на допуск —
-и это зафиксировано тестом. В ранжировании участвует ровно один новый сигнал:
-отсутствие улики под заявленный must-have.
+**Result:** a job is decomposed into a list of individual requirements with a
+verdict for each «profile ↔ requirement» pair (`covered` / `uncovered` /
+`unknown`) and an honest reason wording, instead of one opaque similarity
+number. The layer is deterministic (no model), lives next to the gates, but
+does NOT affect the eligibility gate — and this is pinned by a test. Exactly
+one new signal participates in ranking: the absence of evidence under a stated
+must-have.
 
-**Не входит:** LLM-извлечение must/nice по смыслу и NLI-проверка противоречий
-(это C1/C2, слой заменит эвристику маркеров); отображение требований в UI/API
-(следующая малая задача); подключение ранкера в продуктовый путь чтения
-`/matched` (это A10 вместе с shadow-режимом A9).
+**Not included:** LLM extraction of must/nice by meaning and NLI contradiction
+checking (that is C1/C2; the layer will replace the marker heuristic);
+displaying requirements in the UI/API (the next small task); wiring the ranker
+into the product read path of `/matched` (that is A10 together with the A9
+shadow mode).
 
-**Контекст:** [бриф](../docs/design/2026-09-27-matching-implementation-brief.md)
-(пункт A2); [исследование](../docs/research/2026-09-26-job-matching-research.md)
-ч.2 A1 (ядро витка 2: «декомпозиция требований + улика»).
+**Context:** [the brief](../docs/design/2026-09-27-matching-implementation-brief.md)
+(item A2); [the research](../docs/research/2026-09-26-job-matching-research.md)
+part 2 A1 (the core of round 2: «requirement decomposition + evidence»).
 
-## Что добавлено
+## What was added
 
-- `src/domain/requirements.ts` — `normalizeRequirements` (явные требования
-  снапшота имеют приоритет; иначе детерминированная деривация из текста),
-  `deriveRequirements` (навыки словаря по предложениям + маркеры силы),
-  `assessRequirements` (вердикты, missingSkills, coverage), версия слоя
-  `REQUIREMENT_LAYER_VERSION = "v1"`.
-- `src/domain/match-ranker.ts` — ранкер v1
-  (`v1-status-skills-role-uncovered-must`): + штраф −15 за каждый непокрытый
-  must-have. `rankJobsBaselineV0` оставлен как вызываемый baseline A1 для
-  относительного ратчета.
-- `src/domain/skills.ts` — добавлен `canonicalSkillName` (алиас → каноническое
-  имя) для нормализации значений требований; справочник не менялся.
-- `src/data/matching-golden.ts` — набор v2: +3 вакансии (j30 c must-have
-  Kubernetes, j31 c покрытым must-have Node.js — пара для измерения, j32 c
-  русским маркером «обязательно»), +18 оценок.
-- `tests/unit/requirements.test.ts` — 8 тестов: структурность маркеров (EN/RU),
-  приоритет явных требований, вердикты и формулировки, пустой профиль → только
-  unknown, и два инварианта «требования не касаются гейта».
-- `tests/unit/matching-eval.test.ts` — относительный ратчет: слой требований не
-  может ухудшить ни один профиль и агрегат.
+- `src/domain/requirements.ts` — `normalizeRequirements` (the snapshot's
+  explicit requirements take priority; otherwise a deterministic derivation
+  from the text), `deriveRequirements` (dictionary skills per sentence +
+  strength markers), `assessRequirements` (verdicts, missingSkills, coverage),
+  the layer version `REQUIREMENT_LAYER_VERSION = "v1"`.
+- `src/domain/match-ranker.ts` — ranker v1
+  (`v1-status-skills-role-uncovered-must`): + a −15 penalty per uncovered
+  must-have. `rankJobsBaselineV0` is kept as the callable A1 baseline for the
+  relative ratchet.
+- `src/domain/skills.ts` — `canonicalSkillName` added (alias → canonical name)
+  for normalizing requirement values; the dictionary unchanged.
+- `src/data/matching-golden.ts` — set v2: +3 jobs (j30 with a Kubernetes
+  must-have, j31 with a covered Node.js must-have — the pair for measurement,
+  j32 with the Russian marker «обязательно»), +18 grades.
+- `tests/unit/requirements.test.ts` — 8 tests: marker structure (EN/RU),
+  explicit-requirement priority, verdicts and wordings, an empty profile → only
+  unknown, and two «requirements do not touch the gate» invariants.
+- `tests/unit/matching-eval.test.ts` — the relative ratchet: the requirements
+  layer cannot worsen any profile or the aggregate.
 
-## Измерения (набор v2, 6 профилей)
+## Measurements (the v2 set, 6 profiles)
 
-| метрика | v0-эквивалент (без требований) | v1 (с требованиями) |
+| metric | v0 equivalent (without requirements) | v1 (with requirements) |
 |---|---|---|
 | R@5 | 0.772817 | 0.772817 |
 | R@10 | 0.955357 | 0.955357 |
@@ -48,62 +50,68 @@
 | NDCG@10 | 0.921708 | **0.924056** |
 | MRR | 1.000000 | 1.000000 |
 
-Прирост даёт пара j30/j31 у backend-профиля (NDCG@10 0.986 → 1.000: вакансия с
-непокрытым must-have уходит ниже вакансии с покрытым); ни один профиль не
-ухудшился — это проверяет тест, а не отчёт.
+The gain comes from the j30/j31 pair on the backend profile (NDCG@10 0.986 →
+1.000: the job with an uncovered must-have goes below the job with a covered
+one); no profile got worse — the test checks this, not the report.
 
-## Протокол V0–V6
+## Protocol V0–V6
 
-- **V0.** Отдельная задача, минимальный объём; схема БД не менялась (требования
-  уже есть в контракте снапшота), поэтому `test:db` не требовался.
-- **V1.** Пункт A2 исследования перечитан; подтверждено, что «декомпозиция +
-  улика» сильнее целотекстового сходства и что декомпозиция — единственная
-  форма, естественно выражающая pass/fail/unknown. NLI-часть отложена в C1/C2
-  (в research отмечено: «тихие» отрицания NLI трактует ненадёжно).
-- **V2.** Принципы: unknown ≠ fail (пустой профиль даёт только unknown, никогда
-  не «uncovered»); eligibility не меняется — доказано тестом на всех 32×6 парах
-  с инъекцией must-have; формулировки не обвиняют кандидата («в профиле не
-  указан», а не «у вас нет»); ничего не уходит внешним сторонам, AI не вызван.
-- **V3.** `npm run check` → exit 0 (137/137 unit, biome 147 файлов, tsc);
+- **V0.** A separate task, minimal scope; the DB schema was not changed
+  (requirements are already in the snapshot contract), so `test:db` was not
+  needed.
+- **V1.** Item A2 of the research re-read; confirmed that «decomposition +
+  evidence» beats whole-text similarity and that decomposition is the only
+  form that naturally expresses pass/fail/unknown. The NLI part is postponed to
+  C1/C2 (noted in the research: NLI treats «quiet» negations unreliably).
+- **V2.** Principles: unknown ≠ fail (an empty profile yields only unknown,
+  never «uncovered»); eligibility unchanged — proven by a test on all 32×6
+  pairs with a must-have injection; the wordings do not blame the candidate
+  («в профиле не указан», not «у вас нет»); nothing goes to external parties,
+  no AI called.
+- **V3.** `npm run check` → exit 0 (137/137 unit, biome 147 files, tsc);
   `npm run build` → exit 0; `npm run eval:matching` → exit 0 (guards 0/0).
-  `test:db` и `test:e2e` — `not_run`: схема, запросы, UI и API не менялись.
-- **V4.** Golden-случаи: деривация (EN-заголовок, RU-заголовок, фраза без
-  двоеточия, прозаическое «requirements»), приоритет явных требований, оценка
-  покрытия, пустой профиль, инвариант гейта на unspecified-географии.
-- **V5.** Существующие тесты не ослаблены; пороги пересчитаны **вниз** один раз
-  с зафиксированной причиной (набор вырос 29 → 32), а неотменяемая гарантия
-  теперь относительная (v1 ≥ v0 по каждому профилю). `guardrails` зелёный.
-- **V6.** Этот файл + запись в `IMPLEMENTATION_STATUS.md`.
+  `test:db` and `test:e2e` — `not_run`: the schema, queries, UI and API were
+  not changed.
+- **V4.** Golden cases: derivation (an EN heading, an RU heading, a phrase
+  without a colon, a prosaic «requirements»), explicit-requirement priority,
+  coverage assessment, an empty profile, the gate invariant on unspecified
+  geography.
+- **V5.** Existing tests not weakened; the thresholds recomputed **downward**
+  once with a recorded reason (the set grew 29 → 32), and the irrevocable
+  guarantee is now relative (v1 ≥ v0 per profile). `guardrails` green.
+- **V6.** This file + an entry in `IMPLEMENTATION_STATUS.md`.
 
-## Цикл ремонта (1/2, записан задним числом)
+## Repair cycle (1/2, recorded retroactively)
 
-Гипотеза: «первая версия маркеров (любое вхождение слова-маркера в предложении)
-и бонус за покрытый must-have искажают ранжирование; после структурных маркеров
-(зона заголовка до двоеточия либо однозначная фраза) и отказа от бонуса за
-покрытие слой перестанет ухудшать метрики». Подтвердилось измерением: первая
-версия давала агрегат NDCG@10 0.8925 против 0.9217 у v0 (keyword-ловушка
-«Technical Recruiter» получала 4 must-have из прозаического «job requirements» и
-поднималась в топ data-профиля); после правки — 0.9241 против 0.9217, то есть
-строго лучше. Числа первой версии сохранены здесь как доказательство дефекта.
+Hypothesis: «the first version of the markers (any occurrence of the marker
+word in a sentence) and the bonus for a covered must-have distort ranking;
+after structural markers (the heading zone up to the colon, or an unambiguous
+phrase) and dropping the coverage bonus, the layer will stop worsening the
+metrics». Confirmed by measurement: the first version gave an aggregate
+NDCG@10 of 0.8925 vs 0.9217 for v0 (the keyword trap «Technical Recruiter»
+received 4 must-haves from the prosaic «job requirements» and rose into the top
+of the data profile); after the fix — 0.9241 vs 0.9217, that is strictly
+better. The first version's numbers are kept here as proof of the defect.
 
-## Ограничения и follow-up
+## Limitations and follow-up
 
-1. Маркеры — эвристика: отрицания («не требуется Kubernetes») не разбираются,
-   синонимы «обязательно/надо» вне списка не ловятся. Заменяется C1 (LLM) и
-   уточняется A3.
-2. Требования деривируются на каждом вызове; кэш — задача A10 (вместе с
-   подключением ранкера в продуктовый путь).
-3. Покрытый must-have сознательно не даёт бонуса (дублировал бы пересечение
-   навыков и был измерен как усилитель keyword-стаффинга); если позже
-   понадобится положительный вклад — только через измерение на паре-близнеце.
-4. В наборе нет вакансии с *неуказанной* географией (unknown-путь проверяется
-   тестом, но не метрикой). Кандидат в следующий набор: такая вакансия создаст
-   честный hard-case для A10.
-5. UI не показывает требования — данные готовы (`missingSkills`, `rows`), нужна
-   отдельная малая задача с визуальными тестами.
+1. The markers are a heuristic: negations («не требуется Kubernetes») are not
+   parsed; synonyms of «обязательно/надо» outside the list are not caught.
+   Replaced by C1 (LLM) and refined by A3.
+2. Requirements are derived on every call; caching is task A10 (together with
+   wiring the ranker into the product path).
+3. A covered must-have deliberately gives no bonus (it would duplicate the
+   skill intersection and was measured as an amplifier of keyword stuffing);
+   if a positive contribution is needed later — only via measurement on a twin
+   pair.
+4. The set has no job with *unspecified* geography (the unknown path is checked
+   by a test, not by a metric). A candidate for the next set: such a job would
+   create an honest hard case for A10.
+5. The UI does not show requirements — the data is ready (`missingSkills`,
+   `rows`); a separate small task with visual tests is needed.
 
-## Риск и откат
+## Risk and rollback
 
-Риск обычный: продуктовое поведение не менялось (ранкер пока используется только
-харнессом), новых зависимостей нет. Откат — вернуть `RANKER_VERSION` и веса,
-удалить `requirements.ts` и тесты; ветка не слита.
+Ordinary risk: product behavior unchanged (the ranker is so far used only by
+the harness), no new dependencies. Rollback — restore `RANKER_VERSION` and the
+weights, delete `requirements.ts` and the tests; the branch is not merged.

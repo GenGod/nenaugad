@@ -1,101 +1,113 @@
-# B5-001 — cross-lingual near-dup кандидаты (эмбеддинговая часть дедупликации)
+# B5-001 — cross-lingual near-dup candidates (the embedding part of deduplication)
 
-**Статус: в работе (in_progress), 2026-10-04.** Основание: карточка B5 брифа
+**Status: in progress (in_progress), 2026-10-04.** Basis: card B5 of the brief
 [docs/design/2026-09-27-matching-implementation-brief.md](../docs/design/2026-09-27-matching-implementation-brief.md)
-§6 («Cross-lingual дедупликация (эмбеддинговая часть)»); research ч.2 D2;
-инвентарь — `docs/OPEN_GAPS.md` C11. Зависимости A4 (точные ключи) и B1
-(эмбеддинги) исполнены.
+§6 («Cross-lingual deduplication (the embedding part)»); research part 2 D2;
+inventory — `docs/OPEN_GAPS.md` C11. The dependencies A4 (exact keys) and B1
+(embeddings) are done.
 
-**Что спроектировано брифом:** попарный косинус эмбеддингов вакансий (O(n²) —
-допустимо до тысяч; **порог перехода к LSH зафиксировать сейчас, перейти позже**);
-кандидаты выше порога → **очередь на подтверждение** (LLM — C5; до него — ручной
-review-лист, **не автоматическое слияние**).
+**What the brief designed:** pairwise cosine of job embeddings (O(n²) —
+acceptable up to thousands; **fix the threshold for moving to LSH now, switch
+later**); candidates above the threshold → **a confirmation queue** (LLM — C5;
+until then — a manual review list, **not automatic merging**).
 
-**Верификация (V4) из брифа:** синтетическая пара «одна вакансия EN/RU» → кандидат
-в очереди; «две разные роли одной компании» → не кандидат (известный провал чистого
-порога — поэтому правило не чисто пороговое).
+**Verification (V4) from the brief:** a synthetic «one job EN/RU» pair → a
+candidate in the queue; «two different roles of one company» → not a candidate
+(a known failure of a pure threshold — hence the rule is not purely
+threshold-based).
 
-**Границы:** ничего не сливается и не скрывается автоматически; продуктовая выдача
-не меняется (A4-группировка в проекции остаётся единственной точкой мьюта). Очередь —
-CLI-отчёт для человека, как `npm run ai:holds`.
+**Boundaries:** nothing is merged or hidden automatically; the product feed is
+unchanged (A4 grouping in the projection remains the single point of mutation).
+The queue is a CLI report for a human, like `npm run ai:holds`.
 
-## План
+## Plan
 
-1. `src/domain/near-dup.ts` — чистое правило: предфильтр по косинусу текста
-   (O(n²), граница LSH); гейт по косинусу **заголовков** (тот же мультиязычный
-   артефакт — лексический гейт сломал бы EN/RU); пороги — замер на реальном
-   артефакте с записью чисел в модуль, не вкус. Пары с равным A4-ключом
-   пропускаются (это точные дубли — ими занят A4).
-2. `loadEmbeddedPostings` в `src/server/embeddings/embedding-service.ts` и
-   `scripts/dedup-candidates.ts` (`npm run dedup:candidates`): очередь в JSON
-   (пары, косинусы, компания/источник/языки), per-source `process_with_ml`
-   спрашивается в точке использования.
-3. Тесты: unit (правило, обе половины V4), integration (загрузка + permission,
-   fake embedder, как принято), отдельный замер реальной моделью.
-4. Прогон очереди на локальном каталоге (700 постов) — результат в эту задачу.
-5. Проверки: `check`, `test:db`, `build`, e2e (продуктовый UI не менялся, но
-   прогон обязателен); OPEN_GAPS C11, статус.
+1. `src/domain/near-dup.ts` — a pure rule: a prefilter by text cosine (O(n²),
+   the LSH boundary); a gate on the cosine of **titles** (the same multilingual
+   artifact — a lexical gate would break EN/RU); thresholds — measured on the
+   real artifact with the numbers recorded in the module, not taste. Pairs with
+   an equal A4 key are skipped (those are exact duplicates — A4's business).
+2. `loadEmbeddedPostings` in `src/server/embeddings/embedding-service.ts` and
+   `scripts/dedup-candidates.ts` (`npm run dedup:candidates`): a queue in JSON
+   (pairs, cosines, company/source/languages), per-source `process_with_ml` is
+   asked at the point of use.
+3. Tests: unit (the rule, both halves of V4), integration (loading +
+   permission, a fake embedder, as is customary), a separate measurement with
+   the real model.
+4. A queue run on the local catalog (700 posts) — the result goes into this
+   task.
+5. Checks: `check`, `test:db`, `build`, e2e (the product UI was not changed,
+   but the run is mandatory); OPEN_GAPS C11, status.
 
-**Откат:** удалить модуль/функцию/скрипт/тесты; продуктовый путь не затронут —
-откат ничего не ломает.
+**Rollback:** delete the module/function/script/tests; the product path is
+untouched — the rollback breaks nothing.
 
-## Результат (2026-10-04)
+## Result (2026-10-04)
 
-**Статус: исполнена (implemented), 2026-10-04.** Локальные проверки выполнены,
-приёмка — за владельцем.
+**Status: done (implemented), 2026-10-04.** Local checks were run; acceptance
+is with the owner.
 
-**Правило** (`src/domain/near-dup.ts`, версия `near-dup-l1`):
-- предфильтр `textNeighbours` — попарный косинус полных текстов, O(n²); LSH-граница
-  измерена и зафиксирована (~0.24M пар/с; 5 000 постов ≈ 53 с) — playbook §5b;
-- гейт по **косинусу заголовков** — эмбеддингами, не лексикой (лексический гейт
-  сломал бы EN/RU) — именно он отделяет перевод/перефраз от «другой роли в той же
-  компании» (V4, вторая половина);
-- пары с равным A4-ключом пропускаются (точные дубли — дело A4); пары с **разной
-  наймовой географией** — не кандидаты: A4 считает географию частью идентичности, а
-  слияние через неё молча расширило бы допуск. Реальный каталог подтвердил: без этого
-  вето вверху очереди стояли региональные клоны («Python | UK» vs «Python | USA»,
-  косинус 0.94).
+**The rule** (`src/domain/near-dup.ts`, version `near-dup-l1`):
+- the `textNeighbours` prefilter — pairwise cosine of full texts, O(n²); the
+  LSH boundary measured and fixed (~0.24M pairs/s; 5 000 posts ≈ 53 s) —
+  playbook §5b;
+- the gate on the **title cosine** — by embeddings, not lexically (a lexical
+  gate would break EN/RU) — it is exactly what separates a
+  translation/paraphrase from «a different role at the same company» (V4,
+  second half);
+- pairs with an equal A4 key are skipped (exact duplicates are A4's business);
+  pairs with **different hiring geography** are not candidates: A4 counts
+  geography as part of identity, and merging across it would silently widen
+  the eligibility gate. The real catalog confirmed it: without this veto,
+  regional clones stood at the top of the queue («Python | UK» vs
+  «Python | USA», cosine 0.94).
 
-**Пороги — замер реальным артефактом, а не вкус** (2026-10-04, синтетический набор;
-числа — в заголовке модуля): EN/RU-перевод **0.811/0.846**; EN-перефраз 0.854/0.913;
-перевод vs перефраз 0.743/0.789 (низшая истинная пара); разные роли одной компании
-0.582/0.731; одноимённый шаблон другой компании 0.662/1.000; известный
-ложноположительный класс (одинаковый заголовок + шаблонный текст) 0.724/0.913 —
-допускается осознанно; несвязанные 0.365/0.659. Пороги 0.70/0.75 лежат между низшей
-истинной парой и высшей парой с разными ролями.
+**Thresholds — measured with the real artifact, not taste** (2026-10-04, a
+synthetic set; the numbers are in the module header): EN/RU translation
+**0.811/0.846**; EN paraphrase 0.854/0.913; translation vs paraphrase
+0.743/0.789 (the lowest true pair); different roles of one company 0.582/0.731;
+a same-named template of another company 0.662/1.000; the known
+false-positive class (an identical title + template text) 0.724/0.913 —
+accepted deliberately; unrelated 0.365/0.659. The thresholds 0.70/0.75 lie
+between the lowest true pair and the highest different-roles pair.
 
-**CLI — очередь для человека** (`npm run dedup:candidates`,
-`scripts/dedup-candidates.ts`): JSON; заголовки и компании — публичные данные
-каталога (текст описаний не печатается); `process_with_ml` спрашивается по
-источникам в точке использования (отказ — источник целиком, как в dense-leg);
-title-векторы считаются лениво, только для пар из текстовой окрестности. Ничего не
-сливается и не скрывается — продуктовый путь не тронут (A4-группировка в проекции
-остаётся единственной точкой мьюта).
+**CLI — a queue for a human** (`npm run dedup:candidates`,
+`scripts/dedup-candidates.ts`): JSON; titles and companies are public catalog
+data (description text is not printed); `process_with_ml` is asked per source
+at the point of use (a refusal excludes the source entirely, as in the dense
+leg); title vectors are computed lazily, only for pairs from the text
+neighborhood. Nothing is merged or hidden — the product path untouched (A4
+grouping in the projection remains the single point of mutation).
 
-**Прогон на локальном каталоге** (700 постов, все с векторами референсного
-артефакта): выше текстового порога 429 пар, из них 41 — точные A4-дубли (пропущены
-правилом), **130 кандидатов**. Среди показанных — **0 кросс-источниковых**: живые
-импорты himalayas (498) и jobicy (202) сегодня nearly-дублями не пересекаются, а
-очередь образуют внутриисточниковые семейства одного работодателя (NOCD по штатам,
-Kodland по рынкам, Elevenlabs/i4DM по грейдам) — это материал для ручного review,
-автоматических решений нет. Честная картина каталога, не «победа»: способность
-правила ловить EN/RU-перевод и перефраз доказана замером модели и V4-тестами.
+**A run on the local catalog** (700 posts, all with vectors of the reference
+artifact): 429 pairs above the text threshold, of which 41 are exact A4
+duplicates (skipped by the rule), **130 candidates**. Among the shown ones —
+**0 cross-source**: the live himalayas imports (498) and jobicy (202) do not
+intersect as near-duplicates today, and the queue is made up of within-source
+families of one employer (NOCD by states, Kodland by markets, Elevenlabs/i4DM
+by grades) — this is material for manual review, no automatic decisions. An
+honest picture of the catalog, not a «victory»: the rule's ability to catch
+EN/RU translation and paraphrase is proven by the model measurement and the
+V4 tests.
 
-**Тесты:** unit **256/256** (+12: обе половины V4, пороги включительно, гейты по
-отдельности, точные дубли, гео-вето, детерминизм, отказ при смешении
-артефактов/ролей, пустой вход); integration **58/58** (+1: загрузка из БД — только
-текущий артефакт, tombstoned исключён, exact-пара пропущена, float4 round-trip).
+**Tests:** unit **256/256** (+12: both halves of V4, thresholds included, the
+gates separately, exact duplicates, the geo veto, determinism, refusal on
+artifact/role mixing, empty input); integration **58/58** (+1: loading from
+the DB — only the current artifact, tombstoned excluded, the exact pair
+skipped, float4 round-trip).
 
-**Файлы:** `src/domain/near-dup.ts`; `loadEmbeddedPostings` в
+**Files:** `src/domain/near-dup.ts`; `loadEmbeddedPostings` in
 `src/server/embeddings/embedding-service.ts`; `scripts/dedup-candidates.ts`;
 `package.json` (`dedup:candidates`); `tests/unit/near-dup.test.ts`;
-`tests/integration/near-dup.test.ts`; `docs/EMBEDDING_PLAYBOOK.md` (§3 — шаг
-повторного замера при смене модели, §5b — граница скана, §6 актуализирован).
+`tests/integration/near-dup.test.ts`; `docs/EMBEDDING_PLAYBOOK.md` (§3 — the
+re-measurement step on a model change, §5b — the scan boundary, §6 updated).
 
-**Ограничения:** кросс-языковой сигнал измерен на синтетической паре (в локальном
-каталоге RU-постов нет); ложноположительный класс «одинаковый заголовок + шаблонный
-текст» остаётся (осознанный дизайн очереди — вопрос человеку дешевле пропуска);
-пороги зависят от артефакта — смена модели требует повторного замера (playbook §3).
+**Limitations:** the cross-language signal was measured on a synthetic pair
+(there are no RU posts in the local catalog); the false-positive class
+«identical title + template text» remains (a deliberate queue design — asking
+a human is cheaper than skipping); the thresholds are artifact-dependent — a
+model change requires re-measurement (playbook §3).
 
-**Откат:** удалить модуль, функцию загрузки, скрипт, тесты и запись в playbook;
-продуктовый путь не затронут — откат ничего не ломает.
+**Rollback:** delete the module, the loading function, the script, the tests
+and the playbook entry; the product path untouched — the rollback breaks
+nothing.

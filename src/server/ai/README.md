@@ -1,58 +1,58 @@
-# AI-контур (`src/server/ai`)
+# AI contour (`src/server/ai`)
 
-AI подключён и работает через один охраняемый вход; по умолчанию он выключен и
-отказывает fail-closed. Этот файл — порядок чтения кода. Инвентарь недоделок —
+AI is connected and works through a single guarded entry point; by default it is off and
+refuses fail-closed. This file is a reading order for the code. The gap inventory is in
 `docs/OPEN_GAPS.md`.
 
-## Единственная точка входа
+## The single entry point
 
-`gateway.ts` — `executeGuardedOperation`. Любой платный вызов проходит здесь, и
-до движения денег проверяется по порядку:
+`gateway.ts` — `executeGuardedOperation`. Every paid call goes through here, and
+before any movement of money the following is checked in order:
 
-1. `LIVE_AI_ENABLED === "true"` (решение владельца 2026-10-01). Ключ в окружении
-   ничего не включает; выключатель — флаг, иные значения fail-closed.
-2. Purpose входит в `approvedPurposes` (`provider.ts`): сегодня `cover_letter`
-   (AI-002) и `job_matching` (AI-004). Новый purpose — отдельное решение владельца.
-3. Worst-case стоимость не превышает потолок операции (1 цент).
-4. Атомарный резерв глобального и персонального бюджетов (`spending.ts`);
-   отсутствие персональной строки — отказ, а не «нет потолка».
-5. Попытка персистится до dispatch; счётчик попыток операции — единственный
-   retry-бюджет, SDK auto-retry выключен.
-6. Deadline, `uncertain` (холд сохраняется, слепых повторов нет) и settlement —
-   в той же строке `ai_operations`.
+1. `LIVE_AI_ENABLED === "true"` (owner decision 2026-10-01). A key in the environment
+   turns nothing on; the switch is the flag, other values are fail-closed.
+2. The purpose is in `approvedPurposes` (`provider.ts`): today `cover_letter`
+   (AI-002) and `job_matching` (AI-004). A new purpose is a separate owner decision.
+3. The worst-case cost does not exceed the operation ceiling (1 cent).
+4. An atomic reserve of the global and personal budgets (`spending.ts`);
+   a missing personal row is a refusal, not «нет потолка» [no ceiling].
+5. The attempt is persisted before dispatch; the operation attempt counter is the only
+   retry budget, SDK auto-retry is off.
+6. Deadline, `uncertain` (the hold is kept, there are no blind repeats) and settlement —
+   in the same `ai_operations` row.
 
-## Транспорт
+## Transport
 
-`openai-transport.ts` — **единственный** модуль, которому разрешён SDK провайдера
-(статическая проверка `scripts/guardrails.mjs`). Ровно одна попытка на dispatch;
-сетевые ошибки, таймауты и ответ без usage — `uncertain`.
+`openai-transport.ts` is the **only** module allowed to use the provider SDK
+(a static check in `scripts/guardrails.mjs`). Exactly one attempt per dispatch;
+network errors, timeouts and a response without usage — `uncertain`.
 
-## Граница персональных данных
+## Personal data boundary
 
-`personal-data-boundary.ts`: провайдеру можно отправлять только текст вакансии.
-Операции, которым нужны данные кандидата (`cover_letter`, `job_matching`),
-отказывают с `PERSONAL_DATA_BOUNDARY`, пока их не обслужит локальная модель —
-решение владельца 2026-10-01. Следствие, названное честно: скоринг и письма
-сегодня закрыты по замыслу, не по недосмотру.
+`personal-data-boundary.ts`: only the vacancy text may be sent to the provider.
+Operations that need candidate data (`cover_letter`, `job_matching`)
+refuse with `PERSONAL_DATA_BOUNDARY` until a local model serves them —
+owner decision 2026-10-01. A consequence, named honestly: scoring and letters
+are closed today by design, not by oversight.
 
 ## OpenAI Batch
 
-Закрыт (AI-006): `openai-batch.ts` не импортирует SDK, маршрут отвечает
-`503 BATCH_DISABLED`, очередь замыкается. План повторного включения (резерв при
-submit, settlement при retrieve, срок для асинхронной операции, потолок,
-серверный mapping) записан в модуле; включение — решение владельца.
+Closed (AI-006): `openai-batch.ts` does not import the SDK, the route answers
+`503 BATCH_DISABLED`, the queue short-circuits. The re-enablement plan (reserve at
+submit, settlement at retrieve, a term for the asynchronous operation, a ceiling,
+server-side mapping) is recorded in the module; enabling it is an owner decision.
 
-## Эксплуатация
+## Operations
 
-- `npm run seed:budgets` — глобальный бюджет и персональные квоты (идемпотентно;
-  новым пользователям строка заводится при регистрации).
-- `npm run ai:holds` — список операций, держащих деньги, и `--cancel=<id>`
-  (освобождение — решение человека, не reaper).
-- `npm run smoke:ai` — один охраняемый живой вызов к провайдеру. Тратит реальные
-  деньги; отказывает, пока `LIVE_AI_ENABLED != true`; сам заводит свои строки
-  бюджета, поэтому работает на свежей БД.
-- Тесты защит: `tests/unit/ai-provider.test.ts`,
+- `npm run seed:budgets` — the global budget and personal quotas (idempotent;
+  for new users the row is created at registration).
+- `npm run ai:holds` — the list of operations holding money, and `--cancel=<id>`
+  (releasing is a human decision, not a reaper's).
+- `npm run smoke:ai` — one guarded live call to the provider. It spends real
+  money; it refuses while `LIVE_AI_ENABLED != true`; it creates its own budget
+  rows, so it works on a fresh DB.
+- Guard tests: `tests/unit/ai-provider.test.ts`,
   `tests/integration/ai-guards.test.ts`.
 
-Заглушка `disabled.ts` удалена: второго выключателя не заводить. У live-источников
-флага нет осознанно — контроль в политиках источников.
+The `disabled.ts` stub was deleted: do not create a second switch. Live sources
+deliberately have no flag — the control lies in the source policies.

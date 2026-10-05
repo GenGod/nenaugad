@@ -1,1336 +1,1364 @@
 # Nenaugad — status (ex-Atlas Starter)
 
-## Сейчас
+## Now
 
-**Аудит существующего функционала (2026-10-01): [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md)** —
-инвентарь всех открытых недоделок с доказательствами. **Все восемь красных флагов
-раздела A (деньги и права) закрыты 2026-10-01** задачами AI-004…AI-007: purpose
-`job_matching` утверждён и проверяется шлюзом; `send_to_ai_provider` выдан и стал
-проверяемым; неохраняемый батч-путь закрыт; идемпотентность адресуется содержимым;
-резерв снова верхняя граница; `LIVE_AI_ENABLED` стал настоящим выключателем; квота
-$1/мес заводится при регистрации, потолок операции сравнивается; `npm run ai:holds`
-разбирает зависшие холды; `REINDEX` выполнен (0 недостижимых из 2182, векторов
-498/498). **Приватность (решение владельца):** персональные данные остаются внутри
-контура — структурная граница `personal-data-boundary.ts` закрыла скоринг и письма
-до появления локальной модели; провайдеру больше не уходит ничего о кандидате.
-**Закрыто аудитом:** неодобренный purpose — владелец утвердил `job_matching`
-2026-10-01, whitelist впервые стал исполняемым (шлюз проверяет purpose до денег,
-ведро расходов выводится из purpose): [AI-004](tasks/AI-004-purpose-job-matching.md).
-`send_to_ai_provider` выдан всем трём источникам и стал проверяемым
-(`maySendTextToProvider` спрашивается в четырёх местах, которые отправляют текст
-наружу): [AI-005](tasks/AI-005-provider-transfer-grant.md). **C0-часть-1 сделана**
-([AI-006](tasks/AI-006-c0-part-1.md)): неохраняемый батч-путь закрыт (SDK провайдера
-разрешён только транспорту — статически, guardrails), идемпотентность адресуется
-содержимым вместо `Date.now()`, стоимость отдаётся из settled, отказы леджера
-больше не выглядят как 500, резерв снова верхняя граница запроса. **Цена закрытия:
-автоматический фоновый скоринг батчем выключен** (план повторного включения — в
-задаче). Остаток этой партии: месячный сброс квоты (окно хранится, но не
-сбрасывается) и журнал ручных решений по холдам
-([AI-007](tasks/AI-007-owner-decisions-2026-10-01.md)); полный список открытого —
+**Audit of existing functionality (2026-10-01): [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md)**
+— an inventory of every open loose end with evidence. **All eight red flags of section A
+(money and rights) are closed 2026-10-01** by tasks AI-004…AI-007: the purpose
+`job_matching` is approved and checked by the gateway; `send_to_ai_provider` is granted
+and has become checkable; the unguarded batch path is closed; idempotency is addressed
+by content; the reservation is the upper bound again; `LIVE_AI_ENABLED` became a real
+switch; the quota $1/month is provisioned at registration, the operation ceiling is
+compared; `npm run ai:holds` resolves stuck holds; `REINDEX` was executed (0 unreachable
+out of 2182, vectors 498/498). **Privacy (owner decision):** personal data stays inside
+the contour — the structural boundary `personal-data-boundary.ts` closed scoring and
+letters until a local model appears; nothing about the candidate goes to the provider
+any more. **Closed by the audit:** the unapproved purpose — the owner approved
+`job_matching` 2026-10-01, the whitelist became enforceable for the first time (the
+gateway checks purpose before money, the spend bucket is derived from purpose):
+[AI-004](tasks/AI-004-purpose-job-matching.md). `send_to_ai_provider` was granted to all
+three sources and became checkable (`maySendTextToProvider` is asked in the four places
+that send text outward): [AI-005](tasks/AI-005-provider-transfer-grant.md). **C0-part-1
+is done** ([AI-006](tasks/AI-006-c0-part-1.md)): the unguarded batch path is closed (the
+provider SDK is allowed only to the transport — statically, guardrails), idempotency is
+addressed by content instead of `Date.now()`, cost is returned from settled, ledger
+rejections no longer look like 500s, the reservation is again the request's upper bound.
+**The price of closing: automatic background batch scoring is switched off** (the plan
+for re-enabling it is in the task). The remainder of this batch: the monthly quota reset
+(the window is stored but not reset) and the log of manual hold decisions
+([AI-007](tasks/AI-007-owner-decisions-2026-10-01.md)); the full list of what is open —
 [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 
-**Партия решений №4 — доводка (EDEC-002, 2026-10-02):** решения владельца записаны
-и исполнены: фильтры «не показывать компанию» — **оставлены как есть**; email —
-**остаётся in-app**; кнопки AI-анализа («AI-анализ всех» и «AI-рейтинг» на
-карточке) **убраны** с `/matched` — скоринг закрыт границей и кнопки всегда
-отвечали 503; бейджи кэшированных оценок помечены «справочно: новые не считаются».
-Условия ESCO **прочитаны дословно** (handbook §5: обязательная строка атрибуции +
-пометка адаптации; occupations — ISCO/ILO, skills — ЕС); решением владельца
-зарегистрирована задача [ESCO-001](tasks/ESCO-001-import-skills.md) (подключение
-skills-части с атрибуцией). Зарегистрирована
-[MODEL-002](tasks/MODEL-002-gpu-spike.md) — спайк локального скоринга на CUDA
-(7–8B, той же матрицей замеров). Проверки: `check` 241/241, `build` 0, `e2e` 96.
+**Decision batch No. 4 — follow-up (EDEC-002, 2026-10-02):** the owner's decisions are
+recorded and executed: the filters «не показывать компанию» («do not show the company»)
+— **kept as they are**; email — **stays in-app**; the AI-analysis buttons («AI-анализ
+всех» and «AI-рейтинг» on the card) **removed** from `/matched` — scoring is closed by
+the boundary and the buttons always answered 503; cached-score badges are marked
+«справочно: новые не считаются». The ESCO terms were **read verbatim** (handbook §5: a
+mandatory attribution line + an adaptation note; occupations — ISCO/ILO, skills — EU);
+by owner decision the task [ESCO-001](tasks/ESCO-001-import-skills.md) was registered
+(connecting the skills part with attribution). Registered
+[MODEL-002](tasks/MODEL-002-gpu-spike.md) — a local-scoring spike on CUDA (7–8B, with
+the same measurement matrix). Checks: `check` 241/241, `build` 0, `e2e` 96.
 
-**ESCO-001: skills-часть ESCO подключена (2026-10-04, решение владельца E.6):**
-артефакт — полные документы **13 939 навыков ESCO v1.2.1** через открытый REST API
-(`selectedVersion=v1.2.1`; у API есть и «latest», но это другая, меньшая выборка),
-140 страниц / 180 МБ, sha256-пины в `data/esco-manifest.json` (в git не хранится;
-сборка и проверка — `npm run esco:fetch`, режимы `--check` и `--propose`). Review
-дал **50 связей** канонов со 33 концептами и **дельту алиасов v3: 8 канонов,
-11 алиасов** (business intelligence, information security, supervised learning,
-programme management…); ложные друзья ESCO («.NET» под Visual Basic, «Canvas» под
-LMS и др.) отклонены поштучно и записаны. В ESCO **нет русского языка** — RU-часть
-остаётся собственной работой проекта, worklist не изменился (95 unknown). Атрибуция
-«This service uses the ESCO classification of the European Commission.» + пометка
-адаптации — в футере (e2e-тест), условия — в `docs/DEPENDENCIES.md` (Decision
-2011/833/EU, CC BY 4.0; occupations/ISCO вне scope). Измерения: `eval:matching`
-до/после **точно нейтрален** (NDCG@10 0.892, guards 0/0), пороги не менялись.
-Проверки: `check` 244/244, `test:db` 57/57, `build` 0, `e2e` 99 (визуальные
-базалайны обновлены — изменился футер). Детали —
+**ESCO-001: the ESCO skills part is connected (2026-10-04, owner decision E.6):** the
+artifact — the full documents of **13 939 ESCO v1.2.1 skills** via the open REST API
+(`selectedVersion=v1.2.1`; the API also has «latest», but that is a different, smaller
+sample), 140 pages / 180 MB, sha256 pins in `data/esco-manifest.json` (not stored in
+git; fetching and checking — `npm run esco:fetch`, modes `--check` and `--propose`). The
+review produced **50 links** of canons to 33 concepts and an **alias delta v3: 8 canons,
+11 aliases** (business intelligence, information security, supervised learning,
+programme management…); ESCO's false friends («.NET» under Visual Basic, «Canvas» under
+LMS, etc.) were rejected item by item and recorded. ESCO has **no Russian** — the RU
+part remains the project's own work, the worklist did not change (95 unknown). The
+attribution «This service uses the ESCO classification of the European Commission.» +
+the adaptation note — in the footer (e2e test), the terms — in `docs/DEPENDENCIES.md`
+(Decision 2011/833/EU, CC BY 4.0; occupations/ISCO outside scope). Measurements:
+`eval:matching` before/after is **exactly neutral** (NDCG@10 0.892, guards 0/0), the
+thresholds did not change. Checks: `check` 244/244, `test:db` 57/57, `build` 0, `e2e` 99
+(visual baselines updated — the footer changed). Details —
 [tasks/ESCO-001](tasks/ESCO-001-import-skills.md).
 
-**B5-001: near-dup очередь (2026-10-04, карточка B5 брифа):** кросс-языковые
-почти-дубликаты теперь видны человеку, но **ничего не сливается автоматически**.
-Правило (`src/domain/near-dup.ts`): предфильтр по косинусу полных текстов (O(n²);
-граница LSH измерена — ~0.24M пар/с, 5 000 постов ≈ 53 с) + гейт по косинусу
-заголовков (эмбеддингами — EN/RU-пару лексика бы сломала) + пропуск точных
-A4-дублей и вето по наймовой географии (A4 считает географию идентичностью). Пороги
-(0.70/0.75) — **замер референсным артефактом**: EN/RU-перевод 0.811/0.846,
-EN-перефраз 0.854/0.913, разные роли одной компании 0.582/0.731; числа — в модуле.
-CLI `npm run dedup:candidates`: JSON-очередь (публичные заголовки/компании, без
-текстов описаний), `process_with_ml` по источникам в точке использования. Прогон на
-локальном каталоге (700 постов): 429 пар выше текстового порога, 41 точный дубль
-пропущен, **130 кандидатов**, все — внутриисточниковые семейства одного работодателя
-(регионы/грейды); кросс-источниковых среди показанных нет. Проверки: `check`
-256/256, `test:db` 58/58, `build` 0, `e2e` 99. Детали —
+**B5-001: near-dup queue (2026-10-04, brief card B5):** cross-language near-duplicates
+are now visible to a human, but **nothing is merged automatically**. The rule
+(`src/domain/near-dup.ts`): a prefilter by the cosine of full texts (O(n²); the LSH
+boundary is measured — ~0.24M pairs/s, 5 000 posts ≈ 53 s) + a gate by the cosine of
+titles (embeddings — a lexical match would break an EN/RU pair) + skipping exact A4
+duplicates and a veto by hiring geography (A4 counts geography as identity). The
+thresholds (0.70/0.75) — **measured with the reference artifact**: EN/RU translation
+0.811/0.846, EN paraphrase 0.854/0.913, different roles of one company 0.582/0.731; the
+numbers — in the module. CLI `npm run dedup:candidates`: a JSON queue (public
+titles/companies, without description texts), `process_with_ml` per source at the point
+of use. A run on the local catalog (700 posts): 429 pairs above the text threshold, 41
+exact duplicates skipped, **130 candidates**, all within-source families of one employer
+(regions/grades); there are no cross-source ones among those shown. Checks: `check`
+256/256, `test:db` 58/58, `build` 0, `e2e` 99. Details —
 [tasks/B5-001](tasks/B5-001-near-dup-candidates.md), playbook §5b.
 
-**B6-001: urgency/survival прокси-модель (2026-10-04, карточка B6 брифа):**
-структура hazard-прокси landed за guardrails — и с честной поправкой: наблюдаемых
-исчезновений в каталоге **нет** (700 `active`, `closure_checks` пуст, возрасты
-≈ 9.3 дня), поэтому константы провизорны, а фаза 1 — структура. `survival.ts`
-(`survival-l1`): окно 14→45→90 дней (пик −6), бакеты `recent/weeks/long/unknown`,
-`availabilityNoteFor` — одна честная строка карточки (ghost-факт A10 сильнее
-возрастной осторожности; без цифр и обратного отсчёта). Ранкер: слой `urgency`,
-**RANKER_VERSION → v5-…-urgency**, контрол `rankJobsWithoutUrgency` в реестре.
-Измерения: `eval:matching` идентичен baseline (NDCG@10 0.892, guards 0/0);
-`eval:shadow` — контроль `v5-minus-urgency` двигает **0/189** позиций: маргинальный
-эффект слоя измеренно нулевой (пару j33/j34 уже исправляет A5), пере-фит — при
-накоплении закрытий. Проверки: `check` 263/263, `test:db` 58/58, `build` 0,
-`e2e` 99 (базалайны не менялись). Детали —
+**B6-001: urgency/survival proxy model (2026-10-04, brief card B6):** the hazard-proxy
+structure landed behind guardrails — and with an honest correction: there are **no**
+observed disappearances in the catalog (700 `active`, `closure_checks` empty, ages ≈ 9.3
+days), so the constants are provisional and phase 1 is structure. `survival.ts`
+(`survival-l1`): a window of 14→45→90 days (peak −6), buckets
+`recent/weeks/long/unknown`, `availabilityNoteFor` — one honest line on the card (the
+ghost fact A10 is stronger than age-based caution; no numbers and no countdown). Ranker:
+the `urgency` layer, **RANKER_VERSION → v5-…-urgency**, the control
+`rankJobsWithoutUrgency` in the registry. Measurements: `eval:matching` identical to
+baseline (NDCG@10 0.892, guards 0/0); `eval:shadow` — the control `v5-minus-urgency`
+moves **0/189** positions: the marginal effect of the layer is measurably zero (the pair
+j33/j34 is already fixed by A5); re-fitting — as closures accumulate. Checks: `check`
+263/263, `test:db` 58/58, `build` 0, `e2e` 99 (baselines unchanged). Details —
 [tasks/B6-001](tasks/B6-001-survival-urgency-proxy.md).
 
-**B4-001: NLI-пре-чек противоречий — отрицательный результат (2026-10-04, карточка B4
-брифа):** кандидатная модель `MoritzLaurer/mDeBERTa-v3-base-mnli-xnli` (MIT, ru, ONNX
-q8; revision и sha256 закреплены и VERIFIED; загрузка ≈ 1.6 с, пара 11–21 мс) на
-текстовых NLI-парах работает (contradiction 0.991 / entailment 0.871 — вызов
-корректен), но рабочие пары карточки не обслуживает: V4 «требуется гражданство США» +
-профиль без него → neutral 0.82/0.85 при contradiction 0.08/0.11; порог, который ловил
-бы V4 (~0.1), начинал бы ловить **отсутствие** («Java vs Python» 0.258 — ровно тот
-отказ, что карточка запрещает); даже жёсткий конфликт по присутствию — 0.032 в рабочем
-порядке. Плюс правило проекта: отсутствие факта в профиле — не доказательство
-противоположного. **Интеграция не выполнена** (измеренное решение, не осторожность);
-пере-попытка — вместе с C2, как и допускает карточка. Пин артефакта записан; продуктовый
-код не менялся, `check` зелёный. Детали —
+**B4-001: NLI pre-check of contradictions — a negative result (2026-10-04, brief card
+B4):** the candidate model `MoritzLaurer/mDeBERTa-v3-base-mnli-xnli` (MIT, ru, ONNX q8;
+revision and sha256 pinned and VERIFIED; loading ≈ 1.6 s, a pair 11–21 ms) works on text
+NLI pairs (contradiction 0.991 / entailment 0.871 — the call is correct), but it does
+not serve the card's working pairs: V4 «требуется гражданство США» («US citizenship
+required») + a profile without it → neutral 0.82/0.85 at contradiction 0.08/0.11; a
+threshold that would catch V4 (~0.1) would start catching **absence** («Java vs Python»
+0.258 — exactly the failure the card forbids); even a hard presence conflict — 0.032 in
+the working order. Plus a project rule: the absence of a fact in the profile is not
+proof of the opposite. **Integration is not done** (a measured decision, not caution); a
+re-attempt — together with C2, as the card allows. The artifact pin is recorded; product
+code did not change, `check` is green. Details —
 [tasks/B4-001](tasks/B4-001-nli-precheck.md).
 
-**B3-001: реранкер — измерен вход, реализация ждёт решений владельца (2026-10-04):**
-решение №3 выбрало API-путь, который по ADR-001 = LLM-скоринг фазы C; предусловие
-§4.1 (C0-ч.1) закрыто ранее (AI-006). Единственный не заблокированный подвопрос —
-вход реранка (§6) — измерен `eval:retrieval` на golden-наборе v4: **порядок ранкера
-v5 R@10 0.850 / NDCG@10 0.892** против BM25 (0.734/0.810), fused RRF (0.755/0.771) и
-dense (0.823/0.766) — «реранк топ-50 после RRF» **не подтверждается замером**, вход
-стоит планировать от порядка ранкера; 8 из 38 релевантных невидимы ни одной ноге
-(их реранкер не достанет по построению). Открыты четыре решения владельца: purpose
-`rerank`, гранты `send_to_ai_provider` ×3, приватность профиля, квота/потолок
-операции + разметка кросс-язычного golden (§9 доктрины решения №3). Продуктовый код
-не менялся. Детали — [tasks/B3-001](tasks/B3-001-reranker-input-measurement.md).
+**B3-001: reranker — the input is measured, implementation awaits owner decisions
+(2026-10-04):** decision No. 3 chose the API path, which per ADR-001 = phase C LLM
+scoring; prerequisite §4.1 (C0-part-1) was closed earlier (AI-006). The only unblocked
+sub-question — the rerank input (§6) — was measured by `eval:retrieval` on the golden
+set v4: **the ranker v5 order R@10 0.850 / NDCG@10 0.892** versus BM25 (0.734/0.810),
+fused RRF (0.755/0.771) and dense (0.823/0.766) — «реранк топ-50 после RRF» («rerank
+top-50 after RRF») **is not confirmed by measurement**, the input should be planned from
+the ranker order; 8 of 38 relevant ones are invisible to any leg (the reranker cannot
+reach them by construction). Four owner decisions are open: the purpose `rerank`, the
+grants `send_to_ai_provider` ×3, profile privacy, the quota/operation ceiling +
+cross-language golden labelling (§9 of decision No. 3's doctrine). Product code did not
+change. Details — [tasks/B3-001](tasks/B3-001-reranker-input-measurement.md).
 
-**C0-002: AI-границы, часть 2 — свойства покрыты тестами, пакет purposes готов
-(2026-10-04):** часть 1 C0 (AI-006) подтверждена по коду (whitelist до денег, батч
-закрыт с причиной и планом, дыра mapping закрыта). Аудит восьми свойств, названных
-брифом, дал 4 новых теста в `ai-guards` — изоляция владельцев (OPERATION_NOT_FOUND),
-двусторонний WRONG_STATE settle/cancel (commit-time revalidation), исчерпание квоты
-владельца settled-тратами, «deadline останавливает новые шаги, но не блокирует settle
-уже отправленного вызова» — `test:db` **62/62**; золотой-10 держится. Пакет решений по
-purposes фазы C: `extraction` и `dedup-confirm` совместимы с границей ПД уже сегодня
-(только текст вакансии; нужен whitelist, для dedup-confirm — миграция task_type),
-`matching-scoring`/`hyde`/`eval-judge` ждут решения §4.4 (приватность профиля).
-**Поправка по коду:** `send_to_ai_provider` выдан всем трём источникам ещё 2026-10-01
-(AI-005); квота поднята до $1/мес; доктрина №3 §9 и задача B3-001 исправлены.
-Продуктовый код не менялся. Детали —
+**C0-002: AI boundaries, part 2 — properties covered by tests, the purposes package
+ready (2026-10-04):** part 1 of C0 (AI-006) is confirmed in the code (whitelist before
+money, the batch is closed with a reason and a plan, the mapping hole is closed). An
+audit of the eight properties named by the brief produced 4 new tests in `ai-guards` —
+owner isolation (OPERATION_NOT_FOUND), two-way WRONG_STATE settle/cancel (commit-time
+revalidation), exhaustion of the owner's quota by settled spend, «deadline останавливает
+новые шаги, но не блокирует settle уже отправленного вызова» («the deadline stops new
+steps but does not block settling an already sent call») — `test:db` **62/62**; the
+golden-10 holds. The package of decisions on phase C purposes: `extraction` and
+`dedup-confirm` are compatible with the PD boundary already today (job text only; a
+whitelist is needed, for dedup-confirm — a task_type migration),
+`matching-scoring`/`hyde`/`eval-judge` await the §4.4 decision (profile privacy).
+**Correction from the code:** `send_to_ai_provider` was granted to all three sources
+back on 2026-10-01 (AI-005); the quota was raised to $1/month; doctrine No. 3 §9 and
+task B3-001 were corrected. Product code did not change. Details —
 [tasks/C0-002](tasks/C0-002-purposes-and-property-tests.md).
 
-**Решение владельца 2026-10-04: purpose `extraction` одобрен и заведён.** «Одобряю
-purpose extraction» — job-only извлечение полей вакансии (≈0.03 цента/пост, данные
-кандидата не покидают контур). Исполнена механика одобрения: whitelist
-(`provider.ts` — три purpose, с датой и ценой в комментарии), маппинг шлюза на
-`job_extraction` (свой счётчик попыток), явный `false` у границы ПД
-(`personal-data-boundary.ts` — запись review, а не пропуск), тесты: одобренный
-purpose садится в свой бакет и settle'ится, соседний неодобренный (`cv_extraction`)
-отказывает до денег. Вызывающего кода нет — это C1; `LIVE_AI_ENABLED=false`,
-потолок 1 цент и квоты не менялись (C1 обязан чанковать). Проверки: `check`
-263/263, `test:db` 63/63.
+**Owner decision 2026-10-04: the purpose `extraction` is approved and registered.**
+«Одобряю purpose extraction» («I approve purpose extraction») — job-only extraction of
+vacancy fields (≈0.03 cents/post, candidate data does not leave the contour). The
+approval mechanics are executed: the whitelist (`provider.ts` — three purposes, with
+date and price in a comment), the gateway mapping to `job_extraction` (its own attempt
+counter), an explicit `false` at the PD boundary (`personal-data-boundary.ts` — a review
+record, not a skip), tests: an approved purpose lands in its own bucket and settles, a
+neighbouring unapproved one (`cv_extraction`) refuses before money. There is no calling
+code — that is C1; `LIVE_AI_ENABLED=false`, the 1-cent ceiling and the quotas did not
+change (C1 is obliged to chunk). Checks: `check` 263/263, `test:db` 63/63.
 
-**C1-001: LLM-извлечение полей — ядро landed (2026-10-04, purpose `extraction`):**
-`src/domain/extraction.ts` (`extraction-p1`) — инструкция промпта + строгий
-парсер-валидатор: grounding (evidence = дословная цитата из поста; не-`unknown`
-значение обязано быть подстрокой своей цитаты), «unknown ⇒ пустой evidence», запрет
-`unknown` в строках требований, лимит 25; **любое нарушение отклоняет всю запись**.
-Миграция 0019 `job_llm_fields`: неизменяемые строки-свидетельства на (snapshot,
-prompt, version) с провенансом (prompt/model/operation_id/settled), каскад по
-снапшоту. Guarded-сервис: purpose `extraction`, `send_to_ai_provider` в точке
-использования, идемпотентный ключ (повтор отвечает из записи, не платит), промпт
-job-only через `buildJobOnlyPrompt`; шлюз теперь возвращает `operationId` для
-провенанса. CLI `extract:fields`: `--prompt-only` (проверено на реальном посте:
-резерв 473 мкцента при потолке 10 000) и live-прогон, который честно отказывает при
-выключенном флаге. Тесты: `check` 273/273 (обе половины V4: «нет зарплаты → unknown»,
-«выдуманная зарплата → запись отклонена»), `test:db` **66/66**. Проводка в pipeline
-и живой прогон — следующий шаг. Детали —
-[tasks/C1-001](tasks/C1-001-llm-extraction.md).
+**C1-001: LLM field extraction — the core landed (2026-10-04, purpose `extraction`):**
+`src/domain/extraction.ts` (`extraction-p1`) — the prompt instruction + a strict
+parser-validator: grounding (evidence = a verbatim quote from the post; a non-`unknown`
+value must be a substring of its quote), «unknown ⇒ пустой evidence» («unknown ⇒ empty
+evidence»), a ban on `unknown` in requirement strings, a limit of 25; **any violation
+rejects the whole record**. Migration 0019 `job_llm_fields`: immutable evidence rows per
+(snapshot, prompt, version) with provenance (prompt/model/operation_id/settled), cascade
+by snapshot. Guarded service: purpose `extraction`, `send_to_ai_provider` at the point
+of use, an idempotent key (a repeat answers from the record, does not pay), a job-only
+prompt via `buildJobOnlyPrompt`; the gateway now returns `operationId` for provenance.
+CLI `extract:fields`: `--prompt-only` (checked on a real post: a reservation of 473
+microcents against a ceiling of 10 000) and a live run that honestly refuses with the
+flag off. Tests: `check` 273/273 (both halves of V4: «нет зарплаты → unknown» («no
+salary → unknown»), «выдуманная зарплата → запись отклонена» («invented salary → record
+rejected»)), `test:db` **66/66**. Wiring into the pipeline and a live run — the next
+step. Details — [tasks/C1-001](tasks/C1-001-llm-extraction.md).
 
-**MODEL-001: локальная генеративная модель — оценка (2026-10-02, решение №4 п.2):**
-на этой машине (i5-13450HX, 31.6 ГБ RAM; RTX 5060 8 ГБ установленным
-CPU-рантаймом не используется) кандидаты Qwen3-1.7B и Qwen2.5-1.5B (ONNX q8,
-Apache-2.0; артефакты с пинами и сверкой sha256) **shipped-рубрику не
-обслуживают**: 0/6 валидных JSON без обвязки (модели «повествуют»); с
-предзаполнением JSON — 8/8 валидных, но Spearman(scores vs ручные оценки)
-**−0.156**, нерелевантная дизайн-вакансия получает 85, keyword-ловушка — 85,
-скорость 6.7 tok/s. Скоринг остаётся закрытым; локальный путь требует
-GPU-рантайма (новая зависимость) и модели 7–8B — отдельное решение владельца.
-Детали — [tasks/MODEL-001](tasks/MODEL-001-local-generative-eval.md).
+**C1-002: extraction was wired into the pipeline (2026-10-04):** the periodic form —
+`src/server/ai/extraction-pass.ts`: the owner's switch first (off = touches nothing: no
+text, no money), tombstones are skipped by `lifecycle` (the card reader does not return
+`tombstoned_at` — an implementation lesson), a budget refusal stops the whole pass with
+a code (`OWNER_BUDGET_MISSING` and neighbours; cured by `npm run seed:budgets`, which
+now provisions the extractor's row `u_extraction_001`), and `settledMicroCents` counts
+**only fresh** spend — cost doubling by repeats was caught by an integration test before
+the commit. The worker calls the pass after a successful source import (a limit of 25
+posts/tick; the `extraction` event is logged only on real work, and `--status` now shows
+`liveAi`); the himalayas/jobicy import scripts — a pass after a successful run with a
+JSON summary; the CLI was moved to the shared pass and no longer provisions money
+itself. Checks: `check` 273/273, `test:db` **69/69** (two runs in a row, +3 pass tests),
+`build`, `guardrails`; live without spending: CLI → `live_ai_disabled`,
+`worker --status` → `liveAi: false`. **The first live run is the owner's**:
+`LIVE_AI_ENABLED=true` + a key, then `npm run seed:budgets` and
+`extract:fields -- --source=himalayas --limit=5`. Details —
+[tasks/C1-002](tasks/C1-002-extraction-wiring.md).
 
-**RET-001: retention без удаления (2026-10-02, решение владельца №4, пункт 4):**
-миграция 0018 (`job_snapshots.tombstoned_at`); просроченные записи источника
-**обезличиваются, а не исчезают**: id, source, даты и content_hash остаются, текст
-(title/company/description/excerpt) и производные векторы удаляются, lifecycle →
-`tombstoned`; повторный листинг **возрождает** запись с исходным `first_seen_at`
-(ветка pipeline `revived`). Журнал показов/кликов: TTL **12 месяцев**
-(`EVENT_RETENTION_MONTHS`) + проход `purgeExpiredEvents` в worker'е
-(`--no-retention` отключает). Проверки: `check` 241/241, `test:db` **57/57**,
-`build` 0, `e2e` 96; миграция применена локально. Детали —
+**MODEL-001: local generative model — evaluation (2026-10-02, decision No. 4 item 2):**
+on this machine (i5-13450HX, 31.6 GB RAM; the installed RTX 5060 8 GB is not used with
+the installed CPU runtime) the candidates Qwen3-1.7B and Qwen2.5-1.5B (ONNX q8,
+Apache-2.0; artifacts with pins and sha256 verification) **do not serve the shipped
+rubric**: 0/6 valid JSON without scaffolding (the models «повествуют» («narrate»)); with
+JSON pre-filling — 8/8 valid, but Spearman(scores vs manual ratings) **−0.156**, an
+irrelevant design vacancy gets 85, a keyword trap — 85, speed 6.7 tok/s. Scoring remains
+closed; the local path requires a GPU runtime (a new dependency) and a 7–8B model — a
+separate owner decision. Details —
+[tasks/MODEL-001](tasks/MODEL-001-local-generative-eval.md).
+
+**RET-001: retention without deletion (2026-10-02, owner decision No. 4, item 4):**
+migration 0018 (`job_snapshots.tombstoned_at`); expired source records **are anonymised,
+not removed**: id, source, dates and content_hash remain, the text
+(title/company/description/excerpt) and derived vectors are deleted, lifecycle →
+`tombstoned`; a repeated listing **revives** the record with its original
+`first_seen_at` (the `revived` pipeline branch). The impression/click journal: TTL **12
+months** (`EVENT_RETENTION_MONTHS`) + a `purgeExpiredEvents` pass in the worker
+(`--no-retention` disables it). Checks: `check` 241/241, `test:db` **57/57**, `build` 0,
+`e2e` 96; the migration is applied locally. Details —
 [tasks/RET-001](tasks/RET-001-retention-tombstones.md).
 
-**B23: ранкер в продуктовом пути (2026-10-02, решение владельца №4):** `/matched`
-сортируется шипнутым ранкером v4 — замер решения: NDCG@10 **0.892** против
-**0.421** у порядка каталога. Скрытия питают preference-понижение, closure —
-ghost; журнал пишет `RANKER_VERSION` (feed-order метки заменены); страница больше
-не сортирует по AI-скору (бейдж — справочно); тень — чемпион v4, кандидат
-опционален (сейчас `null`, guardrails продолжают считаться). Проверки: `check`
-240/240, `test:db` **56/56**, `build` 0, `e2e` 96, `eval:matching` 0.892/guards
-0/0, `eval:shadow` guardrails pass. Детали —
+**B23: the ranker in the product path (2026-10-02, owner decision No. 4):** `/matched`
+is sorted by the shipped ranker v4 — the decision measurement: NDCG@10 **0.892** versus
+**0.421** for the catalog order. Hides feed preference demotion, closure — ghost; the
+journal writes `RANKER_VERSION` (feed-order labels replaced); the page no longer sorts
+by AI score (the badge is for reference); the shadow — champion v4, the candidate
+optional (currently `null`, guardrails keep being computed). Checks: `check` 240/240,
+`test:db` **56/56**, `build` 0, `e2e` 96, `eval:matching` 0.892/guards 0/0,
+`eval:shadow` guardrails pass. Details —
 [tasks/B23-001](tasks/B23-001-ranker-in-product-path.md).
 
-**Партия решений владельца №4 (EDEC-001, 2026-10-02):** выдача переключается на
-ранкер v4 — ключевой замер: порядок каталога NDCG@10 0.421 против 0.892 у v4
-(реализация — задача B23); батч-путь и скоринг остаются закрытыми до локальной
-генеративной модели, заведена задача её оценки (MODEL-001); jobicy получил право
-`process_with_ml` (Fair Use перечитан; политика v4→v5; `embeddings:index
---source=jobicy` проиндексировал **202/202** — B13 закрыт фактически); retention:
-журнал 12 месяцев + tombstone закрытых записей (задача RET-001). Открытыми
-остаются E.5–E.7 (фильтры компаний, ESCO, email). Полный разбор —
+**Owner decision batch No. 4 (EDEC-001, 2026-10-02):** delivery switches to ranker v4 —
+the key measurement: catalog order NDCG@10 0.421 versus 0.892 for v4 (implementation —
+task B23); the batch path and scoring remain closed until a local generative model, a
+task to evaluate one was registered (MODEL-001); jobicy received the right
+`process_with_ml` (Fair Use re-read; policy v4→v5; `embeddings:index --source=jobicy`
+indexed **202/202** — B13 is factually closed); retention: a 12-month journal +
+tombstones of closed records (task RET-001). Still open are E.5–E.7 (company filters,
+ESCO, email). The full analysis —
 [docs/design/2026-10-02-owner-decisions-04-batch.md](docs/design/2026-10-02-owner-decisions-04-batch.md).
 
-**Отложенные измерения (DGAP-001, 2026-10-02):** раздел D инвентаря закрыт по
-принципу «замером или честной причиной». Golden-набор v3→v4 (39 вакансий):
-география-unknown (j35), две кросс-язычные семантические пары без латиницы
-(j36/j37), вторая пара-близнец freshness (j38/j39); на живой модели BM25 не
-находит семантические кейсы вовсе (uncovered), dense находит (j37 #6 у QA,
-j36 #15 у p-ru-ml), агрегат — dense NDCG@10 0.766 · BM25 0.810 · fused 0.771 ·
-v4 0.892, «не переключать» подтверждено; пороги ratchet перебазированы вниз с
-записанной причиной (набор вырос и принёс hard-кейсы). Payload обоих журнальных
-отчётов закреплён unit-тестом. Остаются и названы: константы до накопления
-данных (сбор готов с BFIX-001), замеры одной машины, языковое поле профиля
-(продуктовое решение), стоимость/железо. Детали —
-[tasks/DGAP-001](tasks/DGAP-001-deferred-measurements.md).
+**Deferred measurements (DGAP-001, 2026-10-02):** section D of the inventory is closed
+by the principle «замером или честной причиной» («by measurement or an honest reason»).
+Golden set v3→v4 (39 vacancies): geography-unknown (j35), two cross-language semantic
+pairs without Latin script (j36/j37), a second twin pair freshness (j38/j39); on the
+live model BM25 does not find the semantic cases at all (uncovered), dense finds them
+(j37 #6 at QA, j36 #15 at p-ru-ml), the aggregate — dense NDCG@10 0.766 · BM25 0.810 ·
+fused 0.771 · v4 0.892, «не переключать» («do not switch») confirmed; the ratchet
+thresholds were rebased downwards with a recorded reason (the set grew and brought hard
+cases). The payload of both journal reports is pinned by a unit test. Still open and
+named: constants until data accumulates (collection is ready from BFIX-001),
+measurements on one machine, the profile's language field (a product decision),
+cost/hardware. Details — [tasks/DGAP-001](tasks/DGAP-001-deferred-measurements.md).
 
-**Документы против кода (FDOC-001, 2026-10-02):** раздел F инвентаря закрыт.
-`ARCHITECTURE.md` — обновление ADR сверху и пометки «устарело 2026-10-02» по трём
-утверждениям (решения ADR не менялись); `SAFETY_GATES.md` — колонка статуса по
-факту, гейты и запрет беты не менялись; `README.md` — приведён к фактическому
-состоянию; `AGENTS.md` — абзац «What exists» (правила не тронуты); `COVERAGE.md` —
-таблица переписана, «не реализовано» осталось только у restore; `DELIVERY.md` —
-среда подготовки помечена как снятая; `DEPENDENCIES.md` — добавлены
-`next-auth@4.24.15` и `openai@7.23.0`; `START_HERE.md` — шапка-статус (остаётся
-архивной записью первого дня). Детали — [tasks/FDOC-001](tasks/FDOC-001-docs-vs-code.md).
+**Documents versus code (FDOC-001, 2026-10-02):** section F of the inventory is closed.
+`ARCHITECTURE.md` — an ADR update on top and «устарело 2026-10-02» («outdated
+2026-10-02») notes on three statements (the ADR decisions did not change);
+`SAFETY_GATES.md` — a fact-based status column, the gates and the beta prohibition did
+not change; `README.md` — brought to the actual state; `AGENTS.md` — the "What exists"
+paragraph (the rules were not touched); `COVERAGE.md` — the table was rewritten, «не
+реализовано» («not implemented») remains only for restore; `DELIVERY.md` — the
+preparation environment is marked as decommissioned; `DEPENDENCIES.md` — added
+`next-auth@4.24.15` and `openai@7.23.0`; `START_HERE.md` — a status header (it remains
+an archival record of day one). Details —
+[tasks/FDOC-001](tasks/FDOC-001-docs-vs-code.md).
 
-**Кампания B-дефектов (BFIX-001, 2026-10-02):** закрыты 18 пунктов раздела B
-инвентаря — клики журнала (B1), серверный `propensity` (B2) и серверные
-feed-order метки (B3, B20), вкладка «Нужно уточнить» по флагу профиля (B4),
-требования вакансии в карточке подбора (B5), буст роли по словам с синонимией
-голов (B6 — измеренный прирост NDCG@5 0.914340→0.918614, пороги ratchet
-подняты), ghost-пометка в каталоге (B7), панель «На чём основано» (B8),
-If-Match/ETag и сравнение версий (B10), DST-точное окно TIME-01 с
-`RULESET_VERSION` 3 (B12), факты в health/doctor (B14), README AI-контура (B15),
-`npm run smoke:ai` (B16), удаление мёртвого кода (B17), видимость глотаемых
-ошибок (B18), стоимость из леджера (B19), гейт uploads на всех маршрутах CV
-(B22). Отложены с причиной: B9 (письма закрыты границей персональных данных),
-B11 (удаление аккаунта — отдельный review владельца), B13 (право jobicy),
-B23 (ранкер в продуктовом пути — решение владельца). Проверки: `check`
-**240/240**, `test:db` **55/55**, `build` 0, `e2e` **96** (3 базлайна страницы
-письма обновлены осознанно), `eval:matching` — пороги 0.919/0.920, guards 0/0.
-Детали — [tasks/BFIX-001](tasks/BFIX-001-b-defects-closure.md).
+**B-defect campaign (BFIX-001, 2026-10-02):** 18 items of section B of the inventory are
+closed — journal clicks (B1), server-side `propensity` (B2) and server-side feed-order
+labels (B3, B20), the «Нужно уточнить» tab driven by the profile flag (B4), vacancy
+requirements on the matching card (B5), role boosting by words with head-synonym
+matching (B6 — a measured NDCG@5 gain 0.914340→0.918614, the ratchet thresholds raised),
+the ghost mark in the catalog (B7), the «На чём основано» panel (B8), If-Match/ETag and
+version comparison (B10), the DST-exact TIME-01 window with `RULESET_VERSION` 3 (B12),
+facts in health/doctor (B14), the AI contour README (B15), `npm run smoke:ai` (B16),
+deletion of dead code (B17), visibility of swallowed errors (B18), cost from the ledger
+(B19), the uploads gate on all CV routes (B22). Deferred with a reason: B9 (letters are
+closed by the personal data boundary), B11 (account deletion — a separate owner review),
+B13 (jobicy's right), B23 (the ranker in the product path — an owner decision). Checks:
+`check` **240/240**, `test:db` **55/55**, `build` 0, `e2e` **96** (3 baselines of the
+letter page updated deliberately), `eval:matching` — thresholds 0.919/0.920, guards 0/0.
+Details — [tasks/BFIX-001](tasks/BFIX-001-b-defects-closure.md).
 
-Задачи группы B: [B1-001](tasks/B1-001-embedding-contract-dense.md)
-(контракт эмбеддингов, хранилище, dense-нога, playbook),
-[B1-002](tasks/B1-002-indexing-resilience.md) (устойчивость индексации) и
-[B2-001](tasks/B2-001-bm25-rrf-fusion.md) (BM25 + RRF) — **implemented, tested
-locally** (2026-09-30), закоммичены в `main` (`d3b992f`, 2026-10-01), ждут review
-владельца. Группа A (A1–A10) завершена ранее.
+Group B tasks: [B1-001](tasks/B1-001-embedding-contract-dense.md) (embedding contract,
+storage, dense leg, playbook), [B1-002](tasks/B1-002-indexing-resilience.md) (indexing
+resilience) and [B2-001](tasks/B2-001-bm25-rrf-fusion.md) (BM25 + RRF) — **implemented,
+tested locally** (2026-09-30), committed to `main` (`d3b992f`, 2026-10-01), awaiting the
+owner's review. Group A (A1–A10) was completed earlier.
 
-**Что реализовано.** Локальная модель эмбеддингов реально работает: контракт
-(версия выводится из артефакта — ревизия + sha256 весов; инструкция только на
-запросе; смешение версий/ролей — отказ), хранение векторов в pgvector (миграция
-0017: `job_embeddings` с каскадом от снапшота, `profile_embeddings` с составным FK
-от версии профиля), индексация с проверкой `process_with_ml` в точке использования
-(jobicy — `no_permission`, синтетика и himalayas индексируются), dense-нога
-извлечения, BM25 в Node и слияние по позициям (RRF k=60 + веса). Веса модели
-скачиваются единственной reviewed командой `npm run models:fetch` (625 МБ, каждый
-файл сверен с закреплённым sha256, ревизия — коммит). Выдача не переключается:
-слой инертен без модели и не стоит в горячем пути.
+**What is implemented.** The local embedding model really works: the contract (the
+version is derived from the artifact — revision + sha256 of the weights; the instruction
+only in the query; mixing versions/roles — a refusal), storing vectors in pgvector
+(migration 0017: `job_embeddings` with a cascade from the snapshot, `profile_embeddings`
+with a composite FK from the profile version), indexing with a check of
+`process_with_ml` at the point of use (jobicy — `no_permission`, the synthetic data and
+himalayas are indexed), the dense retrieval leg, BM25 in Node and fusion by positions
+(RRF k=60 + weights). The model weights are downloaded by the single reviewed command
+`npm run models:fetch` (625 MB, each file verified against the pinned sha256, the
+revision — a commit). Delivery does not switch: the layer is inert without the model and
+is not in the hot path.
 
-**Измерено на замороженном наборе A1 (реальная модель, 34 поста × 6 профилей).**
+**Measured on the frozen set A1 (real model, 34 posts × 6 profiles).**
 
-| Порядок | R@5 | R@10 | NDCG@5 | NDCG@10 | MRR |
+| Order | R@5 | R@10 | NDCG@5 | NDCG@10 | MRR |
 |---|---|---|---|---|---|
-| dense-нога (B1) | 0.663 | 0.843 | 0.760 | 0.804 | 0.806 |
+| dense leg (B1) | 0.663 | 0.843 | 0.760 | 0.804 | 0.806 |
 | BM25 (B2) | 0.660 | 0.877 | 0.827 | **0.881** | **1.000** |
-| слияние RRF k=60 | 0.680 | 0.836 | 0.800 | 0.827 | 0.833 |
-| ранкер v4 (продукт) | 0.742 | 0.877 | 0.914 | 0.916 | 1.000 |
+| RRF fusion k=60 | 0.680 | 0.836 | 0.800 | 0.827 | 0.833 |
+| ranker v4 (product) | 0.742 | 0.877 | 0.914 | 0.916 | 1.000 |
 
-Вывод по правилу §6.4 («если нет измеримого прироста — не переключать»): **не
-переключать**. BM25 в одиночку лучше слияния, а слияние тем лучше, чем меньше вес
-dense-ноги (dense 1 · bm25 3 → NDCG@10 0.868; одна BM25 → 0.881). Ни одна нога не
-достигает порогов ранкера v4. Комплементарность (top-10, 32 релевантных): обе ноги
-нашли 24, только dense — 1, только BM25 — 2, не нашла ни одна — 5. Запас слияния
-существует, но качество порядка он не улучшает **на этом наборе**.
+The conclusion under rule §6.4 («если нет измеримого прироста — не переключать» («if
+there is no measurable gain — do not switch»)): **do not switch**. BM25 alone is better
+than fusion, and fusion is the better the smaller the weight of the dense leg (dense 1 ·
+bm25 3 → NDCG@10 0.868; BM25 alone → 0.881). No leg reaches the ranker v4 thresholds.
+Complementarity (top-10, 32 relevant): both legs found 24, dense only — 1, BM25 only —
+2, neither found — 5. Fusion headroom exists, but it does not improve the quality of the
+order **on this set**.
 
-Живая проверка хранилища (реальная модель, рабочая БД): посчитаны вложения всех
-498 himalayas-постов, записано **486 векторов**; стоимость индексации — ~6 минут на
-493 живых документа. Артефакт `models/` в git не хранится (`.gitignore`).
+Live storage check (real model, working DB): embeddings were computed for all 498
+himalayas posts, **486 vectors** written; the indexing cost — ~6 minutes for 493 live
+documents. The `models/` artifact is not stored in git (`.gitignore`).
 
-**Находка для владельца (вне задачи, БД не тронута): 12 из 700
-`job_snapshots.id` в рабочей БД недостижимы по первичному ключу.** Индексный поиск
-возвращает 0 там, где последовательный скан находит строку (проверено напрямую:
-`WHERE id = $1` → 0 строк, скан → 1). Причина класса — смена образа БД
-(`postgres:17.11-alpine` → `pgvector/pgvector:0.8.6-pg17`): btree помнит порядок
-одной коллации, а сервер сравнивает другой (`datcollversion = NULL`,
-`en_US.utf8`). Затронут только `job_snapshots.id`: `users.id`, `users.email`,
-`candidate_profiles.id` и тестовая БД чисты. Ремедия: **`REINDEX TABLE
-job_snapshots;`** (при сомнениях — `REINDEX DATABASE atlas_starter`), затем
-повторить `npm run embeddings:index`. До этого 12 вакансий не находятся по id — это
-шире эмбеддингов: сохранённые, скрытые, письма и FK-вставки по ним тоже не
-работают. Именно этот дефект сорвал первый полный прогон; индексатор теперь
-называет такие id и продолжает, но каталог не лечит.
+**A finding for the owner (outside the task, DB untouched): 12 of 700 `job_snapshots.id`
+in the working DB are unreachable by the primary key.** An index search returns 0 where
+a sequential scan finds the row (checked directly: `WHERE id = $1` → 0 rows, scan → 1).
+The class cause — a change of the DB image (`postgres:17.11-alpine` →
+`pgvector/pgvector:0.8.6-pg17`): btree remembers the order of one collation while the
+server compares another (`datcollversion = NULL`, `en_US.utf8`). Only `job_snapshots.id`
+is affected: `users.id`, `users.email`, `candidate_profiles.id` and the test DB are
+clean. The remedy: **`REINDEX TABLE job_snapshots;`** (when in doubt —
+`REINDEX DATABASE atlas_starter`), then repeat `npm run embeddings:index`. Until then 12
+vacancies are not found by id — this is broader than embeddings: saved, hidden, letters
+and FK inserts by them also do not work. It was precisely this defect that broke the
+first full run; the indexer now names such ids and continues, but it does not cure the
+catalog.
 
-**Проверено:** `npm run check` → exit 0 (**229/229** unit, было 194; biome 201 файл;
-tsc чисто); **`npm run test:db` → exit 0 (51/51** на изолированной БД, 7 новых);
-`npm run build` → exit 0; **`npm run test:e2e` → 96 passed**; `npm run eval:matching`
-→ exit 0, пороги A1 не двигались (ранкер не тронут); `npm run eval:dense` и
-`npm run eval:retrieval` → exit 0 (числа выше); `npm run models:fetch` → 6 файлов,
-624 963 871 байт, все sha256 совпали; `npm run embeddings:index -- --embedder=local`
-→ exit 1 `partial_store` (ожидаемо: 481 записан, 12 недостижимых названы — это и
-есть измеренный дефект БД).
+**Checked:** `npm run check` → exit 0 (**229/229** unit, was 194; biome 201 files; tsc
+clean); **`npm run test:db` → exit 0 (51/51** on an isolated DB, 7 new); `npm run build`
+→ exit 0; **`npm run test:e2e` → 96 passed**; `npm run eval:matching` → exit 0, the A1
+thresholds did not move (the ranker was not touched); `npm run eval:dense` and
+`npm run eval:retrieval` → exit 0 (the numbers above); `npm run models:fetch` → 6 files,
+624 963 871 bytes, all sha256 matched; `npm run embeddings:index -- --embedder=local` →
+exit 1 `partial_store` (expected: 481 written, 12 unreachable named — this is exactly
+the measured DB defect).
 
-**Ограничения.** Кросс-язычное качество не измерено (4 русские вакансии, языкового
-поля в профиле нет) — а это ровно тот случай, где dense-нога может выигрывать;
-семантический кейс брифа («ML developer» без точного вхождения токена) на реальной
-модели не проверен; полная переиндексация каталога ≈ полчаса CPU и версионируется
-целиком; KV-выходы ONNX-графа — главный расход памяти (≈4.6 ГБ на батч 8 при 2000
-токенов, поэтому документы считаются по одному); `onnxruntime-node` ставится без
-postinstall-скрипта (npm-политика среды), инференс при этом проверен фактическим
-запуском. Числовые константы новых слоёв (веса слияния, `RRF_K`, `k1`/`b`) не
-подбирались под набор — кроме тех, что прямо названы измерениями выше.
+**Limitations.** Cross-language quality is not measured (4 Russian vacancies, there is
+no language field in the profile) — and this is exactly the case where the dense leg
+could win; the brief's semantic case ("ML developer" without an exact token occurrence)
+was not checked on the real model; a full re-index of the catalog ≈ half an hour of CPU
+and is versioned as a whole; the KV outputs of the ONNX graph are the main memory
+expense (≈4.6 GB per batch of 8 at 2000 tokens, which is why documents are computed one
+at a time); `onnxruntime-node` is installed without a postinstall script (the
+environment's npm policy), while inference was checked by an actual run. The numeric
+constants of the new layers (fusion weights, `RRF_K`, `k1`/`b`) were not tuned to the
+set — except those directly named by the measurements above.
 
-**Откат.** `git revert` коммитов B1/B1-002/B2: слой и CLI исчезают, выдача не
-меняется ни на одном шаге (она этим слоем не ранжируется). Таблицы — `DROP TABLE
-job_embeddings, profile_embeddings`; артефакт — удалить `models/`. Дефект БД
-откатом не лечится: `REINDEX` — отдельное действие владельца.
+**Rollback.** `git revert` of the B1/B1-002/B2 commits: the layer and the CLI disappear,
+delivery does not change at any step (it is not ranked by this layer). Tables —
+`DROP TABLE job_embeddings, profile_embeddings`; the artifact — delete `models/`. The DB
+defect is not cured by rollback: `REINDEX` is a separate owner action.
 
-## Группа B: эмбеддинги, BM25, слияние (2026-09-30)
+## Group B: embeddings, BM25, fusion (2026-09-30)
 
-Три задачи, каждая со своим отчётом: [B1-001](tasks/B1-001-embedding-contract-dense.md)
-(контракт, хранилище, dense-нога, playbook, `models:fetch`),
-[B1-002](tasks/B1-002-indexing-resilience.md) (устойчивость индексации к строкам,
-недостижимым по индексу БД), [B2-001](tasks/B2-001-bm25-rrf-fusion.md) (BM25 + RRF,
-измерение слияния). Разбор решений и границы — в `docs/EMBEDDING_PLAYBOOK.md`.
+Three tasks, each with its own report:
+[B1-001](tasks/B1-001-embedding-contract-dense.md) (contract, storage, dense leg,
+playbook, `models:fetch`), [B1-002](tasks/B1-002-indexing-resilience.md) (indexing
+resilience to rows unreachable by the DB index),
+[B2-001](tasks/B2-001-bm25-rrf-fusion.md) (BM25 + RRF, fusion measurement). The decision
+analysis and the boundaries are in `docs/EMBEDDING_PLAYBOOK.md`.
 
-Что появилось в коде: `src/domain/embeddings.ts` (контракт: версия = артефакт,
-инструкция только на запросе, fail-closed на смешении), `src/domain/dense-retrieval.ts`,
-`src/domain/bm25.ts`, `src/domain/rrf.ts`, `src/domain/retrieval-eval.ts`,
+What appeared in the code: `src/domain/embeddings.ts` (contract: the version = the
+artifact, the instruction only in the query, fail-closed on mixing),
+`src/domain/dense-retrieval.ts`, `src/domain/bm25.ts`, `src/domain/rrf.ts`,
+`src/domain/retrieval-eval.ts`,
 `src/server/embeddings/{embedding-service,local-embedder,dense-search-service}.ts`,
-`migrations/0017_job_embeddings.sql`, `scripts/{models-fetch,embeddings-index,eval-dense,eval-retrieval}.ts`,
-команды `models:fetch`, `embeddings:index`, `eval:dense`, `eval:retrieval`.
-Зависимость `@huggingface/transformers@4.3.0` — решение владельца №2, закреплена
-точно и проверяется `npm run guardrails` (плюс запрет `allowRemoteModels = true` в
-`src/`). Тестов добавлено 35 (unit) и 7 (integration).
+`migrations/0017_job_embeddings.sql`,
+`scripts/{models-fetch,embeddings-index,eval-dense,eval-retrieval}.ts`, the commands
+`models:fetch`, `embeddings:index`, `eval:dense`, `eval:retrieval`. The dependency
+`@huggingface/transformers@4.3.0` — owner decision No. 2, pinned exactly and checked by
+`npm run guardrails` (plus a ban on `allowRemoteModels = true` in `src/`). 35 tests
+added (unit) and 7 (integration).
 
-Не начато из группы B: B5 (кросс-язычный near-dup — зависит от B1, теперь
-разблокирован), B6 (survival-модель вместо эвристик возраста), B3 (реранкер),
-B4 (NLI pre-check). По B3 решение владельца №3 принято 2026-10-01
-([документ](docs/design/2026-10-01-owner-decision-03-reranker.md)): API-вариант через
-уже одобренный транспорт OpenAI, бюджет стадии — предупреждением, вопрос входа
-(«после RRF») отложен записью. Активация невозможна до предусловий: C0-часть-1
-(шлюз не проверяет purposes, батч-путь идёт к провайдеру мимо бюджета), новый
-task_type + purpose, гранты `send_to_ai_provider` (сейчас `denied` у всех трёх
-источников), решение по передаче текста профиля провайдеру и пересмотр квоты
-(50 центов/мес ≈ 53–72 скорированных выдачи). У OpenAI нет rerank-эндпоинта, поэтому
-«B3 через API» — это LLM-скоринг по рубрике, то есть механика и ворота фазы C.
-Ближайший шаг — **C0-часть-1** (не требует новых решений) либо кросс-язычное
-расширение golden-набора (открыт вопрос разметки: A1 требует суждения человека).
+Not started from group B: B5 (cross-language near-dup — depends on B1, now unblocked),
+B6 (a survival model instead of age heuristics), B3 (reranker), B4 (NLI pre-check). On
+B3, owner decision No. 3 was made 2026-10-01
+([document](docs/design/2026-10-01-owner-decision-03-reranker.md)): the API variant via
+the already approved OpenAI transport, the stage budget as a warning, the input question
+(«после RRF» («after RRF»)) deferred with a record. Activation is impossible before the
+prerequisites: C0-part-1 (the gateway does not check purposes, the batch path goes to
+the provider past the budget), a new task_type + purpose, `send_to_ai_provider` grants
+(currently `denied` for all three sources), a decision on transferring profile text to
+the provider and a quota revision (50 cents/month ≈ 53–72 scored deliveries). OpenAI has
+no rerank endpoint, so «B3 через API» («B3 via API») is LLM scoring by rubric, that is,
+the mechanics and gates of phase C. The nearest step is **C0-part-1** (requires no new
+decisions) or a cross-language extension of the golden set (an open labelling question:
+A1 requires human judgement).
 
-**Что реализовано (пункт A10 брифа, фаза 1):** сигналы доступности объявления
-впервые дошли до ранжирования и до кандидата. `src/domain/ev-multipliers.ts`:
-`ghostDemotion` (`suspectedInactive -20`, `pipelineStale -25`; нет сигнала /
-`active` / `unknown` → 0) и `ghostNote` — честная пометка «Возможно неактивна:
-источник не подтвердил объявление». Ранкер — v4, `RankedJob.ghost` для
-прозрачности; `readSnapshotCardsData` читает closure-строку вместе с карточкой
-(один запрос); `MatchedJob.closure` несёт сигнал в карточку подбора и в тень A9.
-Слот «urgency» **не дублирован**: возраст уже измеренно понижает выдачу (A5, числа
-в её файле), survival-модель — пункт B6. Понижение ограничено снизу разрывом между
-уровнями допуска (30) и **не скрывает**: одна неудачная проверка оставляет вакансию
-в выдаче с пометкой, закрывает только правило двух проверок.
+**What is implemented (brief item A10, phase 1):** availability signals for a listing
+reached ranking and the candidate for the first time. `src/domain/ev-multipliers.ts`:
+`ghostDemotion` (`suspectedInactive -20`, `pipelineStale -25`; no signal / `active` /
+`unknown` → 0) and `ghostNote` — an honest mark «Возможно неактивна: источник не
+подтвердил объявление». The ranker — v4, `RankedJob.ghost` for transparency;
+`readSnapshotCardsData` reads the closure row together with the card (one query);
+`MatchedJob.closure` carries the signal into the matching card and into the A9 shadow.
+The «urgency» slot is **not duplicated**: age already measurably demotes delivery (A5,
+the numbers in its file), the survival model — item B6. The demotion is bounded below by
+the gap between the admission levels (30) and **does not hide**: one failed check leaves
+the vacancy in delivery with a mark, only the two-checks rule closes it.
 
-**Проверено:** `npm run check` → exit 0 (**194/194** unit, было 189; biome; tsc
-чисто); **`npm run test:db` → exit 0 (44/44**, 2 новых A10 на живой БД: одна
-неудачная проверка → вакансия остаётся с пометкой, вторая → уходит по правилу
-закрытия; unknown не даёт ни скрытия, ни предупреждения); `npm run build` →
-exit 0; **`npm run test:e2e` → 96 passed**; `npm run eval:matching` → exit 0, набор
-не деградировал (NDCG@10 0.916, пороги не двигались — слой инертен без
-closure-данных); `npm run eval:shadow` → exit 0, текущий v4 как кандидат двигает
-155 из 159 позиций относительно порядка каталога, guardrails pass. Живая проверка:
-после одной неудачной проверки вакансия осталась в выдаче (46 записей), карточка
-показала пометку; след проверки удалён.
+**Checked:** `npm run check` → exit 0 (**194/194** unit, was 189; biome; tsc clean);
+**`npm run test:db` → exit 0 (44/44**, 2 new A10 on the live DB: one failed check → the
+vacancy remains with a mark, a second → it leaves by the closure rule; unknown gives
+neither a hide nor a warning); `npm run build` → exit 0; **`npm run test:e2e` → 96
+passed**; `npm run eval:matching` → exit 0, the set did not degrade (NDCG@10 0.916, the
+thresholds did not move — the layer is inert without closure data);
+`npm run eval:shadow` → exit 0, the current v4 as candidate moves 155 of 159 positions
+relative to the catalog order, guardrails pass. A live check: after one failed check the
+vacancy remained in delivery (46 records), the card showed the mark; the check trace was
+deleted.
 
-**Ограничения:** порядок выдачи по-прежнему не ранжируется (переключение —
-решение владельца, в т.ч. из-за AI-сортировки на странице — решение №11; ворота
-готовы в A9); веса −20/−25 выбраны по смыслу (проверка «не пересекает уровень»
-закреплена тестом, подбор значений — вопрос будущих данных); «quarantined» — это
-свойство прохода, а не записи, поэтому слой использует `consecutive_inactive`;
-пометка показывается в карточке подбора, в каталоге `/jobs` — нет; p(ответ),
-self-reported исходы и обученные множители (фаза 2: D5/B1) не начаты.
+**Limitations:** delivery order is still not ranked (switching — an owner decision,
+among other things because of the AI sorting on the page — decision No. 11; the gates
+are ready in A9); the weights −20/−25 were chosen by meaning (the check «не пересекает
+уровень» («does not cross the level») is pinned by a test, tuning the values is a
+question of future data); «quarantined» is a property of the pass, not of the record, so
+the layer uses `consecutive_inactive`; the mark is shown on the matching card, in the
+catalog `/jobs` — not; p(answer), self-reported outcomes and trained multipliers (phase
+2: D5/B1) are not started.
 
-**Откат:** `git revert` коммита A10 (слой и пометка исчезают; метрики A1 остаются
-валидными). Дальше по брифу: решения владельца (раздел 7), затем фаза B — первым
-решением о векторах (pgvector против `float8[]`) и эмбеддинг-модели.
+**Rollback:** `git revert` of the A10 commit (the layer and the mark disappear; the A1
+metrics remain valid). Next per the brief: owner decisions (section 7), then phase B —
+starting with the decision on vectors (pgvector versus `float8[]`) and the embedding
+model.
 
-## Решения владельца №1–2 от 2026-09-30 (векторы: pgvector; эмбеддинг-модель)
+## Owner decisions No. 1–2 of 2026-09-30 (vectors: pgvector; embedding model)
 
-**Результат:** решение по пункту 2 раздела 7 брифа **одобрено владельцем
-2026-09-30** («одобряю всё это», пункты 1–5 §6 заготовки
+**Result:** the decision on item 2 of section 7 of the brief is **approved by the owner
+2026-09-30** («одобряю всё это» («I approve all of this»), items 1–5 of §6 of the draft
 [`docs/design/2026-09-30-owner-decision-02-embedding-model.md`](docs/design/2026-09-30-owner-decision-02-embedding-model.md)),
-и в тот же день приняты ещё два: **пункт 1 — векторы в pgvector** и
-**ML-обработка himalayas разрешена**, плюс поручение починить `terms_hash`.
-Применено в коде: `process_with_ml` = `allowed` у `atlas-fixtures` (версия
-политики 1→2) и у `himalayas` (3→4, `reviewed_at` 2026-09-30, ссылка на решение
-в `approval_reference`); `train_model` и `send_to_ai_provider` остались `denied`
-у всех, у `jobicy` `process_with_ml` тоже `denied` — грант владельца его не
-коснулся. Границы закреплены тестом `tests/unit/source-contract.test.ts`
-«owner decision 2026-09-30 (brief 7.2): local ML inference covers fixtures and
-himalayas, not jobicy» — тихий флип любого из трёх источников падает тестом,
-`unknown` по-прежнему «не лицензия».
+and on the same day two more were made: **item 1 — vectors in pgvector** and **ML
+processing of himalayas is allowed**, plus an instruction to fix `terms_hash`. Applied
+in the code: `process_with_ml` = `allowed` for `atlas-fixtures` (policy version 1→2) and
+for `himalayas` (3→4, `reviewed_at` 2026-09-30, a link to the decision in
+`approval_reference`); `train_model` and `send_to_ai_provider` remained `denied` for
+everyone, for `jobicy` `process_with_ml` is also `denied` — the owner's grant did not
+touch it. The boundaries are pinned by the test `tests/unit/source-contract.test.ts`
+"owner decision 2026-09-30 (brief 7.2): local ML inference covers fixtures and
+himalayas, not jobicy" — a silent flip of any of the three sources fails the test,
+`unknown` is still «не лицензия» («not a licence»).
 
-**Решение (что утверждено):** локальная модель `Qwen3-Embedding-0.6B` (Apache-2.0,
-MRL 32–1024, 32K, инструкция на стороне запроса, ONNX для Node) как основная;
-`microsoft/harrier-oss-v1-0.6b` — кандидат теневого замера; `granite-311m-r2` —
-резерв по CPU; API — только измерительный бейзлайн. Детали, объём каждого пункта,
-точки крепления и откат — в §6.1–6.5 документа.
+**The decision (what is approved):** the local model `Qwen3-Embedding-0.6B` (Apache-2.0,
+MRL 32–1024, 32K, the instruction on the query side, ONNX for Node) as the primary one;
+`microsoft/harrier-oss-v1-0.6b` — a shadow-measurement candidate; `granite-311m-r2` — a
+CPU fallback; API — measurement baseline only. Details, the scope of each item, the
+attachment points and the rollback are in §6.1–6.5 of the document.
 
-**Решение №1 (векторы) — принято 2026-09-30: pgvector — применено.** Хранилище
-векторов — `pgvector`, не `float8[]`. Владелец сменил образ в `compose.yaml` на
-`pgvector/pgvector:0.8.6-pg17`; контейнер пересоздан, том сохранён (700 вакансий,
-355 пользователей, 124 профиля на месте), сервер — PostgreSQL 17.11 (Debian;
-прежде musl/Alpine, версия та же). Репетиция на копии тома показала совместимость
-каталога данных заранее. Миграция `migrations/0016_pgvector.sql`
-(`CREATE EXTENSION IF NOT EXISTS vector`) применена к рабочей и тестовой БД,
-`vector 0.8.6` установлен в обеих, `npm run test:db` → exit 0 (44/44). Таблицы
-векторов нет — её создаёт B1 вместе с правилами владения и удаления. Строка про
-образ и расширение — в `docs/DEPENDENCIES.md`.
+**Decision No. 1 (vectors) — made 2026-09-30: pgvector — applied.** Vector storage —
+`pgvector`, not `float8[]`. The owner changed the image in `compose.yaml` to
+`pgvector/pgvector:0.8.6-pg17`; the container was recreated, the volume preserved (700
+vacancies, 355 users, 124 profiles in place), the server — PostgreSQL 17.11 (Debian;
+previously musl/Alpine, the same version). A rehearsal on a volume copy showed the
+compatibility of the data catalog in advance. Migration `migrations/0016_pgvector.sql`
+(`CREATE EXTENSION IF NOT EXISTS vector`) applied to the working and test DBs,
+`vector 0.8.6` installed in both, `npm run test:db` → exit 0 (44/44). There is no vector
+table — B1 creates it together with the ownership and deletion rules. The line about the
+image and the extension is in `docs/DEPENDENCIES.md`.
 
-**ToS himalayas и jobicy — разбор 2026-09-30 (сырые страницы, цитаты в §8
-документа).** himalayas: API-документация называет аудиторией «AI tools» и
-предполагает зеркало фида; прямого разрешения на ML-обработку хранимого текста
-нет — как и прямого запрета (общие условия сайта запрещают воспроизведение и
-скрейпинг, к API-программе прямо не отнесённое). Владелец принял это прочтение и
-**грант выдан**; письменное подтверждение `hi@himalayas.app` остаётся
-рекомендованным шагом, но больше не блокирует. jobicy: Fair Use прямо разрешает
-«your own products and user experiences», «summaries, categories, search
-experiences», «AI assistants» — доказательства там сильнее, но грант не выдан:
-отдельное решение владельца (зафиксировано комментарием в политике).
+**ToS of himalayas and jobicy — analysis 2026-09-30 (raw pages, quotes in §8 of the
+document).** himalayas: the API documentation names «AI tools» as its audience and
+assumes a mirror of the feed; there is no direct permission for ML processing of stored
+text — nor a direct prohibition (the site's general terms prohibit reproduction and
+scraping, not directly attributed to the API programme). The owner accepted this reading
+and **the grant was issued**; written confirmation from `hi@himalayas.app` remains a
+recommended step, but no longer blocks. jobicy: Fair Use directly allows «your own
+products and user experiences», «summaries, categories, search experiences», «AI
+assistants» — the evidence there is stronger, but the grant was not issued: a separate
+owner decision (recorded by a comment in the policy).
 
-**`terms_hash` починен 2026-09-30.** Причина: старый хэш считался по сырой
-странице, а она невоспроизводима (jobicy инжектит Cloudflare-скрипт с nonce,
-himalayas отдаёт деплой-зависимую оболочку приложения; Wayback для сверки вернул
-429). Теперь: `src/server/terms-fingerprint.ts` — нормализация (скрипты, стили,
-комментарии, теги, одноуровневое декодирование сущностей, блочные границы как
-переводы строк) и sha256 нормализованного текста; прочитанные редакции лежат в
-`docs/sources/terms/himalayas-terms.txt` и `jobicy-feed.txt` с манифестом
-`docs/sources/terms/snapshots.json`; `npm run terms:check` сравнивает живые
-страницы с записью (exit 0 — те же, 1 — изменились, 2 — проверить не удалось) и
-печатает место первого расхождения; офлайн-тест
-`tests/unit/terms-fingerprint.test.ts` связывает политику, манифест и снимок и
-падает при расхождении без сети. Честная деталь: нормализация не идемпотентна
-(декодирование одноуровневое), поэтому целостность снимка проверяется обычным
-sha256 его текста — тест фиксирует это явно.
+**`terms_hash` was fixed 2026-09-30.** The reason: the old hash was computed over the
+raw page, and it is not reproducible (jobicy injects a Cloudflare script with a nonce,
+himalayas serves a deploy-dependent application shell; Wayback returned 429 for
+verification). Now: `src/server/terms-fingerprint.ts` — normalisation (scripts, styles,
+comments, tags, one-level entity decoding, block boundaries as newlines) and sha256 of
+the normalised text; the read editions are in `docs/sources/terms/himalayas-terms.txt`
+and `jobicy-feed.txt` with the manifest `docs/sources/terms/snapshots.json`;
+`npm run terms:check` compares the live pages with the record (exit 0 — the same, 1 —
+changed, 2 — could not check) and prints the place of the first divergence; the offline
+test `tests/unit/terms-fingerprint.test.ts` links the policy, the manifest and the
+snapshot and fails on divergence without network. An honest detail: normalisation is not
+idempotent (decoding is one-level), so the integrity of the snapshot is checked by a
+normal sha256 of its text — the test records this explicitly.
 
-**Проверено:** `npm run check:offline` → exit 0 (**198/198** unit, было 195;
-guardrails; токены; иконки); `npm run typecheck` → exit 0; `npx biome lint` по
-изменённым файлам → чисто; `npm run test:db` → exit 0 (**44/44** на изолированной
-БД — гранты интеграционные тесты не задели); `npm run build` → exit 0;
-`npm run test:e2e` → **96 passed**; `npm run terms:check` → exit 0 дважды подряд
-(обе страницы «unchanged» — там, где старый сырой хэш расходился на неизменных
-условиях); `npm run eval:matching` → exit 0 (R@5 0.742 · R@10 0.877 · NDCG@5 0.914 ·
-NDCG@10 0.916 · MRR 1.000, ратчет не двигался).
-**Не запускалось (`not_run`):** сама модель (ни одна не скачивалась и не
-запускалась) и замер задержки на целевой машине — это спайк B1. Смена образа
-`compose.yaml` и миграция 0016 не выполнялись — за владельцем.
-**Найдено ранее, исправлено в рабочем дереве:** `npm run check` на HEAD не
-проходил — biome падал на неиспользуемом импорте `RANKER_VERSION`
-(`scripts/eval-shadow.ts:13`), файл пришёл с коммитом A10. Исправлено 2026-10-01
-одной строкой (импорт убран); `npm run check` в дереве зелёный (229/229, biome,
-tsc). Закоммичено 2026-10-01 (`7eb7b83`), ждёт review владельца вместе с остальной
-группой B.
-**Mock/live:** приложение и тесты — локальные и синтетические; сетевые обращения
-были только у `npm run terms:check` (чтение публичных страниц условий внешних
-источников — это и есть его работа, в `npm run check` он не входит). Живые
-импортёры, AI-провайдеры и скачивание весов не запускались.
-**Затраты:** coding-host и субагентные исследования — `unknown`.
-**Откат:** политики — вернуть `process_with_ml: "denied"`, прежние версии и
-прежние `terms_hash` (тесты перестанут проходить и покажут, что откат неполный);
-`terms_hash`-механику — откатить коммитом (снимки и манифест живут отдельно от
-кода и ни на что не влияют); документ — удалить.
-**Статус изменений:** закоммичено 2026-10-01 (`48d991f`), ждёт review владельца
-диффа. Файлы:
-`src/server/source-policies.ts`, `src/server/terms-fingerprint.ts` (новый),
-`scripts/terms-check.ts` (новый), `tests/unit/terms-fingerprint.test.ts` (новый),
-`tests/unit/source-contract.test.ts`, `package.json`,
-`docs/sources/terms/*` (новые снимки и манифест), оба документа решений.
+**Checked:** `npm run check:offline` → exit 0 (**198/198** unit, was 195; guardrails;
+tokens; icons); `npm run typecheck` → exit 0; `npx biome lint` on changed files → clean;
+`npm run test:db` → exit 0 (**44/44** on an isolated DB — the grants did not affect the
+integration tests); `npm run build` → exit 0; `npm run test:e2e` → **96 passed**;
+`npm run terms:check` → exit 0 twice in a row (both pages «unchanged» — where the old
+raw hash diverged on unchanged terms); `npm run eval:matching` → exit 0 (R@5 0.742 ·
+R@10 0.877 · NDCG@5 0.914 · NDCG@10 0.916 · MRR 1.000, the ratchet did not move). **Not
+run (`not_run`):** the model itself (not one was downloaded or run) and the latency
+measurement on the target machine — that is spike B1. The image change of `compose.yaml`
+and migration 0016 were not executed — they are the owner's. **Found earlier, fixed in
+the working tree:** `npm run check` on HEAD did not pass — biome failed on an unused
+import `RANKER_VERSION` (`scripts/eval-shadow.ts:13`), the file came with the A10
+commit. Fixed 2026-10-01 with one line (the import removed); `npm run check` in the tree
+is green (229/229, biome, tsc). Committed 2026-10-01 (`7eb7b83`), awaiting the owner's
+review together with the rest of group B. **Mock/live:** the application and the tests
+are local and synthetic; network requests were only made by `npm run terms:check`
+(reading the public terms pages of external sources — that is exactly its job, it is not
+part of `npm run check`). The live importers, AI providers and weight downloads were not
+run. **Costs:** coding host and subagent research — `unknown`. **Rollback:** policies —
+restore `process_with_ml: "denied"`, the previous versions and the previous `terms_hash`
+values (the tests will stop passing and show that the rollback is incomplete); the
+`terms_hash` mechanics — roll back by commit (the snapshots and the manifest live
+separately from the code and affect nothing); the document — delete. **Status of the
+changes:** committed 2026-10-01 (`48d991f`), awaiting the owner's review of the diff.
+Files: `src/server/source-policies.ts`, `src/server/terms-fingerprint.ts` (new),
+`scripts/terms-check.ts` (new), `tests/unit/terms-fingerprint.test.ts` (new),
+`tests/unit/source-contract.test.ts`, `package.json`, `docs/sources/terms/*` (new
+snapshots and manifest), both decision documents.
 
 ---
 
-Предыдущая задача: [A9-001](tasks/A9-001-ranker-shadow-guardrails.md) —
-**implemented, tested locally (check + test:db + build + e2e + eval:shadow + живой
-прогон)** (2026-09-29), ветка слита в `main` (`a021854`), ждёт review
-владельца.
+Previous task: [A9-001](tasks/A9-001-ranker-shadow-guardrails.md) — **implemented,
+tested locally (check + test:db + build + e2e + eval:shadow + a live run)**
+(2026-09-29), the branch is merged into `main` (`a021854`), awaiting the owner's review.
 
-**Что реализовано (пункт A9 брифа):** ранкер перестал быть неподключённой
-заготовкой. `src/domain/ranker-registry.ts` даёт устойчивые id версиям, включая
-`feed-default-order` — «то, что кандидаты получают сегодня» (порядок каталога;
-AI-сортировка страницы живёт выше сервиса и в дифф не входит, это записано).
-`src/domain/rank-guardrails.ts` — метрики на запрос с порогами-константами:
-пустая доля 0.5, закрытые/дубли/неодобренные источники в топ-10 — 0 (абсолютные
-правила), p95 задержки 250 мс; пустой пул ранкера не считается пустой выдачей
-(иначе честный seen-set валил бы ворота — поймано живой проверкой).
-`src/domain/ranker-shadow.ts` + `src/server/ranker-shadow-service.ts` — теневой
-прогон чемпион/кандидат на одних входах, дифф по позициям и строка лога **только
-из чисел** (ни id вакансий, ни профиля — тест). Тень подключена к чтению выдачи
-внутри `try/catch`: упавшая тень не влияет на выдачу (тест), вход тени — ровно
-доставленные вакансии. `npm run eval:shadow` — ворота: exit 1 при нарушении
-guardrail'а кандидатом.
+**What is implemented (brief item A9):** the ranker is no longer an unconnected stub.
+`src/domain/ranker-registry.ts` gives stable ids to versions, including
+`feed-default-order` — «то, что кандидаты получают сегодня» («what candidates get
+today») (the catalog order; the page's AI sorting lives above the service and is not
+part of the diff, this is recorded). `src/domain/rank-guardrails.ts` — per-request
+metrics with constant thresholds: empty share 0.5, closed/duplicate/unapproved sources
+in the top-10 — 0 (absolute rules), p95 latency 250 ms; an empty ranker pool is not
+counted as an empty delivery (otherwise an honest seen-set would fail the gates — caught
+by a live check). `src/domain/ranker-shadow.ts` + `src/server/ranker-shadow-service.ts`
+— a shadow run of champion/candidate on the same inputs, a diff by positions and a log
+line **of numbers only** (no vacancy ids, no profile — a test). The shadow is connected
+to delivery reading inside `try/catch`: a crashed shadow does not affect delivery (a
+test), the shadow's input is exactly the delivered vacancies. `npm run eval:shadow` —
+the gate: exit 1 when a guardrail is violated by the candidate.
 
-**Проверено:** `npm run check` → exit 0 (**189/189** unit, было 180; biome; tsc
-чисто); **`npm run test:db` → exit 0 (42/42**, 2 новых A9); `npm run build` →
-exit 0; **`npm run test:e2e` → 96 passed**; `npm run eval:matching` → пороги A1 не
-двигались; `npm run eval:shadow` → exit 0 (кандидат v0 двигает 150 из 159 позиций,
-топ-10 меняется на 68 записей). Живой прогон (локальная БД, 46 доставленных
-вакансий): `compared 46 · moved 43 · top10Changed 18 · maxShift 39 · guardrails
-pass`; стоимость тени ~0–25 мс, порог 250 мс с запасом.
+**Checked:** `npm run check` → exit 0 (**189/189** unit, was 180; biome; tsc clean);
+**`npm run test:db` → exit 0 (42/42**, 2 new A9); `npm run build` → exit 0; **`npm run
+test:e2e` → 96 passed**; `npm run eval:matching` → the A1 thresholds did not move;
+`npm run eval:shadow` → exit 0 (candidate v0 moves 150 of 159 positions, the top-10
+changes by 68 records). A live run (local DB, 46 delivered vacancies):
+`compared 46 · moved 43 · top10Changed 18 · maxShift 39 · guardrails pass`; the shadow
+cost ~0–25 ms, the 250 ms threshold with headroom.
 
-**Ограничения:** выдача по-прежнему не ранжируется ранкером (переключение и
-EV-множители — A10 за этими же воротами); три «жёстких» метрики сегодня
-структурно нулевые (гейты и матрицы не пускают закрытое/дубли/чужие источники) —
-это сети против регрессий; p95 замерен на одной машине и одном профиле;
-`eval:shadow` считает синтетические фикстуры одобренными источниками (у них нет
-source-политики — этот guardrail проверяется на живом пути).
+**Limitations:** delivery is still not ranked by the ranker (switching and the EV
+multipliers — A10 behind the same gates); the three "hard" metrics are structurally zero
+today (the gates and the matrices do not let in closed/duplicate/foreign sources) —
+these are nets against regressions; p95 is measured on one machine and one profile;
+`eval:shadow` counts synthetic fixtures as approved sources (they have no source policy
+— this guardrail is checked on the live path).
 
-**Откат:** `git revert` коммита A9; порядок выдачи не менялся. Следующий шаг: A10 —
-EV-множители (`relevance × m_ghost × m_urgency`) за этими guardrails, с проверкой
-через `eval:matching` (порог) и `eval:shadow` (дифф и ворота).
-
----
-
-Предыдущая задача: [A7-001](tasks/A7-001-whats-new-digest.md) —
-**implemented, tested locally (check + test:db + build + e2e + ручной прогон)**
-(2026-09-29), ветка слита в `main` (`524e3db`), ждёт review владельца.
-
-**Что реализовано (пункт A7 брифа, push-MVP):** честный in-app дайджест «что
-нового». Окно = последний просмотр выдачи, и оно берётся из фактов, которые уже
-записаны: `firstSeenAt` (A5) и свежий показ в журнале (A8). Ни новой таблицы, ни
-записи на рендере: GET, двигающий курсор, мог бы быть вызван префетчем, а дайджест,
-который врёт про «новое», хуже отсутствия дайджеста. Закрытая вакансия не может
-попасть в дайджест — он считается в момент чтения из тех же гейтов, что выдача
-(`classifySnapshot` отсекает всё, кроме `active`), поэтому «закрытие между
-скорингом и отправкой» невозможно по построению. Seen-set (A6) не даёт повторять
-уже показанное; пустое состояние называет причину, включая скрытые с их сроком
-возврата. Появились `src/domain/digest.ts`, `src/server/digest-service.ts`,
-`GET /api/v1/digest`, страница `/whats-new`, ссылка из `/matched`; `matchedForUser`
-получил инъектируемый пул (аддитивно), чтобы продуктовый путь и тесты шли одним
-кодом.
-
-**Проверено:** `npm run check` → exit 0 (**180/180** unit, было 176; biome; tsc
-чисто); **`npm run test:db` → exit 0 (40/40**, 3 новых A7: окно из журнала и
-честность seen-set, закрытая вакансия не выдаётся через реальный механизм
-closure-checks, окно у каждого своё и удаляется с профилем); `npm run build` →
-exit 0 (маршруты `/api/v1/digest` и `/whats-new` собраны); **`npm run test:e2e` →
-96 passed** (93 + контракт дайджеста на трёх вьюпортах). Прогон вручную на
-локальной dev-БД: первый обзор назван первым обзором, после просмотра подбора
-дайджест показал окно, 0 новых и честную причину (скрыто 46, вернутся при
-изменении или через 14 дней); тестовые записи удалены.
-
-**Ограничения:** канал — только страница в приложении (email невозможен:
-`send_email` denied в матрицах источников; решение владельца — бриф, п. 7);
-frequency cap отсутствует, потому что нет отправок; окно = последний показ
-выдачи, а не «визит на сайт» (заявлено в тексте страницы); «новое» считается по
-нашему первому наблюдению (анти-гейминг A5).
-
-**Откат:** `git revert` коммита A7; схема не менялась. Следующий шаг: A9
-(инфраструктура ранкеров: теневой режим и guardrails на запрос; сюда же
-подключение слоёв A2/A5/A6-002 в продуктовую выдачу), затем A10 (EV-множители).
+**Rollback:** `git revert` of the A9 commit; delivery order did not change. Next step:
+A10 — EV multipliers (`relevance × m_ghost × m_urgency`) behind these guardrails, with
+verification via `eval:matching` (threshold) and `eval:shadow` (diff and gates).
 
 ---
 
-Предыдущая задача: [A6-002](tasks/A6-002-negative-preference.md) —
-**implemented, tested locally (check + eval + build)** (2026-09-29), ветка
-слита в `main` (`a347648`), ждёт review владельца.
+Previous task: [A7-001](tasks/A7-001-whats-new-digest.md) — **implemented, tested
+locally (check + test:db + build + e2e + a manual run)** (2026-09-29), the branch is
+merged into `main` (`524e3db`), awaiting the owner's review.
 
-**Что реализовано (пункт A6 брифа, вторая часть):** скрытая кандидатом вакансия
-понижает свою окрестность — та же компания (−12, нормализация A4) или тот же стек
-по справочнику (−6 при ≥4 общих канонических навыках, потолок −12, сигналы не
-суммируются). Это вес, а не фильтр: вакансии остаются в выдаче, допуск не
-меняется, слой никого не поднимает. Форма сигнала выбрана измерением на
-golden-наборе: `company + stack ≥4` даёт агрегат NDCG@10 0.930164 против 0.916478
-без слоя и не ухудшает ни одного профиля, тогда как пороги ≥2/≥3 понижают
-релевантные вакансии (0.919056 / 0.919417), а «только стек ≥3» хуже отсутствия
-слоя (0.916062). Ранкер — v3, поле `preference` в `RankedJob` для прозрачности.
+**What is implemented (brief item A7, push-MVP):** an honest in-app digest «что нового».
+The window = the last delivery view, and it is taken from facts that are already
+recorded: `firstSeenAt` (A5) and a fresh impression in the journal (A8). Neither a new
+table nor a write on render: a GET that advances the cursor could be called by a
+prefetch, and a digest that lies about «новое» («new») is worse than no digest. A closed
+vacancy cannot get into the digest — it is computed at read time from the same gates as
+delivery (`classifySnapshot` cuts off everything except `active`), so «закрытие между
+скорингом и отправкой» («closure between scoring and sending») is impossible by
+construction. The seen-set (A6) prevents repeating what was already shown; the empty
+state names the reason, including hidden ones with their return time.
+`src/domain/digest.ts`, `src/server/digest-service.ts` appeared, `GET /api/v1/digest`,
+the page `/whats-new`, a link from `/matched`; `matchedForUser` got an injectable pool
+(additively) so that the product path and the tests go through the same code.
 
-**Проверено:** `npm run check` → exit 0 (**176/176** unit, было 170; biome; tsc
-чисто); `npm run eval:matching` → exit 0, без предпочтений метрики не изменились
-(R@5 0.742 · R@10 0.877 · NDCG@5 0.914 · NDCG@10 0.916 · MRR 1.000, guards 0/0);
-`npm run build` → exit 0. `test:db`/`test:e2e` — `not_run`: схема БД и продуктовый
-путь не менялись.
+**Checked:** `npm run check` → exit 0 (**180/180** unit, was 176; biome; tsc clean);
+**`npm run test:db` → exit 0 (40/40**, 3 new A7: the window from the journal and the
+honesty of the seen-set, a closed vacancy is not delivered through the real
+closure-checks mechanism, the window is per-user and is deleted with the profile);
+`npm run build` → exit 0 (the routes `/api/v1/digest` and `/whats-new` built); **`npm
+run test:e2e` → 96 passed** (93 + the digest contract at three viewports). A manual run
+on the local dev DB: the first review was named the first review, after viewing the
+matches the digest showed the window, 0 new and an honest reason (46 hidden, they return
+when changed or after 14 days); the test records were deleted.
 
-**Ограничения:** слой ещё не подключён к продуктовой выдаче (`/matched` сортирует
-по AI-скору; подключение ранкера — A9 с теневым режимом и guardrails), поэтому
-пользователь его пока не наблюдает; порог и веса выбраны на 34 синтетических
-вакансиях и подлежат пересмотру; накопление сигналов намеренно запрещено
-(потолок), так что «много скрытий» не превращается в структурный фильтр;
-`reason_code` скрытия на вес не влияет.
+**Limitations:** the channel — the in-app page only (email is impossible: `send_email`
+denied in the source matrices; owner decision — brief, item 7); there is no frequency
+cap because there are no sends; the window = the last impression of delivery, not «визит
+на сайт» («a visit to the site») (stated in the page text); «новое» («new») is counted
+by our first observation (anti-gaming A5).
 
-**Откат:** `git revert` коммита A6-002; ранкер возвращается к v2, пороги A1
-остаются валидными. Следующий шаг: A7 (push-матчинг: страница «что нового», без
-email — send_email denied в матрицах источников).
-
----
-
-Предыдущая задача: [A6-001](tasks/A6-001-seen-set.md) —
-**implemented, tested locally (включая test:db на живой БД и e2e)** (2026-09-29),
-ветка слита в `main` (`22a2f85`), ждёт review владельца.
-
-**Что реализовано (пункт A6 брифа, часть seen-set):** подбор больше не показывает
-вакансии, которые кандидат уже видел и не тронул. Миграция 0015 добавляет в
-`job_events` колонку `shown_content_hash` — отпечаток содержимого на момент показа,
-который заполняет **сервер** из `job_snapshots.content_hash` (клиентский отпечаток
-позволил бы заявить «вы этого не видели» и вернуть скрытую вакансию в выдачу).
-Реестр показов не заводится отдельной таблицей: «показано во столько-то с таким
-содержимым» — уже факт журнала, поэтому `src/server/seen-service.ts` читает журнал
-(`DISTINCT ON`) и применяет правило из `src/domain/seen-set.ts`: нет записи или
-было действие (клик/сохранение) — показываем; отпечаток другой — показываем
-немедленно; иначе окно 14 дней; на границе — возврат. Без улик (нет отпечатка,
-нечитаемое время, метка далеко из будущего) вакансия показывается: ошибочно
-скрытая — молчаливая потеря; расхождение часов БД и вызывающего до 5 минут —
-норма, а не «метка из будущего». Правило применяется к дубль-группе целиком и
-считается по вкладкам, поэтому пустая вкладка говорит причину («скрыто N, вернутся
-через 14 дней»), а не «ничего не нашлось». `src/components/impression-reporter.tsx`
-закрывает отложенную половину A8: выдача отправляет показы (id и позиции, позиция =
-место в отрендеренном списке; видимая область не отслеживается и не заявляется).
-Порядок выдачи в журнале помечен явно (`v0-ai-score-then-catalog` /
-`v0-review-catalog-order`) — версионированного ранкера в продуктовом пути пока нет
-(A9), выдумывать его версию нельзя.
-
-**Проверено:** `npm run check` → exit 0 (**170/170** unit, было 163; biome;
-tsc чисто); **`npm run test:db` → exit 0 (37/37**, 6 новых A6 на живой тестовой БД:
-отпечаток читает сервер, golden 9, окно истекает/не истекает, изменение содержимого
-возвращает, клик/сохранение снимает правило, удаление профиля убирает состояние);
-`npm run build` → exit 0; **`npm run test:e2e` → 93 passed**; `npm run eval:matching`
-→ числа не изменились (ранкер не тронут): NDCG@10 0.916, guards 0/0. Сценарий
-пройден вручную на локальной dev-БД (postgres): 46 показов записаны с отпечатками,
-повторная загрузка — 46 скрыто с честной строкой, дублей нет, тестовые записи
-удалены. Побочно устранён разрыв окружения от A8: локальная dev-БД не была
-мигрирована до 0014, из-за чего `DELETE /api/v1/profile` падал и e2e-визуальные
-сценарии краснели — теперь миграции применены.
-
-**Ограничения:** «показ» = вакансия в отрендеренном списке (viewport не
-заявляется); окно 14 дней — верхняя граница диапазона 7–14 из исследования,
-не тюнилось (трафика нет); retention журнала (решение №8) ограничивает и память о
-показах; каталог `/jobs` остаётся витриной — правило действует в подборе;
-клиентская отправка проверена вручную, не e2e (fixture-бэкенд без снапшотов);
-весовое понижение окрестности скрытого — следующая малая задача (A6-002).
-
-**Откат:** `git revert` коммита A6; миграция аддитивная и после отката просто не
-читается. Следующий шаг: A6-002 (весовое понижение окрестности скрытого), затем A7
-(push-матчинг/алерты).
+**Rollback:** `git revert` of the A7 commit; the schema did not change. Next step: A9
+(ranker infrastructure: shadow mode and per-request guardrails; here also connecting the
+A2/A5/A6-002 layers into product delivery), then A10 (EV multipliers).
 
 ---
 
-Предыдущая задача: [A8-001](tasks/A8-001-events-journal.md) —
-**implemented, tested locally (включая test:db на живой БД)** (2026-09-29), ветка
-слита в `main` (`cb627e0`), ждёт review владельца.
+Previous task: [A6-002](tasks/A6-002-negative-preference.md) — **implemented, tested
+locally (check + eval + build)** (2026-09-29), the branch is merged into `main`
+(`a347648`), awaiting the owner's review.
 
-**Что реализовано (пункт A8 брифа):** журнал показов и кликов. Миграция 0014
-`job_events` (FK на users и job_snapshots с cascade, тип события CHECK, position,
-`propensity numeric(6,5)` с CHECK 0..1, `ranker_version`, индексы по (user, время)
-и по снапшоту). `src/domain/events.ts` — строгий разбор батча (фиксированные
-типы, id в пространстве источников, ≤50 событий, без дублей, кламп
-propensity и null вместо выдуманной вероятности). `src/server/events-service.ts` —
-запись одним параметризованным `INSERT ... FROM unnest(...)` (строкового SQL в
-файле нет), счётчик и удаление. `POST /api/v1/events` (сессия → 401, разбор →
-400, исчезнувший снапшот → 404, иначе 201; GET отсутствует намеренно).
-`deleteAllProfiles` теперь удаляет и журнал — профиль не оставляет
-поведенческого следа. Состояние (сохранено/скрыто/отклик) остаётся в своих
-таблицах: у каждого факта один источник правды.
+**What is implemented (brief item A6, second part):** a vacancy hidden by the candidate
+demotes its neighbourhood — the same company (−12, normalisation A4) or the same stack
+by the dictionary (−6 at ≥4 shared canonical skills, a ceiling of −12, the signals do
+not sum). This is a weight, not a filter: the vacancies remain in delivery, admission
+does not change, the layer raises no one. The signal shape was chosen by measurement on
+the golden set: `company + stack ≥4` gives an aggregate NDCG@10 0.930164 versus 0.916478
+without the layer and worsens no profile, whereas the thresholds ≥2/≥3 demote relevant
+vacancies (0.919056 / 0.919417), and «только стек ≥3» («stack only ≥3») is worse than
+the absence of the layer (0.916062). The ranker — v3, the `preference` field in
+`RankedJob` for transparency.
 
-**Проверено:** `npm run check` → exit 0 (163/163 unit); **`npm run test:db` →
-exit 0** (все интеграционные, включая 4 новых: владельческая изоляция, удаление с
-профилем, отказ на несуществующий снапшот, null-propensity); `npm run build` →
-exit 0 (маршрут `/api/v1/events` собран). `test:e2e` — `not_run` (UI не менялся).
-Цикл ремонта 1/2: гейт записи Mimosa заблокировал первую версию сервиса за
-сборку SQL из плейсхолдеров — переписано на `unnest` (не обход, а более
-безопасная форма).
+**Checked:** `npm run check` → exit 0 (**176/176** unit, was 170; biome; tsc clean);
+`npm run eval:matching` → exit 0, without preferences the metrics did not change (R@5
+0.742 · R@10 0.877 · NDCG@5 0.914 · NDCG@10 0.916 · MRR 1.000, guards 0/0);
+`npm run build` → exit 0. `test:db`/`test:e2e` — `not_run`: the DB schema and the
+product path did not change.
 
-**Ограничения:** клиентская отправка показов/кликов из UI не подключена (API и
-сервис готовы; следующая малая задача); `propensity` в продукте будет NULL до
-A10 (заявлено в комментарии колонки); retention журнала — решение владельца
-(бриф, раздел «Решения владельца», п. 8).
+**Limitations:** the layer is not yet connected to product delivery (`/matched` sorts by
+AI score; connecting the ranker — A9 with shadow mode and guardrails), so the user does
+not observe it yet; the threshold and the weights were chosen on 34 synthetic vacancies
+and are subject to revision; signal accumulation is deliberately forbidden (the
+ceiling), so «много скрытий» («many hides») does not become a structural filter; the
+`reason_code` of a hide does not affect the weight.
 
-**Откат:** `git revert` коммита A8; миграция аддитивная. Следующий шаг: A6
-(seen-set и негативные предпочтения) либо клиентская отправка событий.
+**Rollback:** `git revert` of the A6-002 commit; the ranker returns to v2, the A1
+thresholds remain valid. Next step: A7 (push matching: the «что нового» page, without
+email — send_email denied in the source matrices).
 
 ---
 
-Предыдущая задача: [A5-001](tasks/A5-001-freshness.md) —
-**принята владельцем 2026-09-29**; свежесть как понижение устаревших (измеренное
-решение: буст и тай-брейк поднимали нерелевантное), возраст от первого
-наблюдения, набор v3 с парой близнецов.
+Previous task: [A6-001](tasks/A6-001-seen-set.md) — **implemented, tested locally
+(including test:db on the live DB and e2e)** (2026-09-29), the branch is merged into
+`main` (`22a2f85`), awaiting the owner's review.
 
-**Что реализовано (пункт A5 брифа):** свежесть как понижение устаревших.
-`src/domain/freshness.ts`: непрерывное экспоненциальное понижение (0 у свежих,
-половина через 7 дней, асимптота −15), возраст **от нашего первого наблюдения**
-(`firstSeenAt`), `firstSeenLabel` с русскими склонениями; время всегда
-параметром, не из часов. Ранкер v2 (`v2-status-skills-role-must-stale-demotion`)
-с полем `freshness` для прозрачности. Golden-набор v3: пара близнецов
-j33/j34 (устаревшая/свежая копии, идентичные во всём остальном). UI: «найдена…»
-в карточке каталога и в карточке подбора, рядом с «Листинг от …» (это разные
-факты, дата источника не подменяется).
+**What is implemented (brief item A6, the seen-set part):** matching no longer shows
+vacancies that the candidate has already seen and did not touch. Migration 0015 adds to
+`job_events` the column `shown_content_hash` — a fingerprint of the content at the
+moment of showing, which the **server** fills from `job_snapshots.content_hash` (a
+client-side fingerprint would allow claiming «вы этого не видели» («you have not seen
+this») and returning a hidden vacancy to delivery). An impression registry is not
+created as a separate table: «показано во столько-то с таким содержанием» («shown at
+such-and-such a time with this content») — that is already a journal fact, so
+`src/server/seen-service.ts` reads the journal (`DISTINCT ON`) and applies the rule from
+`src/domain/seen-set.ts`: no record or an action taken (click/save) — show; the
+fingerprint is different — show immediately; otherwise a 14-day window; at the boundary
+— return. Without evidence (no fingerprint, unreadable time, a label far in the future)
+the vacancy is shown: a wrongly hidden one is a silent loss; a clock skew between the DB
+and the caller of up to 5 minutes — is normal, not «метка из будущего» («a label from
+the future»). The rule is applied to the duplicate group as a whole and is counted per
+tab, so an empty tab states the reason («скрыто N, вернутся через 14 дней»), not «ничего
+не нашлось». `src/components/impression-reporter.tsx` closes the deferred half of A8:
+delivery sends impressions (id and positions, position = the place in the rendered list;
+the visible area is not tracked and not claimed). The delivery order in the journal is
+labelled explicitly (`v0-ai-score-then-catalog` / `v0-review-catalog-order`) — there is
+no versioned ranker in the product path yet (A9), so its version cannot be invented.
 
-**Измеренное решение (три формы проверены на наборе):** аддитивный буст свежим —
-побочно поднимает нерелевантное (devops 0.995→0.992, ml 0.853→0.846); чистый
-тай-брейк — то же внутри равных скоров (ml →0.849); **понижение устаревших** —
-агрегат NDCG@5 0.912941 → 0.914340, NDCG@10 0.915359 → 0.916478, ни один профиль
-не ухудшился (data 0.833 → 0.840). Таблица и вывод — в задаче.
+**Checked:** `npm run check` → exit 0 (**170/170** unit, was 163; biome; tsc clean);
+**`npm run test:db` → exit 0 (37/37**, 6 new A6 on the live test DB: the fingerprint is
+read by the server, golden 9, the window expires/does not expire, a content change
+returns it, a click/save lifts the rule, deleting the profile removes the state);
+`npm run build` → exit 0; **`npm run test:e2e` → 93 passed**; `npm run eval:matching` →
+the numbers did not change (the ranker was not touched): NDCG@10 0.916, guards 0/0. The
+scenario was walked manually on the local dev DB (postgres): 46 impressions recorded
+with fingerprints, a repeated load — 46 hidden with an honest line, no duplicates, the
+test records deleted. Incidentally the environment gap from A8 was removed: the local
+dev DB had not been migrated to 0014, which made `DELETE /api/v1/profile` fail and the
+e2e visual scenarios go red — now the migrations are applied.
 
-**Проверено:** `npm run check` → exit 0 (159/159 unit, biome 153 файла, tsc);
+**Limitations:** «показ» («an impression») = a vacancy in the rendered list (the
+viewport is not claimed); the 14-day window — the upper end of the 7–14 range from the
+research, not tuned (there is no traffic); the journal retention (decision No. 8) also
+limits the memory of impressions; the catalog `/jobs` remains a showcase — the rule
+applies in matching; the client-side sending was checked manually, not by e2e (the
+fixture backend has no snapshots); the weighted demotion of the neighbourhood of a
+hidden item — the next small task (A6-002).
+
+**Rollback:** `git revert` of the A6 commit; the migration is additive and after the
+rollback it is simply not read. Next step: A6-002 (weighted demotion of the
+neighbourhood of a hidden item), then A7 (push matching/alerts).
+
+---
+
+Previous task: [A8-001](tasks/A8-001-events-journal.md) — **implemented, tested locally
+(including test:db on the live DB)** (2026-09-29), the branch is merged into `main`
+(`cb627e0`), awaiting the owner's review.
+
+**What is implemented (brief item A8):** a journal of impressions and clicks. Migration
+0014 `job_events` (FK to users and job_snapshots with cascade, event type CHECK,
+position, `propensity numeric(6,5)` with CHECK 0..1, `ranker_version`, indexes by (user,
+time) and by snapshot). `src/domain/events.ts` — strict batch parsing (fixed types, ids
+in the sources' space, ≤50 events, no duplicates, clamping of propensity and null
+instead of an invented probability). `src/server/events-service.ts` — writing with a
+single parameterised `INSERT ... FROM unnest(...)` (there is no string SQL in the file),
+a counter and deletion. `POST /api/v1/events` (session → 401, parsing → 400, a vanished
+snapshot → 404, otherwise 201; GET is deliberately absent). `deleteAllProfiles` now also
+deletes the journal — the profile leaves no behavioural trace. The state
+(saved/hidden/responded) remains in its own tables: one source of truth per fact.
+
+**Checked:** `npm run check` → exit 0 (163/163 unit); **`npm run test:db` → exit 0**
+(all integration ones, including 4 new: owner isolation, deletion with the profile,
+refusal for a non-existent snapshot, null-propensity); `npm run build` → exit 0 (the
+route `/api/v1/events` built). `test:e2e` — `not_run` (the UI did not change). Repair
+cycle 1/2: the Mimosa write gate blocked the first version of the service for assembling
+SQL from placeholders — rewritten to `unnest` (not a bypass, but a safer form).
+
+**Limitations:** the client-side sending of impressions/clicks from the UI is not
+connected (the API and the service are ready; the next small task); `propensity` in the
+product will be NULL until A10 (stated in the column comment); the journal retention —
+an owner decision (brief, the «Решения владельца» («Owner decisions») section, item 8).
+
+**Rollback:** `git revert` of the A8 commit; the migration is additive. Next step: A6
+(seen-set and negative preferences) or the client-side sending of events.
+
+---
+
+Previous task: [A5-001](tasks/A5-001-freshness.md) — **accepted by the owner
+2026-09-29**; freshness as demotion of stale items (a measured decision: a boost and a
+tie-break raised the irrelevant), age from the first observation, set v3 with a twin
+pair.
+
+**What is implemented (brief item A5):** freshness as demotion of stale items.
+`src/domain/freshness.ts`: a continuous exponential demotion (0 for fresh, half after 7
+days, asymptote −15), age **from our first observation** (`firstSeenAt`),
+`firstSeenLabel` with Russian declensions; time is always a parameter, not from the
+clock. Ranker v2 (`v2-status-skills-role-must-stale-demotion`) with a `freshness` field
+for transparency. Golden set v3: a twin pair j33/j34 (stale/fresh copies, identical in
+everything else). UI: «найдена…» on the catalog card and on the matching card, next to
+«Листинг от …» (these are different facts, the source date is not substituted).
+
+**Measured decision (three forms checked on the set):** an additive boost for fresh
+items — incidentally raises the irrelevant (devops 0.995→0.992, ml 0.853→0.846); a pure
+tie-break — the same within equal scores (ml →0.849); **demotion of stale items** —
+aggregate NDCG@5 0.912941 → 0.914340, NDCG@10 0.915359 → 0.916478, not a single profile
+worsened (data 0.833 → 0.840). The table and the conclusion — in the task.
+
+**Checked:** `npm run check` → exit 0 (159/159 unit, biome 153 files, tsc);
 `npm run build` → exit 0; `npm run eval:matching` → exit 0 (guards 0/0).
-`test:db`/`test:e2e` — **not_run** (схема не менялась; снапшот-карточки в e2e
-пусты). Пороги пересчитаны вниз один раз с зафиксированной причиной (набор
-32 → 34); **относительные ратчеты** (A2 «требования» и A5 «свежесть») не
-двигались — это неотменяемые гарантии. Циклы ремонта: 2/2 (дефекты нового кода:
-дубль объявления `Ranker`, `-0`; затем документированный ре-базлайн).
+`test:db`/`test:e2e` — **not_run** (the schema did not change; the snapshot cards in e2e
+are empty). The thresholds were recomputed downwards once with a recorded reason (the
+set 32 → 34); the **relative ratchets** (A2 «требования» («requirements») and A5
+«свежесть» («freshness»)) did not move — these are irrevocable guarantees. Repair
+cycles: 2/2 (defects of the new code: a duplicate declaration `Ranker`, `-0`; then a
+documented re-baseline).
 
-**Циклы ремонта 2/2** (лимит исчерпан честно): (1) дублирующее объявление
-`export type Ranker` + возврат `-0`; (2) ре-базлайн порогов после роста набора.
+**Repair cycles 2/2** (the limit exhausted honestly): (1) a duplicate declaration
+`export type Ranker` + returning `-0`; (2) a re-baseline of the thresholds after the set
+grew.
 
-**Откат:** `git revert` коммита A5, слой отключается флагом `layers.freshness`;
-работа закоммичена в `main` (`40eba50`). Следующий шаг: A8 (журнал событий +
-propensities).
-
----
-
-Предыдущая задача: [A4-001](tasks/A4-001-cross-source-dedup.md) —
-**принята владельцем 2026-09-29**; cross-source дедупликация с сохранением
-провенанса. Циклы ремонта: фактически три (лимит два — зафиксировано в задаче).
-
-**Что реализовано (пункт A4 брифа):** cross-source дедупликация по точному
-ключу — `src/domain/dedup.ts` (нормализация компании с юридическими формами,
-заголовка с маркерами `(m/f/d)`/`(fully remote)`, ключ включает географию найма;
-выбор представителя: свежесть → полнота → детерминированный тай-брейк).
-Дедуп встроен в оба read-пути (каталог, подбор) и в проекцию карточек:
-`alsoListedAt` в `CatalogCardProjection`, в UI — строка «Та же вакансия также
-на: …» с именованными ссылками. Ключевые решения: near-miss сознательно НЕ
-сливается (пропустить дубликат безопаснее, чем спрятать вторую реальную
-вакансию); представитель выбирается только среди публикуемых записей (более
-свежая, но непроверенная копия не прячет подтверждённую); источник, который
-нельзя публиковать, не рекламируется и в провенансе; hide действует на всю
-группу; тексты копий не сливаются.
-
-**Проверено:** `npm run check` → exit 0 (154/154 unit, biome 151 файл, tsc);
-`npm run build` → exit 0; `npm run eval:matching` → exit 0, метрики не изменились
-(0.910/0.943 — дедуп в харнесс не входит). `test:db`/`test:e2e` — **not_run**:
-схема не менялась, UI-контракт расширен только строкой провенанса, которая
-рендерится лишь для снапшот-карточек (в e2e — фикстурный бэкенд, каталог пуст).
-Golden-случай 6 брифа («одна вакансия на himalayas и jobicy → одна карточка, оба
-backlink сохранены») покрыт тестом проекции.
-
-**Циклы ремонта:** фактически **три** раунда, лимит два — превышение на один
-зафиксировано в задаче и здесь (третий — только tsc в новом тест-файле; CLI
-записал 2/2). Повторяющихся падений без новых данных не было, но правило счётчика
-нарушено формально: впредь для крупных задач сначала `npm run typecheck`.
-
-**Откат:** `git revert` коммита A4 (`0b2e5af`, `main`). Следующий шаг: A5
-(freshness: возраст вакансии в ранжировании и в карточке).
+**Rollback:** `git revert` of the A5 commit, the layer is switched off by the flag
+`layers.freshness`; the work is committed to `main` (`40eba50`). Next step: A8 (the
+event journal + propensities).
 
 ---
 
-Предыдущая задача: [A3-001](tasks/A3-001-skill-dictionary-v2.md) —
-**принята владельцем 2026-09-29**; справочник v2 (правило регистра,
-потребление всех вхождений алиаса, 19 русских алиасов, worklist словаря).
-Пороги подняты: NDCG@5 0.909773, NDCG@10 0.942889.
+Previous task: [A4-001](tasks/A4-001-cross-source-dedup.md) — **accepted by the owner
+2026-09-29**; cross-source deduplication with provenance preserved. Repair cycles: in
+fact three (the limit is two — recorded in the task).
 
-**Что реализовано (пункт A3 брифа):** справочник навыков v2 в
-`src/domain/skills.ts` — правило регистра для неоднозначных алиасов (go/docs/
-rest/rust/… матчатся только капитализированными: «We go fast» больше не даёт
-Go), исправлен дефект потребления (раньше потреблялось только первое вхождение
-алиаса, поэтому второе «Node.js» утекало в фантомный `js → JavaScript`), дельта
-19 русскоязычных алиасов (машинное обучение, аналитика, кибербезопасность,
-базы данных, автотесты, управление проектами, инженерия данных…) + ECMAScript.
-Новый `src/domain/dictionary-coverage.ts` — worklist словаря (частотный список
-неизвестных токенов для человеческой ревизии; **не метрика**), печатается в
-`npm run eval:matching`.
+**What is implemented (brief item A4):** cross-source deduplication by an exact key —
+`src/domain/dedup.ts` (company normalisation with legal forms, title normalisation with
+the markers `(m/f/d)`/`(fully remote)`, the key includes hiring geography;
+representative selection: freshness → completeness → a deterministic tie-break). Dedup
+is built into both read paths (catalog, matching) and into the card projection:
+`alsoListedAt` in `CatalogCardProjection`, in the UI — the line «Та же вакансия также
+на: …» with named links. Key decisions: near-miss is deliberately NOT merged (skipping a
+duplicate is safer than hiding a second real vacancy); the representative is chosen only
+among publishable records (a fresher, but unverified copy does not hide a confirmed
+one); a source that cannot be published is not advertised in the provenance either; hide
+applies to the whole group; the texts of the copies are not merged.
 
-**Измерения (агрегат 6 профилей, golden v2):** NDCG@5 0.903879 → **0.909773**,
-NDCG@10 0.924056 → **0.942889**; R@5/R@10/MRR без изменений. Пороги-ратчет
-подняты (только вверх), история ре-базлайнов записана в тесте. Атрибуция
-проверена сравнением кода A2 и A3 через `git stash`: у frontend-профиля
-NDCG@5 0.855 → 0.974 из-за снятого фантомного матча (j05 «Node.js ×2»);
-у data-профиля локально 0.755 → 0.663 (русский алиас поднял j21 и потеснил
-j32 внутри топ-5) при росте NDCG@10 — зафиксировано как честная перестановка
-двух релевантных, не потеря качества.
+**Checked:** `npm run check` → exit 0 (154/154 unit, biome 151 files, tsc);
+`npm run build` → exit 0; `npm run eval:matching` → exit 0, the metrics did not change
+(0.910/0.943 — dedup is not part of the harness). `test:db`/`test:e2e` — **not_run**:
+the schema did not change, the UI contract was extended only with the provenance line,
+which renders only for snapshot cards (in e2e — the fixture backend, the catalog is
+empty). Golden case 6 of the brief («одна вакансия на himalayas и jobicy → одна
+карточка, оба backlink сохранены» («one vacancy on himalayas and jobicy → one card, both
+backlinks preserved»)) is covered by a test of the projection.
 
-**Проверено:** `npm run check` → exit 0 (146/146 unit, biome 149 файлов, tsc);
+**Repair cycles:** in fact **three** rounds, the limit is two — the overrun by one is
+recorded in the task and here (the third — only tsc in a new test file; the CLI recorded
+2/2). There were no repeated failures without new data, but the counter rule was
+formally violated: from now on, for large tasks, run `npm run typecheck` first.
+
+**Rollback:** `git revert` of the A4 commit (`0b2e5af`, `main`). Next step: A5
+(freshness: vacancy age in ranking and on the card).
+
+---
+
+Previous task: [A3-001](tasks/A3-001-skill-dictionary-v2.md) — **accepted by the owner
+2026-09-29**; dictionary v2 (the case rule, consumption of all alias occurrences, 19
+Russian aliases, the dictionary worklist). Thresholds raised: NDCG@5 0.909773, NDCG@10
+0.942889.
+
+**What is implemented (brief item A3):** the skills dictionary v2 in
+`src/domain/skills.ts` — a case rule for ambiguous aliases (go/docs/ rest/rust/… match
+only when capitalised: «We go fast» no longer yields Go), a consumption defect fixed
+(previously only the first occurrence of an alias was consumed, so a second «Node.js»
+leaked into a phantom `js → JavaScript`), a delta of 19 Russian-language aliases
+(machine learning, analytics, cybersecurity, databases, autotests, project management,
+data engineering…) + ECMAScript. New `src/domain/dictionary-coverage.ts` — the
+dictionary worklist (a frequency list of unknown tokens for human revision; **not a
+metric**), printed by `npm run eval:matching`.
+
+**Measurements (aggregate of 6 profiles, golden v2):** NDCG@5 0.903879 → **0.909773**,
+NDCG@10 0.924056 → **0.942889**; R@5/R@10/MRR unchanged. The ratchet thresholds were
+raised (upwards only), the re-baseline history is recorded in the test. The attribution
+was checked by comparing the code of A2 and A3 via `git stash`: for the frontend profile
+NDCG@5 0.855 → 0.974 because of a removed phantom match (j05 «Node.js ×2»); for the data
+profile locally 0.755 → 0.663 (a Russian alias raised j21 and pushed aside j32 within
+the top-5) with a rise in NDCG@10 — recorded as an honest permutation of two relevant
+ones, not a loss of quality.
+
+**Checked:** `npm run check` → exit 0 (146/146 unit, biome 149 files, tsc);
 `npm run build` → exit 0; `npm run eval:matching` → exit 0 (guards 0/0).
-`test:db`/`test:e2e` — **not_run** (схема/UI/API не менялись).
+`test:db`/`test:e2e` — **not_run** (schema/UI/API did not change).
 
-**ESCO (V1, 2026-09-29):** издатель — DG Employment Еврокомиссии, данные
-«free of charge», версия v1.2.1 (release v5.7.0, обновление 10.12.2025). Точная
-лицензия на странице «about» не подтверждена (страница условий не прочитана) —
-**импорт не начат**, решение и оформление как внешнего контента за владельцем.
+**ESCO (V1, 2026-09-29):** the publisher — DG Employment of the European Commission, the
+data «free of charge», version v1.2.1 (release v5.7.0, update 10.12.2025). The exact
+licence on the «about» page is not confirmed (the terms page was not read) — **the
+import is not started**, the decision and the arrangement as external content is the
+owner's.
 
-**Ограничения:** падежные формы русского не поддерживаются; список
-неоднозначных алиасов курируется вручную; worklist — эвристика. Расход
-coding-host: unknown. **Цикл ремонта 0/2** (правки были итерациями внутри
-задачи до первого прогона check; зафиксировано честно).
+**Limitations:** Russian case forms are not supported; the list of ambiguous aliases is
+curated manually; the worklist is a heuristic. Coding-host spend: unknown. **Repair
+cycle 0/2** (the edits were iterations within the task before the first check run;
+recorded honestly).
 
-**Откат:** `git revert` коммита A3 (`3b8dbe4`, `main`). Следующий шаг: A4
-(cross-source дедупликация).
-
----
-
-Предыдущая задача: [A2-001](tasks/A2-001-requirement-decomposition.md) —
-**принята владельцем 2026-09-29**; декомпозиция требований (детерминированный
-слой), ранкер v1, набор v2. Пороги на тот момент: NDCG@5 0.903879,
-NDCG@10 0.924056.
-
-Предыдущая задача: [A1-001](tasks/A1-001-golden-set-eval-harness.md) —
-**принята владельцем 2026-09-29**; golden set + eval-харнесс (метрики, baseline
-v0, 29 вакансий × 6 профилей), пороги-ратчет. Baseline на наборе v1: R@5 0.821,
-R@10 1.000, NDCG@5 0.909, NDCG@10 0.933, MRR 1.000.
-
-**Что реализовано (пункт A2 брифа):** декомпозиция требований вакансии —
-детерминированный слой без модели. `src/domain/requirements.ts`: нормализация
-(явные требования снапшота приоритетнее), деривация из текста (навыки словаря по
-предложениям + структурные маркеры силы: зона заголовка до двоеточия либо
-однозначная фраза, EN и RU), оценка покрытия с вердиктами
-`covered/uncovered/unknown`, `missingSkills`, честные формулировки («в профиле не
-указан», а не «у вас нет»). `src/domain/match-ranker.ts` → ранкер v1
-(`v1-status-skills-role-uncovered-must`): единственный новый сигнал в ранге —
-штраф −15 за непокрытый must-have (покрытый не бонусируется: его уже считает
-пересечение навыков, а бонус был измерен как усилитель keyword-стаффинга).
-`src/domain/skills.ts`: добавлен `canonicalSkillName` (алиас → каноним), словарь
-не менялся. Golden-набор v2: +3 вакансии (пара j30/j31 для измерения эффекта,
-j32 с русским маркером «обязательно») и +18 оценок.
-
-**Измерения (набор v2, 6 профилей).** v0-эквивалент → v1: NDCG@5 0.901219 →
-**0.903879**, NDCG@10 0.921708 → **0.924056**; R@5/R@10/MRR без изменений;
-ни один профиль не ухудшился (проверяется относительным ратчет-тестом).
-Прирост даёт пара j30/j31: вакансия с непокрытым must-have уходит ниже вакансии
-с покрытым (backend-профиль NDCG@10 0.986 → 1.000).
-
-**Проверено (реальные команды):** `npm run check` → exit 0 (137/137 unit, biome
-147 файлов, tsc); `npm run build` → exit 0; `npm run eval:matching` → exit 0
-(guards 0/0). `test:db` и `test:e2e` — **not_run**: схема/запросы/UI/API не
-менялись. Существующие тесты не ослаблены; пороги пересчитаны вниз один раз с
-зафиксированной причиной (набор 29 → 32), неотменяемая гарантия теперь
-относительная (v1 ≥ v0 по каждому профилю).
-
-**Цикл ремонта 1/2** (записан задним числом, счётчик израсходован честно):
-первая версия маркеров и бонус за покрытый must давали NDCG@10 0.8925 против
-0.9217 у v0 — keyword-ловушка «Technical Recruiter» получала must-статус из прозы
-«job requirements» и всплывала в топ data-профиля. Номера первой версии сохранены
-в задаче как доказательство дефекта.
-
-**Границы:** UI/API требований пока не показывают (данные готовы — `missingSkills`
-и `rows`); ранкер в продуктовый путь чтения `/matched` не подключён (это A10
-вместе с shadow-режимом A9). Отрицания («не требуется X») эвристика не
-разбирает — заменяется C1 (LLM) и уточняется A3. Расход coding-host: unknown.
-
-**Откат:** вернуть `RANKER_VERSION` и веса, удалить `requirements.ts` и тесты;
-работа закоммичена в `main` (`1aa4c7c`). Следующий маленький шаг: A3 (развитие
-справочника навыков — включая ложные срабатывания экстрактора на обычных словах,
-см. A1-001) или A4
-(cross-source дедупликация).
+**Rollback:** `git revert` of the A3 commit (`3b8dbe4`, `main`). Next step: A4
+(cross-source deduplication).
 
 ---
 
-Предыдущая задача: [A1-001](tasks/A1-001-golden-set-eval-harness.md) —
-**принята владельцем 2026-09-29**; golden set + eval-харнесс (метрики, baseline
-v0, 29 вакансий × 6 профилей), пороги-ратчет. Baseline на наборе v1: R@5 0.821,
-R@10 1.000, NDCG@5 0.909, NDCG@10 0.933, MRR 1.000.
+Previous task: [A2-001](tasks/A2-001-requirement-decomposition.md) — **accepted by the
+owner 2026-09-29**; requirement decomposition (a deterministic layer), ranker v1, set
+v2. Thresholds at that time: NDCG@5 0.903879, NDCG@10 0.924056.
 
-Активная задача ранее: [DS-001](tasks/DS-001-nenaugad-design-system.md) —
+Previous task: [A1-001](tasks/A1-001-golden-set-eval-harness.md) — **accepted by the
+owner 2026-09-29**; golden set + eval harness (metrics, baseline v0, 29 vacancies × 6
+profiles), ratchet thresholds. Baseline on set v1: R@5 0.821, R@10 1.000, NDCG@5 0.909,
+NDCG@10 0.933, MRR 1.000.
 
-**Что реализовано (пункт A1 брифа проектирования):** golden set + eval-харнесс
-подбора. `src/domain/eval-metrics.ts` (DCG/NDCG/Recall@k/MRR; формулы сверены
-по первоисточникам 2026-09-27, «неприменимо» = null, не 0);
-`src/domain/match-ranker.ts` (baseline v0: статус допуска ×30 + навыки ×10 +
-роль в заголовке ×15, детерминирован); `src/domain/matching-eval.ts` (раннер:
-гейты и ранжирование измеряются раздельно, guard'ы «unjudged shown» и
-«relevant but hidden»); `src/data/matching-golden.ts` (синтетический набор:
-29 вакансий × 6 профилей-сегментов = 174 рукописные оценки 0–3);
-`scripts/eval-matching.ts` + `npm run eval:matching` (`--json`, `--verbose`);
-`tests/unit/matching-eval.test.ts` (11 тестов, пороги-ратчет).
+**What is implemented (brief item A2):** decomposition of vacancy requirements — a
+deterministic layer without a model. `src/domain/requirements.ts`: normalisation
+(explicit snapshot requirements take precedence), derivation from text (dictionary
+skills by sentences + structural strength markers: the title zone before a colon or an
+unambiguous phrase, EN and RU), coverage evaluation with the verdicts
+`covered/uncovered/unknown`, `missingSkills`, honest wordings («в профиле не указан»
+(«not specified in the profile»), not «у вас нет» («you do not have it»)).
+`src/domain/match-ranker.ts` → ranker v1 (`v1-status-skills-role-uncovered-must`): the
+only new signal in the rank — a penalty of −15 for an uncovered must-have (a covered one
+is not bonused: it is already counted by the skill intersection, and the bonus was
+measured as an amplifier of keyword stuffing). `src/domain/skills.ts`:
+`canonicalSkillName` added (alias → canon name), the dictionary did not change. Golden
+set v2: +3 vacancies (the pair j30/j31 to measure the effect, j32 with the Russian
+marker «обязательно») and +18 ratings.
 
-**Baseline (агрегат 6 профилей):** R@5 0.821 · R@10 1.000 · NDCG@5 0.909 ·
-NDCG@10 0.933 · MRR 1.000; контрольный плохой ранкер — NDCG@10 0.269
-(чувствительность подтверждена). Пороги теста = эти значения, опускать нельзя.
+**Measurements (set v2, 6 profiles).** v0-equivalent → v1: NDCG@5 0.901219 →
+**0.903879**, NDCG@10 0.921708 → **0.924056**; R@5/R@10/MRR unchanged; not a single
+profile worsened (checked by a relative ratchet test). The gain comes from the pair
+j30/j31: a vacancy with an uncovered must-have goes below a vacancy with a covered one
+(backend profile NDCG@10 0.986 → 1.000).
 
-**Проверено (реальные команды):** `npm run check` → exit 0 (128/128 unit,
-biome 145 файлов, tsc); `npm run build` → exit 0; `npm run eval:matching` →
-exit 0, guards 0/0. `test:db` и `test:e2e` — **not_run**: схема, запросы, UI и
-API не менялись. Дифф: только `package.json` (+1 script) и новые файлы;
-существующие тесты не тронуты.
+**Checked (real commands):** `npm run check` → exit 0 (137/137 unit, biome 147 files,
+tsc); `npm run build` → exit 0; `npm run eval:matching` → exit 0 (guards 0/0). `test:db`
+and `test:e2e` — **not_run**: schema/queries/UI/API did not change. Existing tests were
+not weakened; the thresholds were recomputed downwards once with a recorded reason (the
+set 29 → 32), the irrevocable guarantee is now relative (v1 ≥ v0 per profile).
 
-**Циклы ремонта 2/2** — записаны задним числом (CLI пишет только вперёд),
-счётчик исчерпан честно: (1) собственный контрольный тест нашёл реальный баг —
-`rankJobs` был зашит и инжектированный ранкер не использовался; (2) строгие
-TS-проверки новых файлов, числа метрик не изменились. Третий цикл в этой
-задаче запрещён — только отчёт о блокере.
+**Repair cycle 1/2** (recorded retroactively, the counter spent honestly): the first
+version of the markers and the bonus for a covered must gave NDCG@10 0.8925 versus
+0.9217 for v0 — the keyword trap "Technical Recruiter" received must status from the
+prose «job requirements» and surfaced in the data profile's top. The numbers of the
+first version are preserved in the task as proof of the defect.
 
-**Наблюдения для следующих пунктов (не менялись в A1):** экстрактор навыков
-ловит обычные английские слова (проверено: «We go fast» → Go, «Read the docs»
-→ Technical Writing); keyword-ловушки намеренно закодированы в наборе и
-чинятся A2/A3; буст роли по подстроке не срабатывает на «Frontend Engineer»;
-русскоязычные названия навыков не извлекаются; `showNeedsReview` хранится, но
-нигде на чтении не применяется — вопрос поведения продукта владельцу.
+**Boundaries:** the UI/API do not show requirements yet (the data is ready —
+`missingSkills` and `rows`); the ranker is not connected to the product read path
+`/matched` (that is A10 together with the A9 shadow mode). Negations («не требуется X»
+(«X is not required»)) the heuristic does not parse — replaced by C1 (LLM) and refined
+by A3. Coding-host spend: unknown.
 
-**Ограничения:** фикстуры синтетические (`example.invalid`), язык постов в
-оценках не участвует (модель профиля не несёт языков — gap A3); R@10 и MRR
-сегодня насыщены (пулы 19–24), чувствительны NDCG@5/@10 и R@5. Расход
-coding-host: unknown.
-
-**Откат:** удалить 6 новых файлов и строку `eval:matching` в `package.json`;
-работа закоммичена в `main` (`1aa4c7c`). Следующий маленький шаг: A2 (структурные
-требования + детерминированный матчинг), после — A3/A4.
-
-**Блокер коммита — решение принято владельцем 2026-09-29:** коммитить через
-штатную ручку плагина. Владелец задаёт `setx MIMOSA_GIT_GATE_MODE warn` и
-перезапускает ZCode (переменную читает процесс хука, поэтому до перезапуска
-инлайн- или `setx`-значение на текущую сессию не действует; проверено
-эмпирически 2026-09-29). Гейт продолжит печатать аудит, но перестанет
-блокировать. Находки, из-за которых он блокирует, — известные ложные
-срабатывания в чужих файлах: `tests/e2e/visual.spec.ts:46` (пароль локального
-e2e-аккаунта на `@example.invalid`) и `tests/integration/ai-guards.test.ts`
-(параметризованные SQL-хелперы). После перезапуска порядок коммитов: (1) docs
-на `design/job-matching`; (2) A1+A2 на `feature/A1-golden-set-eval-harness`
-(включая docs через `--ff-only`); (3) далее A3…A10 — по одному коммиту на
-задачу. Выполнено 2026-10-01: всё накопленное закоммичено (`1aa4c7c`…`95501f9`) и
-запушено в `origin/main`, рабочее дерево чистое; ветка переименована в `main`.
+**Rollback:** restore `RANKER_VERSION` and the weights, delete `requirements.ts` and the
+tests; the work is committed to `main` (`1aa4c7c`). The next small step: A3 (developing
+the skills dictionary — including the extractor's false positives on ordinary words, see
+A1-001) or A4 (cross-source deduplication).
 
 ---
 
-Активная задача ранее: [DS-001](tasks/DS-001-nenaugad-design-system.md) —
-**accepted владельцем и слита в main** (merge `4b6882e`, 2026-09-27);
-проверки перед merge: `npm run check` (exit 0, unit 117/117),
-`npm run build` (exit 0), `npm run test:e2e` (93/93).
+Previous task: [A1-001](tasks/A1-001-golden-set-eval-harness.md) — **accepted by the
+owner 2026-09-29**; golden set + eval harness (metrics, baseline v0, 29 vacancies × 6
+profiles), ratchet thresholds. Baseline on set v1: R@5 0.821, R@10 1.000, NDCG@5 0.909,
+NDCG@10 0.933, MRR 1.000.
 
-**DS-001 — дизайн-система Ненаугад 1.3 в приложении (ветка
-`feature/nenaugad-design-system`, слита в main — merge `4b6882e`).** Владелец
-2026-09-26
-поручил применить брендбук из `Reference/Nenaugad/` (v1.3) pixel-perfect со
-скриншотными тестами. Реализовано: токены `--ng-*` — 140 шт (132 значения
-Atlas 1.1 без изменения + 8 brand) из нового
-`docs/solo/context/nenaugad.tokens.json`; генератор `scripts/tokens.mjs`
-теперь учитывает единицы DTCG (rem больше не делится на 16 — починен
-мёртвый слой `--size-*`/`--leading-*`, добавлены motion/layer/weight/brand);
-`atlas.tokens.json` сохранён на месте (требование guardrails), больше не
-источник генерации. Бренд: `public/brand/wordmark.png` (208/176 px, из
-комплекта), favicon.svg, «Ненаугад» в metadata/UI, tagline «Только
-удалённо». Иконки: `docs/solo/context/nenaugad.icons.json` (64 глифа) →
-`scripts/icons.mjs` → спрайт `public/icons/nenaugad.sprite.svg` + типизированный
-реестр; `Icon`-компонент через `<use href>` (без `dangerouslySetInnerHTML`,
-CSP не тронут); `icons:check` в `check:offline`. `globals.css` переписан из
-эталонного CSS витрины (продуктовый слой 1:1: `.wrap`, `.btn`, `.badge`,
-`.job-card`, `.context`, `.conditions`, `.empty`, `.banner`, `.saved-row`,
-`.mobile-nav`…); все экраны (/, /jobs, /jobs/[id], /matched, /profile,
-/saved, /status, /login, /cv, /letters, error/not-found) переведены на
-разметку витрины; header/footer/mobile-nav — с `aria-current` и SVG-иконками
-вместо unicode. Display-слой: `display_name` источника фикстур →
-«Nenaugad Fixtures» (внутренний `source_id: "atlas-fixtures"` и все ключи
-не тронуты). Главная фраза «Выбирать работу. Не наугад.»
+Active task earlier: [DS-001](tasks/DS-001-nenaugad-design-system.md) —
 
-**Скриншотные тесты:** `tests/e2e/visual.spec.ts` — 13 состояний × 3 вьюпорта
-(1440/390/320), fullPage-базлайны в git; dev-индикатор Next скрывается,
-email в header детерминирован по проекту, профиль перед снимками
-восстанавливается удалением (база персистит между прогонами).
+**What is implemented (design brief item A1):** golden set + matching eval harness.
+`src/domain/eval-metrics.ts` (DCG/NDCG/Recall@k/MRR; the formulas were verified against
+primary sources 2026-09-27, «неприменимо» («not applicable») = null, not 0);
+`src/domain/match-ranker.ts` (baseline v0: admission status ×30 + skills ×10 + role in
+the title ×15, deterministic); `src/domain/matching-eval.ts` (the runner: gates and
+ranking are measured separately, the guards "unjudged shown" and "relevant but hidden");
+`src/data/matching-golden.ts` (a synthetic set: 29 vacancies × 6 segment profiles = 174
+handwritten ratings 0–3); `scripts/eval-matching.ts` + `npm run eval:matching`
+(`--json`, `--verbose`); `tests/unit/matching-eval.test.ts` (11 tests, ratchet
+thresholds).
 
-**Проверено (реальные команды):** `npm run check` → exit 0 (tokens:check 140,
-icons:check 64, guardrails, unit **117/117**, biome, tsc); `npm run build` →
-exit 0; `npm run test:e2e` → **93/93**: 39 старых сценариев с обновлёнными
-селекторами DOM/копирайта, 18 design-system-проверок (ассеты/спрайт 64 глифа,
-security-заголовки, header/favicon/декоративные иконки, карта условий 5 групп
-с amber-состоянием unknown, mobile-nav по вьюпортам, редирект письма) и
-36 визуальных состояний (базлайны стабильны в повторных прогонах). После
-приёмки владельцем покрытие расширено: unit- suite
-`tests/unit/design-system.test.ts` (полный набор 140 токенов с ключевыми
-значениями витрины, семантические алиасы, 64 глифа в 4 группах, спрайт без
-исполняемого содержимого, замыкание `var()` в globals.css, запрет
-screen-local цветов вне китовых акцентов) + скриншотные состояния
-unknown-географии, пустой выдачи, поиска и ошибки валидации профиля.
-`test:db` не запускался — изменений данных/миграций нет (`not_run`, не
-«прошёл»).
+**Baseline (aggregate of 6 profiles):** R@5 0.821 · R@10 1.000 · NDCG@5 0.909 · NDCG@10
+0.933 · MRR 1.000; a control bad ranker — NDCG@10 0.269 (sensitivity confirmed). The
+test thresholds = these values, they must not be lowered.
 
-**Задокументированные отклонения от витрины** (правило «домен важнее
-screenshot», полный список в задаче): нет мёртвой кнопки «Фильтры» (в каталоге
-нет фильтров кроме поиска); нет bookmark на карточках фикстур (сохранение —
-только для снапшотов по API-контракту; на карточках подбора bookmark
-настоящий); статус в «Сохранённом» — реальные действия, а не демо-select;
-копирайт демо-полосы адаптирован к фактическому состоянию приложения.
+**Checked (real commands):** `npm run check` → exit 0 (128/128 unit, biome 145 files,
+tsc); `npm run build` → exit 0; `npm run eval:matching` → exit 0, guards 0/0. `test:db`
+and `test:e2e` — **not_run**: schema, queries, UI and API did not change. Diff: only
+`package.json` (+1 script) and new files; existing tests were not touched.
 
-**Ограничения/затраты:** шрифтовые файлы не входят в комплект (стеки
-Inter/Source Serif 4 с fallback, CSP `font-src 'self'`) — базлайны точны для
-среды, где сняты, на машинах без Inter рендер уйдёт в fallback; фиксированные
-элементы в fullPage-снимках на mobile рисуются в позиции первого вьюпорта
-(артефакт Playwright, стабилен). Расход coding-host: unknown. Побочный
-артефакт сессии: `docs/research/2026-09-26-job-matching-research.md`
-(веб-исследование субагента вне задачи DS-001) — закоммичен 2026-09-29
-(`edc41e5`, вместе с брифом). Dev-сервер на :3000 был остановлен для прогона e2e
-(`npm run dev` перезапускает).
+**Repair cycles 2/2** — recorded retroactively (the CLI writes only forward), the
+counter exhausted honestly: (1) an own control test found a real bug — `rankJobs` was
+hard-wired and the injected ranker was not used; (2) strict TS checks of the new files,
+the metric numbers did not change. A third cycle in this task is forbidden — only a
+blocker report.
 
-**Откат:** ветка слита в `main` (merge `4b6882e`); откат — `git revert`
-merge-коммита.
-Следующий шаг: S3-002 или batch API test S4-003 (по решению владельца).
+**Observations for the following items (unchanged in A1):** the skill extractor catches
+ordinary English words (checked: «We go fast» → Go, «Read the docs» → Technical
+Writing); keyword traps are deliberately encoded in the set and are fixed by A2/A3; role
+boosting by substring does not trigger on «Frontend Engineer»; Russian-language skill
+names are not extracted; `showNeedsReview` is stored but never applied on read — a
+product behaviour question for the owner.
+
+**Limitations:** the fixtures are synthetic (`example.invalid`), the language of the
+posts does not participate in the ratings (the profile model carries no languages — gap
+A3); R@10 and MRR are saturated today (pools 19–24), NDCG@5/@10 and R@5 are sensitive.
+Coding-host spend: unknown.
+
+**Rollback:** delete the 6 new files and the `eval:matching` line in `package.json`; the
+work is committed to `main` (`1aa4c7c`). The next small step: A2 (structural
+requirements + deterministic matching), after that — A3/A4.
+
+**Commit blocker — a decision made by the owner 2026-09-29:** commit via the plugin's
+standard handle. The owner sets `setx MIMOSA_GIT_GATE_MODE warn` and restarts ZCode (the
+variable is read by the hook process, so until the restart an inline or `setx` value
+does not apply to the current session; verified empirically 2026-09-29). The gate will
+keep printing the audit, but will stop blocking. The findings because of which it blocks
+are known false positives in third-party files: `tests/e2e/visual.spec.ts:46` (the
+password of a local e2e account at `@example.invalid`) and
+`tests/integration/ai-guards.test.ts` (parameterised SQL helpers). After the restart,
+the commit order: (1) docs on `design/job-matching`; (2) A1+A2 on
+`feature/A1-golden-set-eval-harness` (including docs via `--ff-only`); (3) then A3…A10 —
+one commit per task. Done 2026-10-01: everything accumulated was committed
+(`1aa4c7c`…`95501f9`) and pushed to `origin/main`, the working tree is clean; the branch
+was renamed to `main`.
 
 ---
-Предыдущие записи (S2-002, S3-003, S1-003, …) сохранены ниже без изменений.
 
-Активная задача ранее: [S2-002](tasks/S2-002-hide-and-applied.md) —
-**implemented, tested locally** (2026-09-25), ждёт review/принятия владельца.
+Active task earlier: [DS-001](tasks/DS-001-nenaugad-design-system.md) — **accepted by
+the owner and merged into main** (merge `4b6882e`, 2026-09-27); checks before the merge:
+`npm run check` (exit 0, unit 117/117), `npm run build` (exit 0), `npm run test:e2e`
+(93/93).
 
-**Что реализовано:** миграция 0008 (`hidden_jobs` с reason-CHECK +
-`saved_jobs.marked_applied_at`); фиксированные коды причин скрытия (7 шт,
-privacy-минимум без свободного текста); сервис feedback (ownership,
-FK→404); API `GET/POST/DELETE /api/v1/hidden` + `PATCH /api/v1/saved`
-(401/400/404-дисциплина); подбор исключает скрытые только для владельца
-(eligible и needs_review); UI: «Скрыть…» с инлайн-выбором причины на
-карточках подбора (в т.ч. несохранённых), раздел «Скрытые» с причиной и
-«Вернуть в подбор» на /saved, кнопка «Отметить отклик ✓ (дата)» на
-сохранённых — ставится только действием пользователя, клик по внешней
-ссылке ничего не отмечает.
+**DS-001 — the Nenaugad 1.3 design system in the application (the branch
+`feature/nenaugad-design-system`, merged into main — merge `4b6882e`).** The owner
+2026-09-26 instructed to apply the brand book from `Reference/Nenaugad/` (v1.3)
+pixel-perfect with screenshot tests. Implemented: tokens `--ng-*` — 140 items (132 Atlas
+1.1 values unchanged + 8 brand) from the new `docs/solo/context/nenaugad.tokens.json`;
+the generator `scripts/tokens.mjs` now takes DTCG units into account (rem is no longer
+divided by 16 — the dead `--size-*`/`--leading-*` layer is fixed,
+motion/layer/weight/brand added); `atlas.tokens.json` is kept in place (a guardrails
+requirement), no longer the source of generation. Brand: `public/brand/wordmark.png`
+(208/176 px, from the kit), favicon.svg, «Ненаугад» in metadata/UI, the tagline «Только
+удалённо». Icons: `docs/solo/context/nenaugad.icons.json` (64 glyphs) →
+`scripts/icons.mjs` → the sprite `public/icons/nenaugad.sprite.svg` + a typed registry;
+the `Icon` component via `<use href>` (without `dangerouslySetInnerHTML`, CSP
+untouched); `icons:check` in `check:offline`. `globals.css` was rewritten from the
+reference showcase CSS (the product layer 1:1: `.wrap`, `.btn`, `.badge`, `.job-card`,
+`.context`, `.conditions`, `.empty`, `.banner`, `.saved-row`, `.mobile-nav`…); all
+screens (/, /jobs, /jobs/[id], /matched, /profile, /saved, /status, /login, /cv,
+/letters, error/not-found) were switched to the showcase markup;
+header/footer/mobile-nav — with `aria-current` and SVG icons instead of unicode. The
+display layer: the fixtures source's `display_name` → "Nenaugad Fixtures" (the internal
+`source_id: "atlas-fixtures"` and all keys untouched). The main phrase «Выбирать работу.
+Не наугад.»
 
-**Проверено:** 71/71 unit, 21/21 integration (ownership: B не возвращает
-скрытое A, пометка меняет только свои строки; CHECK на коды причин),
-check/build, e2e 39/39 (контракт API: 401/400/404), живой UI-флоу на
-реальных данных: 7 eligible → скрытие с причиной → исключена (6) → раздел
-«Скрытые» с причиной → возврат → 7.
+**Screenshot tests:** `tests/e2e/visual.spec.ts` — 13 states × 3 viewports
+(1440/390/320), fullPage baselines in git; the Next dev indicator is hidden, the email
+in the header is deterministic per project, the profile is restored before the shots by
+deletion (the DB persists between runs).
 
-Дальше (по решению владельца): S3-002 (PDF), AI-предохранители, третий
-источник, наблюдение за стабильностью переустановленного Docker.
+**Checked (real commands):** `npm run check` → exit 0 (tokens:check 140, icons:check 64,
+guardrails, unit **117/117**, biome, tsc); `npm run build` → exit 0; `npm run test:e2e`
+→ **93/93**: 39 old scenarios with updated DOM/copy selectors, 18 design-system checks
+(assets/sprite 64 glyphs, security headers, header/favicon/decorative icons, the
+conditions map of 5 groups with the amber unknown state, mobile-nav per viewport, the
+letter redirect) and 36 visual states (baselines stable across repeated runs). After the
+owner's acceptance, coverage was extended: the unit suite
+`tests/unit/design-system.test.ts` (the full set of 140 tokens with the key showcase
+values, semantic aliases, 64 glyphs in 4 groups, the sprite without executable content,
+the closure of `var()` in globals.css, a ban on screen-local colours outside the kit
+accents) + screenshot states of unknown geography, an empty delivery, search and profile
+validation error. `test:db` was not run — there are no data/migration changes
+(`not_run`, not «прошёл»).
 
-**Что реализовано:** офлайн-парсер без зависимостей (`src/server/cv/parse.ts`):
-вставка текста и .txt/.md (UTF-8 с проверкой обратимым декодированием),
-.docx — свой минимальный ZIP-ридер (central directory; сигнатура PK главнее
-расширения; шифрованные entries и >200 entries — отказ; распаковка через
-`inflateRawSync` с `maxOutputLength` — зип-бомбы умирают на лимите 20 МБ, а
-не в памяти), текст из `word/document.xml` (w:t + абзацы + XML-entity),
-PDF отклоняется с предложением текстовой формы; лимиты fail-closed: файл
-≤10 МБ, извлечённый текст ≤150 000 символов, пустой текст — ошибка;
-предупреждения THIN_TEXT_LAYER/UNUSUAL_CHARACTERS. Миграция 0007 `cv_uploads`
-(ownership, минимизация: исходный бинарник не хранится — только текст и
-метаданные; констрейнты диапазонов). API `/api/v1/cv` (POST json/multipart,
-GET список, GET/DELETE по id) — 401 без сессии, чужой id → 404, 413/400 с
-человеческими сообщениями; удаление профиля удаляет и CV. Страница `/cv`
-(вставка/загрузка/просмотр/удаление, предупреждения, «ничего не выводится
-автоматически»), ссылка с /profile. Config: UPLOADS_ENABLED=true —
-единственная разрешённая форма включения, малформированные значения
-по-прежнему fail-closed (safety-тест расширен, не ослаблен).
+**Documented deviations from the showcase** (the rule «домен важнее screenshot» («domain
+matters more than screenshot»), the full list is in the task): there is no dead
+«Фильтры» button (the catalog has no filters except search); there is no bookmark on
+fixture cards (saving — snapshots only, per the API contract; on matching cards the
+bookmark is real); the status in «Сохранённом» — real actions, not a demo select; the
+demo strip copy is adapted to the actual state of the application.
 
-**Проверено:** 70/70 unit (zip-строитель в тестах: happy docx, зип-бомбы
-двух видов, шифрование, лимиты, роутинг по сигнатуре), 19/19 integration
-(ownership: B не читает/не удаляет A; удаление профиля чистит CV;
-констрейнты), check/build, e2e 33/33 (вставка→просмотр→удаление; 401).
-Отладочный след: падение e2e было отсутствием миграции 0007 на dev-базе
-(применена). Docker-инстабильность: 10-я гибель движка за день.
+**Limitations/costs:** font files are not part of the kit (stacks Inter/Source Serif 4
+with fallback, CSP `font-src 'self'`) — the baselines are accurate for the environment
+where they were taken, on machines without Inter the rendering will fall back; fixed
+elements in fullPage screenshots on mobile are drawn at the first viewport's position (a
+Playwright artifact, stable). Coding-host spend: unknown. A side artifact of the
+session: `docs/research/2026-09-26-job-matching-research.md` (a subagent's web research
+outside task DS-001) — committed 2026-09-29 (`edc41e5`, together with the brief). The
+dev server on :3000 was stopped for the e2e run (`npm run dev` restarts it).
 
-**Границы среза:** PDF-парсер, OCR и AI-извлечение — вне среза (перед paid
-AI обязательны бюджеты/квоты/дедлайны по AGENTS); автозаполнения полей
-профиля нет — принцип «draft ≠ факт».
+**Rollback:** the branch is merged into `main` (merge `4b6882e`); rollback —
+`git revert` of the merge commit. Next step: S3-002 or batch API test S4-003 (by owner
+decision).
 
-Дальше (по решению владельца): S3-002 (PDF-текстовый слой), S2-002,
-AI-предохранители, третий источник.
+---
+Previous records (S2-002, S3-003, S1-003, …) are preserved below unchanged.
 
-**Что реализовано:** `headJobicyListing` в allowlisted fetcher (pinned
-jobicy.com, HEAD, `redirect:"error"`, таймаут 10 с; 200→active, 404/410→
-inactive, 429/5xx/редирект/сеть→unknown — никогда не закрывает); миграция
-0006 `closure_checks` (per-record последняя проверка + счётчик inactive);
-`runClosureCheckPass` (бюджет ≤25 HEAD/час rolling — персистентно, рестарт
-не сбрасывает; per-record интервал ≥6 ч; не проверяются записи из свежего
-окна; закрытие только после 2 подряд inactive с интервалом; active сбрасывает,
-unknown нейтрален; mass-closure guard: >50% inactive при ≥4 проверках →
-`quarantined`, закрытия не применяются, результаты записываются); провенанс
-и даты при закрытии не переписываются (`jsonb_set` lifecycle, контракт
-валиден — проверено); воркер гоняет проход после импорт-цикла (`--no-closure`
-отключает), `--status` показывает closure-статистику; «Сохранённое»
-показывает закрытые с бейджем «Закрыта (источник)», каталог/подбор исключают
-автоматически.
+Active task earlier: [S2-002](tasks/S2-002-hide-and-applied.md) — **implemented, tested
+locally** (2026-09-25), awaiting the owner's review/acceptance.
 
-**Проверено:** 65/65 unit (классификация HEAD по всем статусам, счётчики,
-guard-пороги), 17/17 integration (закрытие за 2 inactive с интервалом;
-nothing_due внутри интервала; active/unknown-семантика; quarantine без
-применения; бюджет 25/час с рестартом; закрытые снапшоты валидны по
-контракту), check/build, живой `--status` с closure-статистикой, e2e 30/30
-(в стабильное окно; 9-я гибель Docker между прогонами — прежний блокер).
+**What is implemented:** migration 0008 (`hidden_jobs` with a reason CHECK +
+`saved_jobs.marked_applied_at`); fixed hide reason codes (7 items, a privacy minimum
+without free text); the feedback service (ownership, FK→404); the API
+`GET/POST/DELETE /api/v1/hidden` + `PATCH /api/v1/saved` (401/400/404 discipline);
+matching excludes hidden ones only for the owner (eligible and needs_review); UI:
+«Скрыть…» with an inline reason picker on the matching cards (including unsaved ones),
+the «Скрытые» section with the reason and «Вернуть в подбор» on /saved, the button
+«Отметить отклик ✓ (дата)» on the saved ones — it is set only by a user action, a click
+on an external link marks nothing.
 
-Дальше (по решению владельца): S2-002, S3 (CV/parser), третий источник,
-починка Docker Desktop (9 смертей за два дня).
+**Checked:** 71/71 unit, 21/21 integration (ownership: B does not return A's hidden
+item, the mark changes only its own rows; CHECK on reason codes), check/build, e2e 39/39
+(API contract: 401/400/404), a live UI flow on real data: 7 eligible → hiding with a
+reason → excluded (6) → the «Скрытые» section with the reason → return → 7.
 
-**Что реализовано:** политика jobicy (approved, enabled=false, terms_hash
-зафиксирован, valid_until 2026-12-23); миграция 0004 (job_snapshots →
-мультиисточник: source_id IN (himalayas, jobicy), именованные констрейнты);
-`fetchJobicyWindow` в allowlisted fetcher (pinned jobicy.com, count≤200);
-маппер под живой контракт (id-число→`jobicy:{id}`, pubDate ISO+00:00→ISO,
-jobGeo: Anywhere→worldwide / страна→ISO / регион→region_text без выдуманного
-списка стран, jobType→employment_types, salary nullable, excerpt=jobExcerpt);
-`runJobicyImport` (окно всегда partial: absence ≠ closure, miss-счётчики не
-растут; poll-гейт 6ч; retention 720ч); CLI `npm run import:jobicy` (отказ
-exit 1 пока выключен); read-пути обобщены на оба источника (каталог
-«Внешние источники», подбор, сохранённое — с per-source атрибуцией).
+Further (by owner decision): S3-002 (PDF), AI safeguards, a third source, monitoring the
+stability of the reinstalled Docker.
 
-**Проверено:** 57/57 unit (маппер/гейты/идемпотентность/отказы), 11/11
-integration (в т.ч. jobicy в общих таблицах после 0004 + отказ чужого
-источника), check/build, отказ CLI без сети. **e2e: 30/30 проходил дважды за
-день в стабильные окна; текущий прогон 27/30 — три падения на 100% связаны
-с окружением** (Docker Desktop умирал 6 раз; трижды зафиксирован
-ECONNREFUSED 127.0.0.1:54329 при живом движке — порт-прокси). С1-003 не
-меняет UI-пути, пока jobicy выключен. Цикл ремонта 1/2 — запись о блокере
-окружения.
+**What is implemented:** an offline parser without dependencies
+(`src/server/cv/parse.ts`): text insertion and .txt/.md (UTF-8 with reversible-decoding
+verification), .docx — an own minimal ZIP reader (central directory; the PK signature
+takes precedence over the extension; encrypted entries and >200 entries — a refusal;
+unpacking via `inflateRawSync` with `maxOutputLength` — zip bombs die at the 20 MB
+limit, not in memory), text from `word/document.xml` (w:t + paragraphs + XML entities),
+PDF is rejected with a suggestion of the text form; fail-closed limits: file ≤10 MB,
+extracted text ≤150 000 characters, empty text — an error;
+THIN_TEXT_LAYER/UNUSUAL_CHARACTERS warnings. Migration 0007 `cv_uploads` (ownership,
+minimisation: the original binary is not stored — only text and metadata; range
+constraints). The API `/api/v1/cv` (POST json/multipart, GET list, GET/DELETE by id) —
+401 without a session, someone else's id → 404, 413/400 with human messages; deleting
+the profile also deletes the CV. The page `/cv` (insert/upload/view/delete, warnings,
+«ничего не выводится автоматически»), a link from /profile. Config: UPLOADS_ENABLED=true
+— the only permitted form of enabling, malformed values remain fail-closed (the safety
+test extended, not weakened).
 
-**Блокер окружения (действие владельца):** Docker Desktop нестабилен —
-движок падает каждые ~10–20 минут, порт-прокси отказывает при живом движке.
-Рекомендации: обновить/починить Docker Desktop, проверить лимит памяти WSL2
-(.wslconfig), попробовать `wsl --shutdown`; могу добавить db-пробу в doctor.
+**Checked:** 70/70 unit (a zip builder in the tests: a happy docx, two kinds of zip
+bombs, encryption, limits, signature-based routing), 19/19 integration (ownership: B
+does not read/delete A; deleting the profile cleans up the CV; constraints),
+check/build, e2e 33/33 (insert→view→delete; 401). A debugging trace: the e2e failure was
+a missing migration 0007 on the dev DB (applied). Docker instability: the 10th engine
+death in a day.
 
-**После review:** «коммить» + отдельно «включай Jobicy» (enabled=true →
-`npm run import:jobicy` → ~200 свежих карточек рядом с Himalayas).
+**Slice boundaries:** the PDF parser, OCR and AI extraction are outside the slice
+(before paid AI, budgets/quotas/deadlines per AGENTS are mandatory); there is no
+autofill of profile fields — the principle «draft ≠ факт» («draft ≠ fact»).
 
-Итог S2-001: auth (next-auth@4.24.15, scrypt), миграция 0003 (users/профили
-с версиями/saved_jobs + ownership), ручной профиль, детерминированный подбор
-v1 (5 правил, 4 исхода, reason codes, AND/OR-агрегация, гейты), /matched с
-объяснениями, /saved, API с 401/404-дисциплиной. Проверено: 51/51 unit,
-10/10 integration (ownership-негативы), 30/30 e2e, check/build.
+Further (by owner decision): S3-002 (PDF text layer), S2-002, AI safeguards, a third
+source.
 
-**Следующая задача: [S1-003](tasks/S1-003-jobicy-second-source.md) — Jobicy (назначена
-2026-09-25).** Живое исследование выполнено; матрица прав ждёт решения владельца.
+**What is implemented:** `headJobicyListing` in the allowlisted fetcher (pinned
+jobicy.com, HEAD, `redirect:"error"`, a timeout of 10 s; 200→active, 404/410→ inactive,
+429/5xx/redirect/network→unknown — never closes); migration 0006 `closure_checks`
+(per-record last check + inactive counter); `runClosureCheckPass` (budget ≤25 HEAD/hour
+rolling — persistently, a restart does not reset it; per-record interval ≥6 h; records
+from a fresh window are not checked; closure only after 2 consecutive inactives with an
+interval; active resets, unknown is neutral; mass-closure guard: >50% inactive at ≥4
+checks → `quarantined`, closures are not applied, the results are recorded); provenance
+and dates are not overwritten on closure (`jsonb_set` lifecycle, the contract is valid —
+checked); the worker runs the pass after the import cycle (`--no-closure` disables it),
+`--status` shows closure statistics; «Сохранённое» shows closed ones with the badge
+«Закрыта (источник)», the catalog/matching exclude them automatically.
 
-### Факты review jobicy (собраны 2026-09-25 с живых страниц, владельцем поручено)
-- API (jobicy.com/jobs-rss-feed + github.com/Jobicy/remote-jobs-api): `GET /api/v2/remote-jobs`,
-  без ключа, count 1–200 (окно последних записей, НЕ полный снимок); поля: id (число), url
-  (канонический листинг Jobicy), jobTitle/companyName/jobIndustry[]/jobType[]/jobGeo/jobLevel/
-  jobExcerpt/jobDescription(HTML)/pubDate(ISO+00:00)/salary*(nullable). Smoke подтверждён.
-- Права: «normal integrations do not require a separate agreement»; обязательны атрибуция
-  («Keep Jobicy as the original source and preserve the canonical Jobicy job URL»); нельзя
-  выдавать за свои, спам-сети/вводящие в заблуждение базы запрещены; polling ≤1/час,
-  кэшировать поощряется; HTML-описание санитизировать. GitHub-код MIT, но листинги не входят.
-- Paid-опция: Bearer-ключ → прямой ATS URL, $0.01 за впервые полученную запись; выключена
-  без бюджета. Affiliate `?u=` — не используем без решения владельца.
-- Закрытие: рекомендован HEAD листинга 1–2/час; 404/410 = неактивна, иные ошибки ≠ закрытие
-  (следующая задача lifecycle; в S1-003 окно всегда partial, absence ≠ closure).
+**Checked:** 65/65 unit (HEAD classification across all statuses, counters, guard
+thresholds), 17/17 integration (closure after 2 inactives with an interval; nothing_due
+within the interval; active/unknown semantics; quarantine without application; the
+25/hour budget with a restart; closed snapshots are valid per the contract),
+check/build, a live `--status` with closure statistics, e2e 30/30 (in a stable window;
+the 9th Docker death between runs — the previous blocker).
+
+Further (by owner decision): S2-002, S3 (CV/parser), a third source, fixing Docker
+Desktop (9 deaths in two days).
+
+**What is implemented:** the jobicy policy (approved, enabled=false, terms_hash
+recorded, valid_until 2026-12-23); migration 0004 (job_snapshots → multi-source:
+source_id IN (himalayas, jobicy), named constraints); `fetchJobicyWindow` in the
+allowlisted fetcher (pinned jobicy.com, count≤200); a mapper for the live contract
+(id-number→`jobicy:{id}`, pubDate ISO+00:00→ISO, jobGeo: Anywhere→worldwide /
+country→ISO / region→region_text without an invented list of countries,
+jobType→employment_types, salary nullable, excerpt=jobExcerpt); `runJobicyImport` (the
+window is always partial: absence ≠ closure, miss counters do not grow; a 6h poll gate;
+retention 720h); the CLI `npm run import:jobicy` (refusal exit 1 while it is off); the
+read paths are generalised to both sources (the catalog «Внешние источники», matching,
+saved — with per-source attribution).
+
+**Checked:** 57/57 unit (mapper/gates/idempotency/refusals), 11/11 integration
+(including jobicy in the shared tables after 0004 + refusal of a foreign source),
+check/build, CLI refusal without network. **e2e: 30/30 passed twice in a day in stable
+windows; the current run 27/30 — three failures are 100% related to the environment**
+(Docker Desktop died 6 times; three times ECONNREFUSED 127.0.0.1:54329 was recorded
+while the engine was alive — the port proxy). C1-003 does not change the UI paths while
+jobicy is off. Repair cycle 1/2 — a record of the environment blocker.
+
+**Environment blocker (owner action):** Docker Desktop is unstable — the engine dies
+every ~10–20 minutes, the port proxy refuses while the engine is alive. Recommendations:
+update/repair Docker Desktop, check the WSL2 memory limit (.wslconfig), try
+`wsl --shutdown`; I can add a db probe to doctor.
+
+**After review:** «коммить» («commit») + separately «включай Jobicy» («turn on Jobicy»)
+(enabled=true → `npm run import:jobicy` → ~200 fresh cards next to Himalayas).
+
+S2-001 summary: auth (next-auth@4.24.15, scrypt), migration 0003 (users/profiles with
+versions/saved_jobs + ownership), a manual profile, deterministic matching v1 (5 rules,
+4 outcomes, reason codes, AND/OR aggregation, gates), /matched with explanations,
+/saved, an API with 401/404 discipline. Checked: 51/51 unit, 10/10 integration
+(ownership negatives), 30/30 e2e, check/build.
+
+**Next task: [S1-003](tasks/S1-003-jobicy-second-source.md) — Jobicy (assigned
+2026-09-25).** Live research is done; the rights matrix awaits an owner decision.
+
+### Facts of the jobicy review (collected 2026-09-25 from live pages, as instructed by the owner)
+- API (jobicy.com/jobs-rss-feed + github.com/Jobicy/remote-jobs-api):
+  `GET /api/v2/remote-jobs`, without a key, count 1–200 (a window of the latest records,
+  NOT a full snapshot); fields: id (number), url (the canonical Jobicy listing),
+  jobTitle/companyName/jobIndustry[]/jobType[]/jobGeo/jobLevel/
+  jobExcerpt/jobDescription(HTML)/pubDate(ISO+00:00)/salary*(nullable). Smoke confirmed.
+- Rights: «normal integrations do not require a separate agreement»; attribution is
+  mandatory («Keep Jobicy as the original source and preserve the canonical Jobicy job
+  URL»); one may not pass them off as one's own, spam networks/misleading databases are
+  prohibited; polling ≤1/hour, caching is encouraged; sanitise the HTML description. The
+  GitHub code is MIT, but the listings are not included.
+- Paid option: a Bearer key → a direct ATS URL, $0.01 per record received for the first
+  time; disabled without a budget. Affiliate `?u=` — we do not use it without an owner
+  decision.
+- Closure: a HEAD of the listing 1–2/hour is recommended; 404/410 = inactive, other
+  errors ≠ closure (the next task is lifecycle; in S1-003 the window is always partial,
+  absence ≠ closure).
 - terms_hash (sha256 /jobs-rss-feed, 2026-09-25):
   97e86dc4985447f754f9de36b9e72f4723d17dab6995052e35e88aff3370698c
-- Рекомендуемая матрица: fetch/cache/store_full_text/store_excerpt/derive_fields/
-  publish_excerpt = allowed (атрибутация+backlink); publish_full_text/process_with_ml/
+- Recommended matrix: fetch/cache/store_full_text/store_excerpt/derive_fields/
+  publish_excerpt = allowed (attribution+backlink); publish_full_text/process_with_ml/
   send_to_ai_provider/train_model/send_email/index_web_page/syndicate/bulk_export/
-  direct_apply = denied; apply_route=source_required; retention 720ч; poll ≥6ч;
+  direct_apply = denied; apply_route=source_required; retention 720h; poll ≥6h;
   valid_until 2026-12-23.
 
-## Решения владельца
+## Owner decisions
 - Node 26 (2026-09-24): `.nvmrc` = 26.7.0, `engines` +`^26.0.0`.
-- Переименование Atlas → Nenaugad (2026-09-24).
-- S0-001 принят; git init, main; коммиты f1f2ab7…e5efe11.
-- Матрица прав himalayas утверждена и активирована (2026-09-24): 497 записей,
-  чекпоинт; откат — enabled:false без правки UI.
-- S2-001 принят 2026-09-25 (коммит ожидает слова владельца).
-- Mimosa: полн. аудит не завершён (лимиты; ложные срабатывания на
-  параметризованный SQL и `.exec(`/`.match(`). Безопасность не заявляется.
-- Окружение: Docker Desktop падал 4 раза 24–25.09 — причина «случайных»
-  падений DB/e2e; при падениях проверять движок первым.
+- Renaming Atlas → Nenaugad (2026-09-24).
+- S0-001 accepted; git init, main; commits f1f2ab7…e5efe11.
+- The himalayas rights matrix approved and activated (2026-09-24): 497 records, a
+  checkpoint; rollback — enabled:false without a UI edit.
+- S2-001 accepted 2026-09-25 (the commit awaits the owner's word).
+- Mimosa: the full audit is not completed (limits; false positives on parameterised SQL
+  and `.exec(`/`.match(`). Security is not claimed.
+- Environment: Docker Desktop crashed 4 times on 24–25.09 — the cause of "random"
+  crashes of DB/e2e; on crashes, check the engine first.
 
-**Что реализовано:** auth на next-auth@4.24.15 (JWT-сессия, httpOnly, Credentials;
-регистрация `/api/v1/auth/register`, пароли scrypt из node:crypto); миграция 0003
-(users / candidate_profiles / search_profiles с версиями / saved_jobs с ownership);
-ручной профиль (страна ISO-2, IANA-зона, окна доступности, целевые роли, формы
-сотрудничества, zero-mandatory-attendance, минимум зарплаты с strict/hard,
-show_needs_review) — сохранение = новая версия, удаление удаляет все версии;
-детерминированный движок правил v1 (`src/domain/matching.ts`: GEO-01, CONTRACT-01,
-REMOTE-01, SAL-01, TIME-01 с исходами pass/fail/unknown/not_applicable и reason
-codes ТЗ 13.2; агрегация AND-в-опции / OR-между-опциями; TIME-01 v1 — попадание
-смещения зоны в принимаемые, с сезонной проверкой январь/июль); страницы /login,
-/profile, /matched (eligible + «Нужно уточнить», ineligible скрыт, объяснение по
-каждому правилу), /saved; API profile/saved/matched — 401 без сессии.
+**What is implemented:** auth on next-auth@4.24.15 (JWT session, httpOnly, Credentials;
+registration `/api/v1/auth/register`, scrypt passwords from node:crypto); migration 0003
+(users / candidate_profiles / search_profiles with versions / saved_jobs with
+ownership); a manual profile (ISO-2 country, IANA zone, availability windows, target
+roles, forms of cooperation, zero-mandatory-attendance, a minimum salary with
+strict/hard, show_needs_review) — saving = a new version, deleting deletes all versions;
+the deterministic rules engine v1 (`src/domain/matching.ts`: GEO-01, CONTRACT-01,
+REMOTE-01, SAL-01, TIME-01 with the outcomes pass/fail/unknown/not_applicable and reason
+codes from spec 13.2; aggregation AND-within-option / OR-between-options; TIME-01 v1 —
+the zone offset falling within the accepted ones, with a seasonal January/July check);
+the pages /login, /profile, /matched (eligible + «Нужно уточнить», ineligible hidden, an
+explanation per each rule), /saved; the profile/saved/matched API — 401 without a
+session.
 
-**Проверено:** 51/51 unit (правила, профиль-валидация), 10/10 integration
-(scrypt/дубликаты email, версии, удаление, ownership: B не видит/не снимает
-сохранённое A, FK на несуществующий снапшот), 30/30 e2e (регистрация→профиль→
-честный пустой /matched на fixture→404 на сохранение несуществующего; 401 на
-приватные API без сессии), check/build. Цикл ремонта 1/2 (задним числом).
+**Checked:** 51/51 unit (rules, profile validation), 10/10 integration (scrypt/email
+duplicates, versions, deletion, ownership: B does not see/does not unset A's saved
+items, FK to a non-existent snapshot), 30/30 e2e (registration→profile→an honest empty
+/matched on fixture→404 on saving a non-existent one; 401 on private APIs without a
+session), check/build. Repair cycle 1/2 (retroactively).
 
-**Границы:** CV/upload — S3; TIME-01 не считает перекрытие окон с DST-точностью
-(версионированное расширение позже); профили не покидают локальную базу;
-e2e-регистрация пишет случайные аккаунты в локальную dev-БД; CI получил
-DATABASE_URL/AUTH_SECRET на e2e-шаге (эфемерный секрет CI, не production).
+**Boundaries:** CV/upload — S3; TIME-01 does not count window overlaps with DST accuracy
+(a versioned extension later); profiles do not leave the local database; e2e
+registration writes random accounts into the local dev DB; CI received
+DATABASE_URL/AUTH_SECRET at the e2e step (an ephemeral CI secret, not production).
 
-**После принятия:** S2-002 (скрытие с причинами/пометка отклика, postgres-e2e)
-или подключение второго источника Jobicy — по решению владельца.
+**After acceptance:** S2-002 (hiding with reasons/applied mark, postgres-e2e) or
+connecting the second Jobicy source — by owner decision.
 
-Активная политика himalayas: version 3, approved+enabled, valid_until
-2026-12-23 (повторный review), retention 720ч, polling ≥24ч. Откат: `enabled:
-false` — карточи исчезают без правки UI.
+The active himalayas policy: version 3, approved+enabled, valid_until 2026-12-23 (repeat
+review), retention 720h, polling ≥24h. Rollback: `enabled: false` — the cards disappear
+without a UI edit.
 
-E2E продолжает гонять fixture-бэкенд (env в playwright.config) — счётчик
-демо-каталога валиден; postgres-режим e2e — будущая задача.
+E2E keeps running the fixture backend (env in playwright.config) — the demo catalog
+counter is valid; the postgres e2e mode — a future task.
 
-## Решения владельца
+## Owner decisions
 - Node 26 (2026-09-24): `.nvmrc` = 26.7.0, `engines` +`^26.0.0`.
-- Переименование Atlas → Nenaugad (2026-09-24).
-- S0-001 принят; git init, main; коммиты f1f2ab7…e31a9bd.
-- Матрица прав himalayas утверждена 2026-09-24 (d48bcfe); S1-001 принят (e31a9bd).
-- S1-002 закоммичен и активирован 2026-09-24 (см. git log).
-- Mimosa: полн. аудит не завершён (лимиты library_source/callgraph; ложные
-  срабатывания на параметризованный SQL и `.exec(`/`.match(` — обходы без
-  ослабления защиты). Безопасность проекта не заявляется.
+- Renaming Atlas → Nenaugad (2026-09-24).
+- S0-001 accepted; git init, main; commits f1f2ab7…e31a9bd.
+- The himalayas rights matrix approved 2026-09-24 (d48bcfe); S1-001 accepted (e31a9bd).
+- S1-002 committed and activated 2026-09-24 (see git log).
+- Mimosa: the full audit is not completed (library_source/callgraph limits; false
+  positives on parameterised SQL and `.exec(`/`.match(` — bypasses without weakening
+  protection). Project security is not claimed.
 
-**Что реализовано:** закреплённый транспорт `src/server/import/fetcher.ts`
-(единственный файл в guardrail-allowlist: pinned host, opaque-cursor валидация,
-`redirect:"error"`, таймаут, лимит размера, 429/5xx классификация); live-адаптер
-cursor-walk с бюджетом страниц и чекпоинтом (`himalayas-adapter.ts`, отказ при
-disabled, poll-гейт ≥24ч, неудачный прогон не расходует окно); миграция 0002
-(`job_snapshots` с CHECK контракта + `import_state`); PostgreSQL-хранение с
-retention (720ч + expires_at − 7д); CLI `npm run import:himalayas` (отказ exit 1
-пока источник выключен) и `npm run smoke:himalayas`; read-путь карточек с
-атрибуцией/backlink только при включённой политике; UI-секция каталога «тёмная»
-до активации. Маппер переписан под живой контракт (guid=URL→стабильный ID,
-Unix-секунды, excerpt отдельно, numeric timezone hours, полный диапазон = нет
-ограничения).
+**What is implemented:** the pinned transport `src/server/import/fetcher.ts` (the only
+file in the guardrail allowlist: pinned host, opaque-cursor validation,
+`redirect:"error"`, a timeout, a size limit, 429/5xx classification); a live cursor-walk
+adapter with a page budget and a checkpoint (`himalayas-adapter.ts`, refusal when
+disabled, a poll gate ≥24h, a failed run does not consume the window); migration 0002
+(`job_snapshots` with a contract CHECK + `import_state`); PostgreSQL storage with
+retention (720h + expires_at − 7d); the CLI `npm run import:himalayas` (refusal exit 1
+while the source is off) and `npm run smoke:himalayas`; a card read path with
+attribution/backlink only when the policy is enabled; the catalog UI section is "dark"
+until activation. The mapper was rewritten for the live contract (guid=URL→stable ID,
+Unix seconds, excerpt separately, numeric timezone hours, the full range = no
+restriction).
 
-**Проверено:** 44/44 unit, 6/6 integration (test DB: идемпотентность, чекпоинт,
-CHECK-ограничения, retention), check/build, smoke **contract_ok** на реальных
-записях API, отказ CLI без сети, e2e 24/24 без регресса. Цикл ремонта 1/2
-(задним числом, см. current.json).
+**Checked:** 44/44 unit, 6/6 integration (test DB: idempotency, checkpoint, CHECK
+constraints, retention), check/build, smoke **contract_ok** on real API records, CLI
+refusal without network, e2e 24/24 without regression. Repair cycle 1/2 (retroactively,
+see current.json).
 
-**Активация (решение владельца):** review diff → `enabled: true` в политике →
-`npm run smoke:himalayas` → `npm run import:himalayas` (по умолчанию 25 страниц,
-~500 записей; полный фид ~100k — бюджетными прогонами) → обновить e2e-счётчик
-каталога. Откат: `enabled: false` без правки UI; таблицы 0002 остаются.
+**Activation (owner decision):** review the diff → `enabled: true` in the policy →
+`npm run smoke:himalayas` → `npm run import:himalayas` (25 pages by default, ~500
+records; the full feed ~100k — by budgeted runs) → update the e2e catalog counter.
+Rollback: `enabled: false` without a UI edit; the 0002 tables remain.
 
-**Политика himalayas: матрица прав утверждена владельцем 2026-09-24** (review живых
-страниц API/ToS). `status: approved`, `enabled: false` — активация отдельной задачей
-live-адаптера. Разрешено: fetch/cache/store_full_text/store_excerpt/derive_fields/
-publish_excerpt (атрибуция+backlink обязательны). Запрещено: publish_full_text,
-process_with_ml, send_to_ai_provider, train_model, direct_apply, send_email,
-index_web_page, syndicate_google_jobs, bulk_export. apply_route=source_required,
-retention 720ч + expiryDate, polling ≥86400с, terms_hash зафиксирован
-(sha256 himalayas.app/terms на 2026-09-24), valid_until 2026-12-23 (повторный review).
+**himalayas policy: the rights matrix was approved by the owner 2026-09-24** (a review
+of the live API/ToS pages). `status: approved`, `enabled: false` — activation is a
+separate live-adapter task. Allowed:
+fetch/cache/store_full_text/store_excerpt/derive_fields/ publish_excerpt
+(attribution+backlink mandatory). Prohibited: publish_full_text, process_with_ml,
+send_to_ai_provider, train_model, direct_apply, send_email, index_web_page,
+syndicate_google_jobs, bulk_export. apply_route=source_required, retention 720h +
+expiryDate, polling ≥86400s, terms_hash recorded (sha256 himalayas.app/terms as of
+2026-09-24), valid_until 2026-12-23 (repeat review).
 
-**Результат S1-001:** настоящий доменный контракт (`src/domain/source-contracts.ts`,
-SourcePolicy/JobSnapshot по 03_DOMAIN_CONTRACTS.schema.json, ручные валидаторы без
-сторонних зависимостей), исполняемая политика источников (`src/server/source-policies.ts`),
-контрактная фикстура будущего Himalayas-адаптера с детерминированным маппером
-(`src/server/import/himalayas-fixture.ts`: секунды/миллисекунды, пустые locations =
-worldwide только без противоречия тексту, зарплата без выдуманной валюты), идемпотентный
-пайплайн импорта (`src/server/import/pipeline.ts`: дедуп по ID, content-hash, version+1
-только при смене смысла, 429/5xx/неполный снимок не закрывают записи, stale после двух
-полных проходов с интервалом ≥24ч, конечный retry) и UI-проекция с гейтами
-(`src/domain/snapshot-projection.ts`). Сетевого транспорта в src/ нет (guardrails).
+**S1-001 result:** a real domain contract (`src/domain/source-contracts.ts`,
+SourcePolicy/JobSnapshot per 03_DOMAIN_CONTRACTS.schema.json, manual validators without
+third-party dependencies), an executable source policy
+(`src/server/source-policies.ts`), a contract fixture of the future Himalayas adapter
+with a deterministic mapper (`src/server/import/himalayas-fixture.ts`:
+seconds/milliseconds, empty locations = worldwide only without contradicting the text,
+salary without an invented currency), an idempotent import pipeline
+(`src/server/import/pipeline.ts`: dedup by ID, content-hash, version+1 only on a meaning
+change, 429/5xx/an incomplete snapshot do not close records, stale after two full passes
+with an interval ≥24h, finite retry) and a UI projection with gates
+(`src/domain/snapshot-projection.ts`). There is no network transport in src/
+(guardrails).
 
-Проверено: 39/39 unit (9 новых по 7 пунктам приёмки S1), lint+tsc (49 файлов), build,
-24/24 e2e, 3/3 test:db. Цикл ремонта: 1/2 (запись задним числом о дефекте классификации,
-исправленном до завершения исходной реализации — см. tasks/current.json).
+Checked: 39/39 unit (9 new on the 7 S1 acceptance items), lint+tsc (49 files), build,
+24/24 e2e, 3/3 test:db. Repair cycle: 1/2 (a retroactive record of a classification
+defect fixed before the original implementation was finished — see tasks/current.json).
 
-**Не сделано сознательно:** live fetch Himalayas (нужен owner-approval политики и отдельный
-review), хранение snapshots в PostgreSQL (контрактный стор в памяти/фикстурах; схема БД не
-менялась), показ карточек himalayas в UI (источник не одобрен — contribute 0 карточек,
-моков нет).
+**Deliberately not done:** live fetch Himalayas (requires an owner approval of the
+policy and a separate review), storing snapshots in PostgreSQL (the contract store is in
+memory/fixtures; the DB schema did not change), showing himalayas cards in the UI (the
+source is not approved — 0 cards contributed, no mocks).
 
-## Решения владельца
+## Owner decisions
 - Node 26 (2026-09-24): `.nvmrc` = 26.7.0, `engines` +`^26.0.0`.
-- Переименование Atlas → Nenaugad (2026-09-24): package, compose-проект, CI, UI, проза.
-  Сохранены артефакты дизайн-языка Atlas 1.1, Reference/, docs/solo/context/, reports/
-  и контракты данных (atlas-fixtures, atlas_demo_jobs, atlas_starter*, ATLAS_ENV).
-- S0-001 принят 2026-09-24; git init, ветка main, коммиты f1f2ab7, 7c5a404.
-- Mimosa pre-commit полный аудит не завершил (library_source limit, callgraph partial):
-  безопасность проекта не заявляется.
+- Renaming Atlas → Nenaugad (2026-09-24): package, compose project, CI, UI, prose.
+  Preserved: the Atlas 1.1 design language artifacts, Reference/, docs/solo/context/,
+  reports/ and the data contracts (atlas-fixtures, atlas_demo_jobs, atlas_starter*,
+  ATLAS_ENV).
+- S0-001 accepted 2026-09-24; git init, branch main, commits f1f2ab7, 7c5a404.
+- The Mimosa pre-commit full audit did not complete (library_source limit, callgraph
+  partial): project security is not claimed.
 
-## Следующий шаг
-Владелец: review S1-001 diff + решение по политике himalayas (approve/purpose/review).
-После approve — отдельная задача live-адаптера (fetch, polling, БД-хранение).
+## Next step
+Owner: review the S1-001 diff + a decision on the himalayas policy
+(approve/purpose/review). After approve — a separate live-adapter task (fetch, polling,
+DB storage).
 
-### Факты review himalayas (собраны 2026-09-24 с живых страниц, владельцем поручено)
-- API (himalayas.app/api, /docs/remote-jobs-api, openapi.json): бесплатный, без ключа;
-  cursor ≤20, обновление 24ч, 429 → ждать ~60с, s-maxage=86400; кэширование на своём
-  бэкенде прямо поощряется; обязательная атрибуция (link back + mention as source);
-  applicationLink можно показывать с кредитом источника; запрет синдикации на
-  сторонние сайты (Jooble/Neuvoo/Google Jobs/LinkedIn); locationRestrictions пустой =
-  worldwide; pubDate/expiryDate в схеме Unix-мс, в прозе ISO — противоречие,
-  живой smoke-тест при адаптере обязателен.
-- ToS сайта: широкий запрет automated data gathering «without prior written approval»;
-  механизма атрибуции вместо разрешения нет. Напряжение с API-документацией;
-  письменный канал обеих страниц — hi@himalayas.app (он же для повышенных лимитов).
-- Рекомендация владельцу: до approve — запросить письменное подтверждение (вариант 2);
-  либо approve по API-условиям с матрицей: fetch/cache/store/derive/publish_excerpt
-  allowed (атрибуция+backlink), publish_full_text/direct_apply/ML/AI/email/seo/syndicate/
-  train/bulk denied, apply_route=source_required, retention 720ч + expiryDate,
-  polling 86400с. Решение и approve — только владелец.
+### Facts of the himalayas review (collected 2026-09-24 from live pages, as instructed by the owner)
+- API (himalayas.app/api, /docs/remote-jobs-api, openapi.json): free, no key; cursor
+  ≤20, refresh 24h, 429 → wait ~60s, s-maxage=86400; caching on one's own backend is
+  directly encouraged; attribution is mandatory (link back + mention as source);
+  applicationLink can be shown with source credit; syndication to third-party sites is
+  prohibited (Jooble/Neuvoo/Google Jobs/LinkedIn); locationRestrictions empty =
+  worldwide; pubDate/expiryDate are Unix-ms in the schema, ISO in the prose — a
+  contradiction, a live smoke test at the adapter is mandatory.
+- Site ToS: a broad prohibition of automated data gathering «without prior written
+  approval»; there is no attribution mechanism instead of permission. Tension with the
+  API documentation; the written channel of both pages — hi@himalayas.app (also for
+  raised limits).
+- Recommendation to the owner: before approve — request written confirmation (option 2);
+  or approve under the API terms with the matrix:
+  fetch/cache/store/derive/publish_excerpt allowed (attribution+backlink),
+  publish_full_text/direct_apply/ML/AI/email/seo/syndicate/ train/bulk denied,
+  apply_route=source_required, retention 720h + expiryDate, polling 86400s. The decision
+  and approve are the owner's only.
 
-## Фактические результаты S0-001 (2026-09-24, Node v26.7.0, npm 12.0.2, Windows)
+## Actual results of S0-001 (2026-09-24, Node v26.7.0, npm 12.0.2, Windows)
 
-| Команда | Результат | Exit |
+| Command | Result | Exit |
 |---|---|---|
-| `npm run setup` | создана приватная `.env` (fixture mode), секреты не выводились | 0 |
-| `npm run check:offline` | токены (100 алиасов), guardrails, 30/30 unit | 0 |
-| `npm install` | 48 пакетов; настоящий `package-lock.json` создан npm | 0 |
-| `npm audit` | 0 уязвимостей | 0 |
-| `npm run check` | 30/30 unit + Biome (43 файла) + `tsc --noEmit` | 0 |
-| `npm run build` | Next 16.3.6 (Turbopack), 11 маршрутов, статика сгенерирована | 0 |
+| `npm run setup` | a private `.env` created (fixture mode), no secrets printed | 0 |
+| `npm run check:offline` | tokens (100 aliases), guardrails, 30/30 unit | 0 |
+| `npm install` | 48 packages; a real `package-lock.json` created by npm | 0 |
+| `npm audit` | 0 vulnerabilities | 0 |
+| `npm run check` | 30/30 unit + Biome (43 files) + `tsc --noEmit` | 0 |
+| `npm run build` | Next 16.3.6 (Turbopack), 11 routes, static output generated | 0 |
 | `npx playwright install chromium` | Chromium headless shell 151.0.7922.34 | 0 |
-| `npm run test:e2e` | **24/24** на 320/390/1440, порт 3100 | 0 |
-| `docker compose up -d --wait db` | PostgreSQL healthy на 127.0.0.1:54329 | 0 |
-| `npm run db:migrate` (x2) | 1 миграция; повтор — 0 применённых | 0 |
-| `npm run db:seed` (x2) | 8 записей; повтор — 0 изменённых (идемпотентно) | 0 |
-| `npm run test:db` | 3/3 интеграционных на отдельной `atlas_starter_test` | 0 |
-| `docker compose stop db` | контейнер остановлен, volume сохранён | 0 |
+| `npm run test:e2e` | **24/24** at 320/390/1440, port 3100 | 0 |
+| `docker compose up -d --wait db` | PostgreSQL healthy at 127.0.0.1:54329 | 0 |
+| `npm run db:migrate` (x2) | 1 migration; a repeat — 0 applied | 0 |
+| `npm run db:seed` (x2) | 8 records; a repeat — 0 changed (idempotent) | 0 |
+| `npm run test:db` | 3/3 integration on a separate `atlas_starter_test` | 0 |
+| `docker compose stop db` | the container stopped, the volume preserved | 0 |
 
-Приёмка S0-001: п.1–6 выполнены и проверены реально; п.7 — владелец принял S0 (2026-09-24, «принимаю»).
+Acceptance of S0-001: items 1–6 are done and really verified; item 7 — the owner
+accepted S0 (2026-09-24, «принимаю» («I accept»)).
 
-## Цикл ремонта 1/2 (единственный использованный)
-E2E «keyboard reaches skip link and labeled search» падал: ожидание `toHaveCount(1)`
-для q=SQL противоречило осознанному подстрочному поиску `selectCatalog`
-(`src/domain/job.ts:72`): «SQL» матчит и cobalt-data (skills: `SQL`), и north-backend
-(skills: `PostgreSQL`). Исправлено ожидание E2E-сценария на 2 карточки
-(`tests/e2e/catalog.spec.ts:50`); домен не менялся — он зафиксирован unit-тестами.
-Гипотеза записана `npm run task -- repair` до ремонта, счётчик 1/2.
+## Repair cycle 1/2 (the only one used)
+The E2E "keyboard reaches skip link and labeled search" failed: the expectation
+`toHaveCount(1)` for q=SQL contradicted the deliberate substring search of
+`selectCatalog` (`src/domain/job.ts:72`): «SQL» matches both cobalt-data (skills: `SQL`)
+and north-backend (skills: `PostgreSQL`). The E2E scenario expectation was fixed to 2
+cards (`tests/e2e/catalog.spec.ts:50`); the domain did not change — it is pinned by unit
+tests. The hypothesis was recorded with `npm run task -- repair` before the repair,
+counter 1/2.
 
-## Изменения файлов
-- `.nvmrc`, `package.json` (engines) — решение владельца о Node 26.
-- `package-lock.json` — создан npm, не моделью.
-- `tests/e2e/catalog.spec.ts` — ремонт цикла 1.
-- `tsconfig.json` — Next build сам добавил `.next/dev/types/**/*.ts` в include.
-- `.env` — создан setup; `TEST_DATABASE_URL` заполнена из `DATABASE_URL`
-  (база `atlas_starter_test`) без вывода секрета; `DATA_BACKEND` остался `fixture`.
-- `tasks/current.json` — status → `implemented`, счётчик_cycles сохранён (1/2).
+## File changes
+- `.nvmrc`, `package.json` (engines) — the owner's Node 26 decision.
+- `package-lock.json` — created by npm, not by the model.
+- `tests/e2e/catalog.spec.ts` — repair of cycle 1.
+- `tsconfig.json` — the Next build itself added `.next/dev/types/**/*.ts` to include.
+- `.env` — created by setup; `TEST_DATABASE_URL` filled from `DATABASE_URL` (database
+  `atlas_starter_test`) without printing the secret; `DATA_BACKEND` remained `fixture`.
+- `tasks/current.json` — status → `implemented`, счётчик_cycles preserved (1/2).
 
-## Границы и не выполненное
-- Проверка postgres-режима веб-приложения (`DATA_BACKEND=postgres` в dev) — осознанный
-  шаг владельца по README; квалифицировано интеграционными тестами test:db.
-- WCAG-аудит, pen test, нагрузка, restore, npm-registry digest verification — не выполнялись.
-- AI/live sources/uploads выключены; сетевых AI-вызовов нет. Git инициализирован
-  2026-09-24 (main, коммиты f1f2ab7, 7c5a404); после S1-001 новых коммитов нет —
-  изменения S1 ждут review владельца.
-- Расход coding-host: unknown.
+## Boundaries and what was not done
+- Checking the postgres mode of the web application (`DATA_BACKEND=postgres` in dev) — a
+  deliberate owner step per the README; qualified by the test:db integration tests.
+- WCAG audit, pen test, load, restore, npm-registry digest verification — not performed.
+- AI/live sources/uploads are off; there are no network AI calls. Git was initialised
+  2026-09-24 (main, commits f1f2ab7, 7c5a404); after S1-001 there are no new commits —
+  the S1 changes await the owner's review.
+- Coding-host spend: unknown.
 
-## Откат
-`docker compose stop db` выполнен. Удалить последствия: удалить `node_modules/`,
-`.next/`, `package-lock.json`, `.env`; `docker compose down -v` — только по решению владельца.
+## Rollback
+`docker compose stop db` was executed. To delete the consequences: delete
+`node_modules/`, `.next/`, `package-lock.json`, `.env`; `docker compose down -v` — only
+by owner decision.
 
-## После приятия S1-001
-Live-адаптер Himalayas (после approve политики: fetch, polling, БД-хранение snapshots)
-или S2 — ручной профиль → объяснимый подбор → сохранение (по решению владельца).
+## After acceptance of S1-001
+The Himalayas live adapter (after policy approve: fetch, polling, DB storage of
+snapshots) or S2 — a manual profile → explainable matching → saving (by owner decision).
 
-| Область | Код | Фактическая проверка |
+| Area | Code | Actual verification |
 |---|---|---|
-| Чистые правила synthetic-каталога, config/source gate | Implemented | 30/30 unit, guardrails |
-| Nenaugad UI / Next pages и routes | Implemented | build + 24/24 Playwright E2E |
+| Pure rules of the synthetic catalog, config/source gate | Implemented | 30/30 unit, guardrails |
+| Nenaugad UI / Next pages and routes | Implemented | build + 24/24 Playwright E2E |
 | PostgreSQL migrate/seed/repository | Implemented | migrate/seed x2, 3/3 integration |
-| Playwright-сценарии | Implemented | Реальный Next, 320/390/1440 |
-| Доменные контракты SourcePolicy/JobSnapshot, импорт, проекция (S1) | Implemented | 9/9 новых unit по приёмке S1 |
-| Live-адаптер источника (fetch/polling/БД) | Not implemented | Требует approve политики + review |
-| Runtime AI | Not implemented | Disabled gate, не генератор |
-| Auth, profile, upload, letters | Not implemented | Не принимать реальные данные |
-| Budget ledger / worker | Not implemented | Обязательны до активации |
-| Production / beta | Blocked | Требуют решения владельца |
+| Playwright scenarios | Implemented | Real Next, 320/390/1440 |
+| Domain contracts SourcePolicy/JobSnapshot, import, projection (S1) | Implemented | 9/9 new unit per S1 acceptance |
+| Live source adapter (fetch/polling/DB) | Not implemented | Requires policy approve + review |
+| Runtime AI | Not implemented | Disabled gate, not a generator |
+| Auth, profile, upload, letters | Not implemented | Do not accept real data |
+| Budget ledger / worker | Not implemented | Mandatory before activation |
+| Production / beta | Blocked | Require an owner decision |

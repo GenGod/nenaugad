@@ -1,36 +1,39 @@
-# S1-004 — регуляризация импорта: воркер с расписанием и backoff
+# S1-004 — import regularization: a worker with a schedule and backoff
 
-**Результат:** один долгоживущий локальный воркер (`npm run worker`) сам
-запускает импорт одобренных источников по их poll-интервалам, переживает
-сбои с экспоненциальным backoff и jitter, ставит источник на паузу после
-серии неудач и показывает состояние; идемпотентность — в БД, как в ТЗ 7.
+**Result:** one long-lived local worker (`npm run worker`) itself launches the
+imports of the approved sources on their poll intervals, survives failures
+with exponential backoff and jitter, pauses a source after a series of
+failures and shows the state; idempotency — in the DB, as in spec 7.
 
-**Не входит:** очередь/Redis (один готовый механизм не нужен — цикл воркера
-и есть расписание), парсинг Retry-After (базовый backoff 15 мин перекрывает
-задокументированные ~60 c — никогда не нарушаем заголовок), уведомления
-вне логов, отдельный процесс-сервис (запуск в терминале/планировщике ОС —
-решение владельца).
+**Not included:** a queue/Redis (one ready-made mechanism is not needed — the
+worker cycle is the schedule), Retry-After parsing (the base backoff of
+15 min covers the documented ~60 s — we never violate the header),
+notifications beyond logs, a separate service process (a run in a terminal/OS
+scheduler — an owner decision).
 
-**Контекст:** ТЗ 7 (at-least-once + идемпотентность в БД), 17 (concurrency 1,
-backoff с jitter, max attempts, пауза вместо бесконечного ретрая, circuit
-breaker на источник, видимость last success/next run/ошибок); SP 3 (один
-механизм фоновых задач, без универсального оркестратора).
+**Context:** spec 7 (at-least-once + idempotency in the DB), 17 (concurrency 1,
+backoff with jitter, max attempts, a pause instead of an infinite retry, a
+circuit breaker per source, visibility of last success/next run/errors);
+SP 3 (one mechanism for background tasks, without a universal orchestrator).
 
-## Приёмка
-1. Миграция 0005: `import_state` += `last_attempt_at`, `consecutive_failures`;
-   попытки persist-ятся (перезапуск воркера не сбрасывает backoff).
-2. Планировщик (чистый): next-due = max(last_run+interval, last_attempt+
-   backoff(n)); backoff 15 мин × 2^(n−1), cap 6 ч, jitter ±20%; пауза
-   источника после 5 подряд неудач — до `--resume <source>`.
-3. Воркер: последовательные попытки (concurrency 1), JSON-логи без секретов,
+## Acceptance
+1. Migration 0005: `import_state` += `last_attempt_at`, `consecutive_failures`;
+   attempts are persisted (a worker restart does not reset the backoff).
+2. Scheduler (pure): next-due = max(last_run+interval, last_attempt+
+   backoff(n)); backoff 15 min × 2^(n−1), cap 6 h, jitter ±20%; a source is
+   paused after 5 consecutive failures — until `--resume <source>`.
+3. Worker: sequential attempts (concurrency 1), JSON logs without secrets,
    `--once`, `--status`, `--resume`, graceful shutdown (SIGINT/SIGTERM).
-4. Один деградировавший источник не останавливает второй (per-source state).
-5. Повторные запуски идемпотентны (существующие гейты и versioning);
-   неудачная попытка не расходует poll-окно (last_run_at не трогается).
-6. Тесты: unit — расписание/backoff/пауза; integration — прогон воркера с
-   фейковыми транспортами, persist неудач, resume; e2e не меняется.
-7. Включение воркера в постоянную работу (планировщик ОС/терминал) — решение
-   владельца; воркер по умолчанию ничего не делает с выключенными источниками.
+4. One degraded source does not stop a second one (per-source state).
+5. Repeated runs are idempotent (the existing gates and versioning);
+   a failed attempt does not consume the poll window (last_run_at is not
+   touched).
+6. Tests: unit — schedule/backoff/pause; integration — a worker run with fake
+   transports, the persistence of failures, resume; e2e unchanged.
+7. Enabling the worker for permanent operation (an OS scheduler/terminal) —
+   an owner decision; by default the worker does nothing with sources
+   disabled.
 
-**Риск:** обычный. **Откат:** остановить воркер; миграцию не откатывать вслепую.
-**Данные:** только публичные фиды; расходы нулевые (бесплатные API).
+**Risk:** ordinary. **Rollback:** stop the worker; do not roll back the
+migration blindly.
+**Data:** only public feeds; the spend is zero (free APIs).

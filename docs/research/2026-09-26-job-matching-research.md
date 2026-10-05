@@ -1,365 +1,365 @@
-# Исследование: алгоритмический и ИИ-подбор вакансий под резюме (2026-09-26)
+# Research: algorithmic and AI matching of jobs to a resume (2026-09-26)
 
-Исследование для проектирования матчинга Nenaugad (remote-only, candidate-facing,
-каталог вакансий). Материал собран тремя параллельными субагентами (веб-поиск + разбор
-источников, ~30 поисковых запросов, ~20 разобранных страниц), сведён и проверен в
-основной сессии. Субагентные токены: ~1.63M (стоимость: unknown).
+Research for designing Nenaugad matching (remote-only, candidate-facing,
+job catalog). The material was gathered by three parallel subagents (web search + source
+analysis, ~30 search queries, ~20 pages examined), consolidated and verified in the
+main session. Subagent tokens: ~1.63M (cost: unknown).
 
-## Резюме индустрии в одном абзаце
+## Industry summary in one paragraph
 
-Консенсус источников: production-матчинг строится как **каскад**, а не одна модель —
-извлечение и нормализация сущностей → детерминированные фильтры допуска → гибридный
-retrieval (BM25 + эмбеддинги, слияние рангов) → реранк (cross-encoder или LLM) →
-разнообразие/объяснимость → фидбэк-луп. Чисто-LLM скоринг всей базы не масштабируется
-по цене и latency; чисто-лексический поиск теряет синонимику; эмбеддинги не ловят
-hard-ограничения. LLM вытесняет NER-стек в извлечении полей (LinkedIn, CIKM 2025),
-skills-first нормализация — общая практика (LinkedIn, Eightfold), регуляторика (EU AI
-Act Annex III.4, NYC LL144) делает объяснимость частью архитектуры. Авто-apply
-стартапы умирают (Sonara закрылся в 2024); устойчивая ценность — фильтрация,
-объяснение, подготовка.
+Consensus of the sources: production matching is built as a **cascade**, not a single model —
+entity extraction and normalization → deterministic eligibility filters → hybrid
+retrieval (BM25 + embeddings, rank fusion) → rerank (cross-encoder or LLM) →
+diversity/explainability → feedback loop. Pure-LLM scoring of the entire corpus does not scale
+in cost and latency; purely lexical search loses synonymy; embeddings do not catch
+hard constraints. LLM is displacing the NER stack in field extraction (LinkedIn, CIKM 2025),
+skills-first normalization is common practice (LinkedIn, Eightfold), regulation (EU AI
+Act Annex III.4, NYC LL144) makes explainability part of the architecture. Auto-apply
+startups are dying (Sonara closed in 2024); durable value is filtering,
+explanation, preparation.
 
-## Топ-10 методов (по порядку каскада)
+## Top 10 methods (in cascade order)
 
-### 1. Извлечение и нормализация сущностей — фундамент всего
-LLM-извлечение структурированных полей в единую схему: из резюме — skills, годы
-опыта, seniority, образование; из вакансий — требования, зарплата, remote-политика.
-Затем нормализация навыков к таксономии (ESCO — 29 языков, бесплатно; O*NET;
-Lightcast Open Skills) + alias-словарь (js = JavaScript = ECMAScript). Нормализация
-делается на инжесте, не в рантайме. Критично: поля, которых нет в тексте (зарплата
-«конкурентно»), получают явный `unknown`, модель не должна додумывать — здесь
-галлюцинация особенно вредна. LinkedIn заменил стек task-specific NER-моделей одним
-LLM query understanding (arXiv:2509.09690). Ошибки извлечения умножаются вниз по
-пайплайну, поэтому это метод №1, а не мелочь.
+### 1. Entity extraction and normalization — the foundation of everything
+LLM extraction of structured fields into a single schema: from a resume — skills, years
+of experience, seniority, education; from jobs — requirements, salary, remote policy.
+Then normalization of skills to a taxonomy (ESCO — 29 languages, free; O*NET;
+Lightcast Open Skills) + an alias dictionary (js = JavaScript = ECMAScript). Normalization
+is done at ingest, not at runtime. Critically: fields absent from the text (salary
+«competitive») get an explicit `unknown`, the model must not invent them — here
+hallucination is especially harmful. LinkedIn replaced its stack of task-specific NER models
+with a single LLM query understanding (arXiv:2509.09690). Extraction errors multiply down the
+pipeline, which is why this is method No. 1 and not a trifle.
 
-### 2. Hard-фильтры допуска с трёхзначной логикой (pass / fail / unknown)
-Детерминированные проверки ДО всякого скоринга: пересечение remote-зон работодателя и
-регионов кандидата, таймзона ±N часов, язык вакансии, право на работу/визу,
-зарплатные ожидания (только когда обе стороны дали диапазон). `unknown` — не pass и
-не fail: вакансия показывается с пометкой «не указано», не попадает в «гарантированно
-подходящие». Это точное соответствие принципам Nenaugad (eligibility ≠ relevance,
-unknown is not pass/fail). Смешивание допуска и релевантности — типовая ошибка:
-«80% match» на вакансию с визовым барьером бесполезен. Сложность низкая, но нужна
-аккуратная модель данных под `unknown`.
+### 2. Hard eligibility filters with three-valued logic (pass / fail / unknown)
+Deterministic checks BEFORE any scoring: the intersection of the employer's remote zones and
+the candidate's regions, timezone ±N hours, job language, right to work/visa,
+salary expectations (only when both sides gave a range). `unknown` is neither pass nor
+fail: the job is shown with the label «not specified», does not fall into «guaranteed
+suitable». This is an exact match to Nenaugad's principles (eligibility ≠ relevance,
+unknown is not pass/fail). Mixing eligibility and relevance is a typical mistake:
+an «80% match» for a job with a visa barrier is useless. Complexity is low, but a
+careful data model for `unknown` is needed.
 
-### 3. Лексический retrieval: BM25 с построением запроса из резюме
-Вакансии — документы (Postgres `tsvector` достаточно для MVP; BM25F — веса полей:
-заголовок важнее тела). Запрос строится из дискриминативных термов, названий ролей и
-нормализованных навыков резюме (не весь текст целиком — дисбаланс длины). Плюсы:
-дёшево, быстро, объяснимо, точен на технологиях/аббревиатурах («C#», «AWS»), не
-требует обучения. Минусы: слепота к синонимам («ML developer» vs «machine learning
-engineer»), морфология. Сложность: низкая.
+### 3. Lexical retrieval: BM25 with the query built from the resume
+Jobs are documents (Postgres `tsvector` is enough for the MVP; BM25F — field weights:
+the title matters more than the body). The query is built from discriminative terms, role titles
+and normalized resume skills (not the whole text at once — length imbalance). Pros:
+cheap, fast, explainable, accurate on technologies/abbreviations («C#», «AWS»), does not
+require training. Cons: blindness to synonyms («ML developer» vs «machine learning
+engineer»), morphology. Complexity: low.
 
-### 4. Векторный dense retrieval (bi-encoder + pgvector)
-Двухбашенная модель (BGE-M3 — фактический стандарт мультиязычности вкл. русский;
-E5; или API: Cohere embed-multilingual с `search_query`/`search_document` типами).
-Эмбеддинг вакансии считается один раз при инжесте и хранится в `vector`-колонке
-(pgvector, HNSW); эмбеддинг профиля — при сохранении; ANN-поиск — миллисекунды.
-Ловит синонимию, перефразы, мультиязычные пары «русское резюме ↔ английская
-вакансия». Минусы: пропускает точные ключевые требования, не ловит hard-ограничения,
-смена модели = полная переиндексация (планировать как миграцию, версии модели в
-данных). Сложность: средняя.
+### 4. Vector dense retrieval (bi-encoder + pgvector)
+A two-tower model (BGE-M3 — the de facto standard for multilingualism incl. Russian;
+E5; or API: Cohere embed-multilingual with `search_query`/`search_document` types).
+The job embedding is computed once at ingest and stored in a `vector` column
+(pgvector, HNSW); the profile embedding — on save; ANN search — milliseconds.
+Catches synonymy, paraphrases, multilingual pairs «Russian resume ↔ English
+job». Cons: misses exact key requirements, does not catch hard constraints,
+changing the model = full reindexing (plan it as a migration, model versions in the
+data). Complexity: medium.
 
-### 5. Гибридный поиск + Reciprocal Rank Fusion
-BM25 и dense-поиск запускаются параллельно (после pre-filter допуска), списки
-сливаются RRF: score(d) = Σ 1/(k + rank), k≈60 — работает по позициям, не по
-несравнимым шкалам. Альтернатива — взвешенное слияние нормализованных скоров
-(alpha-fusion). Комплементарность: BM25 держит точные требования, вектора —
-синонимику; постфактум каждый паттерн «документ выиграл только в одной ноге».
-Паттерн Postgres FTS + pgvector + RRF в одном SQL — без отдельной векторной БД.
-Гиперпараметры (k, alpha) калибровать на разметке. Сложность: низкая-средняя, лучший
-«прирост на единицу усилий» после фильтров.
+### 5. Hybrid search + Reciprocal Rank Fusion
+BM25 and dense search run in parallel (after the eligibility pre-filter), the lists
+are merged by RRF: score(d) = Σ 1/(k + rank), k≈60 — it works on positions, not on
+incomparable scales. The alternative is a weighted fusion of normalized scores
+(alpha-fusion). Complementarity: BM25 holds exact requirements, vectors hold
+synonymy; afterward, each pattern «the document won in only one leg».
+The Postgres FTS + pgvector + RRF pattern in a single SQL — without a separate vector DB.
+Hyperparameters (k, alpha) are to be calibrated on labels. Complexity: low-medium, the best
+«gain per unit of effort» after the filters.
 
-### 6. Cross-encoder реранк топ-K (bge-reranker, Cohere Rerank)
-Каскад: retrieval ~50-100 кандидатов → cross-encoder реранк → топ-5-10. Cross-attention
-сопоставляет конкретные требования вакансии с конкретным опытом в резюме — то, что
-bi-encoder в принципе не может. Модели: `bge-reranker-v2-m3` (локально, мультиязычный),
-Cohere Rerank 3.5, Jina v2 (API). Крупнейший прирост точности при минимальной
-перестройке пайплайна; реранчить десятки, не тысячи. Минусы: цена/latency на пару,
-доменный сдвиг MS MARCO → HR-тексты. Сложность: низкая (API) — средняя (self-host).
+### 6. Cross-encoder rerank of top-K (bge-reranker, Cohere Rerank)
+Cascade: retrieval of ~50-100 candidates → cross-encoder rerank → top 5-10. Cross-attention
+matches the job's specific requirements against specific experience in the resume — something
+a bi-encoder fundamentally cannot do. Models: `bge-reranker-v2-m3` (local, multilingual),
+Cohere Rerank 3.5, Jina v2 (API). The largest accuracy gain with a minimal
+pipeline rebuild; rerank dozens, not thousands. Cons: price/latency per pair,
+domain shift MS MARCO → HR texts. Complexity: low (API) — medium (self-host).
 
-### 7. LLM-скоринг по рубрике с structured output (LLM-as-judge)
-Финальный топ-10: промпт-рубрика → JSON {score, причины, missing_skills, red_flags}
-при temperature=0 + валидация схемы + grounding на извлечённых полях. Zero-shot
-жизнеспособен (MDPI Electronics 2025). Даёт объяснимость и missing skills почти
-бесплатно, понимает нестандартные карьеры. Минусы: недетерминированность, галлюцинации
-(лечатся валидацией против извлечённых полей), секунды и деньги на пару → только на
-вершине каскада. В Nenaugad это «real AI»: сначала защиты по SP (ownership, approved
-provider/purpose, atomic budget reservation, квоты, persistent counters, deadline,
-uncertain billing, cancellation, commit-time revalidation) — включение флагом
-запрещено. Сложность: внедрение низкая, эксплуатация средняя.
+### 7. LLM rubric scoring with structured output (LLM-as-judge)
+The final top-10: a prompt rubric → JSON {score, reasons, missing_skills, red_flags}
+at temperature=0 + schema validation + grounding on the extracted fields. Zero-shot
+is viable (MDPI Electronics 2025). It gives explainability and missing skills almost
+for free, understands unconventional careers. Cons: non-determinism, hallucinations
+(cured by validation against the extracted fields), seconds and money per pair → only at the
+top of the cascade. In Nenaugad this is «real AI»: first the protections per SP (ownership, approved
+provider/purpose, atomic budget reservation, quotas, persistent counters, deadline,
+uncertain billing, cancellation, commit-time revalidation) — enabling by flag
+is forbidden. Complexity: implementation low, operation medium.
 
-### 8. Learning-to-rank на признаках пары (когда появятся данные)
-XGBoost/LightGBM (lambdarank) на фичах: BM25-скор, cosine, доля совпавших
-нормализованных навыков, seniority gap, «требуется X лет» vs фактический стаж,
-свежесть, поведенческие сигналы. Быстрый инференс, интерпретируемость через feature
-importance. Блокер — данные: взаимодействия резюме→вакансия разрежены (ConFit,
-WSDM 2024, называет это ключевой проблемой домена), behavioral bias (position bias,
-популярность). Откладывать до накопления событий. Сложность: высокая (данные, не
-модель).
+### 8. Learning-to-rank on pair features (when data appears)
+XGBoost/LightGBM (lambdarank) on features: BM25 score, cosine, share of matched
+normalized skills, seniority gap, «X years required» vs actual tenure,
+freshness, behavioral signals. Fast inference, interpretability via feature
+importance. The blocker is data: resume→job interactions are sparse (ConFit,
+WSDM 2024, calls this the key problem of the domain), behavioral bias (position bias,
+popularity). Defer until events accumulate. Complexity: high (data, not
+the model).
 
-### 9. Knowledge graph навыков: adjacent roles и расширение запроса
-Граф «навыки ↔ занятия» поверх ESCO + обогащение вакансиями (de Groot et al.,
-arXiv:2109.02554): link prediction «насколько навык релевантен занятию», node
-similarity — карьерные траектории, term weighting. Применение: query expansion
-(смежные навыки кандидата с весами — спасает владельца эквивалентного, но
-неупомянутого навыка), объяснимость «совпало через смежный навык X», career-path
-фичи. Дорогая поддержка рёбер. Сложность: высокая — этап 2+, когда есть команды
-нормализации из метода 1.
+### 9. Skills knowledge graph: adjacent roles and query expansion
+A «skills ↔ occupations» graph over ESCO + enrichment with jobs (de Groot et al.,
+arXiv:2109.02554): link prediction «how relevant a skill is to an occupation», node
+similarity — career trajectories, term weighting. Applications: query expansion
+(the candidate's adjacent skills with weights — rescues the holder of an equivalent but
+unmentioned skill), explainability «matched via the adjacent skill X», career-path
+features. Expensive edge maintenance. Complexity: high — stage 2+, when there are
+normalization pipelines from method 1.
 
-### 10. Фидбэк-луп, персонализация и разнообразие выдачи
-События с первого дня (impression/click/save/apply/hide/dwell), даже без
-использования. Hide — отдельный сильный негативный сигнал (не смешивать с «не
-кликнул»: position bias). Implicit feedback предиктивнее явных предпочтений (Reusens
-2017; CareerBuilder co-clicks/co-apps граф; LinkedIn activity embeddings — +10%
-откликов, +5% наймов в JYMBII). Сначала feature-based веса, ML позже. Разнообразие:
-квоты per-company/per-title (дёшево) → MMR λ≈0.7 по эмбеддингам на топ-k (Elastic
-рекомендует 0.7); exploration — в хвосте выдачи, не в топе. Cold start закрывается
-контентным матчем по резюме + onboarding 3-5 вопросов + популярное как компонент.
-Приватно по умолчанию: сигналы обслуживают выдачу, не «видимость» кандидата.
+### 10. Feedback loop, personalization and result diversity
+Events from day one (impression/click/save/apply/hide/dwell), even without
+using them. Hide is a separate strong negative signal (do not mix it with «did
+not click»: position bias). Implicit feedback is more predictive than explicit preferences (Reusens
+2017; CareerBuilder co-clicks/co-apps graph; LinkedIn activity embeddings — +10%
+applications, +5% hires in JYMBII). Feature-based weights first, ML later. Diversity:
+quotas per-company/per-title (cheap) → MMR λ≈0.7 over embeddings on the top-k (Elastic
+recommends 0.7); exploration — in the tail of the results, not in the top. Cold start is covered by
+content matching on the resume + onboarding of 3-5 questions + popularity as a component.
+Private by default: signals serve the results, not the candidate's «visibility».
 
-## Аспекты системы
+## System aspects
 
-### Must-have для MVP
-1. Трёхзначная логика `unknown` во всех фильтрах (продукт, не фича).
-2. Freshness: `first_seen_at` отдельно от `posted_at`; закрытие по 404/исчезновению у
-   источника (мягко при одном сигнале, жёстко при двух); честная пометка «N дней
-   назад»; age decay позже.
-3. Дедупликация точных дублей: нормализованный ключ (компания + заголовок +
-   локация), каноническая вакансия с массивом `source_ids`, выбор primary source.
-4. Ghost jobs-гигиена до матчинга: оценки ~39-40% вакансий 2024 — ghost; признаки —
-   возраст 30+ дней, «вечнозелёные» репосты, отсутствие на карьерной странице.
-   Сервис, приводящий к мёртвой вакансии, теряет доверие необратимо.
-5. Cold start: контентный матч по резюме (главный механизм) + короткий onboarding;
-   не показывать пустоту — смягчать фильтры с пометкой unknown раньше, чем выдать ноль.
-6. Шаблонная объяснимость из нормализованных полей: «совпадают: React, PostgreSQL;
-   не хватает: Kubernetes; remote: EU-таймзоны; 2 дня назад». Объяснять и unknown:
-   «право на работу не указано — мы не могли проверить допуск». Match score
-   показывать только после калибровки; некалиброванный «87%» — ложная точность.
-7. Приватность: приватный по умолчанию профиль, минимизация полей, экспорт/удаление.
-   EU AI Act Annex III.4 относит таргетирование job-объявлений к high-risk (дедлайн
-   high-risk-обязанностей сдвинут к декабрю 2027): заложить прозрачность,
-   логирование, человеческий контроль в дизайн заранее. Квалификацию зафиксировать с
-   юристом.
-8. Нормализация навыков и зарплат на инжесте; валюта/курс, gross/net, «конкурентно»
+### Must-have for the MVP
+1. Three-valued `unknown` logic in all filters (product, not a feature).
+2. Freshness: `first_seen_at` separate from `posted_at`; closure on 404/disappearance at
+   the source (soft on one signal, hard on two); an honest label «N days
+   ago»; age decay later.
+3. Deduplication of exact duplicates: a normalized key (company + title +
+   location), a canonical job with a `source_ids` array, primary source selection.
+4. Ghost jobs hygiene before matching: estimates of ~39-40% of 2024 jobs being ghost; the signs —
+   age of 30+ days, «evergreen» reposts, absence from the career page.
+   A service that leads to a dead job loses trust irreversibly.
+5. Cold start: content matching on the resume (the main mechanism) + short onboarding;
+   do not show emptiness — soften filters with an unknown label before returning zero.
+6. Template explainability from normalized fields: «matching: React, PostgreSQL;
+   missing: Kubernetes; remote: EU timezones; 2 days ago». Explain unknown too:
+   «right to work not specified — we could not verify eligibility». Match score
+   is to be shown only after calibration; an uncalibrated «87%» is false precision.
+7. Privacy: profile private by default, field minimization, export/deletion.
+   EU AI Act Annex III.4 classifies targeting of job ads as high-risk (the deadline for
+   high-risk obligations has been moved to December 2027): build transparency,
+   logging, human oversight into the design in advance. Fix the qualification with
+   a lawyer.
+8. Normalization of skills and salaries at ingest; currency/rate, gross/net, «competitive»
    = unknown.
-9. Базовый каскад: фильтры → BM25 (+ опц. вектора) → RRF → реранк.
-10. Сбор событий с первого дня.
+9. Base cascade: filters → BM25 (+ opt. vectors) → RRF → rerank.
+10. Event collection from day one.
 
-### Важно, но можно позже
-- Near-dup дедупликация (MinHash/LSH) и спам-эвристики (аномалия постингов одной
-  компании, зарплата сильно выше рынка на титул, «always hiring»).
-- Age decay вместо бинов; приоритетный re-crawl по трафику.
-- Фидбэк-веса в ранкере; MMR и квоты разнообразия; exploration-слоты.
-- Offline-бенчмарки Recall@k / NDCG@10 на размеченной выборке (референсы: HF
-  `cnamuangtoun/resume-job-description-fit`, XING benchmark, ConFit) + ручной аудит
-  «глазами кандидата»; A/B — когда есть трафик.
-- Мультиязычные эмбеддинги как отдельное решение; версии моделей эмбеддингов.
-- LLM-скоринг топа (метод 7) — после того, как AI-границы реализованы и
-  протестированы.
+### Important, but can come later
+- Near-dup deduplication (MinHash/LSH) and spam heuristics (anomaly in one
+  company's postings, salary far above market for the title, «always hiring»).
+- Age decay instead of bins; priority re-crawl by traffic.
+- Feedback weights in the ranker; MMR and diversity quotas; exploration slots.
+- Offline benchmarks Recall@k / NDCG@10 on a labeled set (references: HF
+  `cnamuangtoun/resume-job-description-fit`, XING benchmark, ConFit) + a manual audit
+  «through the candidate's eyes»; A/B — when there is traffic.
+- Multilingual embeddings as a separate decision; embedding model versions.
+- LLM scoring of the top (method 7) — after the AI boundaries are implemented and
+  tested.
 
-### Тонкая настройка
-- Exploration/multi-armed bandits; IPS-коррекция офлайн-оценок (exposure bias,
+### Fine-tuning
+- Exploration/multi-armed bandits; IPS correction of offline estimates (exposure bias,
   Criteo RecSys 2018).
-- Калиброванный показываемый match score (вероятностная шкала).
-- Дистилляция реранкера (RankGPT: 440M > supervised 3B) при росте цены.
-- Персональные λ/веса, онлайн-обучение, полная программа EU AI Act.
+- Calibrated displayed match score (probabilistic scale).
+- Reranker distillation (RankGPT: 440M > supervised 3B) as the price grows.
+- Personal λ/weights, online learning, the full EU AI Act program.
 
-### Ловушки (что ломает систему)
-- Чисто-LLM скоринг всей базы: цена и latency линейны по парам.
-- Apply rate / CTR как целевая метрика: растут от clickbait, завышенных зарплат и
-  easy apply — то есть от того, что кандидату вредит. Guardrails: hide rate, доля
-  откликов с ответом, повторные сессии, time-to-first-relevant.
-- Некалиброванный публичный score; галлюцинация unknown-полей LLM.
-- Смешивание eligibility и relevance в одном скорe.
-- Оценка офлайн-скоров на логах старого ранкера без поправки на показы.
-- Авто-apply: Sonara закрылся (2024), рынок отвечает «AI vs AI» армс-рейсом; для
-  Nenaugad запрещено принципом.
+### Pitfalls (what breaks the system)
+- Pure-LLM scoring of the whole corpus: cost and latency are linear in pairs.
+- Apply rate / CTR as the target metric: they grow from clickbait, inflated salaries and
+  easy apply — that is, from what harms the candidate. Guardrails: hide rate, share
+  of applications with a response, repeat sessions, time-to-first-relevant.
+- Uncalibrated public score; LLM hallucination of unknown fields.
+- Mixing eligibility and relevance in one score.
+- Evaluating offline scores on the old ranker's logs without correction for impressions.
+- Auto-apply: Sonara closed (2024), the market responds with an «AI vs AI» arms race; for
+  Nenaugad it is forbidden by principle.
 
-## Рекомендуемая архитектура для Nenaugad
+## Recommended architecture for Nenaugad
 
 ```
-Инжест вакансии: парсинг → единая схема (unknown-поля) → нормализация навыков
-  → дедуп → freshness-поля → эмбеддинг (pgvector, версия модели)
-Профиль:      парсинг резюме → та же схема → эмбеддинг профиля
-Выдача:       hard-фильтры pass/fail/unknown
+Job ingest:   parsing → single schema (unknown fields) → skills normalization
+  → dedup → freshness fields → embedding (pgvector, model version)
+Profile:      resume parsing → the same schema → profile embedding
+Serving:      hard filters pass/fail/unknown
               → BM25(tsvector) + ANN(pgvector) → RRF
-              → cross-encoder реранк топ-50          [этап B]
-              → (опц.) LLM-скоринг топ-10 + missing skills  [этап C, за AI-границами]
-              → квоты/MMR → выдача с шаблонными объяснениями
-Фон:          сбор событий → позже LTR (метод 8), KG-расширение (метод 9)
+              → cross-encoder rerank top-50          [stage B]
+              → (opt.) LLM scoring of top-10 + missing skills  [stage C, behind AI boundaries]
+              → quotas/MMR → serving with template explanations
+Background:   event collection → later LTR (method 8), KG expansion (method 9)
 ```
 
-Этапы: **A** — детерминированный MVP без какого-либо AI (схема, фильтры, BM25, RRF,
-дедуп, freshness, объяснимость шаблонами) — полностью в духе текущего синтетического
-каталога; **B** — эмбеддинги + реранк (open-source локально или API после
-одобрения); **C** — LLM-извлечение и LLM-скоринг — только после реализации и
-тестирования защит по SP 1.0. Оценка качества на этапе A: Recall@k/NDCG на
-размеченной выборке + ручной аудит.
+Stages: **A** — a deterministic MVP without any AI (schema, filters, BM25, RRF,
+dedup, freshness, template explainability) — fully in the spirit of the current synthetic
+catalog; **B** — embeddings + rerank (open-source locally or API after
+approval); **C** — LLM extraction and LLM scoring — only after the SP 1.0 protections
+are implemented and tested. Quality evaluation at stage A: Recall@k/NDCG on a
+labeled set + manual audit.
 
-## Ключевые источники
+## Key sources
 
-Каскад/ретрив: SBERT Retrieve & Re-Rank (sbert.net), Weaviate Hybrid Search docs,
-ConFit WSDM 2024 (arXiv:2401.16349), pgvector. Ранжирование: RankGPT (arXiv:2304.09542),
-Metarank/Vespa LTR. Сущности и графы: ESCO (esco.ec.europa.eu), arXiv:2109.02554,
-Survey on Skill Identification. Индустрия: LinkedIn JYMBII + Learning to Retrieve
+Cascade/retrieval: SBERT Retrieve & Re-Rank (sbert.net), Weaviate Hybrid Search docs,
+ConFit WSDM 2024 (arXiv:2401.16349), pgvector. Ranking: RankGPT (arXiv:2304.09542),
+Metarank/Vespa LTR. Entities and graphs: ESCO (esco.ec.europa.eu), arXiv:2109.02554,
+Survey on Skill Identification. Industry: LinkedIn JYMBII + Learning to Retrieve
 (arXiv:2402.13435) + CIKM 2025 (arXiv:2509.09690), Indeed engineering blog (2016),
-Eightfold engineering blog. Инженерия: CareerBuilder graph recommendation
+Eightfold engineering blog. Engineering: CareerBuilder graph recommendation
 (arXiv:1801.00377), Reusens 2017 (implicit feedback), MMR (Carbonell & Goldstein 1998;
 Elastic/Qdrant blogs), Gilotte RecSys 2018 (arXiv:1801.07030, exposure bias).
-Регуляторика: EU AI Act Annex III (artificialintelligenceact.eu/annex/3), Article 26,
-EEOC guidance 2023. LLM-матчинг: MDPI Electronics 2025 (zero-shot resume-job),
-arXiv:2504.02870. Датасеты: HF `cnamuangtoun/resume-job-description-fit`, XING
+Regulation: EU AI Act Annex III (artificialintelligenceact.eu/annex/3), Article 26,
+EEOC guidance 2023. LLM matching: MDPI Electronics 2025 (zero-shot resume-job),
+arXiv:2504.02870. Datasets: HF `cnamuangtoun/resume-job-description-fit`, XING
 (arXiv:1812.08947), Kaggle LinkedIn Job Postings.
 
-Полные ссылки — в отчётах субагентов (сессия 2026-09-26).
+Full references are in the subagent reports (session 2026-09-26).
 
 ---
 
-# Часть 2: неочевидные способы улучшения (виток 2, 2026-09-26)
+# Part 2: non-obvious ways to improve (round 2, 2026-09-26)
 
-Второй виток — три субагента (~1,17M токенов, стоимость unknown) по трекам: (1) инновации
-retrieval/матчинга, (2) двусторонняя модель и поведенческий интеллект, (3) production-инженерия
-при малом трафике. Каждый получил дайджест части 1 и искал за пределами известного каскада.
-Гипотезы сформулированы основной сессией, проверка источников — субагентами.
+The second round — three subagents (~1.17M tokens, cost unknown) across tracks: (1) retrieval/matching
+innovations, (2) the two-sided model and behavioral intelligence, (3) production engineering
+at low traffic. Each received a digest of part 1 and searched beyond the known cascade.
+The hypotheses were formulated by the main session, the sources were verified by the subagents.
 
-## A. Как считаем совпадение
+## A. How we compute the match
 
-1. **Requirement decomposition + evidence + NLI** — JD режется на атомарные требования
-   (must-have / nice-to-have), каждое отдельно матчится против резюме с поиском
-   «улики» (evidence-спан), скоры агрегируются с весами; отрицания и противоречия
-   («гражданство США обязательно» vs резюме) ловит NLI-модель (DeBERTa-v3-mnli) как
-   дешёвый pre-check. Целотекстовый скор размазывает критичные несоответствия по
-   косинусной близости; декомпозиция — единственный подход, естественно выражающий
-   pass/fail/unknown. Литература: линейка person-job fit (arXiv:1810.04040, ACM TOIS
-   2020), NLI-скрининг резюме. Канонической статьи «decomposition+NLI для jobs» нет —
-   открытое поле. Самая ценная находка витка.
-2. **HyDE** (arXiv:2212.10496) — LLM из резюме генерирует гипотетическую идеальную
-   вакансию, эмбеддится она, а не резюме; решает асимметрию жанров «краткое резюме ↔
-   длинный JD». Галлюцинации не критичны (контрастивный энкодер давит ложные детали).
-   Кэш на версию профиля → LLM-вызов не на каждый поиск. Третий сигнал в RRF.
-   Применение к job search уже существует (jsonresume/job-search).
-3. **Инструкционные эмбеддинги** (E5-Mistral, arXiv:2401.00368; GTE-Qwen) — асимметрия
-   резюме↔JD кодируется инструкцией к запросу («Given a resume, retrieve matching job
-   descriptions…»); instruction-шаблон фиксировать в коде как часть контракта
-   эмбеддингов. Без инструкции качество заметно падает.
-4. **Doc2query-расширение каталога** (docTTTTTquery; query2doc arXiv:2303.07678) — JD
-   дописываются синтетическими «запросами кандидатов» на инжесте: офлайн,
-   амортизированно, бесплатно в рантайме; индекс растёт ~×3.
-5. Позже: **Matryoshka embeddings** (arXiv:2205.13147) — coarse-to-fine реранк без
-   второй модели, нативно для pgvector; выбирать MRL-совместимый эмбеддер заранее.
-   **Rocchio-профиль** — «больше такого / меньше такого» одной формулой
-   (α·resume + β·centroid(saves) − γ·centroid(hides)) поверх pgvector, без ML.
-   **LLM-синтетика hard negatives** (SyNeg, Syntriever arXiv:2502.03824) для
-   дообучения ретривера без реальных CV — с явной маркировкой synthetic.
+1. **Requirement decomposition + evidence + NLI** — the JD is cut into atomic requirements
+   (must-have / nice-to-have), each matched separately against the resume with a search for
+   «evidence» (an evidence span), the scores are aggregated with weights; negations and contradictions
+   («US citizenship required» vs the resume) are caught by an NLI model (DeBERTa-v3-mnli) as a
+   cheap pre-check. A whole-text score smears critical mismatches across
+   cosine similarity; decomposition is the only approach that naturally expresses
+   pass/fail/unknown. Literature: the person-job fit line (arXiv:1810.04040, ACM TOIS
+   2020), NLI resume screening. There is no canonical paper «decomposition+NLI for jobs» —
+   an open field. The most valuable find of the round.
+2. **HyDE** (arXiv:2212.10496) — an LLM generates a hypothetical ideal
+   job from the resume, and the job is embedded, not the resume; it solves the genre asymmetry
+   «short resume ↔ long JD». Hallucinations are not critical (a contrastive encoder suppresses
+   false details). Cache per profile version → not an LLM call on every search. A third signal in RRF.
+   An application to job search already exists (jsonresume/job-search).
+3. **Instruction embeddings** (E5-Mistral, arXiv:2401.00368; GTE-Qwen) — the resume↔JD
+   asymmetry is encoded by an instruction to the query («Given a resume, retrieve matching job
+   descriptions…»); the instruction template is to be fixed in code as part of the embedding
+   contract. Without the instruction, quality drops noticeably.
+4. **Doc2query catalog expansion** (docTTTTTquery; query2doc arXiv:2303.07678) — JDs
+   are appended with synthetic «candidate queries» at ingest: offline,
+   amortized, free at runtime; the index grows ~×3.
+5. Later: **Matryoshka embeddings** (arXiv:2205.13147) — coarse-to-fine rerank without
+   a second model, native to pgvector; choose an MRL-compatible embedder in advance.
+   **Rocchio profile** — «more like this / less like this» with a single formula
+   (α·resume + β·centroid(saves) − γ·centroid(hides)) on top of pgvector, without ML.
+   **LLM synthetic hard negatives** (SyNeg, Syntriever arXiv:2502.03824) for
+   fine-tuning the retriever without real CVs — with an explicit synthetic label.
 
-## Отклонено (проверено, не брать)
+## Rejected (checked, not to take)
 
-- **SPLADE / learned sparse** — до +23% NDCG над BM25, но нет inverted index в
-  Postgres (нужен ParadeDB или внешний движок); вернуть при росте каталога.
-- **ColBERT late interaction** — pgvector не умеет multi-vector MaxSim, хранение
-  растёт на порядок, преимущество исчезает на длинных документах; нишу закрывает
-  cross-encoder реранк.
-- **Генеративный retrieval / семантические ID** — ломается на меняющемся каталоге,
-  невоспроизводимые бейзлайны. Не рассматривать.
-- **Суточный/недельный тайминг отклика** — доказательства слабые (первоисточник
-  TalentWorks недоступен, confounding), для remote-домена фактор обесценен
-  таймзонами. Recency — да, тайминг — нет.
-- **Полный bilateral GNN** (DPGNN, RecSys'22, arXiv:2208.08612) — сильные результаты
-  только у владельцев логов обеих сторон рынка; нам недоступно.
+- **SPLADE / learned sparse** — up to +23% NDCG over BM25, but there is no inverted index in
+  Postgres (ParadeDB or an external engine is needed); revisit as the catalog grows.
+- **ColBERT late interaction** — pgvector cannot do multi-vector MaxSim, storage
+  grows by an order of magnitude, the advantage disappears on long documents; the niche is covered by
+  cross-encoder rerank.
+- **Generative retrieval / semantic IDs** — breaks on a changing catalog,
+  unreproducible baselines. Not to be considered.
+- **Daily/weekly application timing** — the evidence is weak (the primary source
+  TalentWorks is unavailable, confounding), for the remote domain the factor is devalued
+  by timezones. Recency — yes, timing — no.
+- **Full bilateral GNN** (DPGNN, RecSys'22, arXiv:2208.08612) — strong results
+  only for the owners of logs from both sides of the market; unavailable to us.
 
-## B. Что оптимизируем (целевая функция)
+## B. What we optimize (the objective function)
 
-1. **EV-ранжирование** (Su, Bayoumi, Joachims, arXiv:2106.01941): оптимизировать
-   ожидаемые взаимные матчи, не клики; одностороннее ранжирование может быть в Θ(n)
-   раз хуже оптимума из-за crowding (все подаются в одни вакансии). score =
-   relevance × p(ответ работодателя) × urgency. Фаза 1 — фиксированные множители
-   поверх существующего реранка: ghost-флаг как грубый p(ответ), hazard как urgency.
-   Фаза 2 — обученные модели на self-reported исходах («работодатель ответил за 2
-   недели? да/нет/ещё нет» — приватный дешёвый сбор). Риск Goodhart: целевая метрика —
-   «отклики с исходом», не отклики.
-2. **p(ответ работодателя)** — proxy-признаки уже в стеке (ghost-эвристики, возраст,
-   репосты); аналогия: Airbnb понижает листинги с низким response rate. Ground truth
-   (публичные статусы Greenhouse/Lever) — новый источник, требует purpose-specific
+1. **EV ranking** (Su, Bayoumi, Joachims, arXiv:2106.01941): optimize
+   expected mutual matches, not clicks; one-sided ranking can be Θ(n)
+   times worse than the optimum because of crowding (everyone applies to the same jobs). score =
+   relevance × p(employer response) × urgency. Phase 1 — fixed multipliers
+   on top of the existing rerank: a ghost flag as a crude p(response), hazard as urgency.
+   Phase 2 — trained models on self-reported outcomes («did the employer respond within 2
+   weeks? yes/no/not yet» — private, cheap collection). Goodhart risk: the target metric is
+   «applications with an outcome», not applications.
+2. **p(employer response)** — proxy features are already in the stack (ghost heuristics, age,
+   reposts); analogy: Airbnb down-ranks listings with a low response rate. Ground truth
+   (public Greenhouse/Lever statuses) is a new source and requires purpose-specific
    approval.
-3. **Survival-модель жизни вакансии** — hazard-кривая естественно даёт и «успей»
-   (закроется скоро), и «ghost» (висит 120 дней); учиться на прокси «исчезновение из
-   фида»; в UI только грубые бакеты, не «осталось N дней».
-4. **Двусторонность как принцип** — score = min/гармоническое среднее («кандидат
-   подходит» × «вакансия вероятно допустила бы»); GNN-реализация — до outcome-данных.
+3. **Survival model of job lifetime** — the hazard curve naturally yields both «hurry up»
+   (will close soon) and «ghost» (has been up for 120 days); train on the proxy «disappearance
+   from the feed»; in the UI only coarse buckets, not «N days left».
+4. **Two-sidedness as a principle** — score = min/harmonic mean («the candidate
+   fits» × «the job probably would have admitted»); GNN implementation — until outcome data.
 
-## C. Дешёвые механики выдачи (максимальный эффект на единицу усилий)
+## C. Cheap serving mechanics (maximum effect per unit of effort)
 
-1. **Seen-set management** — явные dismiss-ы фильтровать навсегда; «видел, не кликнул»
-   — TTL 7–14 дней с возвратом только при изменении вакансии (репост, зарплата);
-   дайджест «новое с последнего визита». Вакансии скоропортящиеся, состояние
-   пользователя меняется: «не кликнул» ≠ «не интересно». Низкая цена, эффект на
-   ощущаемое качество прямой.
-2. **Негативные предпочтения** — сначала весовое понижение по эмбеддинг-окрестности
-   скрытого; структурные фильтры (компания/тип) только после уточняющего вопроса при
-   скрытии («скрыть вакансию / компанию / такие источники»). ACM passive-negative
-   feedback: пассивный негатив — самостоятельный полезный сигнал.
-3. **Stretch match слот** — вакансии с закрываемым gap ≤2 навыков, явная причина
-   «не хватает только X»; прямых исследований эффекта нет — измерять скрытиями и
-   «открыл и мгновенно ушёл», не вмешивать в основной ранк до измерений.
-4. **Adjacent-роли слот** — 1–2 слота «а смотрели в сторону X» из skill adjacency без
-   LLM; серендипность ≠ разнообразие: MMR разводит внутри распределения, adjacent-слот
-   выводит за его границу (Kotkov 2016; Serendiptionnaire RecSys'24). Мерить
-   сохранениями и отсутствием скрытий, не кликами.
+1. **Seen-set management** — filter explicit dismissals forever; «saw, did not click»
+   — TTL 7–14 days, returned only when the job changes (repost, salary);
+   a digest «new since the last visit». Jobs are perishable, the user's
+   state changes: «did not click» ≠ «not interested». Low cost, the effect on
+   perceived quality is direct.
+2. **Negative preferences** — first a weight downgrade over the embedding neighborhood
+   of the hidden item; structural filters (company/type) only after a clarifying question at
+   hiding time («hide the job / the company / such sources»). ACM passive-negative
+   feedback: passive negative is a useful signal in its own right.
+3. **Stretch match slot** — jobs with a closable gap of ≤2 skills, an explicit reason
+   «only X is missing»; there is no direct research on the effect — measure it by hides and
+   «opened and left instantly», do not mix it into the main rank before measurements.
+4. **Adjacent-role slot** — 1–2 slots «have you looked toward X» from skill adjacency without
+   an LLM; serendipity ≠ diversity: MMR spreads items within the distribution, the adjacent slot
+   takes them beyond its boundary (Kotkov 2016; Serendiptionnaire RecSys'24). Measure
+   by saves and absence of hides, not clicks.
 
-## D. Инженерия и оценка при малом трафике
+## D. Engineering and evaluation at low traffic
 
-1. **Push-матчинг** — каждая новая вакансия при инжесте скорится против всех профилей
-   → персональные алерты/дайджесты; главный генератор событий при нулевом
-   органическом трафике; при отправке фильтровать по статусу вакансии (не
-   пересчитывать кандидатов при закрытии).
-2. **Дедуп с прицелом на реальность**: 50–80% записей в базах вакансий — дубликаты
-   (Textkernel). MinHash для same-language + мультиязычный эмбеддинг для
-   cross-language + LLM-подтверждение кандидатов (настоящий дубликат может иметь лишь
-   37% пересечения шинглов). На малом каталоге — полный попарный косинус O(n²).
-3. **Weak supervision** (Snorkel data programming) — разнородные labeling functions:
-   правила (пересечение навыков, оклад-окно, грейд, локация) + LLM-LF + дистанционная
-   супервизия; weak-метки — для обучения, не для финального eval; нужен human gold
-   100–200 пар для калибровки. Активная разметка = disagreement трёх источников +
-   стратификация сегментов.
-4. **LLM-judge как третий сигнал оценки** — с протоколом против 12 задокументированных
-   смещений (CALM): swap-consistency, жюри из другого семейства моделей, pointwise
-   rubric вместо парного предпочтения. Не предсказывает конверсию — третий сигнал
-   после gold-сета и ручного аудита.
-5. **Team-draft interleaving** — замена A/B для кликовых сравнений при малом трафике
-   (~100x меньше сэмплов по вторичным данным Netflix/Microsoft; Wikimedia-кейс
-   подтверждён); только парные кликовые метрики, не application-конверсия.
-6. **Логировать propensities с первого дня** — одно поле в событии (нормированный скор
-   показа / impression counts) — без этого off-policy evaluation никогда не станет
-   возможным. Саму OPE отложить до трафика.
-7. **Rollout-безопасность**: shadow mode + on-request guardrails (доля пустых выдач,
-   доля закрытых/дубликатов в топ-10, p95 latency, доля вакансий вне одобренных
-   источников) доступны без трафика — guardrails считаются на запрос, а не средним по
-   пользователям; процентный canary — при росте трафика.
-8. **Playbook смены эмбеддинг-модели**: shadow-индекс → dual-write → замороженный
-   eval-сет (версионируется как код) → проверка ANN recall shift → переключение
-   алиасом → rollback-окно; никогда не смешивать версии в одном запросе; версия модели
-   — в ключе кэша; reindex идемпотентный, с checkpoint по партиям.
-9. **Precompute top-K** — таблица profile_topk + job queue; только для алертов и
-   прогрева кэша, не для интерактивного поиска (при малом каталоге реалтайм дёшев).
+1. **Push matching** — every new job is scored at ingest against all profiles
+   → personal alerts/digests; the main generator of events at zero
+   organic traffic; when sending, filter by job status (do not
+   recompute candidates on closure).
+2. **Dedup with an eye on reality**: 50–80% of records in job databases are duplicates
+   (Textkernel). MinHash for same-language + a multilingual embedding for
+   cross-language + LLM confirmation of candidates (a true duplicate may have only
+   37% shingle overlap). On a small catalog — a full pairwise cosine O(n²).
+3. **Weak supervision** (Snorkel data programming) — heterogeneous labeling functions:
+   rules (skill overlap, salary window, grade, location) + LLM-LF + distant
+   supervision; weak labels — for training, not for final eval; a human gold set of
+   100–200 pairs is needed for calibration. Active labeling = disagreement of three sources +
+   stratification of segments.
+4. **LLM-judge as a third evaluation signal** — with a protocol against the 12 documented
+   biases (CALM): swap-consistency, a jury from a different model family, a pointwise
+   rubric instead of pairwise preference. It does not predict conversion — a third signal
+   after the gold set and manual audit.
+5. **Team-draft interleaving** — a replacement for A/B for click comparisons at low traffic
+   (~100x fewer samples according to secondary data from Netflix/Microsoft; the Wikimedia case
+   is confirmed); only paired click metrics, not application conversion.
+6. **Log propensities from day one** — one field in the event (a normalized impression
+   score / impression counts) — without it, off-policy evaluation will never become
+   possible. Defer OPE itself until there is traffic.
+7. **Rollout safety**: shadow mode + on-request guardrails (share of empty result sets,
+   share of closed/duplicate items in the top-10, p95 latency, share of jobs outside approved
+   sources) are available without traffic — guardrails are computed per request, not as an average
+   across users; a percentage canary — as traffic grows.
+8. **Embedding model migration playbook**: shadow index → dual-write → a frozen
+   eval set (versioned like code) → checking the ANN recall shift → switching
+   by alias → a rollback window; never mix versions in one query; the model version
+   — in the cache key; reindex idempotent, with checkpoints per batch.
+9. **Precompute top-K** — a profile_topk table + job queue; only for alerts and
+   cache warming, not for interactive search (on a small catalog realtime is cheap).
 
-## Приоритет внедрения (виток 2)
+## Implementation priority (round 2)
 
-1. Requirement decomposition + NLI pre-check — ядро матчинга, родная pass/fail/unknown-семантика.
-2. Seen-set + негативные предпочтения — дёшево, прямой эффект на ощущаемое качество.
-3. Push-матчинг/алерты — генератор событий и пользы с первого дня.
-4. HyDE + инструкционные эмбеддинги — фиксировать контракт при выборе модели.
-5. EV-множители фазы 1 (ghost × urgency поверх релевантности).
-6. Дедуп cross-lingual + LLM-подтверждение.
-7. Оценочный стек: human gold 100–200 + weak supervision + LLM-judge с bias-контролями;
-   interleaving и shadow/guardrails по мере роста.
-8. Позже: survival-модель, stretch/adjacent-слоты как измеряемые эксперименты,
-   Matryoshka / Rocchio / синтетика дообучения.
+1. Requirement decomposition + NLI pre-check — the core of matching, native pass/fail/unknown semantics.
+2. Seen-set + negative preferences — cheap, a direct effect on perceived quality.
+3. Push matching/alerts — a generator of events and value from day one.
+4. HyDE + instruction embeddings — fix the contract when choosing the model.
+5. EV multipliers of phase 1 (ghost × urgency on top of relevance).
+6. Cross-lingual dedup + LLM confirmation.
+7. Evaluation stack: human gold of 100–200 + weak supervision + LLM-judge with bias controls;
+   interleaving and shadow/guardrails as growth happens.
+8. Later: survival model, stretch/adjacent slots as measurable experiments,
+   Matryoshka / Rocchio / synthetic fine-tuning data.
 
-Ключевые источники витка 2: arXiv:2106.01941 (matching markets), arXiv:2212.10496
+Key sources of round 2: arXiv:2106.01941 (matching markets), arXiv:2212.10496
 (HyDE), arXiv:2401.00368 (E5-Mistral), arXiv:2205.13147 (Matryoshka), arXiv:1810.04040
 + ACM TOIS 2020 (person-job fit decomposition), arXiv:2208.08612 (DPGNN), Snorkel
-(Ratner et al. 2017), CALM / llm-judge-bias.github.io (12 смещений LLM-жюри), Textkernel
-(50–80% дубликатов), Radlinski & Craswell WSDM 2013 (interleaving), Kotkov et al. 2016
+(Ratner et al. 2017), CALM / llm-judge-bias.github.io (12 biases of LLM judges), Textkernel
+(50–80% duplicates), Radlinski & Craswell WSDM 2013 (interleaving), Kotkov et al. 2016
 (serendipity), Stanford IR book (Rocchio), frutik knowledge base + AWS (migration
-playbook), Airbnb/PriceLabs (response-rate ранжирование). Полные ссылки — в отчётах
-субагентов (сессия 2026-09-26, виток 2).
+playbook), Airbnb/PriceLabs (response-rate ranking). Full references are in the subagent
+reports (session 2026-09-26, round 2).

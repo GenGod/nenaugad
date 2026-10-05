@@ -1,107 +1,118 @@
-# AI-005 — `send_to_ai_provider`: грант выдан и впервые стал проверяемым
+# AI-005 — `send_to_ai_provider`: the grant issued and verifiable for the first time
 
-**Результат:** владелец одобрил передачу текста источников провайдеру
-(2026-10-01). Грант заведён в матрицы прав (три политики, версии подняты) и — что
-важнее — появился **исполняемый шлюз**, которого до этой задачи не было ни в одном
-AI-пути: до 2026-10-01 relevance и письма отправляли текст вакансий провайдеру,
-не спрашивая матрицу вовсе (`docs/OPEN_GAPS.md` A2). Теперь вопрос «можно ли
-отправлять текст этого источника» имеет один ответ в одном месте, и отзыв гранта
-немедленно останавливает поток.
+**Result:** the owner approved sending source text to the provider
+(2026-10-01). The grant was entered into the rights matrices (three policies,
+versions raised) and — more importantly — an **enforceable gate** appeared,
+which no AI path had before this task: until 2026-10-01 relevance and letters
+sent job text to the provider without asking the matrix at all
+(`docs/OPEN_GAPS.md` A2). Now the question «may the text of this source be
+sent» has one answer in one place, and revoking the grant immediately stops the
+flow.
 
-**Триггер:** аудит существующего функционала (A2/A3) плюс одобрение владельца.
+**Trigger:** an audit of existing functionality (A2/A3) plus the owner's
+approval.
 
-**Не входит:** денежные предохранители батч-пути (резервирование, счётчик
-попыток, deadline, `uncertain`) — они по-прежнему обходятся, это следующий пункт
-C0-части-1; `LIVE_AI_ENABLED` как выключатель (A1); резерв как верхняя граница
-(A4); квота владельца и потолок операции (A5); освобождение `uncertain`-холдов
-(A6); идемпотентность (A7).
+**Not included:** the batch path's money guards (reservation, the attempt
+counter, deadline, `uncertain`) — they are still bypassed; that is the next
+item of C0-part-1; `LIVE_AI_ENABLED` as the kill switch (A1); the reserve as an
+upper bound (A4); the owner quota and the operation ceiling (A5); releasing
+`uncertain` holds (A6); idempotency (A7).
 
-## Что изменено
+## What changed
 
-**Матрицы прав** (`src/server/source-policies.ts`):
+**The rights matrices** (`src/server/source-policies.ts`):
 
-| Источник | Было | Стало | Версия |
+| Source | Was | Became | Version |
 |---|---|---|---|
 | `atlas-fixtures` | `send_to_ai_provider: denied` | `allowed` | 2 → 3 |
 | `himalayas` | `denied` | `allowed` | 4 → 5 |
 | `jobicy` | `denied` | `allowed` | 3 → 4 |
 
-`train_model` остаётся `denied` у всех трёх; `process_with_ml` у jobicy остаётся
-`denied` (это отдельное, более слабое право, и владелец 2026-09-30 его там удержал);
-`publish_full_text` у живых источников остаётся `denied`. Каждая политика несёт
-`reviewed_at: 2026-10-01` и `approval_reference` с решением.
+`train_model` stays `denied` for all three; `process_with_ml` for jobicy stays
+`denied` (it is a separate, weaker right, and the owner held it there on
+2026-09-30); `publish_full_text` for the live sources stays `denied`. Each
+policy carries `reviewed_at: 2026-10-01` and an `approval_reference` with the
+decision.
 
-**Честная запись про jobicy.** Одобрение пришло одной строкой в ответ на инвентарь,
-где пункт E8 говорил «всем трём». В комментарии политики jobicy прямо записано, что
-30 сентября владелец удержал там даже более слабый `process_with_ml`, поэтому этот
-грант — отдельное, более сильное и более позднее решение. Если имелось в виду
-узкое прочтение (только fixtures и himalayas), откат — одна строка в политике плюс
-соответствующая строка теста, и это осознанное действие, а не тихое расширение.
+**An honest note about jobicy.** The approval came as one line in reply to the
+inventory, where item E8 said «all three». The jobicy policy comment records
+outright that on September 30 the owner had held even the weaker
+`process_with_ml` there, so this grant is a separate, stronger and later
+decision. If a narrow reading was meant (fixtures and himalayas only), the
+rollback is one line in the policy plus the corresponding test line, and that
+is a deliberate action, not a silent expansion.
 
-**Исполняемый шлюз** (тот же модуль, рядом с политиками — ответ здесь правовой, а не
-«AI-ный»):
+**The enforceable gate** (the same module, next to the policies — the answer
+here is legal, not an «AI» one):
 
-- `maySendTextToProvider(sourceId, now): boolean` — `true` только при явном
-  `allowed` у включённой, одобренной и не истёкшей политики; `unknown` и истечение
-  дают `false`, никогда «наверное можно»;
-- `partitionSourcesByProviderRights(sources, now)` — делит источники на
-  разрешённые и отклонённые.
+- `maySendTextToProvider(sourceId, now): boolean` — `true` only with an
+  explicit `allowed` on an enabled, approved and unexpired policy; `unknown`
+  and expiry give `false`, never «probably fine»;
+- `partitionSourcesByProviderRights(sources, now)` — splits the sources into
+  permitted and rejected.
 
-**Где теперь спрашивается** (четыре места, которые отправляют текст наружу):
+**Where it is now asked** (the four places that send text outward):
 
-1. `src/app/api/v1/relevance/route.ts` — батч-режим OpenAI (`mode: "openai-batch"`):
-   отклонённые источники не попадают в заявку, ответ несёт `rightsSkipped`;
-2. там же — синхронный батч (`batch: true`): то же, `rightsSkipped` в ответе;
-3. там же — одиночный анализ: `403 SOURCE_RIGHTS_DENIED`, если политика запрещает;
-4. `src/app/api/v1/cover-letters/[id]/generations/route.ts` — выдержка вакансии в
-   промпте письма: тот же отказ 403.
+1. `src/app/api/v1/relevance/route.ts` — the OpenAI batch mode
+   (`mode: "openai-batch"`): rejected sources do not enter the submission, the
+   response carries `rightsSkipped`;
+2. same file — the synchronous batch (`batch: true`): the same, `rightsSkipped`
+   in the response;
+3. same file — the single analysis: `403 SOURCE_RIGHTS_DENIED` if the policy
+   forbids;
+4. `src/app/api/v1/cover-letters/[id]/generations/route.ts` — the job excerpt
+   in the letter prompt: the same 403 refusal.
 
-Плюс `relevanceFailure` теперь различает отозванный purpose (`403
-AI_PURPOSE_NOT_APPROVED`) вместо того, чтобы выдавать его за `500 ANALYSIS_FAILED`.
+Plus `relevanceFailure` now distinguishes a revoked purpose (`403
+AI_PURPOSE_NOT_APPROVED`) instead of masking it as `500 ANALYSIS_FAILED`.
 
-## Протокол V0–V6 (кратко)
+## Protocol V0–V6 (condensed)
 
-- **V1.** Правило сверено с `AGENTS.md` («Approved source/purpose/provider» — нужны
-  все три) и со спекой, которая разделяет локальный инференс и отправку
-  провайдеру; грант не выводится из `process_with_ml`.
-- **V2.** Неизвестный источник и истёкшая политика отвечают `false`; отказ
-  показывается честно (`rightsSkipped`, `403`), а не прячется как «нет вакансий».
-- **V3.** `npm run check` → exit 0 (**230/230** unit, было 229; biome; tsc);
+- **V1.** The rule was checked against `AGENTS.md` («Approved
+  source/purpose/provider» — all three are needed) and against the spec that
+  separates local inference from sending to the provider; the grant is not
+  derived from `process_with_ml`.
+- **V2.** An unknown source and an expired policy answer `false`; the refusal
+  is shown honestly (`rightsSkipped`, `403`), not hidden as «no jobs».
+- **V3.** `npm run check` → exit 0 (**230/230** unit, was 229; biome; tsc);
   `npm run test:db` → exit 0 (**51/51**); `npm run build` → exit 0;
-  `npm run test:e2e` → **96 passed** (живой путь не сломан).
-- **V4.** Новый тест «owner decision 2026-10-01»: грант есть у трёх источников,
-  `maySendTextToProvider` отвечает `true` для них, `false` для неизвестного
-  источника и `false` для истёкшей политики, `partitionSourcesByProviderRights`
-  делит список правильно. Пин-тесты матриц обновлены осознанно (они для того и
-  существуют, чтобы расширение гранта было явным).
-- **V5.** Существующие проверки не ослаблены: `train_model`, `publish_full_text`,
-  `process_with_ml` у jobicy остались `denied` и по-прежнему закреплены тестами;
-  тест «disabled clone denies everything» не тронут.
+  `npm run test:e2e` → **96 passed** (the live path not broken).
+- **V4.** The new «owner decision 2026-10-01» test: all three sources have the
+  grant, `maySendTextToProvider` answers `true` for them, `false` for an
+  unknown source and `false` for an expired policy,
+  `partitionSourcesByProviderRights` splits the list correctly. The matrix pin
+  tests were updated deliberately (they exist precisely so that widening a
+  grant is explicit).
+- **V5.** Existing checks not weakened: `train_model`, `publish_full_text`,
+  `process_with_ml` for jobicy stayed `denied` and remain pinned by tests; the
+  «disabled clone denies everything» test untouched.
 
-## Ограничения и что осталось
+## Limitations and what remains
 
-1. **Денежные предохранители батч-пути не починены.** Права теперь проверяются, а
-   резервирование, счётчик попыток, deadline и обработка `uncertain` — нет:
-   батч-режим по-прежнему тратит деньги вне бюджета. Это A3, следующий пункт
-   C0-части-1.
-2. **Функционально ничего не изменилось** — и это важно сказать прямо: текст
-   отправлялся и раньше (код не проверял матрицу), теперь он отправляется с
-   грантом. Изменение в том, что **отзыв** гранта теперь действительно остановит
-   поток, и что матрица перестала быть документом.
-3. `jobicy` получает грант при удержанном `process_with_ml` — асимметрия
-   зафиксирована в политике и в тесте; узкое прочтение откатывается одной строкой.
-4. Отправка профиля кандидата — отдельный вопрос, который грант не решает: он про
-   текст источника. Для писем и relevance-скоринга профиль уже уходит провайдеру;
-   это решение владельца по приватности из §6.5 решения №2 и оно остаётся
-   открытым (`OPEN_GAPS` E, приватность профиля).
-5. Гранты действуют до `valid_until = 2026-12-23`; после этой даты
-   `maySendTextToProvider` вернёт `false` сам, и AI-пути остановятся — это
-   задумано, но значит, что пересмотр ToS к декабрю обязателен, иначе функция
-   тихо отключится.
+1. **The batch path's money guards are not fixed.** Rights are now checked,
+   but reservation, the attempt counter, deadline and `uncertain` handling are
+   not: the batch mode still spends money outside the budget. That is A3, the
+   next item of C0-part-1.
+2. **Functionally nothing changed** — and this must be said plainly: the text
+   was sent before too (the code did not check the matrix); now it is sent with
+   the grant. The change is that **revoking** the grant will now actually stop
+   the flow, and that the matrix stopped being a document.
+3. `jobicy` receives the grant while `process_with_ml` is held — the asymmetry
+   is recorded in the policy and in the test; the narrow reading is rolled back
+   with one line.
+4. Sending the candidate's profile is a separate question the grant does not
+   settle: it is about source text. For letters and relevance scoring the
+   profile already goes to the provider; that is an owner privacy decision from
+   §6.5 of decision №2 and it remains open (`OPEN_GAPS` E, profile privacy).
+5. The grants are valid until `valid_until = 2026-12-23`; after that date
+   `maySendTextToProvider` will return `false` by itself and the AI paths will
+   stop — this is intended, but it means the ToS review by December is
+   mandatory, otherwise the feature will quietly switch off.
 
-## Риск и откат
+## Risk and rollback
 
-Риск низкий и в сторону ужесточения: добавлен запрет, а не разрешение; ни один
-существующий вызов не отклоняется (все три источника разрешены). Откат — вернуть
-`denied` в политике нужного источника (одна строка, тест укажет на несоответствие)
-или `git revert` этой задачи: гейт исчезнет, матрица снова станет документом.
+Low risk, and in the tightening direction: a prohibition was added, not a
+permission; no existing call is rejected (all three sources are allowed).
+Rollback — return `denied` in the policy of the source in question (one line;
+the test will point out the mismatch) or `git revert` of this task: the gate
+disappears and the matrix becomes a document again.

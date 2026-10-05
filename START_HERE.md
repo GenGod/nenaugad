@@ -1,57 +1,57 @@
-# Nenaugad: первый день
+# Nenaugad: day one
 
-> **Статус 2026-10-02.** Это архивная запись первого дня поставки. С тех пор
-> выполнены S0–S4 и батчи AI; текущее состояние — `IMPLEMENTATION_STATUS.md`,
-> открытые пункты — `docs/OPEN_GAPS.md`. Всё, что ниже говорит «не реализовано»,
-> относится к исходному шаблону; AI-контур существует, выключен и охраняем
-> (`LIVE_AI_ENABLED=false`, персональные данные не покидают контур).
+> **Status 2026-10-02.** This is an archived record of the first day of delivery. Since then
+> S0–S4 and the AI batches have been completed; the current state is in `IMPLEMENTATION_STATUS.md`,
+> the open items are in `docs/OPEN_GAPS.md`. Everything below that says «не реализовано» [not implemented]
+> refers to the original template; the AI contour exists, is off and is guarded
+> (`LIVE_AI_ENABLED=false`, personal data does not leave the contour).
 
-Это стартовый репозиторий, а не ещё один план. Его нужно продолжить,
-не заменить новой генерацией проекта.
+This is a starting repository, not yet another plan. It must be continued,
+not replaced by a new project generation.
 
-## Начало работы человека
+## Human start
 
-1. Распакуйте архив и откройте `nenaugad` в редакторе с coding-agent.
-2. Прочитайте `README.md` и `reports/DELIVERY.md`.
-3. Используйте Node из `.nvmrc` либо поддерживаемую версию из `package.json`.
-4. `npm run setup` создаст локальную `.env`, не перезаписывая существующую.
-5. `npm run check:offline` выполняет проверки без установки зависимостей.
-6. В среде с доступом к npm выполните `npm install`, проверьте результат и сохраните
-   настоящий `package-lock.json` в git. Затем `npm run check`, `npm run build`,
-   установку браузера Playwright и `npm run test:e2e`.
-7. `npm run dev` открывает Next.js только на loopback. PostgreSQL — отдельный
-   явно выбранный локальный режим из README, не требование для первого просмотра.
+1. Unpack the archive and open `nenaugad` in an editor with a coding agent.
+2. Read `README.md` and `reports/DELIVERY.md`.
+3. Use the Node from `.nvmrc` or a supported version from `package.json`.
+4. `npm run setup` will create a local `.env` without overwriting an existing one.
+5. `npm run check:offline` runs checks without installing dependencies.
+6. In an environment with npm access run `npm install`, check the result and keep
+   the real `package-lock.json` in git. Then `npm run check`, `npm run build`,
+   the Playwright browser installation and `npm run test:e2e`.
+7. `npm run dev` opens Next.js on loopback only. PostgreSQL is a separate
+   explicitly chosen local mode from the README, not a requirement for a first look.
 
-Никакие команды здесь не вызывают модели и не передают резюме.
-`npm install` и установка браузера скачивают обычные зависимости. Не передавайте
-агенту production-секреты. `git init`, commit и push выполняйте осознанно отдельно.
+None of the commands here call models or send CVs.
+`npm install` and the browser installation download ordinary dependencies. Do not pass
+production secrets to the agent. Run `git init`, commit and push deliberately and separately.
 
-## Первое сообщение другой ИИ
+## First message to another AI
 
 ```text
-Это новый Nenaugad, но базовый репозиторий уже создан. Прочитай AGENTS.md,
-START_HERE.md, reports/DELIVERY.md и задачу tasks/S0-001-install-and-verify.md.
+This is a new Nenaugad, but the base repository already exists. Read AGENTS.md,
+START_HERE.md, reports/DELIVERY.md and the task tasks/S0-001-install-and-verify.md.
 
-Не создавай второй стартер. Заверши проверку этого: при доступном npm установи
-зафиксированные прямые зависимости, создай реальный lockfile, запусти check,
-build, Playwright и интеграционные тесты на отдельной локальной PostgreSQL.
+Do not create a second starter. Finish verifying this one: if npm is available, install
+the pinned direct dependencies, create a real lockfile, run check,
+build, Playwright and the integration tests on a separate local PostgreSQL.
 
-Не выдавай офлайн-тесты за проверку Next.js/PostgreSQL. Если установка недоступна,
-зафиксируй блокер и не выдумывай lockfile или результаты.
+Do not pass off offline tests as a check of Next.js/PostgreSQL. If installation is unavailable,
+record the blocker and do not invent a lockfile or results.
 
-Не включай live AI, реальные источники, upload и production. После проверок
-представь фактический отчёт по S0 и предложи переход к S1-001.
-Работай в SP 1.0: одна небольшая задача, максимум два цикла исправления,
-без смены утверждённого дизайна Atlas 1.1.
+Do not enable live AI, real sources, upload and production. After the checks,
+present a factual report on S0 and propose moving to S1-001.
+Work in SP 1.0: one small task, at most two repair cycles,
+without changing the approved Atlas 1.1 design.
 ```
 
-## Куда смотреть
+## Where to look
 
-`src/` — приложение и данные; `tests/` — unit/integration/E2E.
-`tasks/` — текущая задача, S0 и первый реальный источник.
-`docs/solo/` — SP 1.0 и исходные документы по мере необходимости.
-`docs/ARCHITECTURE.md` — границы и решения.
-`docs/SAFETY_GATES.md` — что нужно реализовать до рисковых функций.
-`reports/DELIVERY.md` — что действительно запускалось при подготовке.
+`src/` — the application and data; `tests/` — unit/integration/E2E.
+`tasks/` — the current task, S0 and the first real source.
+`docs/solo/` — SP 1.0 and the original documents as needed.
+`docs/ARCHITECTURE.md` — boundaries and decisions.
+`docs/SAFETY_GATES.md` — what must be implemented before risky features.
+`reports/DELIVERY.md` — what actually ran during preparation.
 
-Не загружайте в каждую сессию весь `docs/solo/context`.
+Do not load all of `docs/solo/context` into every session.

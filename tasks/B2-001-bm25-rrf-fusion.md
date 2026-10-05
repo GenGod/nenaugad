@@ -1,121 +1,136 @@
-# B2-001 — BM25 и RRF-слияние: реализовано, измерено, переключение не предлагается
+# B2-001 — BM25 and RRF fusion: implemented, measured, no switch proposed
 
-**Результат:** вторая нога извлечения (BM25) и слияние по позициям (RRF)
-реализованы, проверены тестами и **измерены на замороженном наборе A1** вместе с
-dense-ногой. Итог замера решает вопрос, который был открыт после B1: слияние не
-оправдало себя на текущем наборе — **BM25 в одиночку лучше любого слияния двух
-ног** (NDCG@10 0.881 против 0.827 при равных весах), а чем больше веса отдаётся
-dense-ноге, тем хуже.
+**Result:** the second retrieval leg (BM25) and position-based fusion (RRF) are
+implemented, covered by tests and **measured on the frozen A1 set** together with
+the dense leg. The outcome of the measurement settles the question left open
+after B1: fusion did not justify itself on the current set — **BM25 alone beats
+any fusion of the two legs** (NDCG@10 0.881 against 0.827 at equal weights), and
+the more weight is given to the dense leg, the worse it gets.
 
-**Практический вывод по правилу §6.4 («условие не переключать»):** выдача не
-переключается ни на fused-порядок, ни на BM25-ногу. Ни один вариант не достигает
-порогов ранкера v4 (NDCG@10 0.916), а fused-порядок ещё и ниже лучшей одиночной
-ноги. Приоритет следующего шага смещается: B3 (cross-encoder реранк) и расширение
-набора кросс-язычными парами — там, где dense-нога должна выигрывать, но текущий
-набор этого показать не может (4 русские вакансии, профиль без языкового поля).
+**The practical conclusion under the rule of §6.4 ("the do-not-switch
+condition"):** the feed is switched neither to the fused order nor to the BM25
+leg. No variant reaches the v4 ranker's thresholds (NDCG@10 0.916), and the fused
+order is also below the best single leg. The priority of the next step shifts:
+B3 (a cross-encoder rerank) and extending the set with cross-language pairs —
+where the dense leg should win but the current set cannot show it (4 Russian
+jobs, a profile without a language field).
 
-**Не входит:** переключение продуктовой выдачи (решение владельца №11),
-cross-encoder (B3), кросс-язычное расширение набора (отдельная задача),
-обучение/калибровка весов слияния регрессией (нужны данные, а не 6 профилей).
+**Out of scope:** switching the production feed (owner decision #11), the
+cross-encoder (B3), the cross-language extension of the set (a separate task),
+learning/calibrating the fusion weights by regression (data is needed, not 6
+profiles).
 
-**Зависимости:** A1 (порог не тронут), B1 (dense-нога и вектора), A9 (guardrails).
+**Dependencies:** A1 (threshold untouched), B1 (the dense leg and the vectors),
+A9 (guardrails).
 
-## Что добавлено
+## What was added
 
-- `src/domain/bm25.ts` — BM25 в Node поверх уже отфильтрованного по допуску пула
-  (расширения не нужны, решения владельца не требует, индекса, который может
-  устареть, не существует). Формулы (V1, сверено 2026-09-30): IDF
-  `log(1 + (docCount - docFreq + 0.5)/(docFreq + 0.5))` — javadoc Lucene
-  `BM25Similarity`; `k1 = 1.2`, `b = 0.75` — умолчания Lucene/Elasticsearch
-  («Practical BM25, part 2»), **не подбирались** здесь. Токенизатор сохраняет
-  составные технические токены (`c#`, `c++`, `node.js`, `.net`) и добавляет их
-  части (≥2 символов), поэтому «node» находит «node.js», а «c» не матчит всё.
-  Документы без общих с запросом термов **не возвращаются**: список позиций,
-  содержащий всё, раздавал бы в слиянии зачёт за то, чего нога не находила.
-  Записан порог перелома (`BM25_IN_NODE_POOL_LIMIT = 5000`) — за ним нога
-  переезжает в PostgreSQL, и это отдельное решение.
-- `src/domain/rrf.ts` — RRF по позициям, `k = 60` (Cormack, Clarke, Buettcher,
-  SIGIR 2009), плюс веса ног; документ с нулевой суммой вкладов в результат не
-  попадает (нулевой вес = нога снята), отрицательные веса — ошибка.
-- `src/domain/retrieval-eval.ts` — общий замер ног: допуск применяется до ноги,
-  метрики те же, что в A1, плюс **комплементарность** (сколько релевантных нашла
-  каждая нога по отдельности) — без неё вопрос «зачем сливать» не имеет ответа.
-- `scripts/eval-retrieval.ts` + `npm run eval:retrieval` — три ноги рядом, свип
-  `k`, свип весов, комплементарность, латентность; `--json` для машинного чтения.
-- Тесты: `tests/unit/retrieval-fusion.test.ts` (10 тестов, включая матрицу из
-  брифа: «C#» находит BM25; слияние поднимает документ, выигравший одну ногу;
-  насыщение частоты нелинейно).
+- `src/domain/bm25.ts` — BM25 in Node over the pool already filtered by the
+  eligibility gate (no extension needed, no owner decision required, no index
+  that can go stale exists). Formulas (V1, verified 2026-09-30): the IDF
+  `log(1 + (docCount - docFreq + 0.5)/(docFreq + 0.5))` — the javadoc of Lucene
+  `BM25Similarity`; `k1 = 1.2`, `b = 0.75` — the Lucene/Elasticsearch defaults
+  ("Practical BM25, part 2"), **not tuned** here. The tokenizer keeps compound
+  technical tokens (`c#`, `c++`, `node.js`, `.net`) and adds their parts (≥2
+  characters), so "node" finds "node.js" and "c" does not match everything.
+  Documents sharing no terms with the query are **not returned**: a position
+  list that contains everything would hand fusion credit in the merge for what
+  the leg did not find. The break-even threshold is recorded
+  (`BM25_IN_NODE_POOL_LIMIT = 5000`) — beyond it the leg moves to PostgreSQL, and
+  that is a separate decision.
+- `src/domain/rrf.ts` — RRF over positions, `k = 60` (Cormack, Clarke,
+  Buettcher, SIGIR 2009), plus leg weights; a document with a zero sum of
+  contributions does not enter the result (a zero weight = the leg is
+  withdrawn), negative weights are an error.
+- `src/domain/retrieval-eval.ts` — the shared measurement of legs: the
+  eligibility gate is applied before the leg, the metrics are the same as in A1,
+  plus **complementarity** (how many relevant each leg found on its own) —
+  without it the question "why fuse" has no answer.
+- `scripts/eval-retrieval.ts` + `npm run eval:retrieval` — the three legs side
+  by side, a sweep of `k`, a weight sweep, complementarity, latency; `--json`
+  for machine reading.
+- Tests: `tests/unit/retrieval-fusion.test.ts` (10 tests, including the matrix
+  from the brief: "C#" is found by BM25; fusion lifts a document that won one
+  leg; frequency saturation is non-linear).
 
-## Измерение (2026-09-30, реальная модель, замороженный набор A1)
+## Measurement (2026-09-30, the real model, the frozen A1 set)
 
-| Нога | R@5 | R@10 | NDCG@5 | NDCG@10 | MRR |
+| Leg | R@5 | R@10 | NDCG@5 | NDCG@10 | MRR |
 |---|---|---|---|---|---|
 | dense (B1) | 0.663 | 0.843 | 0.760 | 0.804 | 0.806 |
 | **BM25** | 0.660 | 0.877 | 0.827 | **0.881** | **1.000** |
 | fused, k=60 | 0.680 | 0.836 | 0.800 | 0.827 | 0.833 |
-| ранкер v4 (для сравнения) | 0.742 | 0.877 | 0.914 | 0.916 | 1.000 |
+| ranker v4 (for comparison) | 0.742 | 0.877 | 0.914 | 0.916 | 1.000 |
 
-- **Комплементарность (top-10, 32 релевантных):** обе ноги 24 · только dense 1 ·
-  только BM25 2 · ни одна 5. То есть запас слияния реально есть (3 из 32), но
-  качество порядка от него падает.
-- **Свип весов (NDCG@10 / R@10):** dense 1·bm25 1 → 0.827/0.836 · 2·1 → 0.822/0.860
-  · 1·2 → 0.864/0.836 · 1·3 → 0.868/0.877 · **0·1 (одна BM25) → 0.881/0.877**.
-  Монотонно: чем меньше вклад dense-ноги, тем лучше. Это и есть ответ на вопрос
-  «полезна ли dense в слиянии **на этом наборе**» — нет.
-- **Свип k:** 10/30/60 → 0.827, 100 → 0.833. Победителя нет (разница 0.006 на 6
-  профилях — шум), `RRF_K` остаётся 60 до появления различимого выигрыша.
-- **Латентность:** BM25 — 3–4 мс на все 6 профилей (в Node, без индекса); dense —
-  ~110–120 мс на профиль (холодный запрос); эмбеддинг 34 документов — 1.1 с.
+- **Complementarity (top-10, 32 relevant):** both legs 24 · dense only 1 ·
+  BM25 only 2 · neither 5. That is, there is a real fusion margin (3 of 32), but
+  the quality of the ordering falls because of it.
+- **Weight sweep (NDCG@10 / R@10):** dense 1·bm25 1 → 0.827/0.836 · 2·1 →
+  0.822/0.860 · 1·2 → 0.864/0.836 · 1·3 → 0.868/0.877 · **0·1 (BM25 alone) →
+  0.881/0.877**. Monotonic: the smaller the dense leg's contribution, the
+  better. This is the answer to the question "is dense useful in fusion **on
+  this set**" — no.
+- **k sweep:** 10/30/60 → 0.827, 100 → 0.833. There is no winner (a difference
+  of 0.006 across 6 profiles — noise); `RRF_K` stays 60 until a distinguishable
+  win appears.
+- **Latency:** BM25 — 3–4 ms for all 6 profiles (in Node, no index); dense —
+  ~110–120 ms per profile (cold query); embedding 34 documents — 1.1 s.
 
-## Протокол V0–V6
+## Protocol V0–V6
 
-- **V0.** Отдельная задача; схема БД не менялась (BM25 не хранит ничего).
-- **V1.** Формулы сверены с первоисточниками (Lucene javadoc, elastic.co) — не
-  выведены по памяти; константы не «подкручены» под набор.
-- **V2.** Нога не расширяет пул (допуск применяется до неё), документы без
-  совпадений не возвращаются, объяснение слияния — позиции, а не выдуманные
-  вероятности.
-- **V3.** `npm run check` → exit 0 (**229/229** unit, было 219); `npm run test:db`
-  → exit 0 (51/51); `npm run build` → exit 0; `npm run test:e2e` → 96 passed;
-  `npm run eval:retrieval` → exit 0; `npm run eval:matching` → exit 0 (пороги не
-  двигались, ранкер не тронут).
-- **V4.** Матрица из брифа: «C#» находит BM25 (unit), слияние поднимает документ,
-  выигравший одну ногу (unit), насыщение частоты сублинейно (unit, с честной
-  оговоркой: на маленьком пуле keyword-stuffing всё равно выигрывает — это
-  записано тестом, а не спрятано); комплементарность и свипы — на реальном
-  наборе.
-- **V5.** Ратчет A1 не тронут; существующие тесты не ослаблены.
-- **V6.** Этот файл + `IMPLEMENTATION_STATUS.md` + `tasks/current.json`.
+- **V0.** A separate task; the DB schema was not changed (BM25 stores nothing).
+- **V1.** The formulas were verified against primary sources (the Lucene
+  javadoc, elastic.co) — not derived from memory; the constants were not
+  "tweaked" to the set.
+- **V2.** The leg does not widen the pool (the eligibility gate is applied
+  before it), documents without matches are not returned, the fusion explanation
+  is positions, not invented probabilities.
+- **V3.** `npm run check` → exit 0 (**229/229** unit, previously 219);
+  `npm run test:db` → exit 0 (51/51); `npm run build` → exit 0;
+  `npm run test:e2e` → 96 passed; `npm run eval:retrieval` → exit 0;
+  `npm run eval:matching` → exit 0 (the thresholds did not move, the ranker
+  untouched).
+- **V4.** The matrix from the brief: "C#" is found by BM25 (unit), fusion lifts
+  a document that won one leg (unit), frequency saturation is sublinear (unit,
+  with the honest caveat: on a small pool keyword-stuffing still wins — this is
+  recorded by a test, not hidden); the complementarity and the sweeps — on the
+  real set.
+- **V5.** The A1 ratchet untouched; existing tests not weakened.
+- **V6.** This file + `IMPLEMENTATION_STATUS.md` + `tasks/current.json`.
 
-## О честности счётчика
+## On the honesty of the counter
 
-Два моих **собственных ожидания в тестах** оказались неверны и исправлены в первом
-же прогоне: порог, с которого вес ноги переворачивает слияние (оказалось ≈ k, а не
-3), и судьба документа с нулевым весом (остаётся в списке с нулевой суммой —
-исправлено в коде: не попадает). Дефекта в коде за ними не было. Записать их
-циклами ремонта по правилу нельзя было: счётчик задачи в тот момент держала
-B1-002. Записано здесь, чтобы счёт не оказался скрытым.
+Two of my **own expectations in tests** turned out wrong and were fixed in the
+very first run: the threshold at which a leg's weight flips the fusion (it
+turned out to be ≈ k, not 3), and the fate of a document with a zero weight (it
+stays in the list with a zero sum — fixed in the code: it does not enter). There
+was no defect in the code behind them. They could not be recorded as repair
+cycles under the rule: the task counter was being held by B1-002 at the time.
+Recorded here so that the count is not hidden.
 
-## Ограничения
+## Limitations
 
-1. **Семантический случай из брифа («ML developer» находится dense-ногой без
-   точного вхождения) не проверен на реальной модели**: тест-двойник лексический и
-   такого свойства не показывает, а подходящей пары в golden-наборе нет. Это
-   остаётся ограничением замера, а не утверждением.
-2. **Кросс-язычный случай не измерен** (4 русские вакансии, профиль без языкового
-   поля) — ровно там dense-нога должна выигрывать. Набор не различает модели, и это
-   открытый пункт §6.4 (кто размечает пары).
-3. **Слияние реализовано, но не используется**: fused-порядок нигде не в горячем
-   пути. Веса и k — константы по умолчанию, подобранные значения требуют набора,
-   который различает ноги.
-4. BM25 без стоп-слов и без стемминга: IDF и так гасит частые термы, а
-   стоп-лист/стеммер — вопрос измерения; сейчас это осознанный минимум с записанной
-   причиной.
-5. BM25 считает df по пулу запроса, а не по каталогу: при росте пула это меняет
-   IDF (в пределе — сходится к каталогу). Порог перелома записан в модуле.
+1. **The semantic case from the brief ("ML developer" is found by the dense leg
+   without an exact occurrence) is not checked against the real model**: the
+   test double is lexical and does not demonstrate that property, and there is
+   no suitable pair in the golden set. This remains a limitation of the
+   measurement, not an assertion.
+2. **The cross-language case is not measured** (4 Russian jobs, a profile
+   without a language field) — exactly where the dense leg should win. The set
+   does not distinguish the models, and this is an open item of §6.4 (who
+   labels the pairs).
+3. **Fusion is implemented but not used**: the fused order is nowhere in the hot
+   path. The weights and k are default constants; tuned values require a set
+   that distinguishes the legs.
+4. BM25 without stop words and without stemming: the IDF already dampens
+   frequent terms, and a stop list/stemmer is a question of measurement; for now
+   this is a deliberate minimum with a recorded reason.
+5. BM25 computes df over the query's pool, not over the catalog: as the pool
+   grows this changes the IDF (in the limit it converges to the catalog). The
+   break-even threshold is recorded in the module.
 
-## Риск и откат
+## Risk and rollback
 
-Риск низкий: ничего не подключено к выдаче, новых зависимостей и таблиц нет.
-Откат — `git revert` коммита B2: удаляются два доменных модуля и измерительный CLI,
-продукт не меняется ни на одном шаге.
+The risk is low: nothing is wired into the feed, no new dependencies and no
+tables. Rollback — `git revert` of the B2 commit: the two domain modules and the
+measurement CLI are removed, the product does not change at any step.

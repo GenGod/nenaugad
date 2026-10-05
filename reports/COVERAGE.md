@@ -1,24 +1,24 @@
-# Покрытие стартового шаблона
+# Coverage of the starting template
 
-**Обновление 2026-10-02 (FDOC-001):** таблица приведена к фактическому состоянию.
-Единственный оставшийся пункт «не реализовано» — restore. Проверки выполняются
-локально командами из `IMPLEMENTATION_STATUS.md` (`check`, `test:db`, `build`,
-`test:e2e`); CI базу и браузер не гоняет.
+**Update 2026-10-02 (FDOC-001):** the table was brought in line with the actual state.
+The only remaining «не реализовано» [not implemented] item is restore. The checks are run
+locally with the commands from `IMPLEMENTATION_STATUS.md` (`check`, `test:db`, `build`,
+`test:e2e`); CI does not run the DB or the browser.
 
-| Требование | Сейчас | Ограничение |
+| Requirement | Now | Limitation |
 |---|---|---|
-| SP-T03 права источника | Исполняемые политики источников и статические guardrails | Лицензии/terms сверяются вручную (`npm run terms:check`); jobicy `process_with_ml` удержано владельцем |
-| SP-T04 повторный seed | Idempotent seed и integration на отдельной PostgreSQL (`npm run test:db`) | Выполняется локально; CI без БД |
-| SP-T06 remote/office | Детерминированные правила; конфликт тега и текста сохраняет unknown | Текстовый extractor — эвристика, не LLM |
-| SP-T07 неизвестная география | Полный eligibility engine (`src/domain/matching.ts`): pass/fail/unknown, AND в опции / OR между опциями | unknown не угадывается; TIME-01 DST-точен с 2026-10-02 |
-| SP-T20 внешний переход | Apply-route по политике источника; backlink с атрибуцией; авто-отклика нет | Ничего не отправляется от лица кандидата |
-| SP-T21 no AI | AI за охраняемым шлюзом, `LIVE_AI_ENABLED=false`; скоринг и письма отказывают по границе персональных данных | Скоринг/письма оживут после локальной модели, не флагом |
-| SP-T01/02/09 приватность/upload | Приватность профилей и CV (за флагом), минимизация, удаление производных, ownership-тесты | Реальные CV — только локально; OCR нет |
-| SP-T08 DST/hiring/salary rules | TIME-01 с DST-точным окном (`RULESET_VERSION` 3); SAL-01 честный unknown | Кросс-язычные кейсы не измерены (раздел D инвентаря) |
-| SP-T10–17 бюджеты/очередь | Расходный леджер: атомарный резерв, квоты, персистентные счётчики, `npm run ai:holds`; батч-путь закрыт | Повторное включение батча — решение владельца (план в AI-006) |
-| SP-T18–19 letters | Приватный CRUD, версии, валидатор всего body, If-Match, evidence-панель; генерация за границей | Repair loop — B9, до локальной модели |
-| SP-T22 restore | Не реализовано | Обязателен до beta |
+| SP-T03 source rights | Executable source policies and static guardrails | Licences/terms are checked by hand (`npm run terms:check`); jobicy `process_with_ml` is withheld by the owner |
+| SP-T04 repeated seed | Idempotent seed and integration on a separate PostgreSQL (`npm run test:db`) | Runs locally; CI has no DB |
+| SP-T06 remote/office | Deterministic rules; a conflict between tag and text keeps unknown | The text extractor is a heuristic, not an LLM |
+| SP-T07 unknown geography | The full eligibility engine (`src/domain/matching.ts`): pass/fail/unknown, AND within an option / OR between options | unknown is not guessed; TIME-01 has been DST-accurate since 2026-10-02 |
+| SP-T20 external transition | An apply route per the source policy; a backlink with attribution; there is no auto-application | Nothing is sent on the candidate's behalf |
+| SP-T21 no AI | AI behind the guarded gateway, `LIVE_AI_ENABLED=false`; scoring and letters refuse on the personal data boundary | Scoring/letters will come alive after a local model, not by a flag |
+| SP-T01/02/09 privacy/upload | Privacy of profiles and CVs (behind the flag), minimization, deletion of derived data, ownership tests | Real CVs — locally only; there is no OCR |
+| SP-T08 DST/hiring/salary rules | TIME-01 with a DST-accurate window (`RULESET_VERSION` 3); SAL-01 an honest unknown | The cross-language cases are not measured (section D of the inventory) |
+| SP-T10–17 budgets/queue | Spending ledger: atomic reserve, quotas, persistent counters, `npm run ai:holds`; the batch path is closed | Re-enabling the batch is an owner decision (the plan is in AI-006) |
+| SP-T18–19 letters | Private CRUD, versions, a whole-body validator, If-Match, the evidence panel; generation behind the boundary | The repair loop — B9, until a local model |
+| SP-T22 restore | Not implemented | Mandatory before beta |
 
-Пункт «не реализовано» — gating backlog, а не пройденная проверка по принципу
-«нет функции — нет ошибки». Перед включением соответствующей функции появляются
-реальные отрицательные/integration/fault tests.
+The «не реализовано» [not implemented] item is gating backlog, not a passed check under the principle
+«нет функции — нет ошибки» [no feature — no bug]. Before the corresponding feature is enabled,
+real negative/integration/fault tests appear.

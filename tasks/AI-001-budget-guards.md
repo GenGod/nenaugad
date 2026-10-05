@@ -1,43 +1,44 @@
-# AI-001 — предохранители платных операций (до любого провайдера)
+# AI-001 — guards for paid operations (before any provider)
 
-**Результат:** устойчивое ядро контроля расходов в основной БД — атомарный
-резерв бюджета, персистентные счётчики попыток, дедлайн, uncertain-списания,
-commit-time ревалидация и глобальный kill switch — протестированное
-негативно и на конкурентность; реальный провайдер не подключается.
+**Result:** a resilient spend-control core in the main DB — atomic budget
+reservation, persistent attempt counters, a deadline, uncertain charges,
+commit-time revalidation and a global kill switch — tested negatively and
+for concurrency; no real provider is connected.
 
-**Не входит:** SDK, ключ, реальный вызов модели, выбор провайдера/цены,
-очередь как сервис, письма (S4-контракт остаётся выключенным).
+**Not included:** the SDK, the key, a real model call, provider/price choice,
+queue-as-a-service, letters (the S4 contract stays disabled).
 
-**Контекст:** AGENTS Boundaries (полный список защит до активации); SP 9
-(операции/попытки, worst-case резерв, decimal, held+settled+new<=limit,
-SDK retry off, uncertain, не терять holds, kill switch); ТЗ 19.2 AI-boundary.
+**Context:** AGENTS Boundaries (the full list of protections before activation); SP 9
+(operations/attempts, worst-case reservation, decimal, held+settled+new<=limit,
+SDK retry off, uncertain, do not lose holds, kill switch); spec 19.2 AI-boundary.
 
-## Приёмка
-1. Миграция 0009: `ai_operations` (owner, task_type, idempotency_key UNIQUE,
-   status, deadline_at, attempt_count, input_hash, created_at) и
+## Acceptance
+1. Migration 0009: `ai_operations` (owner, task_type, idempotency_key UNIQUE,
+   status, deadline_at, attempt_count, input_hash, created_at) and
    `ai_budgets` (scope: global|owner, period, approved_limit_minor,
-   settled_minor, held_minor — целые минимальные единицы). CHECK на
-   неотрицательность; уникальные ключи.
-2. Атомарный резерв: одна транзакция с row-lock читает `settled+held+new_worst
-   <= approved_limit` и инкрементирует `held`; параллельные резервы не
-   тратят один остаток (интеграционный тест на двух concurrent);
-   недоступная БД → отказ, не «попробуем без резерва».
-3. Попытки персистентны: dispatch отмечается до вызова; счётчик попыток
-   операции не сбрасывается ни retry-обёрткой, ни новой idempotency key;
-   максимум попыток по типу (из SP 9: extraction 2, cv 2, letter 4).
-4. Uncertain: сбой между dispatch и результатом → статус `uncertain`, резерв
-   удерживается, повтор вслепую запрещён (негативный тест).
-5. Commit-time ревалидация: перед переходом в `settled` перепроверяются
-   owner, idempotency key, статус и дедлайн (условный UPDATE); истёкший
-   дедлайн останавливает новые шаги, но не «делает запрос бесплатным».
-6. Kill switch: глобальная запись бюджета с `approved_limit_minor = 0`
-   блокирует все новые резервы немедленно; пользовательские квоты — та же
-   механика по scope=owner.
-7. Шлюз (`src/server/ai/gateway.ts`) — единственная точка будущего вызова:
-   без провайдера fail-closed; транспорт-интерфейс инжектится для тестов
-   (mock с задержкой/сбоем/uncertain); SDK retry выключен по контракту.
-8. Все тесты offline (моки), интеграционные — на тестовой БД; e2e без
-   изменений (AI не виден в UI).
+   settled_minor, held_minor — integer minor units). CHECK on
+   non-negativity; unique keys.
+2. Atomic reservation: a single transaction with a row-lock reads `settled+held+new_worst
+   <= approved_limit` and increments `held`; parallel reservations do not
+   spend one remainder (an integration test on two concurrent);
+   the DB being unavailable → refusal, not "we will try without a reservation".
+3. Attempts are persistent: dispatch is recorded before the call; the attempt
+   counter of an operation is not reset by a retry wrapper or by a new
+   idempotency key; maximum attempts per type (from SP 9: extraction 2, cv 2,
+   letter 4).
+4. Uncertain: a failure between dispatch and result → status `uncertain`, the
+   reservation is held, a blind repeat is forbidden (a negative test).
+5. Commit-time revalidation: before the transition to `settled`, the owner,
+   idempotency key, status and deadline are rechecked (a conditional UPDATE); an
+   expired deadline stops new steps but does not "make the request free".
+6. Kill switch: a global budget record with `approved_limit_minor = 0`
+   blocks all new reservations immediately; user quotas — the same
+   mechanics with scope=owner.
+7. The gateway (`src/server/ai/gateway.ts`) — the single point of future calls:
+   fail-closed without a provider; a transport interface is injected for tests
+   (a mock with delay/failure/uncertain); SDK retry is off by contract.
+8. All tests offline (mocks), integration ones on the test DB; e2e unchanged
+   (AI is not visible in the UI).
 
-**Риск:** высокий (деньги) — но сами предохранители безопасны: они только
-запрещают. **Откат:** таблицы не сбрасывать; шлюз остаётся выключенным.
+**Risk:** high (money) — but the guards themselves are safe: they only
+forbid. **Rollback:** do not reset the tables; the gateway stays disabled.

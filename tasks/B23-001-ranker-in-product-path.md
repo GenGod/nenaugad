@@ -1,57 +1,65 @@
-# B23-001 — ранкер в продуктовом пути (решение владельца №4, пункт 1)
+# B23-001 — the ranker in the product path (owner decision No. 4, item 1)
 
-**Результат:** `/matched` сортируется шипнутым детерминированным ранкером v4
-вместо «AI-скор, затем каталог». Ключевой замер решения: порядок каталога давал
-NDCG@10 **0.421**, ранкер v4 — **0.892** на golden-наборе (39 × 6). Допуск
-(гейты) не менялся; AI-скор остался в UI справочным бейджем.
+**Result:** `/matched` is sorted by the shipped deterministic ranker v4 instead of
+"AI score, then catalog". The decision's key measurement: the catalog order gave
+NDCG@10 **0.421**, the ranker v4 — **0.892** on the golden set (39 × 6).
+Eligibility (the gates) was not changed; the AI score remained in the UI as an
+informational badge.
 
-**Не входит:** пересмотр самих гейтов; новые кандидаты ранкера (B2-слияние/B3 —
-когда появятся, встают в тень через `candidateId`); retention (RET-001).
+**Out of scope:** revising the gates themselves; new ranker candidates
+(B2-merge/B3 — when they appear, they enter the shadow via `candidateId`);
+retention (RET-001).
 
-## Что изменено
+## What changed
 
-- `src/server/matching-service.ts` — единственный порядок выдачи: после сбора
-  показанных постов один вызов `rankJobs(shown, profile, now, { disliked })`;
-  обе вкладки наследуют его (фильтр по статусу). Скрытые вакансии больше не
-  «невидимы» ранжированию: их группа отдаёт `dislikedPosting` (компания + стек),
-  и окрестность понижается — «понижение, не скрытие» (A6-002) теперь действует в
-  продукте, как и было измерено.
-- `src/server/ranker-shadow-service.ts` — чемпион по умолчанию = `RANKER_VERSION`
-  (шипнутый порядок), кандидат опционален; без кандидата `diff: null`, guardrails
-  считаются, лог честно пишет `candidate: null` и нули диффа.
-- `src/domain/feed-order.ts` — журнальные метки обеих вкладок = `RANKER_VERSION`
-  (обещание B3 исполнено: метка — версия ранкера, а не выдуманное имя порядка).
-- `src/app/matched/page.tsx` — сортировка по AI-скору удалена (порядок приходит с
-  сервера); копия: «Порядок — детерминированный ранкер по условиям, роли и
-  свежести»; бейдж AI-скора и кнопка batch-анализа сохранены как информация.
-- `src/domain/ranker-registry.ts` — комментарий реестра приведён к факту:
-  чемпион — зарегистрированный ранкер с B23; `feed-default-order` — базовая линия
-  замеров, не то, что получает кандидат.
-- `scripts/eval-shadow.ts` — чемпион = v4, кандидаты — остальные зарегистрированные
-  версии (контролы); вывод и JSON обновлены под опциональный diff.
+- `src/server/matching-service.ts` — the single feed order: after collecting the
+  shown posts, one call of `rankJobs(shown, profile, now, { disliked })`; both
+  tabs inherit it (the filter by status). Hidden jobs are no longer "invisible"
+  to ranking: their group yields `dislikedPosting` (company + stack), and the
+  neighborhood is demoted — «понижение, не скрытие» ["demotion, not hiding"]
+  (A6-002) now acts in the product, exactly as it was measured.
+- `src/server/ranker-shadow-service.ts` — the default champion =
+  `RANKER_VERSION` (the shipped order), the candidate is optional; without a
+  candidate `diff: null`, the guardrails are computed, the log honestly writes
+  `candidate: null` and zero diffs.
+- `src/domain/feed-order.ts` — the journal labels of both tabs =
+  `RANKER_VERSION` (the B3 promise fulfilled: the label is the ranker version,
+  not an invented order name).
+- `src/app/matched/page.tsx` — the AI-score sorting removed (the order comes from
+  the server); the copy: «Порядок — детерминированный ранкер по условиям, роли и
+  свежести» ["The order — a deterministic ranker by conditions, role and
+  freshness"]; the AI-score badge and the batch-analysis button kept as information.
+- `src/domain/ranker-registry.ts` — the registry comment brought to the fact: the
+  champion is the ranker registered with B23; `feed-default-order` is the
+  baseline of the measurements, not what the candidate receives.
+- `scripts/eval-shadow.ts` — the champion = v4, the candidates — the other
+  registered versions (the controls); the output and the JSON updated for the
+  optional diff.
 
-## Проверки (2026-10-02)
+## Checks (2026-10-02)
 
-- `npm run check` → exit 0 (**240/240** unit, biome 210, tsc чисто);
-- `npm run test:db` → exit 0 (**56/56**; новый тест «delivered feed follows the
-  shipped ranker's order» + обновлённый теневой тест: champion = v4, candidate =
-  null в логе, лента не зависит от тени);
-- `npm run build` → exit 0; `npm run test:e2e` → **96 passed** (страница на
-  fixture-бэкенде не рендерит вкладки — базлайны не тронуты);
-- `npm run eval:matching` → exit 0, guards 0/0, агрегат без изменений (0.892);
-- `npm run eval:shadow` → чемпион v4: `feed-default-order` двигает 177/189
-  позиций, контролы — 61/49/34; **guardrails pass у всех**.
+- `npm run check` → exit 0 (**240/240** unit, biome 210, tsc clean);
+- `npm run test:db` → exit 0 (**56/56**; the new test "delivered feed follows the
+  shipped ranker's order" + the updated shadow test: champion = v4, candidate =
+  null in the log, the feed does not depend on the shadow);
+- `npm run build` → exit 0; `npm run test:e2e` → **96 passed** (the page on the
+  fixture backend does not render the tabs — the baselines untouched);
+- `npm run eval:matching` → exit 0, guards 0/0, the aggregate unchanged (0.892);
+- `npm run eval:shadow` → the champion v4: `feed-default-order` moves 177/189
+  positions, the controls — 61/49/34; **guardrails pass for all**.
 
-**Не проверено:** живая страница `/matched` на рабочей БД с реальными сессиями —
-покрытие service-level (integration) и e2e-базлайны; ручной просмотр владельцем —
-за ним.
+**Not verified:** the live `/matched` page on the working DB with real sessions —
+the coverage is service-level (integration) and the e2e baselines; a manual
+review by the owner is still owed.
 
-**Ограничения:** порядок вкладки «Нужно уточнить» теперь тоже ранжируется (тот же
-порядок, статус не меняется) — это соответствует замеру на общем показанном пуле.
-Тень без кандидата — «спящая»: инфраструктура и guardrails живут, дифф появится с
-первым зарегистрированным кандидатом.
+**Limitations:** the order of the «Нужно уточнить» ["Needs clarification"] tab is
+now ranked too (the same order, the status does not change) — this matches the
+measurement on the common shown pool. The shadow without a candidate is
+"dormant": the infrastructure and the guardrails live, the diff will appear with
+the first registered candidate.
 
-**Откат:** `git revert` коммита — выдача возвращается к AI-скору/каталогу, журнал
-к прежним меткам; тень возвращается к чемпиону `feed-default-order`.
+**Rollback:** `git revert` of the commit — the feed returns to AI-score/catalog,
+the journal to the former labels; the shadow returns to the
+`feed-default-order` champion.
 
-**Расходы:** coding-host — `unknown`.
+**Costs:** coding-host — `unknown`.

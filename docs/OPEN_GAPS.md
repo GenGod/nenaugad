@@ -1,341 +1,342 @@
-# Открытые недоделки по уже имеющемуся функционалу (инвентарь)
+# Open gaps in the functionality that already exists (inventory)
 
-Дата: 2026-10-01. Составлено тремя независимыми аудитами (код; документы; файлы
-задач) и проверено вручную там, где цена ошибки — деньги, права или данные.
-Каждая строка несёт доказательство (`файл:строка`), потому что этот список будет
-использоваться как наряд на работу, а не как мнение.
+Date: 2026-10-01. Compiled by three independent audits (code; documents; task
+files) and checked by hand where the cost of a mistake is money, rights or data.
+Every row carries evidence (`файл:строка`), because this list will
+be used as a work order, not as an opinion.
 
-**Как читать.** Разделы A–C — это недоделки и дефекты. Раздел D — сознательно
-отложенные измерения (не дефекты, но и не «сделано»). Раздел E — то, что ждёт
-**решения владельца**, а не работы. F–G — расхождения документов с кодом и
-гигиена репозитория. Будущие фазы (B3–B6, C*, D*), которые никогда не начинались,
-сюда не входят: это бэклог, а не недоделка.
+**How to read it.** Sections A–C are gaps and defects. Section D is deliberately
+deferred measurements (not defects, but not «сделано» [done] either). Section E is what awaits
+**an owner decision**, not work. F–G are discrepancies of the documents with the code and
+repository hygiene. Future phases (B3–B6, C*, D*) that were never started
+are not included here: they are backlog, not a gap.
 
 ---
 
-## A. Красные флаги: деньги и права
+## A. Red flags: money and rights
 
-**Статус на 2026-10-02: A1–A8 закрыты** (задачи AI-004…AI-007), **и раздел B закрыт
-почти целиком** (кампания BFIX-001): закрыты B1–B8, B10, B12, B14–B20, B22;
-отложены с причиной B9, B11, B13, B23. Что именно закрыто — в заголовках ниже; тела
-пунктов оставлены как запись о том, каким был дефект и что именно его закрыло.
-Открытыми остаются пункты раздела E (решения владельца).
+**Status as of 2026-10-02: A1–A8 are closed** (tasks AI-004…AI-007), **and section B is closed
+almost entirely** (campaign BFIX-001): B1–B8, B10, B12, B14–B20, B22 are closed;
+B9, B11, B13, B23 are deferred with a reason. What exactly is closed is in the headings below; the bodies
+of the items are kept as a record of what the defect was and what exactly closed it.
+The items of section E (owner decisions) remain open.
 
-### A1. ~~`LIVE_AI_ENABLED=false` — не выключатель~~ — **закрыто 2026-10-01, [AI-007](../tasks/AI-007-owner-decisions-2026-10-01.md)**
-- **Факт:** `OPENAI_API_KEY` в окружении **присутствует** (проверено: значение не
-  печаталось, только наличие и правдоподобная длина), `LIVE_AI_ENABLED=false`.
-- **Механизм:** `readConfig` отклоняет непустой `LIVE_AI_ENABLED` (`src/server/config.ts:21-25`),
-  но живой путь зависит не от него, а от наличия транспорта: `dispatchWithPrompt`
-  передаёт `transport: openAiTransport` в шлюз (`relevance/route.ts`), транспорт
-  читает `process.env.OPENAI_API_KEY` (`src/server/ai/openai-transport.ts:18,31`).
-  Флаг «выключено» ничего не выключает.
-- **Почему это важно:** AGENTS.md требует обратного («A key in the environment is not
-  approval», «Real AI cannot be enabled by changing an env flag»). Здесь наоборот:
-  ключ — это и есть включатель, а флаг — декорация.
-- **Сделано (AI-006 + AI-007):** неохраняемый батч-путь закрыт, а флаг стал
-  выключателем: `readConfig` читает `LIVE_AI_ENABLED` (`"true"` — включено,
-  отсутствие/`"false"` — выключено, иное — fail-closed), шлюз проверяет его первым,
-  до purpose, потолка, бюджета и транспорта. Ключ в окружении больше ничего не
-  включает. Владельцу: в `.env` стоит `false`, поэтому живые вызовы отказывают, пока
-  он не поставит `true`. LIVE_SOURCES флага не получил осознанно — политики источника
-  и есть контроль.
+### A1. ~~`LIVE_AI_ENABLED=false` — not a switch~~ — **closed 2026-10-01, [AI-007](../tasks/AI-007-owner-decisions-2026-10-01.md)**
+- **Fact:** `OPENAI_API_KEY` is **present** in the environment (verified: the value was not
+  printed, only presence and a plausible length), `LIVE_AI_ENABLED=false`.
+- **Mechanism:** `readConfig` rejects a non-empty `LIVE_AI_ENABLED` (`src/server/config.ts:21-25`),
+  but the live path depends not on it, but on the presence of a transport: `dispatchWithPrompt`
+  passes `transport: openAiTransport` to the gateway (`relevance/route.ts`), the transport
+  reads `process.env.OPENAI_API_KEY` (`src/server/ai/openai-transport.ts:18,31`).
+  The flag «выключено» [off] turns nothing off.
+- **Why this matters:** AGENTS.md requires the opposite («A key in the environment is not
+  approval», «Real AI cannot be enabled by changing an env flag»). Here it is the other way round:
+  the key is the switch, and the flag is decoration.
+- **Done (AI-006 + AI-007):** the unguarded batch path is closed, and the flag has become
+  a switch: `readConfig` reads `LIVE_AI_ENABLED` (`"true"` — on,
+  absent/`"false"` — off, anything else — fail-closed), the gateway checks it first,
+  before purpose, ceiling, budget and transport. A key in the environment no longer
+  turns anything on. For the owner: `.env` holds `false`, so live calls refuse until
+  it is set to `true`. LIVE_SOURCES deliberately did not get a flag — the source policies
+  are the control.
 
-### A2. ~~Не одобренный purpose тратит реальные деньги~~ — **закрыто 2026-10-01, задача [AI-004](../tasks/AI-004-purpose-job-matching.md)**
-- **Было:** `approvedPurposes: ["cover_letter"]` (`src/server/ai/provider.ts`), а
-  relevance-путь подставлял `job_matching`; шлюз purpose не проверял вовсе,
-  `isPurposeApproved` не вызывался нигде вне тестов.
-- **Сделано:** владелец утвердил `job_matching` 2026-10-01. Whitelist теперь
-  проверяется шлюзом **до** чтения бюджета (`PurposeNotApprovedError`), ведро
-  расходов и счётчика попыток выводится из purpose (`PURPOSE_TASK_TYPE`), поэтому
-  рассогласовать их нельзя; неодобренный purpose не создаёт ни строки
-  `ai_operations`, ни холда. Тесты: `tests/unit/ai-provider.test.ts`,
+### A2. ~~An unapproved purpose spends real money~~ — **closed 2026-10-01, task [AI-004](../tasks/AI-004-purpose-job-matching.md)**
+- **Was:** `approvedPurposes: ["cover_letter"]` (`src/server/ai/provider.ts`), while the
+  relevance path substituted `job_matching`; the gateway did not check purpose at all,
+  `isPurposeApproved` was called nowhere outside tests.
+- **Done:** the owner approved `job_matching` on 2026-10-01. The whitelist is now
+  checked by the gateway **before** reading the budget (`PurposeNotApprovedError`), the spend
+  bucket and the attempt counter are derived from the purpose (`PURPOSE_TASK_TYPE`), so
+  they cannot be mismatched; an unapproved purpose creates neither an
+  `ai_operations` row nor a hold. Tests: `tests/unit/ai-provider.test.ts`,
   `tests/integration/ai-guards.test.ts`.
-- **Остаётся (не закрывается этим):** сам гейт появился в AI-005 (2026-10-01):
-  `send_to_ai_provider` выдан всем трём источникам, и `maySendTextToProvider`
-  спрашивается в четырёх местах, которые отправляют текст наружу, поэтому отзыв
-  гранта теперь действительно останавливает поток. Открытым остаётся **другое**:
-  одобрение purpose и грант источника — это разрешения, а не предохранители;
-  денежные защиты батч-пути (A3) по-прежнему отсутствуют, и приватность профиля
-  кандидата (текст профиля уходит провайдеру) отдельным решением не закрыта.
+- **Remains (not closed by this):** the gate itself appeared in AI-005 (2026-10-01):
+  `send_to_ai_provider` was granted to all three sources, and `maySendTextToProvider`
+  is asked in four places that send text out, so revoking
+  the grant now really stops the flow. What remains open is **something else**:
+  purpose approval and a source grant are permissions, not safeguards;
+  the money protections of the batch path (A3) are still absent, and the privacy of the candidate's
+  profile (the profile text goes to the provider) has not been closed by a separate decision.
 
-### A3. ~~Батч-путь идёт к провайдеру мимо всех предохранителей~~ — **закрыто отключением 2026-10-01, задача [AI-006](../tasks/AI-006-c0-part-1.md)**
-- **Было:** `src/server/ai/openai-batch.ts` создавал собственный клиент OpenAI;
-  вызовы из relevance-роута и очереди шли мимо `executeGuardedOperation` — без
-  резерва, строки `ai_operations`, счётчика попыток, deadline и обработки
-  `uncertain`; права источника не спрашивались; включателем была сырая
+### A3. ~~The batch path goes to the provider past all safeguards~~ — **closed by switching it off 2026-10-01, task [AI-006](../tasks/AI-006-c0-part-1.md)**
+- **Was:** `src/server/ai/openai-batch.ts` created its own OpenAI client;
+  calls from the relevance route and the queue went past `executeGuardedOperation` — without
+  a reserve, an `ai_operations` row, an attempt counter, a deadline and `uncertain`
+  handling; source rights were not asked; the switch was the raw
   `process.env.OPENAI_API_KEY`.
-- **Сделано:** путь **закрыт** (бриф §C0 часть 1 допускает «отключить до завода»).
-  Модуль больше не импортирует SDK провайдера вовсе — `submitBatch`/`checkBatch`/
-  `retrieveBatchResults` бросают `BatchDisabledError` до создания клиента, —
-  роут отвечает `503 BATCH_DISABLED` с причиной, очередь коротко замыкается.
-  `scripts/guardrails.mjs` теперь статически разрешает SDK провайдера только в
-  `src/server/ai/openai-transport.ts`, так что своя клиентская обвязка не вернётся
-  молча. План повторного включения (резерв при submit, settlement при retrieve,
-  срок для асинхронной операции, потолок для батча, серверный mapping) записан в
-  `openai-batch.ts` и в AI-006.
-- **Цена:** автоматический фоновый скоринг выключен — `submitRelevanceBatch`
-  больше ничего не отправляет. Скоринг остался в охраняемом синхронном пути.
+- **Done:** the path is **closed** (brief §C0 part 1 allows «отключить до завода» [switch it off before wiring it in]).
+  The module no longer imports the provider SDK at all — `submitBatch`/`checkBatch`/
+  `retrieveBatchResults` throw `BatchDisabledError` before any client is created, —
+  the route answers `503 BATCH_DISABLED` with a reason, the queue short-circuits.
+  `scripts/guardrails.mjs` now statically allows the provider SDK only in
+  `src/server/ai/openai-transport.ts`, so a home-grown client wrapper will not come back
+  silently. The re-enablement plan (reserve at submit, settlement at retrieve,
+  a term for the asynchronous operation, a ceiling for the batch, server-side mapping) is recorded in
+  `openai-batch.ts` and in AI-006.
+- **Price:** automatic background scoring is off — `submitRelevanceBatch`
+  sends nothing any more. Scoring remained in the guarded synchronous path.
 
-### A4. ~~Резерв не является верхней границей~~ — **закрыто 2026-10-01, [AI-006](../tasks/AI-006-c0-part-1.md)**
-- **Было:** резервировалось 1200 входных / 400 выходных токенов
-  (`relevance/route.ts`), а у провайдера запрашивалось `max_completion_tokens: 8192`
-  (`openai-transport.ts:52`); письма резервировали 1500/3000 при том же расхождении.
-- **Сделано:** `reservationFor(prompt)` в `provider.ts` — вход ограничен числом
-  символов промпта (верхняя граница для любого токенизатора, верна и для
-  кириллицы), выход — жёсткий максимум транспорта. Применено в обоих платящих
-  местах; инвариант «резервируется максимально допустимый путь» снова верен и
-  покрыт тестом на монотонность и на попадание в потолок операции.
+### A4. ~~The reserve is not an upper bound~~ — **closed 2026-10-01, [AI-006](../tasks/AI-006-c0-part-1.md)**
+- **Was:** 1200 input / 400 output tokens were reserved
+  (`relevance/route.ts`), while the provider was asked for `max_completion_tokens: 8192`
+  (`openai-transport.ts:52`); letters reserved 1500/3000 with the same discrepancy.
+- **Done:** `reservationFor(prompt)` in `provider.ts` — the input is bounded by the number of
+  prompt characters (an upper bound for any tokenizer, valid for
+  Cyrillic too), the output — by the transport's hard maximum. Applied in both paying
+  places; the invariant «резервируется максимально допустимый путь» [the maximum admissible path is reserved] is true again and
+  is covered by a test for monotonicity and for hitting the operation ceiling.
 
-### A5. ~~Квота пользователя не заведена, потолок операции не сравнивается~~ — **закрыто 2026-10-01, [AI-007](../tasks/AI-007-owner-decisions-2026-10-01.md)**
-- **Было:** строка бюджета владельца не создавалась, а её отсутствие значило «нет
-  персонального потолка»; потолок операции печатался сид-скриптом и не сравнивался
-  ни с чем.
-- **Сделано:** квота владельца — **$1/мес** (решение 2026-10-01) и заводится при
-  регистрации в той же транзакции, что и пользователь; `seed:budgets` бэкфиллит
-  существующих; отсутствие строки — отказ `OWNER_BUDGET_MISSING`; потолок операции
-  сравнивается в шлюзе (`OPERATION_CEILING_EXCEEDED`). Попутно исправлен баг
-  `ensureBudget`: цель `ON CONFLICT` не ловила конфликт по PK глобальной строки
-  (`owner_id = NULL`), из-за чего повторный сид падал вместо идемпотентности.
-- **Остаётся:** `period = 'monthly'` хранится, но календарного сброса окна нет —
-  потолок действует накопительно.
+### A5. ~~The user quota is not set up, the operation ceiling is not compared~~ — **closed 2026-10-01, [AI-007](../tasks/AI-007-owner-decisions-2026-10-01.md)**
+- **Was:** the owner's budget row was not created, and its absence meant «нет
+  персонального потолка» [there is no personal ceiling]; the operation ceiling was printed by the seed script and was compared
+  with nothing.
+- **Done:** the owner's quota is **$1/month** (decision 2026-10-01) and it is created at
+  registration in the same transaction as the user; `seed:budgets` backfills
+  the existing ones; a missing row is a refusal `OWNER_BUDGET_MISSING`; the operation ceiling
+  is compared in the gateway (`OPERATION_CEILING_EXCEEDED`). Along the way a bug was fixed in
+  `ensureBudget`: the `ON CONFLICT` target did not catch the PK conflict of the global row
+  (`owner_id = NULL`), so a repeated seed failed instead of being idempotent.
+- **Remains:** `period = 'monthly'` is stored, but there is no calendar reset of the window —
+  the ceiling applies cumulatively.
 
-### A6. ~~Деньги могут «зависнуть» в `uncertain` навсегда~~ — **закрыто 2026-10-01, [AI-007](../tasks/AI-007-owner-decisions-2026-10-01.md)**
-- **Было:** `cancelOperation` не вызывался из продуктового кода, reaper'а не было;
-  холды копились, пока не съедят бюджет.
-- **Сделано:** `npm run ai:holds` — список операций, которые держат деньги (id, тип,
-  статус, попытки, сумма, возраст) плюс строки бюджетов как источник истины;
-  `--cancel=<operationId>` освобождает **один названный** холд. Решение остаётся за
-  человеком осознанно: освободить холд — значит утверждать, что провайдер не списал,
-  и автоматика могла бы ошибиться в эту сторону. Журнала ручных решений пока нет.
+### A6. ~~Money can «зависнуть» [get stuck] in `uncertain` forever~~ — **closed 2026-10-01, [AI-007](../tasks/AI-007-owner-decisions-2026-10-01.md)**
+- **Was:** `cancelOperation` was not called from product code, and there was no reaper;
+  holds accumulated until they would eat the budget.
+- **Done:** `npm run ai:holds` — a list of operations that hold money (id, type,
+  status, attempts, amount, age) plus budget rows as the source of truth;
+  `--cancel=<operationId>` releases **one named** hold. The decision deliberately stays with
+  a human: releasing a hold means asserting that the provider did not charge,
+  and automation could err in that direction. There is no journal of manual decisions yet.
 
-### A7. ~~Идемпотентность не работает как заявлено~~ — **закрыто 2026-10-01, [AI-006](../tasks/AI-006-c0-part-1.md)**
-- **Было:** ключ содержал `Date.now()`, поэтому каждый ретрай был новой платной
-  операцией, а персистентный счётчик попыток на этом пути не накапливался.
-- **Сделано:** ключ адресуется содержимым — sha256 от версии профиля и
-  отсортированного набора id постов чанка (`chunkOperationKey`). Повтор находит ту
-  же операцию; терминальные повторы (`WRONG_STATE`, `IDEMPOTENCY_COLLISION`)
-  распознаются и пропускаются как `duplicateChunks`, а не оплачиваются снова.
-  Покрыто integration-тестом: повтор не вызывает транспорт, `settled_minor`
-  остаётся 300, `held_minor` = 0. Хеш входа в `spending.ts` по-прежнему считается
-  только по типу задачи — это отдельный (более слабый) слой, и он отмечен здесь,
-  а не спрятан.
+### A7. ~~Idempotency does not work as claimed~~ — **closed 2026-10-01, [AI-006](../tasks/AI-006-c0-part-1.md)**
+- **Was:** the key contained `Date.now()`, so every retry was a new paid
+  operation, and the persistent attempt counter did not accumulate on this path.
+- **Done:** the key is content-addressed — sha256 of the profile version and
+  the sorted set of chunk post ids (`chunkOperationKey`). A repeat finds the same
+  operation; terminal repeats (`WRONG_STATE`, `IDEMPOTENCY_COLLISION`)
+  are recognized and skipped as `duplicateChunks`, instead of being paid for again.
+  Covered by an integration test: a repeat does not call the transport, `settled_minor`
+  stays 300, `held_minor` = 0. The input hash in `spending.ts` is still computed
+  from the task type only — that is a separate (weaker) layer, and it is noted here,
+  not hidden.
 
-### A8. ~~Дефект рабочей БД: 12 из 700 `job_snapshots.id` недостижимы по первичному ключу~~ — **вылечено 2026-10-01, [AI-007](../tasks/AI-007-owner-decisions-2026-10-01.md)**
-- **Было:** индексный поиск давал 0 там, где скан находил строку (12/700); по этим
-  записям не работали сохранённые, скрытые, письма и FK-вставки.
-- **Сделано:** `REINDEX TABLE job_snapshots` (65 мс) + `REINDEX DATABASE atlas_starter`
-  (152 мс, страховка по индексам, которые не проверялись поимённо); аудит
-  достижимости — **0 недостижимых из 2182**; `npm run embeddings:index` добрал
-  12/12 векторов (у himalayas 498/498).
+### A8. ~~Working-DB defect: 12 of 700 `job_snapshots.id` are unreachable by primary key~~ — **healed 2026-10-01, [AI-007](../tasks/AI-007-owner-decisions-2026-10-01.md)**
+- **Was:** an index lookup returned 0 where a scan found the row (12/700); for these
+  records saved, hidden, letters and FK inserts did not work.
+- **Done:** `REINDEX TABLE job_snapshots` (65 ms) + `REINDEX DATABASE atlas_starter`
+  (152 ms, insurance for the indexes that were not checked by name); the reachability
+  audit — **0 unreachable out of 2182**; `npm run embeddings:index` picked up
+  12/12 vectors (for himalayas 498/498).
 
 ---
 
-## B. Недоделки в отгруженном функционале (по коду)
+## B. Gaps in the shipped functionality (by code)
 
-| # | Что не доделано | Доказательство |
+| # | What is not finished | Evidence |
 |---|---|---|
-| B1 | ~~**Клик-репорты не подключены**~~ — **закрыто 2026-10-02 (BFIX-001):** основной линк карточки подбора журналирует клик (`src/components/click-reporter.ts`, `tracked-job-link.tsx`). Лента каталога журнал не ведёт вовсе — это часть вопроса B23 | — |
-| B2 | ~~**`propensity` в продукте всегда NULL**~~ — **закрыто:** считается на сервере при записи показа из кэшированных скоров, которыми отсортирована лента (лучший скор батча → 1); без скора — честный NULL | `src/server/events-service.ts` |
-| B3 | ~~**Метки журнала остались `v0-*`**~~ — **закрыто:** серверные версионированные feed-order метки (`src/domain/feed-order.ts`: `feed-ai-score-then-catalog@1`, `feed-catalog-order@1`); клиент выбирает ленту из закрытого набора | — |
-| B4 | ~~**`showNeedsReview` не применяется ни на одном пути чтения**~~ — **закрыто:** при выключенном флаге вкладка не рендерится, `?tab=review` падает в match (`resolveFeedTab`) | — |
-| B5 | ~~**Требования вакансии не показываются в UI**~~ — **закрыто:** `MatchedJob.requirements` и блок «Требования вакансии» в «Основании» (must/nice, вердикты, «не хватает») | — |
-| B6 | ~~**Буст за роль — подстрока**~~ — **закрыто:** словесные границы + задокументированная синонимия голов (developer≈engineer); измеренный прирост NDCG@5 0.914→0.919 · NDCG@10 0.916→0.920, пороги ratchet подняты | `src/domain/match-ranker.ts` |
-| B7 | ~~**Ghost-пометка есть только в карточке подбора**~~ — **закрыто:** `readSnapshotCards` несёт closure, `SnapshotCard` рисует ту же честную пометку | — |
-| B8 | ~~**Панель «На чём основано» не отрисована**~~ — **закрыто:** панель на странице письма (роли и страна профиля, вакансия или общий режим) | — |
-| B9 | **Repair loop письма** — **отложено 2026-10-02:** письма закрыты границей персональных данных (`PERSONAL_DATA_BOUNDARY`) до локальной модели; код без достижимого потребителя запрещён правилами проекта | `src/server/ai/personal-data-boundary.ts` |
-| B10 | ~~**Сравнение версий side-by-side и защита от конфликта вкладок (If-Match)**~~ — **закрыто:** GET отдаёт ETag `"version"`, PATCH принимает `If-Match` (промах → 412), в UI — «Сравнить» с двумя панелями | — |
-| B11 | **Удаления аккаунта нет** — **отложено 2026-10-02:** удаление — высокорисковая зона (AGENTS.md), нужен отдельный review и принятие владельца | S2-001 «Не входит» |
-| B12 | ~~**DST-точная математика 12-месячного окна не сделана**~~ — **закрыто:** TIME-01 сэмплирует 15-е число каждого месяца референсного года (`RULESET_VERSION` 3); Ramadan-сдвиг теперь unknown, а не ложный pass | `src/domain/matching.ts` |
-| B13 | ~~**Jobicy без векторов**~~ — **закрыто 2026-10-02 (решение владельца №4):** право `process_with_ml` выдано после перечитывания Fair Use; политика jobicy v4→v5, `npm run embeddings:index -- --source=jobicy` проиндексировал **202/202** постов, dense-нога покрывает источник | — |
-| B14 | ~~**`/api/health` и `npm run doctor` сообщают неправду**~~ — **закрыто:** фактические значения (`auth: "implemented"`, `uploads` из конфига, `realSources`); doctor стал тестируемым (`doctorReport`) | — |
-| B15 | ~~**`src/server/ai/README.md` утверждает, что AI не подключён**~~ — **закрыто:** README переписан под фактический контур (шлюз, транспорт, граница, батч закрыт, эксплуатация) | — |
-| B16 | ~~**`scripts/smoke-ai.ts` не заведён ни в один npm-скрипт**~~ — **закрыто:** `npm run smoke:ai` (заводит свои бюджетные строки; отказывает без `LIVE_AI_ENABLED=true`), упомянут в `src/server/ai/README.md` | — |
-| B17 | ~~**Мёртвый код, обещающий функциональность**~~ — **закрыто:** удалены `Unavailable`, `disabled.ts`, `registeredRankerIds`, `RANKER_VERSIONS`, `describeLocalArtifact`, `embeddingCacheKey`, `resetOpenAIClient`; `isOpenAIConfigured` больше не экспортируется | — |
-| B18 | ~~**Ошибки глотаются там, где это скрывает провал**~~ — **закрыто:** worker логирует `attemptRecorded`, провал submit'а в profile-маршруте логируется; вечный ретрай батча остаётся в закрытом (недостижимом) пути и входит в план повторного включения | — |
-| B19 | ~~**`totalCostMicroCents` всегда «0»**~~ — **закрыто ещё в [AI-006](../tasks/AI-006-c0-part-1.md):** стоимость отдаётся из settled-суммы леджера; единственный оставшийся «0» — путь «всё из кэша», где не было вызова | — |
-| B20 | ~~**`propensity` и `rankerVersion` в журнале принимаются от клиента как есть**~~ — **закрыто:** payload с `propensity` отклоняется (400), метка берётся сервером из feed-ключа (B3) | — |
-| B21 | ~~**`custom_id → snapshot_id` берётся из тела запроса**~~ — закрыто вместе с батч-путём в [AI-006](../tasks/AI-006-c0-part-1.md): запись результатов недостижима (503), поэтому клиент больше не может выбрать, какой вакансии какой скор записать. При повторном включении mapping хранится на сервере (как уже делает очередь в `ai_batch_queue.custom_id_mapping`) | — |
-| B22 | ~~**Чтение и удаление CV доступны при `UPLOADS_ENABLED=false`**~~ — **закрыто:** общий гейт `uploadsDisabledResponse` на всех четырёх обработчиках CV + статическая проверка в `scripts/guardrails.mjs` | — |
-| B23 | ~~**Ранкер, seen-set, требования и дедуп не стоят в продуктовом пути**~~ — **закрыто 2026-10-02 (решение владельца №4, задача B23):** `/matched` сортирует шипнутый ранкер v4 (замер: NDCG@10 **0.892** против **0.421** у порядка каталога); скрытия питают preference-понижение, closure — ghost; журнал пишет версию ранкера; тень — чемпион v4, кандидат опционален | — |
+| B1 | ~~**Click reports are not wired up**~~ — **closed 2026-10-02 (BFIX-001):** the main link of the matching card journals a click (`src/components/click-reporter.ts`, `tracked-job-link.tsx`). The catalog feed keeps no journal at all — that is part of question B23 | — |
+| B2 | ~~**`propensity` in the product is always NULL**~~ — **closed:** computed on the server when the impression is recorded, from the cached scores the feed is sorted by (best batch score → 1); without a score — an honest NULL | `src/server/events-service.ts` |
+| B3 | ~~**The journal labels stayed `v0-*`**~~ — **closed:** server-side versioned feed-order labels (`src/domain/feed-order.ts`: `feed-ai-score-then-catalog@1`, `feed-catalog-order@1`); the client picks the feed from a closed set | — |
+| B4 | ~~**`showNeedsReview` is not applied on any read path**~~ — **closed:** with the flag off the tab is not rendered, `?tab=review` falls into match (`resolveFeedTab`) | — |
+| B5 | ~~**Vacancy requirements are not shown in the UI**~~ — **closed:** `MatchedJob.requirements` and the «Требования вакансии» [Vacancy requirements] block in «Основание» [Basis] (must/nice, verdicts, «не хватает» [missing]) | — |
+| B6 | ~~**The role boost is a substring match**~~ — **closed:** word boundaries + documented head synonymy (developer≈engineer); measured gain NDCG@5 0.914→0.919 · NDCG@10 0.916→0.920, the ratchet thresholds were raised | `src/domain/match-ranker.ts` |
+| B7 | ~~**The ghost marker exists only in the matching card**~~ — **closed:** `readSnapshotCards` carries closure, `SnapshotCard` draws the same honest marker | — |
+| B8 | ~~**The «На чём основано» [What it is based on] panel is not rendered**~~ — **closed:** the panel is on the letter page (profile roles and country, vacancy or general mode) | — |
+| B9 | **Letter repair loop** — **deferred 2026-10-02:** letters are closed by the personal data boundary (`PERSONAL_DATA_BOUNDARY`) until a local model; code without a reachable consumer is forbidden by the project rules | `src/server/ai/personal-data-boundary.ts` |
+| B10 | ~~**Side-by-side version comparison and tab-conflict protection (If-Match)**~~ — **closed:** GET returns ETag `"version"`, PATCH accepts `If-Match` (a miss → 412), in the UI — «Сравнить» [Compare] with two panels | — |
+| B11 | **There is no account deletion** — **deferred 2026-10-02:** deletion is a high-risk zone (AGENTS.md), a separate review and owner acceptance are required | S2-001 «Не входит» [Not included] |
+| B12 | ~~**The DST-accurate arithmetic of the 12-month window is not done**~~ — **closed:** TIME-01 samples the 15th of each month of the reference year (`RULESET_VERSION` 3); the Ramadan shift is now unknown, not a false pass | `src/domain/matching.ts` |
+| B13 | ~~**Jobicy without vectors**~~ — **closed 2026-10-02 (owner decision No. 4):** the `process_with_ml` right was granted after re-reading the Fair Use; jobicy policy v4→v5, `npm run embeddings:index -- --source=jobicy` indexed **202/202** posts, the dense leg covers the source | — |
+| B14 | ~~**`/api/health` and `npm run doctor` report untruths**~~ — **closed:** actual values (`auth: "implemented"`, `uploads` from config, `realSources`); doctor became testable (`doctorReport`) | — |
+| B15 | ~~**`src/server/ai/README.md` claims AI is not connected**~~ — **closed:** the README was rewritten for the actual contour (gateway, transport, boundary, batch closed, operations) | — |
+| B16 | ~~**`scripts/smoke-ai.ts` is not wired into any npm script**~~ — **closed:** `npm run smoke:ai` (creates its own budget rows; refuses without `LIVE_AI_ENABLED=true`), mentioned in `src/server/ai/README.md` | — |
+| B17 | ~~**Dead code promising functionality**~~ — **closed:** `Unavailable`, `disabled.ts`, `registeredRankerIds`, `RANKER_VERSIONS`, `describeLocalArtifact`, `embeddingCacheKey`, `resetOpenAIClient` were removed; `isOpenAIConfigured` is no longer exported | — |
+| B18 | ~~**Errors are swallowed where it hides a failure**~~ — **closed:** the worker logs `attemptRecorded`, a submit failure in the profile route is logged; the batch's eternal retry remains in the closed (unreachable) path and is part of the re-enablement plan | — |
+| B19 | ~~**`totalCostMicroCents` is always «0»**~~ — **closed back in [AI-006](../tasks/AI-006-c0-part-1.md):** the cost is returned from the settled sum of the ledger; the only remaining «0» is the «всё из кэша» [everything from cache] path, where there was no call | — |
+| B20 | ~~**`propensity` and `rankerVersion` in the journal are accepted from the client as is**~~ — **closed:** a payload with `propensity` is rejected (400), the label is taken by the server from the feed key (B3) | — |
+| B21 | ~~**`custom_id → snapshot_id` is taken from the request body**~~ — closed together with the batch path in [AI-006](../tasks/AI-006-c0-part-1.md): writing the results is unreachable (503), so the client can no longer choose which vacancy gets which score. On re-enablement the mapping is kept on the server (as the queue already does in `ai_batch_queue.custom_id_mapping`) | — |
+| B22 | ~~**CV reading and deletion are available with `UPLOADS_ENABLED=false`**~~ — **closed:** a shared gate `uploadsDisabledResponse` on all four CV handlers + a static check in `scripts/guardrails.mjs` | — |
+| B23 | ~~**The ranker, seen-set, requirements and dedup are not in the product path**~~ — **closed 2026-10-02 (owner decision No. 4, task B23):** `/matched` sorts by the shipped ranker v4 (measurement: NDCG@10 **0.892** vs **0.421** for the catalog order); hides feed the preference downgrade, closure — ghost; the journal writes the ranker version; the shadow — champion v4, the candidate is optional | — |
 
 ---
 
-## C. Обещано следующей задачей и не сделано (провенанс — в файлах задач)
+## C. Promised by a later task and not done (provenance in the task files)
 
-| # | Обещание | Кто обещал | Состояние |
+| # | Promise | Who promised | State |
 |---|---|---|---|
-| C1 | Кэш требований («кэш — задача A10») | A2-001 п.2 | A10 сделан, кэша нет: `grep cache src/domain/requirements.ts` → пусто |
-| C2 | Подключение ранкера в продуктовый путь | A2-001, A6-002 п.1, A9-001 п.1 | Не сделано; решение владельца №11 сохраняет AI-сортировку. Ворота (A9) готовы |
-| C3 | Замена `v0`-метки журнала на версионированный ранкер | A6-001 п.4 (обещано A9) | Сделано 2026-10-02 (BFIX-001): серверные feed-order метки (B3) |
-| C4 | `propensity` не NULL в продукте | A8-001 п.2 (обещано A10) | Сделано 2026-10-02 (BFIX-001): серверный расчёт (B2) |
-| C5 | Клиентская отправка показов и кликов | A8-001 п.1 | Показы — сделано (A6-001); клики — сделано 2026-10-02 (BFIX-001, B1) |
-| C6 | Отображение требований в UI (данные готовы) | A2-001 п.5 | Сделано 2026-10-02 (BFIX-001, B5) |
-| C7 | Панель evidence в письме | S4-002 приёмка 3 | Сделано 2026-10-02 (BFIX-001, B8) |
-| C8 | Repair loop письма (гейт беты) | S4-001/S4-002 «Не входит», SAFETY_GATES:9 | Не сделано (см. B9) |
-| C9 | DST-точный расчёт окна | S2-001 «Не входит» | Сделано 2026-10-02 (BFIX-001, B12) |
-| C10 | Удаление аккаунта | S2-001 «Не входит» | Не сделано (см. B11) |
-| C11 | Near-dup дедупликация (эмбеддинговая часть) | A4-001 «Не входит: B5» | Сделано 2026-10-04 (B5-001): правило (текст+заголовок+гео-вето) и CLI-очередь, пороги замерены; кросс-источниковых пар в локальном каталоге сейчас нет |
-| C12 | Survival-модель вместо эвристик возраста | A5-001 «Не входит: B6» | Сделано 2026-10-04 (B6-001): hazard-окно + бакеты + честная строка, за guardrails; константы провизорны — наблюдаемых закрытий в каталоге ещё нет, структура и синтетические тесты готовы к пере-фиту |
-| C13 | ESCO для справочника навыков | A3-001 п.4 | Сделано 2026-10-04 (ESCO-001): skills-часть подключена — 50 связей канонов, дельта алиасов v3, атрибуция в футере; RU-лейблов в ESCO нет |
-| C14 | Retention журнала событий | A8-001 п.3, A6-001 п.3 | Сделано 2026-10-02 (решение №4 + RET-001): TTL 12 месяцев, purge-проход в worker'е |
-| C15 | Retention закрытых записей источника | S1-005 «Не входит» | Сделано 2026-10-02 (решение №4 + RET-001): tombstone без текста вместо удаления |
-| C16 | Частотный кап дайджеста | A7-001 п.2 | Не сделан (ограничивать пока нечего — нет отправок) |
-| C17 | Email-канал дайджеста | A7-001 п.1 | Невозможен: `send_email` denied во всех матрицах |
+| C1 | Requirements cache («кэш — задача A10» [cache — task A10]) | A2-001 item 2 | A10 is done, there is no cache: `grep cache src/domain/requirements.ts` → empty |
+| C2 | Wiring the ranker into the product path | A2-001, A6-002 item 1, A9-001 item 1 | Not done; owner decision No. 11 keeps AI sorting. The gates (A9) are ready |
+| C3 | Replacing the `v0` journal label with a versioned ranker | A6-001 item 4 (promised in A9) | Done 2026-10-02 (BFIX-001): server-side feed-order labels (B3) |
+| C4 | `propensity` not NULL in the product | A8-001 item 2 (promised in A10) | Done 2026-10-02 (BFIX-001): server-side computation (B2) |
+| C5 | Client-side sending of impressions and clicks | A8-001 item 1 | Impressions — done (A6-001); clicks — done 2026-10-02 (BFIX-001, B1) |
+| C6 | Displaying requirements in the UI (the data is ready) | A2-001 item 5 | Done 2026-10-02 (BFIX-001, B5) |
+| C7 | Evidence panel in the letter | S4-002 acceptance 3 | Done 2026-10-02 (BFIX-001, B8) |
+| C8 | Letter repair loop (beta gate) | S4-001/S4-002 «Не входит» [Not included], SAFETY_GATES:9 | Not done (see B9) |
+| C9 | DST-accurate window computation | S2-001 «Не входит» [Not included] | Done 2026-10-02 (BFIX-001, B12) |
+| C10 | Account deletion | S2-001 «Не входит» [Not included] | Not done (see B11) |
+| C11 | Near-dup deduplication (the embedding part) | A4-001 «Не входит: B5» [Not included: B5] | Done 2026-10-04 (B5-001): the rule (text+title+geo-veto) and a CLI queue, the thresholds are measured; there are no cross-source pairs in the local catalog right now |
+| C12 | Survival model instead of age heuristics | A5-001 «Не входит: B6» [Not included: B6] | Done 2026-10-04 (B6-001): hazard window + buckets + an honest line, behind guardrails; the constants are provisional — there are no observed closures in the catalog yet, the structure and the synthetic tests are ready for a re-fit |
+| C13 | ESCO for the skills reference | A3-001 item 4 | Done 2026-10-04 (ESCO-001): the skills part is connected — 50 canon links, the v3 alias delta, attribution in the footer; there are no RU labels in ESCO |
+| C14 | Event journal retention | A8-001 item 3, A6-001 item 3 | Done 2026-10-02 (decision No. 4 + RET-001): TTL 12 months, a purge pass in the worker |
+| C15 | Retention of closed source records | S1-005 «Не входит» [Not included] | Done 2026-10-02 (decision No. 4 + RET-001): a tombstone without text instead of deletion |
+| C16 | Digest frequency cap | A7-001 item 2 | Not done (there is nothing to limit yet — there are no sends) |
+| C17 | Digest email channel | A7-001 item 1 | Impossible: `send_email` denied in all matrices |
 
 ---
 
-## D. Сознательно отложенные измерения и константы (не дефекты, но и не проверено)
+## D. Deliberately deferred measurements and constants (not defects, but not verified either)
 
-**Обновление 2026-10-02 (DGAP-001).** Закрыто то, что закрывается замером:
-пробелы покрытия набора и кросс-язычный/семантический замер. Остальное по своей
-природе ждёт данных, второй машины или продуктового решения — и это названо.
+**Update 2026-10-02 (DGAP-001).** What can be closed by measurement has been closed:
+the set's coverage gaps and the cross-language/semantic measurement. The rest by its own
+nature awaits data, a second machine or a product decision — and that is named.
 
-- **Константы, выбранные по смыслу, ждут данных:** период полураспада freshness
-  (`A5-001` п.1), пороги негативных предпочтений −12/−6 и «стек ≥4» (`A6-002` п.2),
-  веса ghost −20/−25 (`A10-001` п.2), порог перехода BM25 в БД (5000, `bm25.ts`).
-  *Сбор данных теперь возможен: журнал пишет клики и серверный propensity с
-  2026-10-02 (BFIX-001); менять константы — после накопления, не раньше.*
-- ~~**Покрытие набора**~~ — **закрыто 2026-10-02 (DGAP-001):** набор v4 (39
-  вакансий) добавил вакансию с *неуказанной* географией (`golden-j35`, GEO-01
-  unknown по метрике), две кросс-язычные семантические пары без латиницы
-  (`golden-j36/j37`) и вторую пару-близнец freshness в другом возрасте и профиле
-  (`golden-j38/j39`); пороги ratchet перебазированы с записанной причиной.
-- ~~**Кросс-язычное качество не измерено**~~ — **измерено на живой модели:** BM25
-  не находит семантические кейсы вовсе (uncovered), dense находит и ставит в
-  середину (`golden-j37` #6 у p-qa-us, `golden-j36` #15 у p-ru-ml); агрегат
-  набора v4 — dense NDCG@10 0.766 · BM25 0.810 · fused 0.771 · **v4 0.892**,
-  «не переключать» подтверждено на выросшем наборе. Языкового поля в профиле
-  по-прежнему нет — это продуктовый вопрос (языковой фильтр), а не измерение.
-- ~~**Семантический кейс на реальной модели не проверен**~~ — **проверен:**
-  «Инженер по машинному обучению» (j36) и RU QA (j37) не имеют ни одного
-  латинского токена, BM25 не матчит их в принципе, dense достаёт (числа выше);
-  v4-ранкер ставит их #12/#11 соответственно. Полный отчёт — DGAP-001.
-- **Замеры на одной машине:** без изменений — p95 на одном профиле и 46
-  вакансиях (`A9-001` п.3), `eval:shadow` на фикстурах (`A9-001` п.4), чемпион в
-  тени — порядок каталога (`A9-001` п.5); закрываются второй машиной и трафиком.
-- **E2E показов:** e2e идёт на fixture-бэкенде (`playwright.config`:
-  `DATA_BACKEND=fixture`), где лента честно пуста, — показы там физически не
-  отправляются. Минимальное закрытие сделано: payload обоих отчётов закреплён
-  unit-тестом (`tests/unit/journal-payloads.test.ts`); e2e на реальном бэкенде —
-  отдельная инфраструктурная задача (postgres-профиль Playwright).
-- **Стоимость и железо:** без изменений — переиндексация ≈ 30 мин CPU; KV-выходы
-  ONNX съедают память батчами (`B1-001` п.3-4); `onnxruntime-node` без
-  postinstall (`B1-001` п.5); 625 МБ артефакта вне git.
-- **BM25 считает df по пулу запроса** (`B2-001` п.5) — осознанно, порог перелома
-  записан; на наборе v4 подтверждено, что из двух ног BM25 в одиночку сильнее
-  слияния (0.810 против 0.771), и весовая сетка этот вывод не меняет.
-- **Письма:** замена копирайта `S4-002` приёмки 4 («Заполнить профиль» →
-  «Понятно, правлю вручную») — осознанная, записана в статусе; кода не требует.
+- **Constants chosen by judgement await data:** the freshness half-life
+  (`A5-001` item 1), the negative-preference thresholds −12/−6 and «стек ≥4» [stack ≥4] (`A6-002` item 2),
+  the ghost weights −20/−25 (`A10-001` item 2), the BM25-in-DB switchover threshold (5000, `bm25.ts`).
+  *Data collection is now possible: the journal writes clicks and the server-side propensity since
+  2026-10-02 (BFIX-001); changing the constants — after accumulation, not before.*
+- ~~**Set coverage**~~ — **closed 2026-10-02 (DGAP-001):** set v4 (39
+  vacancies) added a vacancy with an *unspecified* geography (`golden-j35`, GEO-01
+  unknown by the metric), two cross-language semantic pairs without Latin script
+  (`golden-j36/j37`) and a second freshness twin pair at another age and profile
+  (`golden-j38/j39`); the ratchet thresholds were rebased with a recorded reason.
+- ~~**Cross-language quality is not measured**~~ — **measured on a live model:** BM25
+  does not find the semantic cases at all (uncovered), dense finds them and places them in
+  the middle (`golden-j37` #6 for p-qa-us, `golden-j36` #15 for p-ru-ml); the aggregate
+  for set v4 — dense NDCG@10 0.766 · BM25 0.810 · fused 0.771 · **v4 0.892**,
+  «не переключать» [do not switch] confirmed on the grown set. There is still no language field in the profile
+  — that is a product question (language filter), not a measurement.
+- ~~**The semantic case is not checked on a real model**~~ — **checked:**
+  «Инженер по машинному обучению» [Machine Learning Engineer] (j36) and RU QA (j37) have not a single
+  Latin token, BM25 does not match them in principle, dense reaches them (the numbers above);
+  the v4 ranker places them #12/#11 respectively. The full report is DGAP-001.
+- **Single-machine measurements:** unchanged — p95 on one profile and 46
+  vacancies (`A9-001` item 3), `eval:shadow` on fixtures (`A9-001` item 4), the champion in
+  the shadow — the catalog order (`A9-001` item 5); closed by a second machine and traffic.
+- **Impressions E2E:** e2e runs on the fixture backend (`playwright.config`:
+  `DATA_BACKEND=fixture`), where the feed is honestly empty, — impressions are physically not
+  sent there. A minimal closure was done: the payload of both reports is pinned
+  by a unit test (`tests/unit/journal-payloads.test.ts`); e2e on a real backend is
+  a separate infrastructure task (a postgres profile for Playwright).
+- **Cost and hardware:** unchanged — re-indexing ≈ 30 min CPU; ONNX KV outputs
+  eat memory in batches (`B1-001` items 3-4); `onnxruntime-node` without
+  postinstall (`B1-001` item 5); a 625 MB artifact outside git.
+- **BM25 computes df over the query pool** (`B2-001` item 5) — deliberately, the break-even threshold
+  is recorded; on set v4 it is confirmed that of the two legs BM25 alone is stronger than
+  the fusion (0.810 vs 0.771), and the weight grid does not change that conclusion.
+- **Letters:** the replacement of the `S4-002` acceptance-4 copy («Заполнить профиль» [Fill in the profile] →
+  «Понятно, правлю вручную» [Got it, I'll edit it manually]) — is deliberate, recorded in the status; it requires no code.
 
 ---
 
-## E. Ждут решения владельца (не работа исполнителя)
+## E. Awaiting an owner decision (not the implementer's work)
 
-Закрыто решениями 2026-10-01: purpose `job_matching` (AI-004), гранты
-`send_to_ai_provider` (AI-005), судьба батч-пути — закрыт до заведения за шлюз
-(AI-006), ключ в окружении — перестал быть включателем, им стал флаг (AI-007),
-квота $1/мес и потолок операции (AI-007), приватность кандидата — «всё внутри
-контура» (AI-007), `REINDEX` (AI-007).
+Closed by the 2026-10-01 decisions: the purpose `job_matching` (AI-004), the
+`send_to_ai_provider` grants (AI-005), the fate of the batch path — closed until it is brought behind the gateway
+(AI-006), the key in the environment — it stopped being a switch, the flag became one (AI-007),
+the $1/month quota and the operation ceiling (AI-007), candidate privacy — «всё внутри
+контура» [everything inside the contour] (AI-007), `REINDEX` (AI-007).
 
-**Закрыто решениями 2026-10-02 (партия №4,
+**Closed by the 2026-10-02 decisions (batch No. 4,
 [docs/design/2026-10-02-owner-decisions-04-batch.md](../docs/design/2026-10-02-owner-decisions-04-batch.md)):**
-выдача переключается на ранкер v4 (измерено: NDCG@10 0.892 против 0.421 у порядка
-каталога) — реализация задачей B23 (**исполнено**); батч-путь и скоринг остаются
-закрытыми до локальной генеративной модели, задача её оценки **исполнена**
-(MODEL-001: на этой машине и CPU-рантайме кандидаты 1.5–1.7B рубрику не
-обслуживают — 0/6 валидных JSON без обвязки, Spearman −0.156 с предзаполнением;
-GPU-рантайм — отдельное решение владельца);
-`process_with_ml` для jobicy выдан (политика v4→v5 после перечитывания Fair Use,
-`embeddings:index --source=jobicy` проиндексировал 202/202 постов — B13 закрыт);
-retention — журнал 12 месяцев + tombstone закрытых записей (задача RET-001,
-**исполнено**: миграция 0018, обезличивание вместо удаления, возрождение при
-повторном листинге, purge-проход в worker'е).
+the feed switches to ranker v4 (measured: NDCG@10 0.892 vs 0.421 for the catalog
+order) — implementation by task B23 (**executed**); the batch path and scoring remain
+closed until a local generative model, the task evaluating it is **executed**
+(MODEL-001: on this machine and CPU runtime the 1.5–1.7B candidates do not
+serve the rubric — 0/6 valid JSON without a wrapper, Spearman −0.156 with prefill;
+the GPU runtime is a separate owner decision);
+`process_with_ml` for jobicy was granted (policy v4→v5 after re-reading the Fair Use,
+`embeddings:index --source=jobicy` indexed 202/202 posts — B13 is closed);
+retention — the journal for 12 months + a tombstone for closed records (task RET-001,
+**executed**: migration 0018, anonymization instead of deletion, revival on
+re-listing, a purge pass in the worker).
 
-Остаётся:
+Remaining:
 
-1. **Письменное подтверждение himalayas** (`hi@himalayas.app`, рекомендовано) —
-   действие владельца, не исполнителя.
-2. **reason-коды скрытия и структурные фильтры «не показывать компанию X»** (п.6) —
-   **решение владельца 2026-10-02: оставить как есть** (скрытие вакансии +
-   весовое понижение окрестности уже работают); вернуться при накоплении данных.
-3. **ESCO** (п.5) — условия **прочитаны дословно** (handbook §5, извлечено из
-   официального PDF 2026-10-02): обязательная атрибуция «This service uses the
+1. **Written confirmation from himalayas** (`hi@himalayas.app`, recommended) —
+   an owner action, not the implementer's.
+2. **Hide reason codes and structural «не показывать компанию X» [do not show company X] filters** (item 6) —
+   **owner decision 2026-10-02: leave as is** (vacancy hiding +
+   weighted downgrade of the neighbourhood already work); revisit as data accumulates.
+3. **ESCO** (item 5) — the terms were **read verbatim** (handbook §5, extracted from
+   the official PDF 2026-10-02): the mandatory attribution «This service uses the
    ESCO classification of the European Commission.» + «Any modified or adapted
-   version … must be clearly indicated as such»; occupations-часть — ISCO/ILO
-   («with permission»), skills-часть — ЕС (Decision 2011/833/EU).
-   **Решение владельца 2026-10-02: подключать skills-часть** — задача
-   [ESCO-001](../tasks/ESCO-001-import-skills.md). **Исполнено 2026-10-04:**
-   артефакт v1.2.1 (13 939 навыков) с sha256-пинами и режимами `--check`/
-   `--propose`, 50 связей канонов + дельта алиасов v3 (на golden-наборе
-   нейтральна), атрибуция в футере и `docs/DEPENDENCIES.md`. Уточнение: в ESCO
-   **нет русского языка** — RU-часть остаётся собственной работой проекта.
-4. **Email-канал** алертов (п.7) — **решение владельца 2026-10-02: остаётся
-   in-app**; email — отдельная задача позже (`send_email` denied в матрицах).
-5. **Retention/лимиты, пороги и веса** из раздела D — по мере появления данных.
+   version … must be clearly indicated as such»; the occupations part — ISCO/ILO
+   («with permission»), the skills part — EU (Decision 2011/833/EU).
+   **Owner decision 2026-10-02: connect the skills part** — task
+   [ESCO-001](../tasks/ESCO-001-import-skills.md). **Executed 2026-10-04:**
+   artifact v1.2.1 (13 939 skills) with sha256 pins and `--check`/
+   `--propose` modes, 50 canon links + the v3 alias delta (neutral on the golden
+   set), attribution in the footer and in `docs/DEPENDENCIES.md`. A clarification: ESCO
+   **has no Russian language** — the RU part remains the project's own work.
+4. **Email channel** for alerts (item 7) — **owner decision 2026-10-02: stays
+   in-app**; email is a separate task later (`send_email` denied in the matrices).
+5. **Retention/limits, thresholds and weights** from section D — as data appears.
 
-## F. Документы против кода (устаревшие утверждения)
+## F. Documents versus code (stale claims)
 
-**Закрыто 2026-10-02 (FDOC-001):** все перечисленные документы приведены к коду.
-Исторические записи не переписаны — там, где документ фиксировал состояние среды
-или решения этапа, добавлены пометки «устарело/выполнено позже» со ссылками.
-Строки оставлены как запись о том, где документы расходились с кодом.
+**Closed 2026-10-02 (FDOC-001):** all the listed documents were brought in line with the code.
+Historical records were not rewritten — where a document recorded the state of the environment
+or the decisions of a stage, «устарело/выполнено позже» [stale/done later] notes were added with references.
+The rows are kept as a record of where the documents diverged from the code.
 
-| Документ | Что утверждал | Что сделано |
+| Document | What it claimed | What was done |
 |---|---|---|
-| `docs/ARCHITECTURE.md:45,19,9-12` | «AI/profile/upload не реализованы»; «любой live/production флаг отклоняется»; «unit не имитируют идемпотентность» | Обновление ADR сверху + пометки «устарело 2026-10-02» по месту; решения ADR не менялись |
-| `docs/SAFETY_GATES.md:5-9` | CV / Paid AI / письма — «Не реализовано» | Колонка статуса переписана по факту; сами гейты не менялись, бета по-прежнему не допускается |
-| `README.md:9-10,32,139` | «auth, CV, реальные источники, платный AI не реализованы» | README приведён к фактическому состоянию (шапка, граница поставки, «что в коде», структура, проверки, CI) |
-| `AGENTS.md:22` | «No authentication, CV upload, live source, paid AI, financial ledger or worker yet» | Абзац «What exists» обновлён; правила файла не тронуты |
-| `reports/COVERAGE.md:11-15` | приватность/upload, бюджеты, письма — «Не реализовано» | Таблица переписана по факту; «не реализовано» осталось только у restore (SP-T22) |
-| `reports/DELIVERY.md:23-28` | lockfile не создан, lint/build/test:db не выполнялись | Среда подготовки помечена как снятая (установка и проверки выполнены, S0 принят); запись сохранена |
-| `docs/DEPENDENCIES.md:5-18` | нет строк для `next-auth@4.24.15` и `openai@7.23.0` | Строки добавлены с основаниями-решениями |
-| `src/server/ai/README.md:1-4` | «AI ещё не подключён, нет SDK и сетевых вызовов» | Исправлено ранее в B15 (BFIX-001) |
+| `docs/ARCHITECTURE.md:45,19,9-12` | «AI/profile/upload не реализованы» [AI/profile/upload are not implemented]; «любой live/production флаг отклоняется» [any live/production flag is rejected]; «unit не имитируют идемпотентность» [the unit tests do not simulate idempotency] | An ADR update at the top + «устарело 2026-10-02» [stale 2026-10-02] notes in place; the ADR decisions were not changed |
+| `docs/SAFETY_GATES.md:5-9` | CV / Paid AI / letters — «Не реализовано» [Not implemented] | The status column was rewritten to match the facts; the gates themselves were not changed, the beta is still not accepted |
+| `README.md:9-10,32,139` | «auth, CV, реальные источники, платный AI не реализованы» [auth, CV, real sources, paid AI are not implemented] | The README was brought to the actual state (header, delivery boundary, «что в коде» [what is in the code], structure, checks, CI) |
+| `AGENTS.md:22` | «No authentication, CV upload, live source, paid AI, financial ledger or worker yet» | The «What exists» paragraph was updated; the file's rules were not touched |
+| `reports/COVERAGE.md:11-15` | privacy/upload, budgets, letters — «Не реализовано» [Not implemented] | The table was rewritten to match the facts; «не реализовано» [not implemented] remains only for restore (SP-T22) |
+| `reports/DELIVERY.md:23-28` | the lockfile was not created, lint/build/test:db were not run | The preparation environment is marked as lifted (installation and checks performed, S0 accepted); the record is kept |
+| `docs/DEPENDENCIES.md:5-18` | there are no rows for `next-auth@4.24.15` and `openai@7.23.0` | The rows were added with decision-based justifications |
+| `src/server/ai/README.md:1-4` | «AI ещё не подключён, нет SDK и сетевых вызовов» [AI is not connected yet, there is no SDK and no network calls] | Fixed earlier in B15 (BFIX-001) |
 
-Дополнительно (вне таблицы): `START_HERE.md` получил шапку-статус — он остаётся
-архивной записью первого дня, но больше не выглядит как описание текущего кода.
+Additionally (outside the table): `START_HERE.md` received a status header — it remains
+an archived record of the first day, but no longer looks like a description of the current code.
 
 ---
 
-## G. Гигиена репозитория
+## G. Repository hygiene
 
-- ~~**Незакоммичено** (на ветке `feature/A1-golden-set-eval-harness`): решение №2 и
-  terms-fingerprint (с прошлой сессии), миграции 0016/0017, группа B (B1-001,
-  B1-002, B2-001) и решение №3, а также правка одной строки в `scripts/eval-shadow.ts`.
-  `npm run check` в дереве зелёный (229/229, biome, tsc).~~ — **закрыто
-  2026-10-01**: всё закоммичено (`48d991f`, `d3b992f`, `95501f9`) и отправлено в
-  `origin/main`; рабочее дерево `main` чистое (кроме игнорируемого `models/`), ветка
-  переименована в `main`. По отчёту последнего коммита: `check` 235/235, `test:db`
+- ~~**Uncommitted** (on the branch `feature/A1-golden-set-eval-harness`): decision No. 2 and
+  the terms fingerprint (from the previous session), migrations 0016/0017, group B (B1-001,
+  B1-002, B2-001) and decision No. 3, plus a one-line edit in `scripts/eval-shadow.ts`.
+  `npm run check` is green in the tree (229/229, biome, tsc).~~ — **closed
+  2026-10-01**: everything is committed (`48d991f`, `d3b992f`, `95501f9`) and pushed to
+  `origin/main`; the `main` working tree is clean (except the ignored `models/`), the branch
+  was renamed to `main`. Per the last commit's report: `check` 235/235, `test:db`
   55/55, `build` 0, `e2e` 96.
-- **`next-env.d.ts`** переписан Next при прогоне dev/e2e (`.next/types` →
-  `.next/dev/types`); файл генерируемый.
-- **Мёртвый экспорт и незаведённые скрипты**: см. B16, B17 — половина из них
-  обещает функциональность, которой нет (это и есть «заглушки»), половина просто
-  никому не нужна.
-- **Запись реестра миграций тестовой БД**: строка `0017_job_embeddings.sql` была
-  один раз удалена из `atlas_schema_migrations` изолированной тестовой БД, потому
-  что файл миграции правился уже после применения (миграция не выпущена). Рабочая
-  БД не затронута, 0017 к рабочей БД не применялась.
-- **Стоимость на диске**: `models/` ≈ 625 МБ (в `.gitignore`), `node_modules`
-  вырос на `@huggingface/transformers` + `onnxruntime-node` + `sharp`.
-- **`migrations/0005_import_attempts.sql`** назван «import_attempts», но такой
-  таблицы не создаёт — только добавляет колонки в `import_state`.
+- **`next-env.d.ts`** was rewritten by Next during a dev/e2e run (`.next/types` →
+  `.next/dev/types`); the file is generated.
+- **Dead exports and unwired scripts**: see B16, B17 — half of them
+  promise functionality that does not exist (these are precisely the «заглушки» [stubs]), half are simply
+  needed by no one.
+- **Test-DB migration registry entry**: the row `0017_job_embeddings.sql` was
+  deleted once from `atlas_schema_migrations` of the isolated test DB, because
+  the migration file was edited after it had already been applied (the migration is not released). The working
+  DB is not affected, 0017 was not applied to the working DB.
+- **Disk cost**: `models/` ≈ 625 MB (in `.gitignore`), `node_modules`
+  grew by `@huggingface/transformers` + `onnxruntime-node` + `sharp`.
+- **`migrations/0005_import_attempts.sql`** is named «import_attempts», but creates no such
+  table — it only adds columns to `import_state`.
 
 ---
 
-## H. Что сознательно не входит в этот список
+## H. What deliberately is not in this list
 
-B3 (реранкер — решение №3 принято; C0-ч.1 закрыта AI-006, вход **измерен 2026-10-04**
-([tasks/B3-001](../tasks/B3-001-reranker-input-measurement.md): лучший вход — порядок
-ранкера, «после RRF» не подтверждается); гранты `send_to_ai_provider` выданы AI-005;
-ждёт решений владельца — purpose, приватность профиля, квота/потолок (§9 доктрины
-решения №3)),
-B4 (NLI-пре-чек — **оценён 2026-10-04 с отрицательным результатом**:
-[tasks/B4-001](../tasks/B4-001-nli-precheck.md); пере-попытка — вместе с C2),
-C1 (LLM-извлечение полей — **ядро исполнено 2026-10-04**, purpose `extraction`
-одобрен; guarded-сервис + валидатор + запись с провенансом + CLI — см.
-[tasks/C1-001](../tasks/C1-001-llm-extraction.md); осталась проводка в pipeline и
-живой прогон), C2–C3 (LLM-фазы), D2/D5/D7
-(Rocchio/MMR, обученные EV, OPE), таксономия/фильтры Категории B источника,
-paid Bearer и affiliate у jobicy, OCR и AI-извлечение из CV, публичный деплой,
-ветка кода за пределами `src`/`scripts` вне репозитория. Это будущие фазы: они
-не были начаты и не выдавались за сделанные — в отличие от пунктов выше.
+B3 (reranker — decision No. 3 was taken; C0-part 1 is closed by AI-006, the input is **measured 2026-10-04**
+([tasks/B3-001](../tasks/B3-001-reranker-input-measurement.md): the best input is the ranker
+order, «после RRF» [after RRF] is not confirmed); the `send_to_ai_provider` grants were issued by AI-005;
+awaiting owner decisions — purpose, profile privacy, quota/ceiling (§9 of the doctrine of
+decision No. 3)),
+B4 (NLI pre-check — **evaluated 2026-10-04 with a negative result**:
+[tasks/B4-001](../tasks/B4-001-nli-precheck.md); a re-attempt — together with C2),
+C1 (LLM field extraction — **executed 2026-10-04** (C1-001 + C1-002), the purpose
+`extraction` was approved: validator + provenance record + guarded service + a pass
+wired into the worker and the import scripts; **the live run awaits the owner enabling
+`LIVE_AI_ENABLED`**; the CV part is a separate task), C2–C3 (LLM phases),
+D2/D5/D7
+(Rocchio/MMR, trained EV, OPE), source Category B taxonomy/filters,
+paid Bearer and affiliate at jobicy, OCR and AI extraction from CVs, public deploy,
+a branch of code outside `src`/`scripts` outside the repository. These are future phases: they
+were not started and were not passed off as done — unlike the items above.

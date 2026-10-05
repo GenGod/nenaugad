@@ -1,115 +1,125 @@
-# A6-002 — весовое понижение окрестности скрытого
+# A6-002 — weight demotion of the hidden job's neighborhood
 
-**Результат:** скрытая кандидатом вакансия больше не остаётся одиночным фактом:
-её окрестность (та же компания, тот же стек по справочнику A3) получает
-ограниченное понижение в ранжировании. Это вес, а не фильтр: вакансия
-опускается внутри своего уровня и никогда не исчезает из выдачи и не поднимается.
-Форма сигнала выбрана **измерением** на golden-наборе A1, а не на вкус.
+**Result:** a job hidden by the candidate is no longer a lone fact: its
+neighborhood (same company, same stack per the A3 dictionary) receives a
+bounded demotion in ranking. This is a weight, not a filter: the job sinks
+within its own level and never disappears from the feed nor rises. The shape of
+the signal was chosen by **measurement** on the A1 golden set, not by taste.
 
-**Не входит:** структурные фильтры «не показывать компанию X» (требуют решения
-владельца о reason-кодах скрытия и уточняющего UX), эмбеддинговая окрестность
-(B5), подключение слоя в продуктовую выдачу (это A9: теневой режим + guardrails),
-вторая часть «Rocchio/MMR» (D2).
+**Not included:** structural filters «never show company X» (they require an
+owner decision on hide reason codes and a refining UX pass), the embedding
+neighborhood (B5), wiring the layer into the product feed (that is A9: shadow
+mode + guardrails), the second part of «Rocchio/MMR» (D2).
 
-**Зависимости:** A1 (измерения), A4 (нормализация компании), A3 (справочник
-навыков), A6-001 (скрытие как источник сигнала).
+**Dependencies:** A1 (measurements), A4 (company normalization), A3 (skills
+dictionary), A6-001 (hiding as the signal source).
 
-## Что добавлено
+## What was added
 
-- `src/domain/negative-preference.ts` — `dislikedPosting(snapshot)` (компания +
-  канонические навыки), `preferenceDemotion(snapshot, disliked)` → 0 или
-  отрицательное число: та же компания −12 (нормализация A4: «Hidden Labs GmbH» =
-  «Hidden Labs»), общий стек ≥4 канонических навыков −6, потолок −12 (сигналы не
-  суммируются). Пустое нормализованное имя компании не совпадает ни с чем.
-  Детерминированно: нет часов, нет БД.
-- `src/domain/match-ranker.ts` — слой в ранкере: `RankerPreferences.disliked`,
-  поле `preference` в `RankedJob` для прозрачности, `RANKER_VERSION` → v3.
-  Варианты для замеров (`rankJobsWithout*`, `rankJobsBaselineV0`) не изменились.
-- `tests/unit/negative-preference.test.ts` — 6 тестов: компания/нормализация,
-  пустое имя компании, порог стека и алиасы, отсутствие накопления и потолок,
-  пара «скрытая → её двойник опускается ниже равного контроля (и никого не
-  поднимает)», и ратчет на наборе: с синтетическим скрытием двух keyword-trap
-  вакансий агрегат NDCG@10 не падает и ни один профиль не ухудшается.
+- `src/domain/negative-preference.ts` — `dislikedPosting(snapshot)` (company +
+  canonical skills), `preferenceDemotion(snapshot, disliked)` → 0 or a negative
+  number: same company −12 (A4 normalization: «Hidden Labs GmbH» = «Hidden
+  Labs»), a shared stack of ≥4 canonical skills −6, the cap −12 (signals do not
+  add up). An empty normalized company name matches nothing. Deterministic: no
+  clock, no DB.
+- `src/domain/match-ranker.ts` — a layer in the ranker:
+  `RankerPreferences.disliked`, the `preference` field in `RankedJob` for
+  transparency, `RANKER_VERSION` → v3. The measurement variants
+  (`rankJobsWithout*`, `rankJobsBaselineV0`) unchanged.
+- `tests/unit/negative-preference.test.ts` — 6 tests: company/normalization, an
+  empty company name, the stack threshold and aliases, no accumulation and the
+  cap, the pair «hidden → its twin sinks below an equal control (and lifts no
+  one)», and a set ratchet: with the synthetic hiding of two keyword-trap jobs
+  the aggregate NDCG@10 does not fall and no profile gets worse.
 
-## Измеренная форма сигнала (2026-09-29)
+## The measured shape of the signal (2026-09-29)
 
-Скрытие — синтетическое состояние (два keyword-trap вакансии `golden-j28/j29`,
-те самые, что в A2 названы ловушкой для наивного ранкера); оценки — рукописные
-грейды A1. Агрегат NDCG@10 без слоя — 0.916478.
+The hiding is a synthetic state (two keyword-trap jobs `golden-j28/j29`, the
+very ones called the trap for the naive ranker in A2); the grades are the
+handwritten A1 grades. The aggregate NDCG@10 without the layer is 0.916478.
 
-| форма сигнала | агрегат NDCG@10 | что видно |
+| signal shape | aggregate NDCG@10 | what is seen |
 |---|---:|---|
-| только компания | 0.926224 | безопасно, но узко |
-| компания + стек ≥2 | 0.919056 | **понижает релевантные** — порог слишком низкий |
-| компания + стек ≥3 | 0.919417 | всё ещё просадка на p-ru-ml (0.853 → 0.852) |
-| **компания + стек ≥4** | **0.930164** | лучший результат, ни один профиль не хуже |
-| только стек ≥3 | 0.916062 | хуже, чем без слоя вообще |
-| только стек ≥4 | 0.922670 | стек сам по себе слабее компании |
+| company only | 0.926224 | safe but narrow |
+| company + stack ≥2 | 0.919056 | **demotes relevant ones** — the threshold is too low |
+| company + stack ≥3 | 0.919417 | still a dip on p-ru-ml (0.853 → 0.852) |
+| **company + stack ≥4** | **0.930164** | best result, no profile worse |
+| stack only ≥3 | 0.916062 | worse than with no layer at all |
+| stack only ≥4 | 0.922670 | the stack alone is weaker than the company |
 
-Вывод: один общий навык — шум («JavaScript» есть почти везде), двух и трёх мало;
-соседство достоверно, только когда совпадает почти весь стек. Порог 4 — выбор по
-данным, зафиксирован константой и в комментарии модуля.
+Conclusion: one shared skill is noise («JavaScript» is almost everywhere), two
+and three are too few; a neighborhood is credible only when almost the whole
+stack matches. The threshold 4 is a data-driven choice, fixed as a constant and
+in the module comment.
 
-**Контроль (не дефект):** если скрыть сильно релевантную вакансию, её двойник
-опускается и NDCG против грейдов падает (0.916478 → 0.912827 на паре-близнеце
-A5) — это заявление самого кандидата, а не ошибка ранжирования; записано в
-комментарии модуля как известное свойство.
+**Control (not a defect):** if a highly relevant job is hidden, its twin sinks
+and NDCG against the grades falls (0.916478 → 0.912827 on the A5 twin pair) —
+this is the candidate's own statement, not a ranking error; recorded in the
+module comment as a known property.
 
-## Протокол V0–V6
+## Protocol V0–V6
 
-- **V0.** Отдельная задача (вторая часть пункта A6); схема БД не менялась.
-- **V1.** Ч.2 C2 перечитан: негативные предпочтения — сначала весовое понижение
-  окрестности, структурные фильтры запрещены без решения владельца. Подтверждено
-  по коду: `normalizeCompany` (A4) и `extractSkills` (A3) уже есть — новых
-  зависимостей и моделей нет (ADR-001 не нарушен).
-- **V2.** Принципы: понижение — не скрытие (обе вакансии остаются в выдаче;
-  тест), допуск не меняется (слой только меняет скор; guards в ратчете равны
-  базовым), сигналы одного кандидата берутся только из его собственного скрытия
-  (`hiddenSnapshotIds` владельческий, отдельный integration-тест A6-001/S2-002),
-  никаких эмбеддингов и «похожести» — только компания и словарь.
-- **V3.** `npm run check` → exit 0 (**176/176** unit, было 170; biome 165 файлов;
-  tsc чисто); `npm run eval:matching` → exit 0, ранкер v3, метрики не изменились
-  без предпочтений (R@5 0.742 · R@10 0.877 · NDCG@5 0.914 · NDCG@10 0.916 ·
-  MRR 1.000, guards 0/0); `npm run build` → exit 0. `test:db`/`test:e2e` — `not_run`:
-  схема и продуктовый путь не менялись (слой ещё не подключён к выдаче, A9).
-- **V4.** Специфичные для пункта случаи: компания и её правовая форма, пустое имя
-  компании, порог и алиасы, отсутствие накопления, пара «скрытая → двойник ниже
-  контроля», ратчет на наборе. Общие золотые (golden 9 — изоляция сигналов)
-  покрыты владельческими тестами скрытия и seen-set.
-- **V5.** Существующие тесты не ослаблены: в `matching-eval.test.ts` синтетическому
-  «degraded» ранкеру добавлено новое обязательное поле `preference` (0) — проверка
-  деградации не изменена; пороги A1 не двигались.
-- **V6.** Этот файл + запись в `IMPLEMENTATION_STATUS.md`.
+- **V0.** A separate task (the second part of item A6); the DB schema was not
+  changed.
+- **V1.** Part 2 C2 re-read: negative preferences — first a weight demotion of
+  the neighborhood; structural filters are forbidden without an owner decision.
+  Verified against the code: `normalizeCompany` (A4) and `extractSkills` (A3)
+  already exist — no new dependencies and models (ADR-001 not violated).
+- **V2.** Principles: demotion is not hiding (both jobs stay in the feed; a
+  test), the eligibility gate is unchanged (the layer only changes the score;
+  the guards in the ratchet equal the baseline), one candidate's signals come
+  only from their own hiding (`hiddenSnapshotIds` is owner-scoped, a separate
+  integration test A6-001/S2-002), no embeddings and no «similarity» — only
+  company and dictionary.
+- **V3.** `npm run check` → exit 0 (**176/176** unit, was 170; biome 165 files;
+  tsc clean); `npm run eval:matching` → exit 0, ranker v3, the metrics did not
+  change without preferences (R@5 0.742 · R@10 0.877 · NDCG@5 0.914 · NDCG@10
+  0.916 · MRR 1.000, guards 0/0); `npm run build` → exit 0.
+  `test:db`/`test:e2e` — `not_run`: the schema and the product path were not
+  changed (the layer is not yet wired into the feed, A9).
+- **V4.** Item-specific cases: a company and its legal form, an empty company
+  name, the threshold and aliases, no accumulation, the pair «hidden → the twin
+  below the control», a set ratchet. The common golden cases (golden 9 — signal
+  isolation) are covered by the owner-scoped hiding tests and the seen-set.
+- **V5.** Existing tests not weakened: in `matching-eval.test.ts` the synthetic
+  «degraded» ranker gained the new required field `preference` (0) — the
+  degradation check unchanged; the A1 thresholds were not moved.
+- **V6.** This file + an entry in `IMPLEMENTATION_STATUS.md`.
 
-## Циклы ремонта: 2/2 (лимит исчерпан, работа зелёная)
+## Repair cycles: 2/2 (limit exhausted, work green)
 
-1. Первый прогон новых unit-тестов: 4 падения, все — в ожиданиях тестов, а не в
-   слое (компания+стек дают −6 там, где я ждал 0; алиас `js` не резолвится, он
-   ambiguous в словаре A3; контроль в паре имел другой текст и потому другой
-   базовый скор). Гипотеза: тесты должны задавать сигналы явно и сравнивать скоры
-   с учётом базовой разницы. Подтвердилось.
-2. `tsc` упал в существующем `tests/unit/matching-eval.test.ts`: синтетический
-   degraded-ранкер строит `RankedJob` без нового поля `preference`. Гипотеза:
-   контракт расширился, синтетический ранкер обязан отдавать поле; проверка
-   деградации при этом не ослабляется. Подтвердилось.
+1. First run of the new unit tests: 4 failures, all in test expectations, not
+   in the layer (company+stack give −6 where I expected 0; the alias `js` does
+   not resolve, it is ambiguous in the A3 dictionary; the control in the pair
+   had different text and therefore a different base score). Hypothesis: the
+   tests must set the signals explicitly and compare scores accounting for the
+   base difference. Confirmed.
+2. `tsc` failed in the existing `tests/unit/matching-eval.test.ts`: the
+   synthetic degraded ranker builds a `RankedJob` without the new `preference`
+   field. Hypothesis: the contract widened, the synthetic ranker must return
+   the field; the degradation check is not weakened by this. Confirmed.
 
-## Ограничения
+## Limitations
 
-1. **Слой не подключён к продуктовой выдаче.** Продуктовый путь `/matched`
-   сортирует по AI-скору и в ранкер не ходит; подключение ранкера (теневой режим,
-   guardrails) — пункт A9. Сейчас слой измерен на golden-наборе и готов к
-   подключению, но пользователь его пока не наблюдает.
-2. Порог ≥4 и веса (−12/−6) выбраны на 34 синтетических вакансиях; это мало для
-   уверенного выбора. Значения зафиксированы константами и подлежат пересмотру с
-   ростом набора/данных (в т.ч. при переходе на эмбеддинговую окрестность, B5).
-3. Накопление сигналов намеренно запрещено (потолок −12), поэтому «много скрытий»
-   не превращается в структурный фильтр — это осознанное ограничение силы сигнала.
-4. `reason_code` скрытия не влияет на вес: «компания не интересна» и «не тот
-   стек» дают одинаковое понижение. Дифференциация по причинам — после решения
-   владельца о расширении reason-кодов.
+1. **The layer is not wired into the product feed.** The product path
+   `/matched` sorts by the AI score and does not call the ranker; wiring the
+   ranker in (shadow mode, guardrails) is item A9. The layer is currently
+   measured on the golden set and ready to be wired in, but the user does not
+   observe it yet.
+2. The threshold ≥4 and the weights (−12/−6) were chosen on 34 synthetic jobs;
+   that is too little for a confident choice. The values are fixed as constants
+   and are to be revisited as the set/data grows (including when moving to the
+   embedding neighborhood, B5).
+3. Signal accumulation is deliberately forbidden (the −12 cap), so «many
+   hidings» does not turn into a structural filter — this is a deliberate limit
+   on the signal's strength.
+4. The hide `reason_code` does not affect the weight: «компания не интересна»
+   and «не тот стек» give the same demotion. Differentiation by reason — after
+   an owner decision on extending the reason codes.
 
-## Риск и откат
+## Risk and rollback
 
-Риск обычный: чистая функция + слой ранкера, продуктовое поведение не менялось
-(слой не подключён). Откат — `git revert` коммита A6-002: ранкер возвращается к v2,
-golden-пороги A1 при этом остаются валидными (без предпочтений метрики совпадают).
+Ordinary risk: a pure function + a ranker layer; product behavior unchanged
+(the layer is not wired in). Rollback — `git revert` of the A6-002 commit: the
+ranker returns to v2, and the A1 golden thresholds remain valid (without
+preferences the metrics match).

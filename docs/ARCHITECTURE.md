@@ -1,77 +1,77 @@
-# ADR-001: маленький S0, не новая AI-платформа
+# ADR-001: a small S0, not a new AI platform
 
-**Обновление 2026-10-02 (FDOC-001).** Решения ADR в силе: один Next.js проект,
-Postgres — единственное хранилище, без vector DB-сервиса, model router, очередей и
-нового API-слоя. Но раздел «Сейчас» ниже описывает стартовый этап и устарел по факту:
-с тех пор появились auth и приватные профили (S2), импорт двух одобренных источников
-с worker'ом (S1), CV-интейк за флагом (S3), приватные письма (S4) и охраняемый
-AI-контур с расходным леджером (AI-001…AI-007; живые вызовы запрещены, пока
-`LIVE_AI_ENABLED` не `true`). Актуальное состояние — `IMPLEMENTATION_STATUS.md`,
-открытые недоделки — `docs/OPEN_GAPS.md`. Утверждения ниже, помеченные
-«устарело 2026-10-02», сохранены как запись решения, а не как описание кода.
+**Update 2026-10-02 (FDOC-001).** The ADR decisions stand: one Next.js project,
+Postgres as the only storage, without a vector DB service, model router, queues and
+a new API layer. But the «Сейчас» [Now] section below describes the starting stage and is stale in fact:
+since then auth and private profiles (S2), import of two approved sources
+with a worker (S1), CV intake behind a flag (S3), private letters (S4) and the guarded
+AI contour with a spending ledger (AI-001…AI-007; live calls are forbidden until
+`LIVE_AI_ENABLED` is `true`) have appeared. The current state is in `IMPLEMENTATION_STATUS.md`,
+the open gaps are in `docs/OPEN_GAPS.md`. The statements below marked
+«устарело 2026-10-02» [stale 2026-10-02] are kept as a record of the decision, not as a description of the code.
 
-## Решение
-Один Next.js App Router проект с TypeScript, встроенные server routes,
-PostgreSQL как будущий основной storage. В S0 fixture repository — default;
-PostgreSQL repository — явный опциональный локальный режим того же приложения.
-Клиентской авторизации, auth-заглушки, аккаунта «admin по умолчанию» нет.
+## Decision
+One Next.js App Router project with TypeScript, built-in server routes,
+PostgreSQL as the future main storage. In S0 the fixture repository is the default;
+the PostgreSQL repository is an explicit optional local mode of the same application.
+There is no client-side authorization, no auth stub, no «admin по умолчанию» [admin by default] account.
 
-Worker/очередь появляются при первой реальной фоновой задаче. Это не требует
-сейчас ставить Redis, Temporal или писать собственный универсальный планировщик.
-В S1 выбрать один готовый механизм согласно SP 1.0. Существующие unit-проверки
-не имитируют будущую распределённую идемпотентность. *(Устарело 2026-10-02:
-идемпотентность и атомарный резерв реализованы в `src/server/ai/spending.ts` и
-покрыты `tests/integration/ai-guards.test.ts`; worker S1-004 — один процесс,
-concurrency 1, как и решено здесь.)*
+A worker/queue appears with the first real background task. This does not require
+installing Redis or Temporal now, or writing one's own universal scheduler.
+In S1 choose one ready-made mechanism according to SP 1.0. The existing unit checks
+do not simulate future distributed idempotency. *(Stale 2026-10-02:
+idempotency and the atomic reserve are implemented in `src/server/ai/spending.ts` and
+covered by `tests/integration/ai-guards.test.ts`; worker S1-004 is one process,
+concurrency 1, as decided here.)*
 
-## Границы
-`domain` не импортирует Next, pg или provider SDK.
-`data` содержит только именованные синтетические примеры.
-`server/catalog-service` выбирает repository и не подставляет данные при сбое БД.
-`server-only` защищает Next-границу для серверных адаптеров.
-В server config любой live/production флаг отклоняется. Обхода в браузере нет.
-*(Устарело 2026-10-02: `UPLOADS_ENABLED=true` и `LIVE_AI_ENABLED=true` — явные
-локальные переключатели с решением владельца; production и неизвестные значения
-по-прежнему fail-closed (`src/server/config.ts`).)*
+## Boundaries
+`domain` does not import Next, pg or a provider SDK.
+`data` contains only named synthetic examples.
+`server/catalog-service` chooses the repository and does not substitute data when the DB fails.
+`server-only` protects the Next boundary for server adapters.
+In the server config any live/production flag is rejected. There is no bypass in the browser.
+*(Stale 2026-10-02: `UPLOADS_ENABLED=true` and `LIVE_AI_ENABLED=true` are explicit
+local switches with an owner decision; production and unknown values
+are still fail-closed (`src/server/config.ts`).)*
 
-`atlas_demo_jobs` хранит только synthetic. Это НЕ production canonical jobs.
-Source records, job variants, candidate/letter tables появляются по реальным
-контрактам в соответствующих задачах. Не мигрировать личные данные в эту таблицу.
+`atlas_demo_jobs` stores synthetic only. This is NOT production canonical jobs.
+Source records, job variants, candidate/letter tables appear according to the real
+contracts in the respective tasks. Do not migrate personal data into this table.
 
-## Почему не полноценный функционал сразу
-Сейчас нет рисков обработки реальных CV/писем, потому что нет соответствующих
-API и форм. Цена нулевая по application inference потому что нет transport.
-Это не доказательство готовности privacy/finance: до активации они реализуются
-и тестируются отдельно. `disabled.ts` всегда throw, а не недоделанный live client.
-*(Устарело 2026-10-02: CV-формы и письма реализованы (S3/S4) со своими гейтами;
-`disabled.ts` удалён — его роль занял шлюз `src/server/ai/gateway.ts`, который
-отказывает fail-closed до денег; скоринг и письма закрыты границей персональных
-данных до локальной модели, а не заглушкой.)*
+## Why not full functionality at once
+Right now there are no risks of processing real CVs/letters, because the corresponding
+API and forms do not exist. The cost is zero for application inference because there is no transport.
+This is not proof of privacy/finance readiness: before activation they are implemented
+and tested separately. `disabled.ts` always throws, and is not an unfinished live client.
+*(Stale 2026-10-02: CV forms and letters are implemented (S3/S4) with their own gates;
+`disabled.ts` was deleted — its role was taken by the gateway `src/server/ai/gateway.ts`, which
+refuses fail-closed before money; scoring and letters are closed by the personal data
+boundary until a local model, and not by a stub.)*
 
-## Что не выбрано
-Нет отдельного Fastify API, универсального gateway-сервиса, vector DB, model router,
-SSO-платформы, биллинга и публичного deploy. Нет mock-auth с опасным переходом в prod.
+## What was not chosen
+There is no separate Fastify API, universal gateway service, vector DB, model router,
+SSO platform, billing and public deploy. There is no mock-auth with a dangerous transition to prod.
 
-## Установка и воспроизводимость
-Точные direct versions получены из доступных официальных материалов/реестров.
-npm resolution в среде поставки недоступен. Реальный lockfile и peer dependency
-проверка — незавершённая часть S0, а не фиктивно выполненная работа.
-После первой принятой установки только `npm ci`; обновления — отдельные малые задачи.
+## Installation and reproducibility
+Exact direct versions were obtained from the available official materials/registries.
+npm resolution is unavailable in the delivery environment. The real lockfile and the peer dependency
+check are an unfinished part of S0, not work fictitiously performed.
+After the first accepted installation, only `npm ci`; updates are separate small tasks.
 
-## Поведение при ошибке
-Invalid search -> явное сообщение / API 400.
-DB unavailable -> сообщение / API 503, без fallback.
-Hidden or missing record -> 404, в том числе при прямом обращении.
-AI/profile/upload -> явно не реализованы, без передачи данных.
-*(Устарело 2026-10-02: реализованы и действуют по своим правилам — AI только через
-охраняемый шлюз (живые вызовы запрещены без `LIVE_AI_ENABLED=true`, скоринг и
-письма закрыты границей персональных данных), профиль — за auth и ownership,
-CV — за `UPLOADS_ENABLED` с гейтом на всех маршрутах; см. `docs/OPEN_GAPS.md`.)*
-`/api/health` — liveness, не readiness.
+## Behaviour on error
+Invalid search -> an explicit message / API 400.
+DB unavailable -> a message / API 503, without fallback.
+Hidden or missing record -> 404, including on direct access.
+AI/profile/upload -> explicitly not implemented, with no data transfer.
+*(Stale 2026-10-02: they are implemented and act by their own rules — AI only through the
+guarded gateway (live calls are forbidden without `LIVE_AI_ENABLED=true`, scoring and
+letters are closed by the personal data boundary), the profile behind auth and ownership,
+CV behind `UPLOADS_ENABLED` with a gate on all routes; see `docs/OPEN_GAPS.md`.)*
+`/api/health` is liveness, not readiness.
 
-## Ограничения UI
-Начальный UI на русском; архитектура не объявляет RU/EN runtime готовым.
-Текст не проходит через dangerous HTML, нет внешних логотипов или генеративных ссылок.
-CSP ограничивает local starter, но допускает inline scripts для Next; это не финальная
+## UI limitations
+The initial UI is in Russian; the architecture does not declare the RU/EN runtime ready.
+Text does not pass through dangerous HTML, there are no external logos or generative links.
+The CSP restricts the local starter, but allows inline scripts for Next; this is not the final
 production CSP. Return from detail currently goes to catalog root; exact scroll/filter
 restoration is a later UX task, not silently claimed implemented.

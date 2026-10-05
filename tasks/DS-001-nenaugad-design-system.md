@@ -1,40 +1,40 @@
-# DS-001 — Дизайн-система Ненаугад 1.3 в приложении (pixel-perfect + скриншотные тесты)
+# DS-001 — the Nenaugad design system 1.3 in the app (pixel-perfect + screenshot tests)
 
-> **Принято владельцем 2026-09-27.** Продолжение по той же задаче: расширение
-> покрытия — скриншотные состояния (unknown-география, пустая выдача, поиск,
-> ошибки валидации), unit-тесты целостности дизайн-системы (токены, спрайт,
-> замыкание `var()`), e2e-ассеты/заголовки/семантика.
+> **Accepted by the owner 2026-09-27.** Continuation under the same task: an expansion of
+> coverage — screenshot states (unknown geography, an empty feed, search,
+> validation errors), unit tests of design-system integrity (tokens, the sprite,
+> the `var()` closure), e2e assets/headings/semantics.
 
-## Результат и границы
-**ID / название:** DS-001 · Применение брендбука «Ненаугад» (Reference/Nenaugad, v1.3) к существующему приложению.
+## Result and boundaries
+**ID / title:** DS-001 · Applying the brandbook «Ненаугад» (Reference/Nenaugad, v1.3) to the existing app.
 
-**Пользовательский результат:** все существующие экраны приложения отображаются в утверждённой системе Ненаугад 1.3 — токены `--ng-*` (140), бренд (wordmark, favicon, голос), 64 SVG-иконки, компоненты и шаблоны экранов соответствуют автономной витрине `nenaugad-ui-kit.html`; визуальная регрессия зафиксирована скриншотными тестами Playwright (1440/390/320).
+**User-facing result:** all existing screens of the app are rendered in the approved Nenaugad 1.3 system — tokens `--ng-*` (140), brand (wordmark, favicon, voice), 64 SVG icons, components and screen templates match the standalone showcase `nenaugad-ui-kit.html`; visual regression is pinned by Playwright screenshot tests (1440/390/320).
 
-**Не входит:** переименование внутренних идентификаторов (`atlas-fixtures`, `ATLAS_ENV`, `globalThis.nenaugadSnapshotPool`, API, БД); новое поведение продукта (фильтры, диалоги, toasts, sticky apply-логика, тёмная тема); подключение шрифтовых файлов (стеки без файлов, CSP `font-src 'self'`); CL-модуль витрины `nenaugad-cover-letters.html` как отдельные экраны (редактор письма приводится к системе базовыми компонентами); демонстрационные страницы DS-витрины (kitbar/foundations/swatches) в приложении не воспроизводятся.
+**Not included:** renaming internal identifiers (`atlas-fixtures`, `ATLAS_ENV`, `globalThis.nenaugadSnapshotPool`, API, DB); new product behavior (filters, dialogs, toasts, sticky apply logic, a dark theme); connecting font files (stacks without files, CSP `font-src 'self'`); the CL module of the showcase `nenaugad-cover-letters.html` as separate screens (the letter editor is brought into the system with base components); the demo pages of the DS showcase (kitbar/foundations/swatches) are not reproduced in the app.
 
-**Контекст:** `Reference/Nenaugad/NENAUGAD_DESIGN_SYSTEM.md` (v1.3), `Reference/Nenaugad/MIGRATION.md`, `Reference/Nenaugad/START_HERE.md`, эталонный CSS извлечён в `.scratch/ng-extract/` (вне git). Приоритет: инварианты SP 1.0 → брендбук → витрина. Правило конфликта: «при конфликте screenshot с доменным правилом выбрать правило и зафиксировать исправление».
+**Context:** `Reference/Nenaugad/NENAUGAD_DESIGN_SYSTEM.md` (v1.3), `Reference/Nenaugad/MIGRATION.md`, `Reference/Nenaugad/START_HERE.md`, the reference CSS is extracted into `.scratch/ng-extract/` (outside git). Priority: SP 1.0 invariants → brandbook → showcase. Conflict rule: «при конфликте screenshot с доменным правилом выбрать правило и зафиксировать исправление» [when a screenshot conflicts with a domain rule, choose the rule and record the fix].
 
-**Риск:** низкий — локальная визуальная правка без изменения данных, прав и контрактов. Защита (guardrails, tokens:check, существующие e2e) сохраняется; тесты обновляются только вслед за изменённым DOM/копирайтом, не для «озеленения».
+**Risk:** low — a local visual change with no change to data, rights or contracts. The protection (guardrails, tokens:check, the existing e2e) stays; tests are updated only following the changed DOM/copy, not to "green" them.
 
-**Данные:** synthetic только. Никаких реальных CV, live AI, источников, deploy.
+**Data:** synthetic only. No real CVs, live AI, sources, deploy.
 
-## Приёмка
-1. `npm run tokens:check` зелёный: `src/app/tokens.css` генерируется из `docs/solo/context/nenaugad.tokens.json`, 140 токенов `--ng-*`, значения совпадают с витриной (132 унаследованных без изменения + 8 brand).
-2. `public/icons/nenaugad.sprite.svg` содержит 64 глифа из манифеста; `Icon`-компонент использует `<use href="/icons/nenaugad.sprite.svg#ng-<name>">`, декоративные — `aria-hidden`, без `dangerouslySetInnerHTML`; guardrails зелёные.
-3. Header: PNG-wordmark 208 px (176 mobile), tagline «Только удалённо», навигация «Вакансии / Сохранённое / Профиль» с `aria-current`, мобильная нижняя навигация с SVG-иконками (не unicode); favicon подключён.
-4. Экраны `/`, `/jobs`, `/jobs/[id]`, `/matched`, `/profile`, `/saved`, `/status`, `/login`, `/cv`, `/letters` используют классы/разметку витрины (`.wrap`, `.btn`, `.badge`, `.job-card`, `.context`, `.conditions`, `.empty`, `.banner` и т.д.); данные, честность состояний и внутренние идентификаторы не меняются.
-5. Display-слой переименован: «Ненаугад» в UI-копирайте, `display_name` источника фикстур; `source_id` и все внутренние ключи без изменений.
-6. Скриншотные тесты: `tests/e2e/visual.spec.ts`, базлайны в git; повторный прогон без изменений даёт 0 diff.
-7. `npm run check` и `npm run build` зелёные; существующие e2e-сценарии проходят с обновлёнными селекторами, отражающими новый DOM.
+## Acceptance
+1. `npm run tokens:check` green: `src/app/tokens.css` is generated from `docs/solo/context/nenaugad.tokens.json`, 140 `--ng-*` tokens, the values match the showcase (132 inherited unchanged + 8 brand).
+2. `public/icons/nenaugad.sprite.svg` contains 64 glyphs from the manifest; the `Icon` component uses `<use href="/icons/nenaugad.sprite.svg#ng-<name>">`, decorative ones — `aria-hidden`, no `dangerouslySetInnerHTML`; guardrails green.
+3. Header: a PNG wordmark 208 px (176 mobile), the tagline «Только удалённо», navigation «Вакансии / Сохранённое / Профиль» with `aria-current`, a mobile bottom navigation with SVG icons (not unicode); the favicon is connected.
+4. The screens `/`, `/jobs`, `/jobs/[id]`, `/matched`, `/profile`, `/saved`, `/status`, `/login`, `/cv`, `/letters` use the showcase classes/markup (`.wrap`, `.btn`, `.badge`, `.job-card`, `.context`, `.conditions`, `.empty`, `.banner` etc.); the data, the honesty of states and the internal identifiers do not change.
+5. The display layer is renamed: «Ненаугад» in the UI copy, the `display_name` of the fixture source; `source_id` and all internal keys unchanged.
+6. Screenshot tests: `tests/e2e/visual.spec.ts`, baselines in git; a repeated run without changes gives 0 diff.
+7. `npm run check` and `npm run build` green; the existing e2e scenarios pass with updated selectors reflecting the new DOM.
 
-**Задокументированные отклонения от витрины** (правило «домен важнее screenshot»):
-- Кнопка «Фильтры» из витрины не рисуется: у каталога нет фильтров кроме поиска; мёртвая кнопка нарушала бы честность UI.
-- Bookmark-иконка на карточках фикстур не ставится: сохранение работает только для снапшотов источников (API-контракт), у фикстур нет snapshotId.
-- Статус в «Сохранённом» — реальные действия (отметить отклик / вернуть), а не демо-select с пятью состояниями: личный прогресс меняется человеком, доступны только подтверждённые события.
-- Копирайт демо-полосы адаптирован к фактическому состоянию приложения (локальный AI/upload существуют, live выключен), а не скопирован с витрины.
+**Documented deviations from the showcase** (the "domain beats screenshot" rule):
+- The «Фильтры» button from the showcase is not drawn: the catalog has no filters besides search; a dead button would violate UI honesty.
+- The bookmark icon is not placed on fixture cards: saving works only for source snapshots (the API contract), fixtures have no snapshotId.
+- The status in «Сохранённое» is real actions (mark applied / return), not the demo select with five states: personal progress is changed by a human, only confirmed events are available.
+- The demo strip copy is adapted to the actual state of the app (local AI/upload exist, live is off), not copied from the showcase.
 
-## Допуски и лимиты
-Локальное кодирование и тесты в пределах рабочей среды; без расходов, новых зависимостей, deploy. Commit — на ветке `feature/nenaugad-design-system`, без push/merge. Расход coding-host: не виден (unknown). Исправления: максимум два цикла с новой гипотезой.
+## Eligibility gates and limits
+Local coding and tests within the workspace; no spend, no new dependencies, no deploy. Commit — on the `feature/nenaugad-design-system` branch, no push/merge. Coding-host spend: not visible (unknown). Fixes: at most two cycles with a new hypothesis.
 
-## Проверки и отчёт
-`npm run check:offline`, `npm run check`, `npm run build`, `npm run test:e2e` (включая visual). `test:db` не затронут (без изменений данных) — `not_run`. Отчёт — в `IMPLEMENTATION_STATUS.md`. Следующий шаг после приёмки: S3-002 (PDF-парсер) либо batch API test по S4-003.
+## Checks and report
+`npm run check:offline`, `npm run check`, `npm run build`, `npm run test:e2e` (visual included). `test:db` is untouched (no data changes) — `not_run`. The report goes into `IMPLEMENTATION_STATUS.md`. The next step after acceptance: S3-002 (the PDF parser) or the batch API test per S4-003.

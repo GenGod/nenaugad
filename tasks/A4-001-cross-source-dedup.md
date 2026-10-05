@@ -1,91 +1,92 @@
-# A4-001 — cross-source дедупликация (точные ключи)
+# A4-001 — cross-source deduplication (exact keys)
 
-**Результат:** одна вакансия, размещённая на двух досках, показывается одной
-карточкой; провенанс обоих источников сохранён (у каждого своя именованная
-ссылка). Дедупликация встроена в оба read-пути (каталог и подбор) и в проекцию
-карточек; в UI добавлена строка «Та же вакансия также на: …».
+**Result:** a job posted on two boards is shown as one card; the provenance of
+both sources is preserved (each keeps its own named link). Deduplication is built
+into both read paths (the catalog and matching) and into the card projection; the
+UI gained the line «Та же вакансия также на: …» ["The same job is also on: …"].
 
-**Не входит:** near-duplicate (MinHash/эмбеддинги — этап B5), слияние текстов
-разных копий (карточка всегда показывает текст одного источника), дедупликация
-синтетического каталога фикстур (один источник).
+**Out of scope:** near-duplicates (MinHash/embeddings — stage B5), merging the texts
+of different copies (a card always shows the text of one source), the deduplication
+of the synthetic fixture catalog (a single source).
 
-**Контекст:** [бриф](../docs/design/2026-09-27-matching-implementation-brief.md)
-(пункт A4); [исследование](../docs/research/2026-09-26-job-matching-research.md)
-ч.1 (дедупликация как структурная реальность: 50–80% записей в базах вакансий —
-дубликаты), ч.2 D2 (cross-lingual — этап B5).
+**Context:** [the brief](../docs/design/2026-09-27-matching-implementation-brief.md)
+(item A4); [the research](../docs/research/2026-09-26-job-matching-research.md)
+part 1 (deduplication as a structural reality: 50–80% of the records in job
+databases are duplicates), part 2 D2 (cross-lingual — stage B5).
 
-## Что добавлено
+## What was added
 
-- `src/domain/dedup.ts` — `dedupKey` (нормализованные компания + заголовок +
-  география), `normalizeCompany` (юридические формы: GmbH, Inc, LLC, Oy…),
-  `normalizeTitle` (маркеры вида `(m/f/d)`, `(fully remote)`), `choosePrimary`
-  (свежесть → полнота → детерминированный тай-брейк), `groupDuplicates`
-  (селектор снапшота явный — записи разных путей оборачивают снапшот по-разному).
-- `src/domain/snapshot-projection.ts` — `alsoListedAt` в проекции карточки,
-  `snapshotCatalogCards` группирует дубликаты; представитель выбирается **только
-  среди публикуемых** записей.
+- `src/domain/dedup.ts` — `dedupKey` (normalized company + title +
+  geography), `normalizeCompany` (legal forms: GmbH, Inc, LLC, Oy…),
+  `normalizeTitle` (markers like `(m/f/d)`, `(fully remote)`), `choosePrimary`
+  (freshness → completeness → a deterministic tie-break), `groupDuplicates`
+  (the snapshot selector is explicit — records from different paths wrap the snapshot differently).
+- `src/domain/snapshot-projection.ts` — `alsoListedAt` in the card projection,
+  `snapshotCatalogCards` groups the duplicates; the representative is chosen
+  **only among publishable** records.
 - `src/server/snapshot-catalog-service.ts`, `src/server/matching-service.ts` —
-  строки всех источников собираются, затем группируются; скрытие (hide)
-  применяется ко всей группе (кандидат сказал «не эта вакансия», а не «не эта её
-  копия»).
-- `src/components/snapshot-card.tsx` — строка провенанса с ссылками на другие
-  доски (атрибуция не теряется при дедупликации).
-- `tests/unit/dedup.test.ts` — 8 тестов.
+  the rows of all sources are collected, then grouped; hiding (hide) is applied
+  to the whole group (the candidate said "not this job", not "not this
+  copy of it").
+- `src/components/snapshot-card.tsx` — the provenance line with links to the other
+  boards (attribution is not lost to deduplication).
+- `tests/unit/dedup.test.ts` — 8 tests.
 
-## Ключевые решения (и почему)
+## Key decisions (and why)
 
-1. **География в ключе.** Тот же заголовок той же компании с другой зоной найма —
-   это другая возможность; молчаливое расширение/сужение географии сломало бы
-   правило допуска. Near-miss («Senior Backend Engineer» vs «Backend Engineer»)
-   сознательно НЕ сливается: пропустить дубликат безопаснее, чем спрятать вторую
-   реальную вакансию.
-2. **Публикуемость важнее свежести.** Найдено при ревью собственной логики: более
-   свежая, но непроверенная копия не должна прятать подтверждённую. Представитель
-   группы выбирается среди записей, прошедших гейт; есть тест.
-3. **Источник, который нельзя публиковать, нельзя и рекламировать** — он не
-   попадает и в список провенанса.
-4. **Тексты не сливаются**: карточка — это текст одного источника, остальные
-   перечислены ссылками.
+1. **Geography in the key.** The same title of the same company with a different
+   hiring zone is a different opportunity; silently widening/narrowing the
+   geography would break the eligibility gate rule. A near-miss ("Senior Backend
+   Engineer" vs "Backend Engineer") is deliberately NOT merged: letting a
+   duplicate through is safer than hiding a second real job.
+2. **Publishability beats freshness.** Found during the review of my own logic: a
+   fresher but unverified copy must not hide a confirmed one. The group's
+   representative is chosen among the records that passed the gate; there is a test.
+3. **A source that must not be published must not be advertised either** — it
+   does not get into the provenance list either.
+4. **Texts are not merged**: a card is the text of one source; the rest are
+   listed as links.
 
-## Протокол V0–V6
+## V0–V6 protocol
 
-- **V0.** Отдельная задача; схема БД не менялась (дедуп — домен + проекция).
-- **V1.** Пункт A4 перечитан; подтверждено, что дедуп должен стоять до матчинга и
-  до метрик (иначе CTR/метрики размазываются по копиям).
-- **V2.** Принципы: атрибуция и backlink сохранены у каждого источника (тест);
-  география не «расширяется» молча (тест); hide действует на всю группу;
-  непроверенная копия не понижает подтверждённую (тест); тексты не смешиваются.
-- **V3.** `npm run check` → exit 0 (154/154 unit, biome 151 файл, tsc);
-  `npm run build` → exit 0; `npm run eval:matching` → exit 0, метрики не
-  изменились (0.910/0.943) — дедуп в харнесс не входит. `test:db` и `test:e2e` —
-  `not_run`: схема/UI-контракты не менялись, кроме добавленной строки в карточке
-  (в e2e-конфигурации снапшот-каталог пуст — фикстурный бэкенд).
-- **V4.** Golden-случай 6 брифа: «одна вакансия на himalayas и jobicy → одна
-  карточка, оба backlink сохранены» — покрыт тестом проекции
+- **V0.** A separate task; the DB schema was not changed (dedup is domain + projection).
+- **V1.** Item A4 was re-read; confirmed that dedup must sit before matching and
+  before the metrics (otherwise CTR/the metrics get smeared across the copies).
+- **V2.** Principles: attribution and the backlink are preserved for each source (test);
+  geography is not silently "widened" (test); hide acts on the whole group;
+  an unverified copy does not demote a confirmed one (test); texts are not mixed.
+- **V3.** `npm run check` → exit 0 (154/154 unit, biome 151 files, tsc);
+  `npm run build` → exit 0; `npm run eval:matching` → exit 0, the metrics did not
+  change (0.910/0.943) — dedup is not part of the harness. `test:db` and `test:e2e` —
+  `not_run`: the schema/UI contracts were not changed, apart from the added line in the
+  card (in the e2e configuration the snapshot catalog is empty — the fixture backend).
+- **V4.** Golden case 6 of the brief: «одна вакансия на himalayas и jobicy → одна
+  карточка, оба backlink сохранены» ["one job on himalayas and jobicy → one card,
+  both backlinks preserved"] — covered by the projection test
   (`projection: one card per posting with both source backlinks preserved`).
-- **V5.** Существующий тест `acceptance 7` сначала упал (та же ошибка селектора) и
-  прошёл после исправления; его утверждения не менялись. Пороги не двигались.
-- **V6.** Этот файл + запись в `IMPLEMENTATION_STATUS.md`.
+- **V5.** The existing `acceptance 7` test first failed (the same selector error) and
+  passed after the fix; its assertions were not changed. The thresholds were not moved.
+- **V6.** This file + the entry in `IMPLEMENTATION_STATUS.md`.
 
-## Циклы ремонта: 3 (лимит 2 — превышен на один, сообщаю явно)
+## Repair cycles: 3 (the limit is 2 — exceeded by one, reporting it explicitly)
 
-1. Первый `npm run check`: падение 3 тестов (`TypeError: Cannot read properties of
-   undefined`) — гипотеза: дженерик дедупа ожидал `snapshot` на верхнем уровне, а
-   записи read-путей держат его в `stored`; явный селектор снапшота это чинит.
-   Подтвердилось (2 из 3 падений ушли).
-2. Второй `check`: падение одного теста — гипотеза: ошибка в моём ожидании
-   (я считал himalayas-запись свежее, чем она была в фикстуре); исправление
-   фикстуры, а не поведения. Подтвердилось.
-3. Третий `check`: тесты зелёные, `tsc` упал в новом тест-файле (`baseJob`
-   possibly undefined и readonly-модель объекта). Правка тест-файла, поведение не
-   менялось.
-   **Третий раунд — сверх лимита.** Повторяющихся падений без новых данных не
-   было (каждый раз другая причина в новом коде), но правило счётчика
-   формально нарушено; фиксирую это, а не переписываю историю. Впредь для задач
-   такого размера корректнее прогонять `typecheck` до полного `check`.
+1. The first `npm run check`: 3 tests failed (`TypeError: Cannot read properties of
+   undefined`) — hypothesis: the dedup generic expected `snapshot` at the top level,
+   while the read-path records keep it in `stored`; an explicit snapshot selector
+   fixes that. Confirmed (2 of the 3 failures went away).
+2. The second `check`: one test failed — hypothesis: an error in my expectation
+   (I believed the himalayas record was fresher than it was in the fixture); a
+   fixture fix, not a behavior fix. Confirmed.
+3. The third `check`: the tests green, `tsc` failed in the new test file (`baseJob`
+   possibly undefined and the readonly shape of the object). A test-file edit; the
+   behavior was not changed.
+   **The third round is over the limit.** There were no repeated failures without
+   new data (each time a different cause in new code), but the counter rule is
+   formally violated; I record this rather than rewrite history. Going forward, for
+   tasks of this size it is more correct to run `typecheck` before the full `check`.
 
-## Риск и откат
+## Risk and rollback
 
-Риск обычный: домен и проекция, продуктовое поведение меняется только для
-случая дубликатов (в текущем каталоге их нет — оба источника наполняются
-разными записями). Откат — `git revert` коммита A4; ветка не слита.
+Ordinary risk: domain and projection; product behavior changes only for the
+duplicate case (the current catalog has none — both sources are filled with
+different records). Rollback — `git revert` of the A4 commit; the branch is not merged.

@@ -1,118 +1,125 @@
-# C0-002 — AI-границы, часть 2: свойство-тесты и пакет purposes
+# C0-002 — AI boundaries, part 2: property tests and the purposes package
 
-**Статус: исполнена в незаблокированной части (implemented), 2026-10-04.** Часть 1
-C0 исполнена ранее (AI-006). Часть 2 брифа распадается на три куска: (а) «убедиться по
-коду, что ownership, atomic budget reservation, персистентные счётчики, deadline,
-uncertain billing, cancellation, commit-time revalidation покрывают вызовы; тесты
-каждого свойства» — исполнено здесь; (б) новые purposes — «каждый отдельно одобряется
-владельцем», пакет ниже; (в) пересмотр квоты/потолка — решение владельца.
+**Status: done in the unblocked part (implemented), 2026-10-04.** Part 1 of C0
+was done earlier (AI-006). Part 2 of the brief splits into three pieces: (a) «make
+sure from the code that ownership, atomic budget reservation, persistent counters,
+deadline, uncertain billing, cancellation, commit-time revalidation cover the
+calls; tests of each property» — done here; (b) new purposes — «each one is
+approved separately by the owner», the package below; (c) the quota/ceiling
+review — an owner decision.
 
-## Часть 1 — перепроверена по коду (не по памяти)
+## Part 1 — re-verified against the code (not from memory)
 
-- `gateway.ts:74` — whitelist purposes проверяется **до** любого движения денег
-  (`isPurposeApproved` → `PurposeNotApprovedError`), тест golden-10-случая ниже.
-- Батч-путь: AI-006 закрыт вариантом «отключить до завода» — `openai-batch.ts` без
-  импорта SDK, `BATCH_DISABLED` + `BATCH_DISABLED_REASON`, роут отвечает 503 с планом
-  повторного включения; дыра mapping `custom_id → snapshot_id` закрыта вместе с путём.
-- Аудит раздела A инвентаря (AI-004…AI-007) закрыт; `LIVE_AI_ENABLED` — выключатель
-  шлюза (тест «с флагом off отказ до денег»).
+- `gateway.ts:74` — the purposes whitelist is checked **before** any movement of
+  money (`isPurposeApproved` → `PurposeNotApprovedError`); the golden-10-case
+  test is below.
+- Batch path: AI-006 was closed with the «disable until production» option —
+  `openai-batch.ts` with no SDK import, `BATCH_DISABLED` + `BATCH_DISABLED_REASON`,
+  the route answers 503 with a re-enablement plan; the `custom_id → snapshot_id`
+  mapping hole is closed together with the path.
+- The inventory section A audit (AI-004…AI-007) is closed; `LIVE_AI_ENABLED` is the
+  gateway kill switch (the «with the flag off, refusal before money» test).
 
-## Аудит свойств: свойство → где обеспечено → тест
+## Property audit: property → where enforced → test
 
-| Свойство | Обеспечено | Тест |
+| Property | Where enforced | Test |
 |---|---|---|
-| Ownership | все запросы spending скоупятся `owner_id` (reserve/begin/settle/cancel/get) | **новый**: чужой владелец не читает/settle/cancel (OPERATION_NOT_FOUND); свой — не тронут |
-| Atomic budget reservation | `FOR UPDATE` на `ai_budgets` + условный UPDATE held | «concurrent callers cannot double-spend the remainder» |
-| Персистентные счётчики попыток | `beginAttempt`: `attempt_count < MAX_ATTEMPTS` в SQL | «attempt counter is persistent…» (+ ATTEMPTS_EXHAUSTED) |
-| Deadline | `beginAttempt`: `deadline_at > now`; отдельный тест | «deadline expiry and uncertain hold semantics» (DEADLINE_EXPIRED) |
-| Uncertain billing | `markUncertain` (status-guarded), холд удерживается; снятие — `npm run ai:holds` | «…uncertain hold semantics» + «…the mock transport path settles honestly» |
-| Cancellation | `cancelOperation` (status-guarded, освобождает холд) | «settlement converts the hold; cancel releases it; the kill switch…» |
-| Commit-time revalidation | `settleOperation`: статус ∈ {in_flight, uncertain} иначе WRONG_STATE; `cancelOperation`: settled/cancelled → WRONG_STATE | **новый**: cancelled→settle WRONG_STATE; settled→cancel WRONG_STATE |
-| Kill switch | `executeGuardedOperation`: `liveAi` первым | «live AI switch: with the flag off the gateway refuses before any money moves» |
-| Квота владельца | `reserveBudget` сверяет owner-бюджет | «registration provisions the owner's quota…missing owner budget» + **новый**: исчерпание settled-тратами |
-| Потолок операции | `gateway`: `worstCase > operationCeiling` → отказ | «operation ceiling: a reservation above one cent is refused» |
-| Граница персональных данных | `personal-data-boundary.ts` (см. пакет ниже) | unit-тесты границы (существующие) |
+| Ownership | all spending queries are scoped by `owner_id` (reserve/begin/settle/cancel/get) | **new**: a foreign owner cannot read/settle/cancel (OPERATION_NOT_FOUND); one's own is untouched |
+| Atomic budget reservation | `FOR UPDATE` on `ai_budgets` + a conditional UPDATE of held | «concurrent callers cannot double-spend the remainder» |
+| Persistent attempt counters | `beginAttempt`: `attempt_count < MAX_ATTEMPTS` in SQL | «attempt counter is persistent…» (+ ATTEMPTS_EXHAUSTED) |
+| Deadline | `beginAttempt`: `deadline_at > now`; a separate test | «deadline expiry and uncertain hold semantics» (DEADLINE_EXPIRED) |
+| Uncertain billing | `markUncertain` (status-guarded), the hold is kept; release — `npm run ai:holds` | «…uncertain hold semantics» + «…the mock transport path settles honestly» |
+| Cancellation | `cancelOperation` (status-guarded, releases the hold) | «settlement converts the hold; cancel releases it; the kill switch…» |
+| Commit-time revalidation | `settleOperation`: status ∈ {in_flight, uncertain} otherwise WRONG_STATE; `cancelOperation`: settled/cancelled → WRONG_STATE | **new**: cancelled→settle WRONG_STATE; settled→cancel WRONG_STATE |
+| Kill switch | `executeGuardedOperation`: `liveAi` first | «live AI switch: with the flag off the gateway refuses before any money moves» |
+| Owner quota | `reserveBudget` checks the owner budget | «registration provisions the owner's quota…missing owner budget» + **new**: exhaustion by settled spend |
+| Operation ceiling | `gateway`: `worstCase > operationCeiling` → refusal | «operation ceiling: a reservation above one cent is refused» |
+| Personal-data boundary | `personal-data-boundary.ts` (see the package below) | boundary unit tests (existing) |
 
-**Добавлено 4 теста** в `tests/integration/ai-guards.test.ts`: изоляция владельцев,
-двусторонний WRONG_STATE (commit-time revalidation), исчерпание квоты владельца
-(не только «строка отсутствует»), и документированная граница «deadline останавливает
-новые шаги, но не блокирует settle уже отправленного вызова».
+**4 tests added** to `tests/integration/ai-guards.test.ts`: owner isolation,
+two-sided WRONG_STATE (commit-time revalidation), owner quota exhaustion
+(not only «the row is missing»), and the documented boundary «deadline stops
+new steps but does not block settling an already-sent call».
 
-## Золотой 10 (общий список брифа §4) — держится
+## Golden 10 (the brief's common list, §4) — holds
 
-Формулировка пункта: «Любой AI-вызов — включая существующий путь job_matching и новые
-purposes фазы C — вне одобренного purpose/бюджета → fail-closed отказ (сегодня
-batch-путь это условие нарушает — см. C0)». Нарушитель (batch) закрыт; тесты: отказ
-неодобренного purpose **до** денег (0 строк операций, 0 held), kill switch, потолок
-операции, бюджеты, uncertain без слепого ретрая. (V5) safety-тесты писем не тронуты;
-`npm run guardrails` зелёный.
+The clause reads: «Any AI call — including the existing job_matching path and the
+new phase C purposes — outside an approved purpose/budget → fail-closed refusal
+(today the batch path violates this condition — see C0)». The violator (batch) is
+closed; tests: refusal of an unapproved purpose **before** money (0 operation
+rows, 0 held), the kill switch, the operation ceiling, budgets, uncertain without
+blind retry. (V5) letter safety tests untouched; `npm run guardrails` green.
 
-## Пакет решений владельца: purposes фазы C
+## Owner decision package: phase C purposes
 
-**Поправка по коду (проверено 2026-10-04):** право источников
-`send_to_ai_provider` **уже выдано** всем трём источникам решением владельца
-2026-10-01 (AI-005, `source-policies.ts:38,102,170`); ранние документы (доктрина №3
-§4.3, задача B3-001) называли его blocked — исправлено в обоих. Квота владельца
-поднята до **$1/мес** (тоже 2026-10-01); потолок операции **1 цент** не менялся;
-глобальный бюджет среды **$10**. Цены: вход **$0.10/MTok**, выход **$0.50/MTok**
-(`provider.ts`, проверены 2026-09-25).
+**Correction against the code (verified 2026-10-04):** the source right
+`send_to_ai_provider` **has already been granted** to all three sources by the
+owner decision of 2026-10-01 (AI-005, `source-policies.ts:38,102,170`); earlier
+documents (doctrine №3 §4.3, task B3-001) called it blocked — corrected in both.
+The owner quota was raised to **$1/mo** (also 2026-10-01); the operation ceiling
+**1 cent** was not changed; the environment's global budget is **$10**. Prices:
+input **$0.10/MTok**, output **$0.50/MTok** (`provider.ts`, verified 2026-09-25).
 
-| Purpose | Для чего | Данные, покидающие контур | Граница ПД | task_type | Оценка цены | Что требуется |
+| Purpose | For what | Data leaving the contour | Personal-data boundary | task_type | Cost estimate | What is required |
 |---|---|---|---|---|---|---|
-| `extraction` (C1) | поля вакансии из текста | только текст вакансии | **совместим** (`buildJobOnlyPrompt`) | `job_extraction` существует (лимит 2 попытки) | ≈0.03 цента/пост (1.7k вход + ~300 выход) — потолок 1 цент покрывает ~30 постов | решение владельца о purpose + запись в whitelist |
-| `dedup-confirm` (C5) | подтверждение пары near-dup | два текста вакансий | **совместим** | нового нет → миграция task_type | ≈0.06 цента/пара (2×1.5k вход) | purpose + миграция task_type + лимит попыток |
-| `matching-scoring` (C2) | рубрика «подходит» для топ-K | **факты кандидата** (профиль) | **отказывает** (`PURPOSES_NEEDING_CANDIDATE_FACTS`) | `job_matching` существует | ≈0.7–0.94 цента/выдача топ-50 — потолок 1 цент почти весь; квота $1 → ≈106–147 выдач/мес | узкое прочтение §4.4 доктрины №3 (владелец) ИЛИ локальная модель; затем purpose + возможный пересмотр потолка |
-| `hyde` (research A2) | гипотетическая вакансия из резюме | **резюме кандидата** | **отказывает** | нового нет → миграция | вход-доминанта ≈0.02 цента/резюме | то же решение о приватности + purpose + миграция |
-| `eval-judge` (C6) | судейство пар вакансия↔профиль | **факты кандидата** | **отказывает** | нового нет → миграция | ≈0.1–0.2 цента/пару | то же решение о приватности + purpose + миграция |
+| `extraction` (C1) | job fields from text | only the job text | **compatible** (`buildJobOnlyPrompt`) | `job_extraction` exists (limit 2 attempts) | ≈0.03 cents/post (1.7k input + ~300 output) — the 1-cent ceiling covers ~30 posts | owner decision on the purpose + a whitelist entry |
+| `dedup-confirm` (C5) | confirming a near-dup pair | two job texts | **compatible** | none new → task_type migration | ≈0.06 cents/pair (2×1.5k input) | purpose + task_type migration + attempt limit |
+| `matching-scoring` (C2) | the «подходит» rubric for top-K | **candidate facts** (profile) | **refuses** (`PURPOSES_NEEDING_CANDIDATE_FACTS`) | `job_matching` exists | ≈0.7–0.94 cents per top-50 feed — nearly the whole 1-cent ceiling; the $1 quota → ≈106–147 feeds/mo | a narrow reading of doctrine №3 §4.4 (owner) OR a local model; then purpose + a possible ceiling revision |
+| `hyde` (research A2) | a hypothetical job from a CV | **the candidate's CV** | **refuses** | none new → migration | input-dominated ≈0.02 cents/CV | the same privacy decision + purpose + migration |
+| `eval-judge` (C6) | judging job↔profile pairs | **candidate facts** | **refuses** | none new → migration | ≈0.1–0.2 cents/pair | the same privacy decision + purpose + migration |
 
-Честная рамка: два purposes (job-only) совместимы с границей уже сегодня и требуют
-только записи в whitelist (+миграция для `dedup-confirm`); три остальных упираются в
-**одно** решение владельца — §4.4 доктрины №3 («допускаем ли передачу фактов профиля
-третьей стороне»), и это решение переиспользуется здесь, а не решается заново.
-Ни одна строка этих purposes в код не добавлена: whitelist и есть механизм одобрения.
+Honest framing: two purposes (job-only) are compatible with the boundary today and
+need only a whitelist entry (+ a migration for `dedup-confirm`); the other three
+run into **one** owner decision — doctrine №3 §4.4 («do we allow transferring
+profile facts to a third party»), and that decision is reused here rather than
+decided anew. Not a single line of these purposes was added to the code: the
+whitelist is the approval mechanism.
 
-## Проверки
+## Checks
 
-`npm run test:db` — **62/62** (+4 новых свойства-теста); `npm run check` — зелёный;
-продуктовый код не менялся (только тесты + документы), `build`/`e2e` не затронуты —
-зафиксировано честно.
+`npm run test:db` — **62/62** (+4 new property tests); `npm run check` — green;
+product code unchanged (tests + documents only), `build`/`e2e` untouched —
+recorded honestly.
 
-## Откат
+## Rollback
 
-Удалить 4 теста (diff тривиален); продуктовое поведение не менялось. Пакет purposes —
-документ; отзыв решения = не добавлять запись в whitelist.
+Delete the 4 tests (the diff is trivial); product behavior unchanged. The purposes
+package is a document; revoking the decision = not adding a whitelist entry.
 
-## Следующий шаг
+## Next step
 
-Решения владельца из пакета (минимум: `extraction` как первый job-only purpose —
-он открывает C1). Либо, до решений, любая C-строка, не требующая передачи данных
-наружу.
+The owner decisions from the package (minimum: `extraction` as the first job-only
+purpose — it unlocks C1). Or, before the decisions, any C-line that does not
+require sending data outward.
 
-## Решение владельца и его исполнение (2026-10-04)
+## Owner decision and its execution (2026-10-04)
 
-**Решение (дословно):** «одобряю purpose extraction» — по пакету выше: job-only
-извлечение полей вакансии из её текста, ≈0.03 цента/пост, данные кандидата не
-покидают контур.
+**Decision (verbatim):** «одобряю purpose extraction» [“I approve the extraction
+purpose”] — per the package above: job-only extraction of job fields from the
+job's text, ≈0.03 cents/post, candidate data does not leave the contour.
 
-**Исполнено в тот же момент (whitelist — и есть механизм одобрения):**
-- `provider.ts`: `ApprovedPurpose` и `approvedPurposes` расширены значением
-  `extraction` с записью даты и цены; заодно исправлено устаревшее утверждение в
-  комментарии («`send_to_ai_provider` denied у всех» — выдан 2026-10-01, AI-005);
-- `gateway.ts`: `PURPOSE_TASK_TYPE.extraction = "job_extraction"` — маппинг
-  purpose→бакет остаётся шлюзовым: вызов не может занять чужой счётчик попыток;
-- `personal-data-boundary.ts`: `extraction: false` — **явная запись** пройденного
-  review (только текст вакансии, через единственный разрешённый конструктор
-  `buildJobOnlyPrompt`), а не отсутствие строки;
-- тесты: unit-обновления (whitelist — три purpose; граница — `extraction` не
-  бросает), интеграционный — одобренный `extraction` проводится через шлюз с
-  mock-транспортом, операция садится в `job_extraction`, settle'ится, и соседний
-  неодобренный `cv_extraction` по-прежнему отказывает до денег.
+**Executed the same moment (the whitelist is the approval mechanism):**
+- `provider.ts`: `ApprovedPurpose` and `approvedPurposes` extended with the
+  `extraction` value, recording the date and price; an outdated claim in a
+  comment was also fixed («`send_to_ai_provider` denied for all» — it was
+  granted 2026-10-01, AI-005);
+- `gateway.ts`: `PURPOSE_TASK_TYPE.extraction = "job_extraction"` — the
+  purpose→bucket mapping stays in the gateway: a call cannot take over someone
+  else's attempt counter;
+- `personal-data-boundary.ts`: `extraction: false` — an **explicit record** of
+  the passed review (job text only, via the single permitted constructor
+  `buildJobOnlyPrompt`), not an absent row;
+- tests: unit updates (the whitelist — three purposes; the boundary —
+  `extraction` does not throw); integration — an approved `extraction` goes
+  through the gateway with the mock transport, the operation lands in
+  `job_extraction`, settles, and a neighboring unapproved `cv_extraction` still
+  refuses before money.
 
-**Что это НЕ включает (честно):** вызывающего кода для extraction нет — это C1;
-`LIVE_AI_ENABLED=false` по-прежнему останавливает любой реальный вызов первым
-чекпоинтом шлюза; потолок операции 1 цент и квоты не менялись — C1 обязан чанковать
-(≈30 постов на операцию при потолке); транспорту может уходить только
-`buildJobOnlyPrompt`-промпт.
+**What this does NOT include (honestly):** there is no calling code for
+extraction yet — that is C1; `LIVE_AI_ENABLED=false` still stops any real call
+at the gateway's first checkpoint; the 1-cent operation ceiling and the quotas
+were not changed — C1 must chunk (≈30 posts per operation at the ceiling);
+only a `buildJobOnlyPrompt` prompt may go to the transport.
 
-**Проверки:** unit **263/263**, `test:db` **63/63**, `check` + `guardrails` —
-зелёные.
+**Checks:** unit **263/263**, `test:db` **63/63**, `check` + `guardrails` —
+green.

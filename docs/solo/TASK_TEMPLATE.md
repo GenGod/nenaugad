@@ -1,52 +1,52 @@
-# Шаблон задачи Nenaugad
+# Nenaugad task template
 
-Используй существующий issue/tracker или один файл задачи. Новый инструмент не нужен.
+Use the existing issue/tracker or a single task file. No new tool is needed.
 
-## Результат и границы
-**ID / название:**  
-**Пользовательский результат:** одно проверяемое действие/сценарий.  
-**Не входит:** 2–4 явные границы.  
-**Контекст:** настоящие пути, имеющаяся реализация, нужные разделы SP/ТЗ/Atlas/CL.  
-**Риск:** низкий / обычный / высокий; причина.  
-**Данные:** synthetic / разрешённые реальные; что нельзя читать или передавать.
+## Result and boundaries
+**ID / name:**  
+**User result:** one verifiable action/scenario.  
+**Not included:** 2–4 explicit boundaries.  
+**Context:** real paths, the existing implementation, the needed sections of SP/ТЗ/Atlas/CL.  
+**Risk:** low / ordinary / high; the reason.  
+**Data:** synthetic / permitted real; what must not be read or transferred.
 
-## Приёмка и реализация
-3–7 наблюдаемых условий. Для приватной/платной функции — отрицательная проверка и сценарий сбоя.
-Короткий план; допустимые области изменений; зависимости; способ выключения/отката.
-Ожидания фиксируются до кода, а не подгоняются под результат.
+## Acceptance and implementation
+3–7 observable conditions. For a private/paid feature — a negative check and a failure scenario.
+A short plan; permissible areas of change; dependencies; a way to disable/roll back.
+Expectations are fixed before the code, and are not adjusted to match the result.
 
-## Допуски и лимиты
-Локальное кодирование и тесты — в пределах рабочей среды.
-Provider / модель / purpose / данные / бюджет — не одобрены, пока явно не указаны.
-Live AI, платные источники, внешние CV и deploy — выключены по умолчанию.
-Расход coding-host: виден / не виден; оценка не выдаётся за фактический счёт.
-Исправления: максимум два цикла с новой гипотезой. Лимит не сбрасывается новой сессией.
+## Approvals and limits
+Local coding and tests — within the working environment.
+Provider / model / purpose / data / budget — not approved until explicitly stated.
+Live AI, paid sources, external CVs and deploy — disabled by default.
+Coding-host spend: visible / not visible; an estimate is not passed off as the actual bill.
+Repairs: at most two cycles with a new hypothesis. The limit is not reset by a new session.
 
-## Проверки и отчёт
-Команды взять из репозитория. Unit/integration/E2E, ручной путь, нужные SP-Txx, viewport для UI.
-Высокий риск — отдельный review.
-Отчёт: что работает; файлы; команды + exit code; ограничения; mock/live; затраты/unknown; решение владельца.
+## Checks and report
+Take the commands from the repository. Unit/integration/E2E, the manual path, the needed SP-Txx, viewport for the UI.
+High risk — a separate review.
+Report: what works; files; commands + exit code; limitations; mock/live; costs/unknown; owner decision.
 
 ---
 
-## Пример: CL-CRUD-01 — приватный ручной черновик
+## Example: CL-CRUD-01 — private manual draft
 
-**Результат:** авторизованный пользователь создаёт, редактирует и повторно открывает свой черновик письма.
+**Result:** an authorized user creates, edits and reopens their letter draft.
 
-**Не входит:** AI, upload CV, PDF/DOCX-export, отправка, новый раздел навигации.
+**Not included:** AI, CV upload, PDF/DOCX export, sending, a new navigation section.
 
-**Контекст:** найти настоящие auth, profile, database и Nenaugad-компоненты. Не создавать вторую авторизацию. Допустим подтверждённый ручной профиль.
+**Context:** find the real auth, profile, database and Nenaugad components. Do not create a second authorization. A confirmed manual profile is acceptable.
 
-**Риск:** высокий из-за персонального текста.
+**Risk:** high because of personal text.
 
-**Приёмка:**
-1. Owner берётся из серверной сессии; переданный чужой owner не используется.
-2. Сохранённый текст открывается после повторного входа; статус сохранения появляется после ответа сервера.
-3. Пользователь B не читает, не меняет и не удаляет черновик A по известному ID.
-4. Две вкладки не перетирают изменения молча: expected version проверяется.
-5. Удаление профиля удаляет производный черновик по принятой policy.
-6. В сценарии нет AI-вызовов; персональный текст не попадает в логи.
-7. Редактор доступен с клавиатуры и на 390 px, стиль Atlas 1.1 сохранён.
+**Acceptance:**
+1. The owner is taken from the server session; a passed foreign owner is not used.
+2. The saved text opens after re-login; the save status appears after the server response.
+3. User B does not read, change or delete A's draft by a known ID.
+4. Two tabs do not silently overwrite changes: the expected version is checked.
+5. Profile deletion deletes the derived draft according to the adopted policy.
+6. There are no AI calls in the scenario; personal text does not get into the logs.
+7. The editor is accessible from the keyboard and at 390 px, the Atlas 1.1 style is preserved.
 
-**Допуск:** только local/test на синтетических профилях; без новых расходов и deploy.
-Критерии не считаются выполненными до реальных проверок.
+**Approval:** local/test only on synthetic profiles; without new costs and deploy.
+The criteria are not considered met until real checks are done.

@@ -1,114 +1,114 @@
-# Atlas — дизайн-язык продукта
-## Версия 1.1 · 23 сентября 2026
+# Atlas — product design language
+## Version 1.1 · 23 September 2026
 
-**Предмет:** визуальный язык, поведение интерфейса и контракт компонентов сервиса подбора исключительно удалённых вакансий под резюме. Это развитие выбранной концепции Atlas, а не изменение продуктового ТЗ.
+**Subject:** the visual language, interface behaviour and component contract of a service for selecting exclusively remote jobs for a resume. This is an evolution of the chosen Atlas concept, not a change to the product spec.
 
-**Приоритет:** инварианты `01_TECHNICAL_SPEC.md` → семантика этого документа → компоненты → токены → демонстрационные экраны. Макет не отменяет ограничение работодателя, неопределённость данных или условия источника.
+**Priority:** the invariants of `01_TECHNICAL_SPEC.md` → the semantics of this document → components → tokens → demonstration screens. A mockup does not cancel the employer's restriction, data uncertainty or source conditions.
 
-**Статус:** спецификация и локальный UI-kit. Все работодатели, вакансии, зарплаты, счётчики и цитаты в прототипе — синтетические примеры. Подбор, интеграции, авторизация и передача резюме не подключены. Дизайн-гипотезы требуют проверки с пользователями.
+**Status:** specification and a local UI-kit. All employers, jobs, salaries, counters and quotes in the prototype are synthetic examples. Matching, integrations, authorization and resume transfer are not connected. Design hypotheses require testing with users.
 
-## 1. Идея: ясность следующего шага
+## 1. The idea: clarity of the next step
 
-Atlas — **спокойный, точный навигатор по профессиональным возможностям**. Не туристический сервис, не «AI, который знает всё о вас» и не бесконечная лента. В каждой точке человек понимает: что известно, что подходит, что нужно уточнить и что произойдёт после действия.
+Atlas is a **calm, precise navigator of professional opportunities**. Not a travel service, not «AI, который знает всё о вас» [an AI that knows everything about you] and not an endless feed. At every point the person understands: what is known, what fits, what needs clarification and what will happen after an action.
 
-Продуктовое обещание: **«Удалённая работа. С понятными условиями.»** Эмоциональная формулировка для главной: **«Работа, которая совпадает с жизнью.»** Первая объясняет продукт; вторая выражает характер. В подборе приоритет у первой.
+Product promise: **«Удалённая работа. С понятными условиями.» [Remote work. With clear conditions.]** The emotional formulation for the home page: **«Работа, которая совпадает с жизнью.» [Work that matches life.]** The first explains the product; the second expresses the character. In matching, the first has priority.
 
-Личность: внимательный, взрослый, доброжелательный, доказательный. Не фамильярный, не пафосный, не бюрократический. Atlas помогает принять решение, а не оценивает ценность человека.
+Personality: attentive, adult, benevolent, evidence-based. Not familiar, not pompous, not bureaucratic. Atlas helps make a decision; it does not evaluate a person's worth.
 
-### Что сохраняем и улучшаем
+### What we keep and improve
 
-Сохраняем тёплую основу, глубокий синий, редакционные заголовки, открытый каталог и ощущение личного профессионального пространства.
+We keep the warm base, deep blue, editorial headings, the open catalog and the feeling of a personal professional space.
 
-| Ранняя концепция | Система 1.1 | Причина |
+| Early concept | System 1.1 | Reason |
 |---|---|---|
-| Serif почти во всех заголовках | Serif в бренде и вводных; sans в карточках | Разделить характер и быстрое чтение |
-| Большая синяя подложка | Синий у действия, выбора и ссылок | Демонстрировать содержание, не заливку |
-| Общие обещания совпадения | Вывод + причины + исходная формулировка | Дать проверяемое объяснение |
-| Мелкие метаданные | 14 px для вторичного текста | Не прятать условия и источник |
-| «Каталог» и «Подбор» конкурируют | «Вакансии» → «Для вас / Все вакансии» | Один объект и понятные режимы |
-| Разноцветные статусы | Раздельные языки для условий, свежести и личного прогресса | Не путать «подходит» с «откликнулся» |
-| Сжатый desktop на телефоне | Самостоятельная мобильная иерархия | Сохранить задачу, а не геометрию |
+| Serif in almost all headings | Serif in the brand and intros; sans in cards | Separate character from fast reading |
+| A large blue backdrop | Blue on the action, the selection and links | Demonstrate the content, not the fill |
+| Generic match promises | Conclusion + reasons + the original wording | Give a checkable explanation |
+| Tiny metadata | 14 px for secondary text | Do not hide conditions and source |
+| «Каталог» [Catalog] and «Подбор» [Matching] compete | «Вакансии» [Jobs] → «Для вас / Все вакансии» [For you / All jobs] | One object and clear modes |
+| Multicoloured statuses | Separate languages for conditions, freshness and personal progress | Do not confuse «подходит» [fits] with «откликнулся» [applied] |
+| Compressed desktop on the phone | A self-contained mobile hierarchy | Preserve the task, not the geometry |
 
-Эти изменения — дизайн-решения, а не уже измеренный рост конверсии.
+These changes are design decisions, not an already measured conversion growth.
 
-## 2. Основания и границы исследования
+## 2. Grounds and research boundaries
 
-Himalayas выделяет страну и timezone как отдельные параметры поиска [R01]. Welcome to the Jungle формулирует обещание через релевантные рекомендации, сохранение и информацию о компании [R02]. Берём принципы, а не копируем внешность: условия видны, просмотр приводит к понятному решению.
+Himalayas highlights country and timezone as separate search parameters [R01]. Welcome to the Jungle formulates its promise through relevant recommendations, saving and company information [R02]. We take principles, we do not copy the appearance: the conditions are visible, browsing leads to a clear decision.
 
-Постепенное раскрытие вторичных функций и распознавание вместо запоминания описаны NN/g [R03, R04]. Для Atlas: краткая карта условий → основания; поисковый контекст остаётся видимым. Критические ограничения не прячутся.
+Progressive disclosure of secondary functions and recognition instead of recall are described by NN/g [R03, R04]. For Atlas: a brief condition map → grounds; the search context remains visible. Critical restrictions are not hidden.
 
-WCAG/WAI задают требования к контрасту, reflow, фокусу и взаимодействию [R05–R11]. Carbon помогает различать уровни уведомлений [R12]; GOV.UK — связывать общий список ошибок с полями [R13]. Это основания правил, не проведённое исследование аудитории Atlas.
+WCAG/WAI set requirements for contrast, reflow, focus and interaction [R05–R11]. Carbon helps distinguish notification levels [R12]; GOV.UK — to link a general list of errors to fields [R13]. These are the grounds of the rules, not a conducted study of the Atlas audience.
 
-Публичные страницы не дают доступа к аналитике конкурентов и всем их авторизованным сценариям. Мы не утверждаем, что знаем их конверсию или эффективность.
+Public pages do not give access to competitors' analytics and all their authenticated scenarios. We do not claim to know their conversion or effectiveness.
 
-## 3. Шесть принципов
+## 3. Six principles
 
-**P1. Доступность отдельно от релевантности.** Географию, часы и hard requirements нельзя компенсировать навыками. У условий и опыта разные блоки. Никакой «вероятности оффера».
+**P1. Availability separate from relevance.** Geography, hours and hard requirements cannot be compensated with skills. Conditions and experience have different blocks. No «вероятности оффера» [offer probability].
 
-**P2. Неопределённость — полноценный результат.** «Не указано» не означает «нет». Amber — необходимость уточнения, а не проблема с человеком. Видно, какой ответ изменит оценку.
+**P2. Uncertainty is a full-fledged result.** «Не указано» [Not specified] does not mean «нет» [no]. Amber is the need for clarification, not a problem with the person. It is visible which answer will change the assessment.
 
-**P3. Основание рядом с выводом.** Источник, дата и цитата доступны из точки вывода. Общий значок щита не заменяет проверку.
+**P3. The ground next to the conclusion.** Source, date and quote are available from the point of the conclusion. A generic shield icon does not replace verification.
 
-**P4. Пользователь управляет изменениями.** Фильтры не ослабляются сами. Исправления профиля видны. Удаление доступно. Переход к работодателю не означает отправленный отклик.
+**P4. The user controls changes.** Filters do not weaken by themselves. Profile corrections are visible. Deletion is available. A transition to the employer does not mean an application sent.
 
-**P5. Спокойный бренд, эффективная работа.** Вводные просторны; лента не состоит из hero-блоков. Иерархия и линии важнее декоративных контейнеров.
+**P5. A calm brand, efficient work.** Intros are spacious; the feed does not consist of hero blocks. Hierarchy and lines are more important than decorative containers.
 
-**P6. Один смысл — одно правило.** Синий — действие/выбор. Зелёный — выполнение условия. Amber — уточнение. Красный — конфликт или разрушительное действие. Нейтральный — обычные сведения.
+**P6. One meaning — one rule.** Blue — action/selection. Green — a condition met. Amber — clarification. Red — conflict or a destructive action. Neutral — ordinary information.
 
-## 4. Два режима одного языка
+## 4. Two modes of one language
 
-**Discover:** главная, знакомство, введение в профиль. Крупный serif, свободный ритм, одна иллюстративная композиция.
+**Discover:** home, acquaintance, introduction to the profile. Large serif, free rhythm, one illustrative composition.
 
-**Workspace:** подбор, карточка, профиль, сохранённое. Sans, плотнее строки, стабильные колонки, доступные фильтры.
+**Workspace:** matching, card, profile, saved. Sans, denser lines, stable columns, available filters.
 
-Это не две темы: палитра, контролы и поведение общие. Редакционность нельзя оплачивать лишним скроллом на каждом рабочем экране.
+These are not two themes: the palette, controls and behaviour are shared. Editorial character must not be paid for with extra scrolling on every working screen.
 
-## 5. Айдентика и графика
+## 5. Identity and graphics
 
-Рабочее написание — `atlas`, строчными, serif. Рядом допустима небольшая регистрационная метка/направление. Не делать глобус единственным способом распознавания. Название остаётся текстом. Охранное поле — половина высоты wordmark. Минимальная высота — 24 px; обычная 30–32. Проверка товарного знака не выполнялась.
+The working spelling is `atlas`, lowercase, serif. A small registration mark/direction is acceptable next to it. Do not make a globe the only means of recognition. The name remains text. The clear space is half the wordmark height. Minimum height — 24 px; normal 30–32. A trademark check was not performed.
 
-Мотив — **«поля, координаты, заметки»**: тонкие деления, номера разделов, рамка цитаты, линия пересечения часов. Это атлас знаний, не путешествий. Декоративная карта не должна выглядеть как точная география найма.
+The motif is **«поля, координаты, заметки» [fields, coordinates, notes]**: thin divisions, section numbers, a quote frame, a line where hours overlap. This is an atlas of knowledge, not of travel. A decorative map must not look like precise hiring geography.
 
-Иллюстрации опциональны на главной: абстрактные бумажные формы и линии, до трёх цветов. Без пляжей с ноутбуком, маскота-рекрутера, случайных AI-градиентов и 3D-стикеров. Ошибки, приватность и удаление не нуждаются в декоративной картинке.
+Illustrations are optional on the home page: abstract paper shapes and lines, up to three colours. Without beaches with a laptop, a recruiter mascot, random AI gradients and 3D stickers. Errors, privacy and deletion do not need a decorative picture.
 
-## 6. Цвет
+## 6. Colour
 
-Production-компоненты используют semantic tokens, не HEX. Иерархия: reference → semantic → component aliases. JSON основан на опубликованном DTCG Format 2025.10; это формат Community Group, не W3C Recommendation [R14].
+Production components use semantic tokens, not HEX. Hierarchy: reference → semantic → component aliases. The JSON is based on the published DTCG Format 2025.10; this is a Community Group format, not a W3C Recommendation [R14].
 
-| Токен | HEX | Назначение |
+| Token | HEX | Purpose |
 |---|---|---|
-| `color.bg.canvas` | `#F7F5F0` | Тёплая бумага |
-| `color.bg.surface` | `#FFFFFF` | Карточки и формы |
-| `color.bg.subtle` | `#EFEEE8` | Вложенные области |
-| `color.text.primary` | `#202840` | Основной текст |
-| `color.text.secondary` | `#566074` | Пояснения |
-| `color.text.muted` | `#626B7D` | Третьестепенные подписи |
-| `color.action.primary` | `#3456D1` | Основное действие |
+| `color.bg.canvas` | `#F7F5F0` | Warm paper |
+| `color.bg.surface` | `#FFFFFF` | Cards and forms |
+| `color.bg.subtle` | `#EFEEE8` | Nested areas |
+| `color.text.primary` | `#202840` | Primary text |
+| `color.text.secondary` | `#566074` | Explanations |
+| `color.text.muted` | `#626B7D` | Tertiary captions |
+| `color.action.primary` | `#3456D1` | Primary action |
 | `color.action.hover` | `#2944AC` | Hover |
 | `color.action.pressed` | `#223991` | Pressed |
-| `color.action.subtle` | `#EBEFFE` | Выбранное |
-| `color.border.subtle` | `#DCDDD6` | Декоративные линии |
-| `color.border.control` | `#7A8191` | Значимый контур поля |
-| `color.status.success.text/bg` | `#24654F / #EAF4EE` | Условие выполнено |
-| `color.status.review.text/bg` | `#885619 / #FFF3DF` | Уточнение |
-| `color.status.danger.text/bg` | `#A63738 / #FCEDED` | Конфликт / ошибка |
-| `color.status.neutral.text/bg` | `#586477 / #EEF0F4` | Технический статус |
+| `color.action.subtle` | `#EBEFFE` | Selected |
+| `color.border.subtle` | `#DCDDD6` | Decorative lines |
+| `color.border.control` | `#7A8191` | Meaningful field outline |
+| `color.status.success.text/bg` | `#24654F / #EAF4EE` | Condition met |
+| `color.status.review.text/bg` | `#885619 / #FFF3DF` | Clarification |
+| `color.status.danger.text/bg` | `#A63738 / #FCEDED` | Conflict / error |
+| `color.status.neutral.text/bg` | `#586477 / #EEF0F4` | Technical status |
 
-Ориентир: 80–90% нейтральной среды, 5–10% структурного синего, остальное — смысловые сигналы. Это не пиксельная квота. Не заливать каждую подходящую карточку зелёным.
+Guideline: 80–90% neutral environment, 5–10% structural blue, the rest — meaningful signals. This is not a pixel quota. Do not fill every matching card with green.
 
-Контраст обычного текста ≥4.5:1; крупного ≥3:1; значимых границ контролов ≥3:1 [R05, R06]. Atlas применяет 4.5:1 и ко вторичным подписям. Белый/primary ≈6.18:1; ink/бумага ≈13.39:1; secondary/бумага ≈5.80:1. Полный расчёт — `qa/contrast.json`.
+Contrast of normal text ≥4.5:1; large ≥3:1; meaningful control boundaries ≥3:1 [R05, R06]. Atlas applies 4.5:1 to secondary captions as well. White/primary ≈6.18:1; ink/paper ≈13.39:1; secondary/paper ≈5.80:1. The full calculation is in `qa/contrast.json`.
 
-`border.subtle` не используется вместо `border.control` в полях. Полупрозрачный текст запрещён без проверки итоговой пары.
+`border.subtle` is not used instead of `border.control` in fields. Translucent text is forbidden without checking the resulting pair.
 
-MVP — проверенная светлая тема. Dark не получается invert и не включается непроверенной. Semantic aliases позволяют добавить её позже. `forced-colors` сохраняет системные контуры и различимость.
+The MVP is a verified light theme. Dark is not obtained by invert and is not enabled unverified. Semantic aliases allow adding it later. `forced-colors` preserves system outlines and distinguishability.
 
-## 7. Типографика
+## 7. Typography
 
-**Production:** Source Serif 4 для редакционных заголовков; Inter для интерфейса. Source Serif включает кириллицу [R15]; Inter документирует табличные цифры и интерфейсные настройки [R16].
+**Production:** Source Serif 4 for editorial headings; Inter for the interface. Source Serif includes Cyrillic [R15]; Inter documents tabular figures and interface settings [R16].
 
-**Локальная демонстрация:** `Source Serif 4, Georgia, Noto Serif, serif` и `Inter, system-ui, Arial, sans-serif`. Файлы шрифтов не входят в комплект; внешних font/CDN-запросов нет. Production-команда подключает шрифты отдельно с проверкой лицензии и fallback-метрик.
+**Local demonstration:** `Source Serif 4, Georgia, Noto Serif, serif` and `Inter, system-ui, Arial, sans-serif`. Font files are not included; there are no external font/CDN requests. The production team connects the fonts separately with license verification and fallback metrics.
 
-| Стиль | Desktop | Mobile | Семейство / вес |
+| Style | Desktop | Mobile | Family / weight |
 |---|---|---|---|
 | Display | 64/68 px | 40/44 px | Serif 400 |
 | Page title | 40/48 px | 32/40 px | Serif 400 |
@@ -120,257 +120,257 @@ MVP — проверенная светлая тема. Dark не получае
 | Metadata | 14/20 px | 14/20 px | Sans 400 |
 | Overline | 12/16 px | 12/16 px | Sans 600 |
 
-Overline — для короткого номера/категории, не зарплаты. Не опускать значимый текст до 10–12 px ради размещения. Курсив допускается для одной короткой фразы display. В названиях вакансий — sans, естественные переносы; полный title доступен без hover.
+Overline — for a short number/category, not a salary. Do not lower meaningful text to 10–12 px for the sake of layout. Italic is allowed for one short display phrase. In job titles — sans, natural wraps; the full title is available without hover.
 
-Длина строки описания около 60–75 символов, `max-width:70ch`. Serif не используется в суммах, кнопках, полях, статусах и таблицах. `tabular-nums` — для зарплат, времени, счётчиков. Размеры в CSS — rem; проверка увеличения текста 200%. Не уменьшать font-size длинного перевода.
+The description line length is about 60–75 characters, `max-width:70ch`. Serif is not used in amounts, buttons, fields, statuses and tables. `tabular-nums` — for salaries, time, counters. Sizes in CSS are rem; text enlargement is checked at 200%. Do not reduce the font-size of a long translation.
 
-## 8. Сетка, пространство и плотность
+## 8. Grid, space and density
 
-Шкала 4 px: `4,8,12,16,20,24,32,40,48,64,80,96`. 2 px допустимы для оптической коррекции. Новое значение требует причины.
+4 px scale: `4,8,12,16,20,24,32,40,48,64,80,96`. 2 px is acceptable for optical correction. A new value requires a reason.
 
-**≥1280:** контейнер до 1248 px, поля от 32, 12 колонок, gutter 24. Главная 6/6; results — фильтры 240 px + список; job — чтение + aside 304 px. Не вводить три независимых вертикальных скролла.
+**≥1280:** container up to 1248 px, margins from 32, 12 columns, gutter 24. Home 6/6; results — filters 240 px + list; job — reading + aside 304 px. Do not introduce three independent vertical scrolls.
 
-**768–1279:** 8 колонок, поля 24, gutter 20. Фильтры в панели; aside под summary.
+**768–1279:** 8 columns, margins 24, gutter 20. Filters in a panel; aside under the summary.
 
-**<768:** 4 колонки, поля 16, gutter 16. Проверять 320 CSS px [R08]. Chips переносятся; основной контент не требует горизонтального скролла.
+**<768:** 4 columns, margins 16, gutter 16. Check 320 CSS px [R08]. Chips wrap; the main content does not require horizontal scrolling.
 
-Comfortable по умолчанию; compact опционален только desktop. Уплотнять промежутки, не чтение и зоны действия. Отступ страницы 32–48 desktop/24 mobile. Между разделами 32–48; внутри группы 12–16; label→input 8. Не превращать каждое поле в карточку.
+Comfortable by default; compact is optional on desktop only. Tighten the gaps, not the reading and action areas. Page padding 32–48 desktop/24 mobile. Between sections 32–48; within a group 12–16; label→input 8. Do not turn every field into a card.
 
-## 9. Геометрия, глубина и иконки
+## 9. Geometry, depth and icons
 
-Радиусы: badge 6, кнопка/поле 10, карточка 12, панель 16, modal 20 px. Pill — для фильтра, не каждого объекта.
+Radii: badge 6, button/field 10, card 12, panel 16, modal 20 px. Pill — for a filter, not for every object.
 
-Карточки без обычной тени; hover меняет границу, не сдвигает позицию. Тень 1 — popover; 2 — modal. Не складывать сильную тень, рамку и цвет без причины.
+Cards without a regular shadow; hover changes the border, does not shift the position. Shadow 1 — popover; 2 — modal. Do not stack a strong shadow, a border and colour without a reason.
 
-Иконки: stroke 1.75, размер 20/24 px; 16 только у метаданных. Единый outline-стиль; заполненная закладка означает сохранение. Icon-button имеет accessible name и зону 44/48. Flag не заменяет язык/место работы. Emoji не являются библиотекой иконок.
+Icons: stroke 1.75, size 20/24 px; 16 only for metadata. A single outline style; a filled bookmark means saved. An icon-button has an accessible name and a 44/48 target. A flag does not replace language/work location. Emoji are not an icon library.
 
-Набор: поиск, фильтры, стрелки, закладка, документ, часы, локация, договор, check, question, conflict, external-link, close, delete. Декоративные SVG имеют `aria-hidden`.
+Set: search, filters, arrows, bookmark, document, clock, location, contract, check, question, conflict, external-link, close, delete. Decorative SVG has `aria-hidden`.
 
-## 10. Статусы: три независимые оси
+## 10. Statuses: three independent axes
 
-### Условия
-| Домен | UI | Сигнал |
+### Conditions
+| Domain | UI | Signal |
 |---|---|---|
-| `eligible` | «Условия совпадают» | Зелёный + check |
-| `needs_review` | «Нужно уточнить» | Amber + question |
-| `ineligible` | «Есть несовместимость» | Сдержанный красный + conflict |
-| `not_evaluated` | «Не оценено» | Нейтральный |
+| `eligible` | «Условия совпадают» [Conditions match] | Green + check |
+| `needs_review` | «Нужно уточнить» [Needs clarification] | Amber + question |
+| `ineligible` | «Есть несовместимость» [There is an incompatibility] | Restrained red + conflict |
+| `not_evaluated` | «Не оценено» [Not evaluated] | Neutral |
 
-«Условия совпадают» всегда означает «по опубликованным условиям и подтверждённому профилю», не гарантию. Отдельные правила `pass/fail/unknown/not_applicable` сохраняют различие. `Unknown` — не опубликовано/не подтверждено; `not_applicable` — условие не применяется.
+«Условия совпадают» [Conditions match] always means «по опубликованным условиям и подтверждённому профилю» [by the published conditions and the confirmed profile], not a guarantee. The separate `pass/fail/unknown/not_applicable` rules preserve the distinction. `Unknown` — not published/not confirmed; `not_applicable` — the condition does not apply.
 
-### Жизненный цикл
-`active` — актуальное наблюдение источника; `stale` — «Давно не подтверждалась»; `closed` — «Вакансия закрыта»; quarantine/rights block — вне обычной выдачи. Ошибка API не означает закрытие. Серый closed не означает несовместимость человека.
+### Lifecycle
+`active` — a current observation of the source; `stale` — «Давно не подтверждалась» [Not confirmed for a long time]; `closed` — «Вакансия закрыта» [Job closed]; quarantine/rights block — outside the regular feed. An API error does not mean closure. A grey closed does not mean the person is incompatible.
 
-### Личный прогресс
-«Сохранено», «Планирую», «Откликнулся», «Интервью», «Архив». Нейтральные labels. Меняются человеком или подтверждённым событием, не нажатием apply.
+### Personal progress
+«Сохранено» [Saved], «Планирую» [Planning], «Откликнулся» [Applied], «Интервью» [Interview], «Архив» [Archive]. Neutral labels. Changed by the person or a confirmed event, not by pressing apply.
 
-### Релевантность
-В MVP без процента на карточке. «Совпадают TypeScript, React и опыт API»; «GraphQL не подтверждён». Даже будущий калиброванный индекс не является шансом оффера. Полнота evidence отдельно: «Два условия не опубликованы».
+### Relevance
+In the MVP, without a percentage on the card. «Совпадают TypeScript, React и опыт API» [TypeScript, React and API experience match]; «GraphQL не подтверждён» [GraphQL is not confirmed]. Even a future calibrated index is not a chance of an offer. Evidence completeness separately: «Два условия не опубликованы» [Two conditions are not published].
 
-## 11. Фирменный компонент: Карта условий
+## 11. Signature component: Condition Map
 
-Пять групп: страна найма; часы; договор; компенсация; обязательные требования. В строке label, outcome, короткая причина, disclosure «Основание». Внутри цитата, источник, дата версии и способ вывода. Критичное неизвестное видно без раскрытия.
+Five groups: hiring country; hours; contract; compensation; mandatory requirements. In a row: label, outcome, a short reason, the «Основание» [Ground] disclosure. Inside: the quote, the source, the version date and the way the conclusion was drawn. A critical unknown is visible without disclosure.
 
-Пример: **«Рабочие часы совпадают: минимум 7 часов за год, нужно 4».** Вы: 12:00–20:00 Asia/Tbilisi. Команда: 09:00–17:00 Europe/Berlin. Семь часов летом, восемь зимой; праздники/отпуск не учтены. Это синтетический пример, не текущие условия реальной компании.
+Example: **«Рабочие часы совпадают: минимум 7 часов за год, нужно 4» [Working hours match: a minimum of 7 hours per year, 4 are needed].** You: 12:00–20:00 Asia/Tbilisi. The team: 09:00–17:00 Europe/Berlin. Seven hours in summer, eight in winter; holidays/vacation are not counted. This is a synthetic example, not the current conditions of a real company.
 
-Никакого вывода о стране из timezone. Не писать «Вы можете легально работать» или «Работодатель вас примет».
+No conclusion about a country from a timezone. Do not write «Вы можете легально работать» [You can legally work] or «Работодатель вас примет» [The employer will accept you].
 
-## 12. Фирменный компонент: Контекст поиска
+## 12. Signature component: Search context
 
-**Full-stack · Грузия · 12:00–20:00 Тбилиси · Подряд · от €65 000/год.**
+**Full-stack · Грузия [Georgia] · 12:00–20:00 Тбилиси [Tbilisi] · Подряд [Contract] · от €65 000/год [from €65,000/year].**
 
-Это подтверждённые настройки, не догадки из CV. Кнопка «Изменить» открывает те же значения. Неизвестное подписано «Не задано». Mobile — две строки, а не горизонтальная лента chips.
+These are confirmed settings, not guesses from the CV. The «Изменить» [Change] button opens the same values. An unknown is labelled «Не задано» [Not set]. Mobile — two lines, not a horizontal strip of chips.
 
-Keyword и «с опубликованной зарплатой» — фильтры выдачи. Страна и расписание — профиль поиска. Его изменение запускает новый расчёт и показывает «Результаты пересчитываются», но не переписывает опыт.
+Keyword and «с опубликованной зарплатой» [with a published salary] are feed filters. Country and schedule are the search profile. Changing it starts a new calculation and shows «Результаты пересчитываются» [Results are being recalculated], but does not rewrite experience.
 
-## 13. Контракт компонентов
+## 13. Component contract
 
-Полный каталог: `atlas.components.json`. Каждый компонент имеет props, states, accessibility, статус реализации.
+Full catalog: `atlas.components.json`. Every component has props, states, accessibility, implementation status.
 
-**Button:** primary/secondary/tertiary/destructive; default/hover/pressed/focus/disabled/loading. Один primary на локальную задачу. Высота ≥44, mobile ≥48. Loading сохраняет ширину. Disabled сопровождается причиной.
+**Button:** primary/secondary/tertiary/destructive; default/hover/pressed/focus/disabled/loading. One primary per local task. Height ≥44, mobile ≥48. Loading preserves the width. Disabled is accompanied by a reason.
 
-**Link:** переход — ссылка, изменение — button. В тексте подчёркнут. Внешний переход имеет назначение; новая вкладка обозначается.
+**Link:** a transition is a link, a change is a button. Underlined in text. An external transition has a purpose; a new tab is indicated.
 
-**Input/Select/Combobox:** постоянный label, helper, value, error. Placeholder — пример. Высота ≥48; mobile font ≥16. Ошибка связана `aria-describedby`, поле `aria-invalid`. Значение не теряется.
+**Input/Select/Combobox:** a permanent label, helper, value, error. Placeholder — an example. Height ≥48; mobile font ≥16. The error is linked by `aria-describedby`, the field `aria-invalid`. The value is not lost.
 
-**Checkbox/Switch/Radio:** checkbox — выбор/согласие; switch — немедленное бинарное изменение; radio — один вариант. Switch не используется в форме, ожидающей «Применить».
+**Checkbox/Switch/Radio:** checkbox — selection/consent; switch — an immediate binary change; radio — one option. A switch is not used in a form that expects «Применить» [Apply].
 
-**Chip:** информационная метка и removable filter различаются. Accessible name удаления: «Убрать фильтр: React». Badge не притворяется кнопкой.
+**Chip:** an informational label and a removable filter are distinguished. Accessible name of removal: «Убрать фильтр: React» [Remove filter: React]. A badge does not pretend to be a button.
 
-**Tabs:** одной области, не глобальная навигация. Стрелки/Home/End, фокус, tab↔panel. При длительной загрузке ручная активация Enter/Space [R11].
+**Tabs:** of one area, not global navigation. Arrows/Home/End, focus, tab↔panel. During a long load, manual activation with Enter/Space [R11].
 
-**Dialog/Sheet:** одна задача, заголовок, close, submit/cancel; focus trap, Escape, возврат к инициатору [R10]. Mobile — sheet/полная страница, не узкий popover.
+**Dialog/Sheet:** one task, a heading, close, submit/cancel; focus trap, Escape, return to the initiator [R10]. Mobile — a sheet/full page, not a narrow popover.
 
-**Toast:** краткое обратимое действие, `role=status`. Критичная ошибка остаётся в контексте. Error-summary связывает ошибки с полями [R13].
+**Toast:** a brief reversible action, `role=status`. A critical error remains in context. The error summary links errors to fields [R13].
 
-**Disclosure:** конкретный label «Основание по стране». Нельзя скрывать несовместимость или зарплату в tooltip.
+**Disclosure:** a specific label «Основание по стране» [Ground for the country]. An incompatibility or a salary must not be hidden in a tooltip.
 
-**JobCard:** отдельные title-link и save-button. Без card-click с вложенными buttons. Порядок: роль/компания → зарплата → география/договор → verdict/reason → источник/даты. До трёх skill-chips.
+**JobCard:** a separate title-link and save-button. Without a card-click with nested buttons. Order: role/company → salary → geography/contract → verdict/reason → source/dates. Up to three skill-chips.
 
-**SourceLine:** «Источник: Himalayas · Проверен 2 часа назад»; публикация отдельно. Маршрут CTA определяется лицензией. Demo-attribution не является реальной публикацией.
+**SourceLine:** «Источник: Himalayas · Проверен 2 часа назад» [Source: Himalayas · Checked 2 hours ago]; publication separately. The CTA route is determined by the license. Demo attribution is not a real publication.
 
-**OverlapBand:** подписи интервалов и min/required; графика имеет текстовый эквивалент. Размеры рассчитываются по данным, не по композиции.
+**OverlapBand:** interval labels and min/required; the graphics has a text equivalent. Sizes are calculated from data, not from the composition.
 
-**SavedItem:** роль, личный статус, lifecycle, действие. Изменение статуса доступно через select/button, не только drag-and-drop.
+**SavedItem:** role, personal status, lifecycle, action. Changing the status is available via select/button, not only drag-and-drop.
 
-## 14. Навигация
+## 14. Navigation
 
-**Desktop:** atlas → главная; «Вакансии», «Сохранённое», «Профиль». Настройки/помощь в аккаунте. В «Вакансии» режимы «Для вас / Все вакансии»; внутри персонального режима — «Условия совпадают / Нужно уточнить». Не смешивать эти оси в четыре равноправные tabs. Без профиля доступны каталог и публичная карточка.
+**Desktop:** atlas → home; «Вакансии» [Jobs], «Сохранённое» [Saved], «Профиль» [Profile]. Settings/help in the account. In «Вакансии» [Jobs] the modes «Для вас / Все вакансии» [For you / All jobs]; inside the personal mode — «Условия совпадают / Нужно уточнить» [Conditions match / Needs clarification]. Do not mix these axes into four equal tabs. Without a profile, the catalog and the public card are available.
 
-**Mobile:** три нижних пункта: «Вакансии», «Сохранённое», «Профиль», около 64 px + safe-area. На detail со sticky apply нижняя global-nav убирается; остаются back и apply. Длинная форма не накрывается нижней панелью. Не складывать bottom nav, cookie bar, apply bar и чат. `scroll-padding` учитывает закреплённые элементы [R09].
+**Mobile:** three bottom items: «Вакансии» [Jobs], «Сохранённое» [Saved], «Профиль» [Profile], about 64 px + safe-area. On a detail with sticky apply the bottom global-nav is removed; back and apply remain. A long form is not covered by the bottom panel. Do not stack bottom nav, cookie bar, apply bar and chat. `scroll-padding` accounts for pinned elements [R09].
 
-Возврат из detail восстанавливает вкладку, фильтры и scroll-position. URL не содержит CV и лишних персональных параметров.
+Returning from a detail restores the tab, filters and scroll-position. The URL does not contain the CV and unnecessary personal parameters.
 
-## 15. Шаблоны экранов
+## 15. Screen templates
 
-### T01 Главная
-Обещание + «Подобрать по резюме» / «Смотреть вакансии». Рядом одна демонстрация карты условий, помеченная примером. Никаких выдуманных масштабов и клиентских логотипов. Под CTA: «Вы подтвердите профиль перед подбором. Резюме не отправляется работодателям автоматически». Privacy-copy соответствует реализации.
+### T01 Home
+The promise + «Подобрать по резюме» [Match by resume] / «Смотреть вакансии» [Browse jobs]. Next to it, one demonstration of the condition map, labelled as an example. No invented scale numbers and client logos. Under the CTA: «Вы подтвердите профиль перед подбором. Резюме не отправляется работодателям автоматически» [You will confirm the profile before matching. The resume is not sent to employers automatically]. Privacy copy matches the implementation.
 
-Mobile: обещание → действие → открытый каталог → компактный пример. Декор не отодвигает CTA на третий экран.
+Mobile: promise → action → open catalog → compact example. Decoration does not push the CTA to the third screen.
 
-### T02 Профиль
-Разделить «Опыт из резюме» и «Условия поиска». После parsing — проверка фактов, источники, исправление. Первый проход: документ → проверка опыта → условия. Повторная правка — форма, не обязательный wizard.
+### T02 Profile
+Separate «Опыт из резюме» [Experience from the resume] and «Условия поиска» [Search conditions]. After parsing — fact checking, sources, correction. First pass: document → experience check → conditions. A repeat edit — a form, not a mandatory wizard.
 
-Страну и часы подтверждает человек. English-level не выводится из языка CV. Fallback: текст/ручной профиль. Фактические данные и пожелания не смешиваются.
+The country and hours are confirmed by the person. The English level is not inferred from the CV language. Fallback: text/manual profile. Factual data and preferences are not mixed.
 
-### T03 Подбор
-Заголовок → контекст → поиск/фильтры → compatibility-tabs → список. В карточке одна основная причина. Вкладка уточнений видна, даже если результатов больше.
+### T03 Matching
+Heading → context → search/filters → compatibility-tabs → list. One main reason per card. The clarifications tab is visible even if there are more results.
 
-Уточнения делятся на «Можно подтвердить в профиле» и «Нужно уточнить у работодателя». Пользователь вправе подтвердить навык, но не неизвестную политику найма компании.
+Clarifications are divided into «Можно подтвердить в профиле» [Can be confirmed in the profile] and «Нужно уточнить у работодателя» [Needs to be clarified with the employer]. The user is entitled to confirm a skill, but not the company's unknown hiring policy.
 
 ### T04 Detail
-Первый экран: роль, компания, зарплата, remote/geography, источник/свежесть, вердикт и карта условий. Далее опыт, оригинальный текст, компания. CTA «Перейти к отклику» с назначением.
+First screen: role, company, salary, remote/geography, source/freshness, verdict and condition map. Then experience, the original text, the company. The CTA «Перейти к отклику» [Go to application] with a purpose.
 
-Desktop aside: action/schedule; mobile action закреплён, schedule в потоке. Персональное объяснение не заменяет оригинал; перевод маркирован.
+Desktop aside: action/schedule; on mobile the action is pinned, the schedule is in flow. The personal explanation does not replace the original; a translation is labelled.
 
-### T05 Сохранённое
-Рабочий список, не обязательная Kanban-доска. Статусы меняет человек. Закрытые не исчезают молча; сохранение текста зависит от лицензии. После внешнего перехода можно спросить «Удалось отправить отклик? Да / Пока нет», без автоприсвоения.
+### T05 Saved
+A working list, not a mandatory Kanban board. The person changes the statuses. Closed ones do not disappear silently; keeping the text depends on the license. After an external transition, one may ask «Удалось отправить отклик? Да / Пока нет» [Did you manage to send the application? Yes / Not yet], without automatic assignment.
 
-### T06 Настройки и данные
-Язык, уведомления, версии, экспорт, удаление. Удаление файла и извлечённого профиля названы раздельно. Подтверждение содержит объект и последствия. Account-delete — двухшаговое подтверждение; длинная магическая фраза не default.
+### T06 Settings and data
+Language, notifications, versions, export, deletion. Deleting the file and the extracted profile are named separately. The confirmation contains the object and the consequences. Account-delete — a two-step confirmation; a long magic phrase is not the default.
 
-### T07 Админка
-Те же компоненты, компактная таблица. Источники, rights, quarantine, dedup, cost. «API работает» не равно «права одобрены». Bulk action показывает scope; undo где возможно. Модератор вакансий не видит CV.
+### T07 Admin
+The same components, a compact table. Sources, rights, quarantine, dedup, cost. «API работает» [The API works] does not equal «права одобрены» [the rights are approved]. A bulk action shows the scope; undo where possible. A job moderator does not see CVs.
 
-## 16. Язык состояний
+## 16. Language of states
 
-| Состояние | Показать | Не делать |
+| State | Show | Do not |
 |---|---|---|
-| Initial loading | Skeleton будущего списка, операция | Fake progress |
-| Background refresh | Старые данные + «Обновляем» | Терять позицию |
-| Empty eligible | Причина и вкладка уточнений | «Работы нет», включать гибрид |
-| Empty keyword | Запрос и reset | Менять страну без причины |
-| Critical unknown | Вопрос и кто может ответить | Превращать в fail |
-| Parsing failed | Вставка текста/ручной профиль | Молчаливый OCR |
-| Partial source | Данные доступны, источник недоступен | Выдавать частичное за полное |
-| Stale job | Последняя проверка | Подставлять сегодняшнюю дату |
-| Closed | Закрыта, история, disabled apply | Активный apply |
-| Profile changed | Устаревший расчёт, пересчитать | Старый зелёный результат |
-| Offline | Соединение и доступные данные | Ложное «сохранено на сервере» |
-| Service limit | Ограничение функции, baseline | Раскрывать ключи/счета |
-| Rights revoked | Допустимый placeholder | Сохранять запрещённый текст |
-| Deletion requested | Объект, статус, реальные сроки | Обещать мгновенное стирание backup |
+| Initial loading | A skeleton of the future list, the operation | Fake progress |
+| Background refresh | Old data + «Обновляем» [Updating] | Lose the position |
+| Empty eligible | The reason and the clarifications tab | «Работы нет» [There is no work], enabling hybrid |
+| Empty keyword | The query and reset | Change the country without a reason |
+| Critical unknown | The question and who can answer it | Turn it into a fail |
+| Parsing failed | Text pasting/manual profile | Silent OCR |
+| Partial source | The data is available, the source is unavailable | Present the partial as the complete |
+| Stale job | The last check | Substitute today's date |
+| Closed | Closed, history, disabled apply | An active apply |
+| Profile changed | An outdated calculation, recalculate | The old green result |
+| Offline | The connection and the available data | A false «сохранено на сервере» [saved on the server] |
+| Service limit | The feature limitation, baseline | Reveal keys/bills |
+| Rights revoked | A permissible placeholder | Keep the forbidden text |
+| Deletion requested | The object, status, real timelines | Promise instant erasure of backups |
 
-Воронка строится только по реальным счётчикам. Demo-цифры помечены.
+The funnel is built only from real counters. Demo numbers are labelled.
 
-## 17. Голос продукта
+## 17. Product voice
 
-«Вы», короткие предложения, конкретное действие. Не объяснять инфраструктуру вместо задачи человека.
+«Вы» [You], short sentences, a concrete action. Do not explain infrastructure instead of the person's task.
 
-| Нельзя | Нужно |
+| Must not | Must |
 |---|---|
-| «AI оценил вас на 96%» | «Совпадают TypeScript, React и опыт API» |
-| «Вы не подходите» | «Работодатель рассматривает только кандидатов из США» |
-| «У вас нет GraphQL» | «GraphQL не подтверждён в резюме» |
-| «Гарантированная удалёнка» | «В описании указан полностью удалённый формат» |
-| «Ошибка 503» | «Не удалось обновить источник. Сохранённые результаты доступны» |
-| «Отклик отправлен» после redirect | «Открыта страница отклика» |
-| «Не упустите шанс!» | Реальная дата публикации |
+| «AI оценил вас на 96%» [AI rated you at 96%] | «Совпадают TypeScript, React и опыт API» [TypeScript, React and API experience match] |
+| «Вы не подходите» [You are not suitable] | «Работодатель рассматривает только кандидатов из США» [The employer considers only candidates from the US] |
+| «У вас нет GraphQL» [You do not have GraphQL] | «GraphQL не подтверждён в резюме» [GraphQL is not confirmed in the resume] |
+| «Гарантированная удалёнка» [Guaranteed remote work] | «В описании указан полностью удалённый формат» [The description states a fully remote format] |
+| «Ошибка 503» [Error 503] | «Не удалось обновить источник. Сохранённые результаты доступны» [Could not update the source. The saved results are available] |
+| «Отклик отправлен» [Application sent] after a redirect | «Открыта страница отклика» [The application page has been opened] |
+| «Не упустите шанс!» [Do not miss the chance!] | The real publication date |
 
-CTA обычно 2–4 слова, но точность важнее лимита. «Перейти к отклику» лучше ложного «Откликнуться». Длинная локализованная подпись переносится, высота растёт.
+A CTA is usually 2–4 words, but accuracy matters more than the limit. «Перейти к отклику» [Go to application] is better than a false «Откликнуться» [Apply]. A long localized caption wraps, the height grows.
 
-RU/EN copy — отдельный JSON. Production использует ICU/Intl plurals, не склейку «5 вакансия». Исходные title и цитаты сохраняются.
+RU/EN copy — a separate JSON. Production uses ICU/Intl plurals, not concatenation «5 вакансия» [5 job]. Source titles and quotes are preserved.
 
-«€72 000–90 000 / год, до налогов» — одна смысловая группа. Нет зарплаты → «Зарплата не опубликована», не ноль. Неоднозначное Georgia не исправляется флагом. IANA zone остаётся в данных.
+«€72 000–90 000 / год, до налогов» [€72,000–90,000 / year, before taxes] is one semantic group. No salary → «Зарплата не опубликована» [Salary not published], not zero. An ambiguous Georgia is not corrected with a flag. The IANA zone remains in the data.
 
-## 18. Движение
+## 18. Motion
 
-120 ms hover, 180 ms disclosure, 240 ms panel; easing `cubic-bezier(.2,0,0,1)`. Без bounce, параллакса, autoplay и AI-пульса. Карточки не въезжают каскадом после фильтра.
+120 ms hover, 180 ms disclosure, 240 ms panel; easing `cubic-bezier(.2,0,0,1)`. Without bounce, parallax, autoplay and AI pulse. Cards do not slide in as a cascade after a filter.
 
-`prefers-reduced-motion:reduce` убирает геометрические переходы и shimmer. Информация не существует только в движении.
+`prefers-reduced-motion:reduce` removes geometric transitions and shimmer. Information does not exist only in motion.
 
-## 19. Доступность
+## 19. Accessibility
 
-Цель реализации — WCAG 2.2 AA, не заявление о готовом соответствии. Нужны keyboard, screen reader и реальные браузеры [R05–R11].
+The implementation goal is WCAG 2.2 AA, not a claim of achieved conformance. Keyboard, screen reader and real browsers are needed [R05–R11].
 
-Зоны действия Atlas ≥44×44, mobile ≥48×48 CSS px. Это внутренний стандарт: WCAG 2.2 AA определяет 24×24 с исключениями, не универсальные 44 [R07]. Inline links рассматриваются отдельно.
+Atlas action targets ≥44×44, mobile ≥48×48 CSS px. This is an internal standard: WCAG 2.2 AA defines 24×24 with exceptions, not universal 44 [R07]. Inline links are treated separately.
 
-Focus: 3 px синий + offset 3; на синем — белый разделитель. Никакого `outline:none` без замены. Sticky не перекрывает фокус [R09].
+Focus: 3 px blue + offset 3; on blue — a white separator. No `outline:none` without a replacement. Sticky does not cover focus [R09].
 
-Semantic landmarks, один H1, skip-link, последовательные headings. Actions — buttons; navigation — links. SVG decorative или named.
+Semantic landmarks, one H1, skip-link, sequential headings. Actions — buttons; navigation — links. SVG decorative or named.
 
-Форма: summary ошибок со ссылками и фокусом после submit [R13]. Label постоянный. `aria-live=polite` для статуса, без спама. Цвет не единственный носитель смысла.
+Form: a summary of errors with links and focus after submit [R13]. A permanent label. `aria-live=polite` for status, without spam. Colour is not the only carrier of meaning.
 
-Reflow 320 CSS px, текст 200%, zoom до эквивалента 320 [R08]. `overflow-x:hidden` не используется для маскировки потерь. Длинные URL переносятся. Таблица может стать списком.
+Reflow 320 CSS px, text 200%, zoom up to the equivalent of 320 [R08]. `overflow-x:hidden` is not used to mask losses. Long URLs wrap. A table may become a list.
 
-Modal: background inert, focus trap, Escape/cancel, возврат opener, accessible name [R10]. Tabs — arrow/Home/End и tab-panel relation [R11].
+Modal: background inert, focus trap, Escape/cancel, return to the opener, accessible name [R10]. Tabs — arrow/Home/End and tab-panel relation [R11].
 
-Проверить отдельно VoiceOver+Safari, NVDA+Firefox/Chrome, iOS Safari, Android Chrome. Chromium smoke-test не заменяет эти проверки.
+Check separately VoiceOver+Safari, NVDA+Firefox/Chrome, iOS Safari, Android Chrome. A Chromium smoke-test does not replace these checks.
 
-## 20. Приватность и доверие
+## 20. Privacy and trust
 
-До отправки документа AI показывать фактического обработчика, цель и режим. Без «100% конфиденциально» и неподтверждённого zero-retention. CV не попадает в URL, session replay и события аналитики.
+Before sending a document to AI, show the actual processor, the purpose and the mode. Without «100% конфиденциально» [100% confidential] and an unconfirmed zero-retention. The CV does not end up in the URL, session replay and analytics events.
 
-Рассылки opt-in; авто-отклика нет; публичная карточка не требует согласия на необязательный tracking. Source line и apply route соответствуют лицензии.
+Mailings are opt-in; there is no auto-apply; the public card does not require consent to optional tracking. The source line and apply route correspond to the license.
 
-В UI-kit нет сетевых запросов, серверной загрузки и аналитики. Сохранения живут в памяти и сбрасываются после перезагрузки.
+The UI-kit has no network requests, server upload and analytics. Saves live in memory and are reset after a reload.
 
-## 21. Handoff и управление
+## 21. Handoff and governance
 
-Иерархия `ref.blue.600` → `color.action.primary` → `component.button.primary.background`. Domain `eligible` не привязан к HEX; mapping выполняет компонент. Смена бренда не меняет pass/fail.
+The hierarchy `ref.blue.600` → `color.action.primary` → `component.button.primary.background`. The domain `eligible` is not tied to HEX; the component performs the mapping. A brand change does not change pass/fail.
 
-Figma: 01 Cover, 02 Foundations, 03 Components, 04 Patterns, 05 Desktop, 06 Mobile, 07 States/A11y, 08 Archive. Variables: Reference, Semantic Light, Layout, Motion. Auto Layout вместо fixed-height. Variant props `state/size/tone/density`, не «final 2».
+Figma: 01 Cover, 02 Foundations, 03 Components, 04 Patterns, 05 Desktop, 06 Mobile, 07 States/A11y, 08 Archive. Variables: Reference, Semantic Light, Layout, Motion. Auto Layout instead of fixed-height. Variant props `state/size/tone/density`, not «final 2».
 
-Нативного `.fig` в комплекте нет. CSS, JSON и HTML — основа переноса. Импорт DTCG зависит от инструмента; совместимость с конкретным плагином не заявлена.
+There is no native `.fig` in the package. CSS, JSON and HTML are the basis of the transfer. DTCG import depends on the tool; compatibility with a specific plugin is not claimed.
 
-Frontend: типизированные props, без arbitrary colors. Stories для длинного title, unknown salary, unknown reason, focus/busy/error, 320 px, reduced motion. Публичная карточка и персональный overlay различаются.
+Frontend: typed props, without arbitrary colors. Stories for a long title, unknown salary, unknown reason, focus/busy/error, 320 px, reduced motion. The public card and the personal overlay are distinguished.
 
-Изменение паттерна согласуют дизайн, инженер и product/domain. Patch — исправление; minor — совместимое добавление; major — удаление/переназначение семантики. Deprecated token имеет replacement. Screen-local новые цвета и радиусы запрещены без review.
+A pattern change is agreed by design, engineering and product/domain. Patch — a fix; minor — a compatible addition; major — removal/reassignment of semantics. A deprecated token has a replacement. Screen-local new colours and radii are forbidden without review.
 
-## 22. Демонстрация и границы реализации
+## 22. Demonstration and implementation boundaries
 
-`atlas-ui-kit.html` — автономная витрина: обзор, foundations, компоненты, главная, подбор, detail, профиль, сохранённое, состояния. Локальные взаимодействия перечислены в README и отчёте QA. Пять обновлённых пользовательских шаблонов показаны в desktop/mobile.
+`atlas-ui-kit.html` is a standalone showcase: overview, foundations, components, home, matching, detail, profile, saved, states. Local interactions are listed in the README and the QA report. Five updated user templates are shown in desktop/mobile.
 
-Это эталон внешнего вида и отдельных взаимодействий, не приложение и не доменный движок. Production-combobox, secure upload, live deletion, полный RU/EN runtime, реальный matching, server persistence и админка описаны, но не реализованы полностью. Статусы — в `atlas.components.json`.
+This is a reference for the appearance and individual interactions, not an application and not a domain engine. The production combobox, secure upload, live deletion, full RU/EN runtime, real matching, server persistence and the admin are described but not fully implemented. Statuses are in `atlas.components.json`.
 
-## 23. Приёмка и пользовательская проверка
+## 23. Acceptance and user testing
 
-Визуальная приёмка: три уровня чтения — роль/вердикт; условия/суммы; источник/даты. Serif не попадает в плотные карточки. Один primary на задачу. Critical unknown виден. Единые токены desktop/mobile.
+Visual acceptance: three levels of reading — role/verdict; conditions/amounts; source/dates. Serif does not get into dense cards. One primary per task. A critical unknown is visible. Unified desktop/mobile tokens.
 
-Поведенческая приёмка: клавиатура достигает фильтров, tabs, карточки, save/apply. Cancel фильтра не меняет выдачу. Возврат сохраняет состояние. Apply не меняет личный статус. Closed/stale не выглядят как свежие рекомендации.
+Behavioural acceptance: the keyboard reaches filters, tabs, the card, save/apply. Cancelling a filter does not change the feed. Returning preserves the state. Apply does not change the personal status. Closed/stale do not look like fresh recommendations.
 
-### План пользовательского теста — не выполненный эксперимент
-Две итерации по 6–8 человек: разработчики и другие профессии, разные страны работы, часть mobile-first; отдельно включить assistive-tech пользователей. Это качественная проверка, не статистическая валидация рынка.
+### User test plan — an experiment not performed
+Two iterations of 6–8 people: developers and other professions, different countries of work, some mobile-first; separately include assistive-tech users. This is a qualitative check, not a statistical validation of the market.
 
-Задания: найти вакансию без регистрации; объяснить разницу совпадения/уточнения; найти основание географии; проверить часы зимой; исправить навык из CV; сохранить и перейти к отклику без путаницы с отправкой; объяснить пустую выдачу; отличить удаление файла от удаления аккаунта.
+Tasks: find a job without registration; explain the difference between a match and a clarification; find the ground for geography; check the hours in winter; correct a skill from the CV; save and go to the application without confusion with sending; explain an empty feed; distinguish deleting a file from deleting an account.
 
-Начальные ориентиры: 0 критических неверных трактовок гарантии найма; ≥80% ключевых задач без подсказки; каждый участник находит причину unknown. 80% — предложенный продуктовый порог, не внешняя норма. При малой выборке публиковать абсолютные числа и наблюдения.
+Initial targets: 0 critical misinterpretations of a hiring guarantee; ≥80% of key tasks without a hint; every participant finds the reason for an unknown. 80% is a proposed product threshold, not an external norm. With a small sample, publish absolute numbers and observations.
 
-Измерять время до полезного решения, ошибки понимания, возвраты из-за географии, коррекции профиля, task completion. Не максимизировать CTR неподходящих вакансий. Аналитика без CV.
+Measure the time to a useful decision, comprehension errors, returns due to geography, profile corrections, task completion. Do not maximize the CTR of unsuitable jobs. Analytics without CVs.
 
-Release: контраст, keyboard/screen reader, 320/390/768/1024/1440/1920, длинные RU/EN строки, reduced motion, видимые ограничения, attribution, правдивая privacy-copy, recovery-состояния. Не объявлять соответствие WCAG по одной палитре.
+Release: contrast, keyboard/screen reader, 320/390/768/1024/1440/1920, long RU/EN strings, reduced motion, visible limitations, attribution, truthful privacy copy, recovery states. Do not declare WCAG conformance based on one palette.
 
-## 24. Инструкция следующему исполнителю
+## 24. Instruction to the next implementer
 
-Прочитать product ТЗ и этот документ. Не менять смысл совместимости ради стилистики. Использовать токены и контракт. Воссоздавать шаблоны компонентами, не растягивать PNG.
+Read the product spec and this document. Do not change the meaning of compatibility for the sake of styling. Use the tokens and the contract. Recreate templates with components, do not stretch PNGs.
 
-Порядок: foundations → buttons/fields/tabs/dialog → JobCard/ConditionMap/SourceLine → results/detail → profile/saved → states. После каждого слоя keyboard/mobile. Не подключать реальные резюме к демо.
+Order: foundations → buttons/fields/tabs/dialog → JobCard/ConditionMap/SourceLine → results/detail → profile/saved → states. After each layer keyboard/mobile. Do not connect real resumes to the demo.
 
-При конфликте screenshot с доменным правилом выбрать правило и зафиксировать исправление. Отдельно отмечать реализованное, проверенное и спроектированное.
+On a conflict of a screenshot with a domain rule, choose the rule and record the correction. Separately mark what is implemented, verified and designed.
 
-## 25. Источники
+## 25. Sources
 
-Проверены 23.09.2026. Применение к Atlas — наши решения, не заявления авторов.
+Checked on 23.09.2026. The application to Atlas is our decision, not the authors' statements.
 
 [R01] Himalayas, timezone search/API.
 `https://himalayas.app/jobs/timezones`

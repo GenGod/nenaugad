@@ -1,28 +1,28 @@
-# Что проверять и как называть результат
+# What to check and how to name the result
 
-| Команда | Что проверяет | Чего не доказывает |
+| Command | What it checks | What it does not prove |
 |---|---|---|
-| `npm run check:offline` | Node unit, tokens, ограниченные source tripwires | Next/React build, SQL, privacy реальных CV |
-| `npm run lint` | Правила Biome | runtime и безопасность приложения |
-| `npm run typecheck` | Все типы при настоящих npm-зависимостях | бизнес-смысл и runtime |
-| `npm run build` | Next production compilation | право и готовность публичного запуска |
-| `npm run test:db` | Изолированный реальный PostgreSQL | RLS/auth будущих личных сущностей |
-| `npm run test:e2e` | Настоящий local Next + Chromium на 3 ширинах | полная доступность/все браузеры |
-| Будущий live benchmark | Реальные usage receipts + независимая разметка | неограниченная безопасность и универсальная точность |
+| `npm run check:offline` | Node unit, tokens, limited source tripwires | Next/React build, SQL, real-CV privacy |
+| `npm run lint` | Biome rules | the app's runtime and security |
+| `npm run typecheck` | All types with real npm dependencies | business meaning and runtime |
+| `npm run build` | Next production compilation | the right and readiness for a public launch |
+| `npm run test:db` | An isolated real PostgreSQL | RLS/auth of future personal entities |
+| `npm run test:e2e` | A real local Next + Chromium at 3 widths | full accessibility/all browsers |
+| A future live benchmark | Real usage receipts + independent labelling | unlimited safety and universal accuracy |
 
-SP-T03/06/07 имеют небольшие стартовые проверки; это не полное покрытие требований
-всего Nenaugad. СП-кейсы ownership, budgeting, deletion, restore, DST и letters остаются
-в scope следующих этапов и должны пройти ДО включения функций.
+SP-T03/06/07 have small starting checks; this is not full coverage of the requirements
+of the whole Nenaugad. The SP cases ownership, budgeting, deletion, restore, DST and letters remain
+in the scope of later stages and must pass BEFORE the features are enabled.
 
-Fixtures с no office/evidence — данные теста, не доказательство качества parser.
-Для реального источника проверять полный разрешённый текст и конфликт в конце.
-Малые тесты нельзя использовать для утверждения 98–99.9% точности.
+Fixtures with no office/evidence are test data, not proof of parser quality.
+For a real source, check the full allowed text and the conflict at the end.
+Small tests cannot be used to claim 98–99.9% accuracy.
 
-## После установки
-Выполнить все команды, сохранить фактические exit codes/версии в reports/local
-(не коммитьте большие browser traces с потенциальными личными данными).
-В публичный отчёт — минимум безопасных метаданных. Локальные тесты — только synthetic.
+## After installation
+Run all the commands, save the actual exit codes/versions in reports/local
+(do not commit large browser traces with potential personal data).
+Into a public report — the minimum of safe metadata. Local tests — synthetic only.
 
-## Отдельная неавтоматизированная проверка
-Keyboard, zoom/reflow, VoiceOver/NVDA, длинные RU/EN строки, отказ БД, сохранность
-состояния поиска. В S0 браузерные действия простые и GET-only.
+## A separate non-automated check
+Keyboard, zoom/reflow, VoiceOver/NVDA, long RU/EN strings, DB failure, preservation of
+the search state. In S0 the browser actions are simple and GET-only.

@@ -1,232 +1,232 @@
-# Партия решений владельца №4 (раздел E инвентаря, 2026-10-02)
+# Owner decision packet No. 4 (inventory section E, 2026-10-02)
 
-**Статус: ответы владельца получены 2026-10-02 по пунктам 1–4 (записаны ниже
-дословно); пункты 5–7 остаются открытыми — рекомендации в §9.** Факты проверены
-по коду и замерам на 2026-10-02. Как №02/№03, этот файл — запись решений; пункты
-раздела E инвентаря закрыты, следующие задачи — в §10.
+**Status: the owner's answers were received on 2026-10-02 for items 1–4 (recorded below
+verbatim); items 5–7 remain open — recommendations in §9.** The facts are verified
+against code and measurements as of 2026-10-02. Like No. 02/No. 03, this file is a record of
+decisions; the items of inventory section E are closed, the next tasks are in §10.
 
 ---
 
-## 1. Переключение продуктовой выдачи на ранкер (E.3, бриф п.11)
+## 1. Switching the product result ordering to the ranker (E.3, brief item 11)
 
-**Что решается.** Чем сортируется `/matched`. Сейчас: кэшированный AI-скор, затем
-порядок каталога. AI-часть недостижима — граница персональных данных (AI-007)
-закрыла скоринг, новых скоров не появится, поэтому фактический порядок сегодня —
-**порядок каталога**.
+**What is being decided.** What `/matched` is sorted by. Today: a cached AI score, then
+the catalog order. The AI part is unreachable — the personal data boundary (AI-007)
+closed scoring, no new scores will appear, so the actual order today is
+**catalog order**.
 
-**Факты (замер на golden v4, 39 вакансий × 6 профилей, 2026-10-02):**
+**Facts (measurement on golden v4, 39 jobs × 6 profiles, 2026-10-02):**
 
-| Порядок | R@5 | R@10 | NDCG@5 | NDCG@10 | MRR |
+| Order | R@5 | R@10 | NDCG@5 | NDCG@10 | MRR |
 |---|---|---|---|---|---|
-| порядок каталога (что видно сегодня) | 0.179 | 0.302 | 0.312 | **0.421** | 0.352 |
-| ранкер v4 (детерминированный) | 0.611 | 0.850 | 0.875 | **0.892** | 1.000 |
+| catalog order (what is visible today) | 0.179 | 0.302 | 0.312 | **0.421** | 0.352 |
+| ranker v4 (deterministic) | 0.611 | 0.850 | 0.875 | **0.892** | 1.000 |
 
-Тень A9 уже сравнивает v4 с порядком каталога и логирует диффы на живых данных
-(последний прогон: `compared 1, moved 0` на скудной локальной выдаче); guardrails
-и ratchet-пороги готовы.
+Shadow A9 already compares v4 with the catalog order and logs diffs on live data
+(the last run: `compared 1, moved 0` on the sparse local result set); guardrails
+and ratchet thresholds are ready.
 
-**Что означает «да».** Отдельная задача (B23): `/matched` сортируется через
-`rankJobs` (v4) с скрытиями как preference-понижением и closure как ghost-
-понижением; журнал начинает писать `RANKER_VERSION` вместо feed-order метки;
-тень меняет чемпиона. Допуск (гейты) не меняется; AI-скор в UI остаётся
-информацией, но больше не сортирует.
+**What «yes» means.** A separate task (B23): `/matched` is sorted through
+`rankJobs` (v4) with hides as a preference downgrade and closure as a ghost
+downgrade; the journal starts writing `RANKER_VERSION` instead of the feed-order label;
+shadow changes its champion. Eligibility (gates) does not change; the AI score in the UI remains
+information, but no longer sorts.
 
-**Решение владельца (2026-10-02): «Да, переключить на v4».** Следующая задача —
-в §10 (B23): сортировка `/matched` через `rankJobs`, журнал пишет
-`RANKER_VERSION`, тень меняет чемпиона; допуск и UI не меняются.
+**Owner decision (2026-10-02): «Да, переключить на v4» [yes, switch to v4].** The next task is
+in §10 (B23): sorting `/matched` through `rankJobs`, the journal writes
+`RANKER_VERSION`, shadow changes its champion; eligibility and the UI do not change.
 
-**Исполнено 2026-10-02 (задача B23-001).** `matching-service` ранжирует обе
-вкладки одним порядком `rankJobs` (v4), скрытые вакансии питают preference-
-понижение, closure — ghost-понижение; страница больше не сортирует по AI-скору
-(бейдж — справочно, порядок приходит с сервера); журнал пишет `RANKER_VERSION`
-(feed-order метки заменены); тень: чемпион = v4, кандидат опционален (сейчас
-`null` — сравнивать не с чем, guardrails продолжают считаться каждый запрос);
-`eval:shadow` переведён на чемпиона v4, контролы остались кандидатами. Проверки:
-`check` 240/240, `test:db` **56/56** (включая новый тест порядка выдачи),
+**Executed 2026-10-02 (task B23-001).** `matching-service` ranks both
+tabs with a single `rankJobs` order (v4), hidden jobs feed the preference
+downgrade, closure feeds the ghost downgrade; the page no longer sorts by AI score
+(the badge is for information, the order comes from the server); the journal writes `RANKER_VERSION`
+(feed-order labels replaced); shadow: champion = v4, candidate is optional (currently
+`null` — there is nothing to compare against, guardrails keep being computed on every request);
+`eval:shadow` was switched to the v4 champion, the controls remained candidates. Checks:
+`check` 240/240, `test:db` **56/56** (including the new result-order test),
 `build` 0, `e2e` 96, `eval:matching` 0.892/guards 0/0, `eval:shadow` guardrails
-pass у всех контролов.
+pass for all controls.
 
 ---
 
-## 2. Батч-путь и скоринг: приватность против работоспособности (E.1, §C0)
+## 2. Batch path and scoring: privacy versus operability (E.1, §C0)
 
-**Что решается.** Судьба OpenAI Batch (закрыт в AI-006) и синхронного скоринга —
-оба закрыты границей персональных данных (AI-007): `job_matching` и
-`cover_letter` невыразимы без данных кандидата, вызовы отказывают.
+**What is being decided.** The fate of OpenAI Batch (closed in AI-006) and of synchronous
+scoring — both are closed by the personal data boundary (AI-007): `job_matching` and
+`cover_letter` are inexpressible without candidate data, the calls refuse.
 
-**Факты.** План перезапуска батча — 5 пунктов в
-[AI-006](../tasks/AI-006-c0-part-1.md): резерв при submit, settlement при
-retrieve, срок для асинхронной операции (24 ч против 120 с у синхронной),
-серверный mapping (клиент его не присылает), одна попытка отправки. Потолок
-операции 1 цент не покрывает заявку на каталог (≈1.05 цента) → либо чанк ≈285
-постов, либо отдельное решение о потолке для асинхронной операции. Батч даёт 50%
-скидку. Без приватностного решения любой перезапуск всё равно откажется.
+**Facts.** The batch relaunch plan — 5 items in
+[AI-006](../tasks/AI-006-c0-part-1.md): reservation at submit, settlement at
+retrieve, a deadline for the asynchronous operation (24 h versus 120 s for the synchronous one),
+server-side mapping (the client does not send it), one send attempt. The operation
+cap of 1 cent does not cover a request for the catalog (≈1.05 cents) → either a chunk of ≈285
+posts, or a separate decision on the cap for the asynchronous operation. The batch gives a 50%
+discount. Without a privacy decision, any relaunch will refuse anyway.
 
-**Варианты.**
-(а) Держать закрытым до локальной генеративной модели. Эмбеддинг-модель скорить
-не умеет; локальная генеративная — новая зависимость и железо (сейчас Onnx
-занимает ~4.6 ГБ на батч 8 при 2000 токенов; генеративная будет тяжелее).
-(б) Разрешить скоринг через провайдера — частичная отмена AI-007 для
-`job_matching`: дешевле и быстрее всего, но профиль кандидата уходит третьей
-стороне.
-(в) Заказать отдельную задачу оценки локальной генеративной модели (железо,
-скорость, качество рубрики) — решение (а) станет предметным.
+**Options.**
+(a) Keep it closed until a local generative model. An embedding model cannot score;
+a local generative one is a new dependency and hardware (right now Onnx
+takes ~4.6 GB per batch of 8 at 2000 tokens; a generative one will be heavier).
+(b) Allow scoring through the provider — a partial cancellation of AI-007 for
+`job_matching`: the cheapest and the fastest, but the candidate's profile goes to a third
+party.
+(c) Order a separate task evaluating a local generative model (hardware,
+speed, rubric quality) — option (a) becomes concrete.
 
-**Решение владельца (2026-10-02): «Закрыто + задача оценки локальной модели».**
-Батч и скоринг остаются закрытыми (приватность AI-007 не отменяется); заводится
-отдельная задача оценки локальной генеративной модели — железо, скорость,
-качество рубрики (MODEL-001, §10).
+**Owner decision (2026-10-02): «Закрыто + задача оценки локальной модели» [closed + a local model evaluation task].**
+Batch and scoring remain closed (the AI-007 privacy is not cancelled); a
+separate task is created to evaluate a local generative model — hardware, speed,
+rubric quality (MODEL-001, §10).
 
-**Исполнено 2026-10-02 (задача MODEL-001).** Кандидаты Qwen3-1.7B и Qwen2.5-1.5B
-(ONNX q8, Apache-2.0; артефакты скачаны с закреплёнными ревизиями и сверены по
-sha256) запущены на этой машине уже установленным CPU-рантаймом — без новых
-зависимостей. Итог: shipped-рубрику они **не обслуживают** — 0 валидных JSON из 6
-прогонов без обвязки (модели «повествуют»); с предзаполнением JSON — 8/8 валидных,
-но Spearman(scores vs ручные оценки) **−0.156**, грубые ошибки (нерелевантная
-дизайн-вакансия — 85, keyword-ловушка — 85) и 6.7 tok/s. GPU (RTX 5060, 8 ГБ)
-установленным рантаймом не используется: CUDA — новая зависимость и отдельное
-решение владельца. Рекомендация: скоринг остаётся закрытым; при желании
-локального скоринга следующий шаг — CUDA-рантайм + модель 7–8B (отдельная задача,
-повторный замер той же матрицей). Детали —
+**Executed 2026-10-02 (task MODEL-001).** The candidates Qwen3-1.7B and Qwen2.5-1.5B
+(ONNX q8, Apache-2.0; the artifacts were downloaded at pinned revisions and verified by
+sha256) were run on this machine with the already installed CPU runtime — without new
+dependencies. Outcome: they do **not serve** the shipped rubric — 0 valid JSON out of 6
+runs without scaffolding (the models «narrate»); with JSON prefill — 8/8 valid,
+but Spearman(scores vs manual ratings) **−0.156**, gross errors (an irrelevant
+design job — 85, a keyword trap — 85) and 6.7 tok/s. The GPU (RTX 5060, 8 GB)
+is not used by the installed runtime: CUDA is a new dependency and a separate
+owner decision. Recommendation: scoring remains closed; if local scoring
+is wanted, the next step is a CUDA runtime + a 7–8B model (a separate task,
+a repeat measurement with the same matrix). Details —
 [tasks/MODEL-001](../tasks/MODEL-001-local-generative-eval.md).
 
 ---
 
-## 3. Право `process_with_ml` для jobicy (E.2, B13)
+## 3. The `process_with_ml` right for jobicy (E.2, B13)
 
-**Что решается.** Дать ли jobicy право на локальный ML — тогда dense-нога
-проиндексирует его посты (сейчас B13: `process_with_ml: denied`, нога по jobicy
-не работает).
+**What is being decided.** Whether to give jobicy the right to local ML — then the dense
+leg will index its posts (currently B13: `process_with_ml: denied`, the leg does not work
+for jobicy).
 
-**Условия перечитаны 2026-10-02 (Fair Use, §08) — ключевые формулировки:**
+**The conditions were re-read 2026-10-02 (Fair Use, §08) — key wording:**
 - «The Jobicy API is designed for websites, applications, newsletters, research
   tools, **AI products**, and other services that help users discover remote work
   opportunities.»
 - «Most integrations, including job boards, newsletters, career tools, **AI
   assistants**, and internal applications, can use the public API without a
   separate agreement.»
-- Ограничения, которые мы соблюдаем: атрибуция и канонический Jobicy URL
-  сохраняются (карточки ведут на листинг); `train_model` остаётся denied — на
-  этом праве текст не настаивает, и матрица его не меняет.
+- Limitations we comply with: attribution and the canonical Jobicy URL
+  are preserved (cards lead to the listing); `train_model` remains denied — the
+  text does not insist on this right, and the matrix does not change it.
 
-**Решение владельца (2026-10-02): «Да, выдать process_with_ml».** Исполнено в
-этой же сессии: политика jobicy v4 → v5 (`process_with_ml: allowed`,
-`reviewed_at` 2026-10-02, `approval_reference` дополнен, `terms_hash` снимка не
-менялся — текст тот же), тесты обновлены под решение;
-`npm run embeddings:index -- --embedder=local --source=jobicy` проиндексировал
-**202/202** постов — **B13 закрыт фактически**. Письмо himalayas
-(`hi@himalayas.app`) остаётся рекомендованным действием владельца.
+**Owner decision (2026-10-02): «Да, выдать process_with_ml» [yes, grant process_with_ml].** Executed in
+the same session: jobicy policy v4 → v5 (`process_with_ml: allowed`,
+`reviewed_at` 2026-10-02, `approval_reference` supplemented, the snapshot's `terms_hash` did not
+change — the text is the same), the tests were updated to match the decision;
+`npm run embeddings:index -- --embedder=local --source=jobicy` indexed
+**202/202** posts — **B13 is effectively closed**. The himalayas email
+(`hi@himalayas.app`) remains a recommended owner action.
 
-**Решение владельца:** _(ожидается)_
-
----
-
-## 4. Retention: журнал событий и закрытые записи источника (E.4)
-
-**Что решается.** Сколько хранить журнал показов/кликов и что делать с закрытыми
-записями источников.
-
-**Факты.** `job_events` удаляется только вместе с профилем, TTL нет; seen-set
-живёт 7–14 дней; будущее ранжирование (LTR/OPE) хочет месяцы истории. Закрытые
-записи источников сейчас удаляются целиком через окно политики (720 ч у обоих
-источников) — после этого дедуп и provenance теряют след (вопрос S1-005).
-
-**Варианты.**
-(а) Журнал 12 месяцев (константа с записанной причиной) + «tombstone» закрытых
-записей: id, источник, content_hash, дата закрытия — без текста; минимизация
-соблюдена, дедуп/ghost-история сохранены.
-(б) Журнал 6 месяцев, закрытые — удалять полностью, как сейчас.
-(в) Без TTL до появления трафика.
-
-**Решение владельца (2026-10-02): «Журнал 12 мес + tombstone».** Следующая
-задача — RET-001 (§10): TTL 12 месяцев для `job_events` (константа с записанной
-причиной) и tombstone закрытых записей источника (id, source, content_hash,
-closed_at — без текста) вместо полного удаления по окну политики.
-
-**Исполнено 2026-10-02 (задача RET-001).** Миграция 0018 добавляет
-`job_snapshots.tombstoned_at`; retention больше не удаляет запись, а обезличивает
-её: id, source, даты и content_hash остаются, текст (title / company_name /
-description / excerpt) очищается, lifecycle → `tombstoned` (домен это значение уже
-допускал), производные векторы удаляются вместе с текстом. Повторный листинг
-возрождает запись: новая ветка pipeline `revived` возвращает текст и версию+1,
-сохраняя исходный `first_seen_at` (провенанс переживает tombstone). Журнал:
-`EVENT_RETENTION_MONTHS = 12` и проход `purgeExpiredEvents` в worker'е
-(`--no-retention` отключает). Проверки: `check` 241/241, `test:db` **57/57**
-(tombstone с проверкой пустого текста, идемпотентность повторного прохода,
-возрождение, purge), `build` 0, `e2e` 96; миграция применена локально. Тест
-поймал реальный баг до коммита: `setUTCFullYear(год−12)` вычитал 12 лет вместо
-месяцев — исправлено на `setUTCMonth`.
+**Owner decision:** _(pending)_
 
 ---
 
-## 5. reason-коды и структурный фильтр «не показывать компанию X» (E.5)
+## 4. Retention: the event journal and closed source records (E.4)
 
-**Факты.** 7 фиксированных причин скрытия (включая `company_uninteresting`);
-A6-002 уже понижает окрестность компании (−12), но не скрывает её всю.
-**Варианты.** (а) оставить как есть; (б) отдельная задача «скрыть всю компанию»
-с явным undo. **Рекомендация:** (а) сейчас, (б) — когда появится частота в данных.
+**What is being decided.** How long to keep the journal of impressions/clicks and what to do with
+closed source records.
 
-**Решение владельца:** _(ожидается)_
+**Facts.** `job_events` is deleted only together with the profile, there is no TTL; the seen-set
+lives 7–14 days; future ranking (LTR/OPE) wants months of history. Closed
+source records are currently deleted entirely through the policy window (720 h for both
+sources) — after that, dedup and provenance lose the trace (question S1-005).
 
----
+**Options.**
+(a) A 12-month journal (a constant with a recorded reason) + a «tombstone» for closed
+records: id, source, content_hash, closure date — without text; minimization
+is satisfied, dedup/ghost history is preserved.
+(b) A 6-month journal, closed records deleted entirely, as now.
+(c) No TTL until traffic appears.
 
-## 6. ESCO как внешний контент справочника (E.6)
+**Owner decision (2026-10-02): «Журнал 12 мес + tombstone» [12-month journal + tombstone].** The next
+task is RET-001 (§10): a 12-month TTL for `job_events` (a constant with a recorded
+reason) and a tombstone for closed source records (id, source, content_hash,
+closed_at — without text) instead of full deletion by the policy window.
 
-**Факты (A3-001 §V1).** Лицензия и условия перераспространения не подтверждены
-(страница условий не прочитана); импорт не начат; словарь v2 (алиасы, RU) и
-worklist работают; морфология русского — отдельный вопрос. **Рекомендация:** не
-подключать сейчас; вернуться отдельной задачей с чтением условий, если рост
-каталога покажет нехватку словаря.
-
-**Решение владельца:** _(ожидается)_
-
----
-
-## 7. Email-канал алертов (E.7)
-
-**Факты.** `send_email: denied` во всех трёх матрицах; in-app «Что нового»
-работает; почтовой инфраструктуры в `compose.yaml` нет. **Рекомендация:**
-оставить in-app; email — отдельная задача с решением по каналу (локальный SMTP
-или ESP) и правами.
-
-**Решение владельца:** _(ожидается)_
-
----
-
-## 8. Пороги и веса (E.9)
-
-Не решение сейчас: константы ждут накопленных данных, журнал собирает их с
-2026-10-02 (BFIX-001). Записано, чтобы не потерялось.
+**Executed 2026-10-02 (task RET-001).** Migration 0018 adds
+`job_snapshots.tombstoned_at`; retention no longer deletes the record but anonymizes
+it: id, source, dates and content_hash remain, the text (title / company_name /
+description / excerpt) is cleared, lifecycle → `tombstoned` (the domain already
+allowed this value), derived vectors are deleted together with the text. A repeated listing
+revives the record: a new pipeline branch `revived` restores the text and version+1,
+keeping the original `first_seen_at` (provenance survives the tombstone). Journal:
+`EVENT_RETENTION_MONTHS = 12` and the `purgeExpiredEvents` pass in the worker
+(`--no-retention` disables it). Checks: `check` 241/241, `test:db` **57/57**
+(tombstone with an empty-text check, idempotency of a repeated pass,
+revival, purge), `build` 0, `e2e` 96; the migration was applied locally. The test
+caught a real bug before commit: `setUTCFullYear(year−12)` was subtracting 12 years instead of
+months — fixed to `setUTCMonth`.
 
 ---
 
-## 9. Сводка рекомендаций исполнителя
+## 5. reason codes and the structural filter «don't show company X» (E.5)
 
-| # | Вопрос | Решение владельца (2026-10-02) |
+**Facts.** 7 fixed hide reasons (including `company_uninteresting`);
+A6-002 already downgrades the company neighborhood (−12), but does not hide it entirely.
+**Options.** (a) leave as is; (b) a separate task «hide the whole company»
+with an explicit undo. **Recommendation:** (a) now, (b) — when frequency appears in the data.
+
+**Owner decision:** _(pending)_
+
+---
+
+## 6. ESCO as external reference content (E.6)
+
+**Facts (A3-001 §V1).** The license and redistribution conditions are not confirmed
+(the conditions page has not been read); the import has not started; dictionary v2 (aliases, RU) and
+the worklist work; Russian morphology is a separate question. **Recommendation:** do not
+connect it now; come back with a separate task that reads the conditions, if catalog growth
+shows the dictionary is insufficient.
+
+**Owner decision:** _(pending)_
+
+---
+
+## 7. Email alert channel (E.7)
+
+**Facts.** `send_email: denied` in all three matrices; the in-app «What's new»
+works; there is no mail infrastructure in `compose.yaml`. **Recommendation:**
+keep in-app; email is a separate task with a decision on the channel (local SMTP
+or an ESP) and rights.
+
+**Owner decision:** _(pending)_
+
+---
+
+## 8. Thresholds and weights (E.9)
+
+Not a decision now: the constants await accumulated data, the journal has been collecting them
+since 2026-10-02 (BFIX-001). Recorded so that it is not lost.
+
+---
+
+## 9. Summary of the implementer's recommendations
+
+| # | Question | Owner decision (2026-10-02) |
 |---|---|---|
-| 1 | Выдача | **Переключить на ранкер v4** (0.892 против 0.421 у порядка каталога) → задача B23 |
-| 2 | Батч/приватность | **Остаётся закрытым** + задача оценки локальной генеративной модели (MODEL-001) → измерено: 1.5–1.7B на CPU рубрику не обслуживают; зарегистрирована **MODEL-002** — спайк на CUDA (7–8B, RTX 5060) |
-| 3 | jobicy ML | **Выдать `process_with_ml`** — исполнено: политика v5, индексация 202/202, B13 закрыт |
-| 4 | Retention | **Журнал 12 мес + tombstone** закрытых записей → задача RET-001 (исполнена) |
-| 5 | Фильтры компаний | **Оставить как есть** (скрытие вакансии + весовое понижение окрестности уже работают); вернуться, когда появится частота в данных |
-| 6 | ESCO | Условия **прочитаны дословно** (handbook §5): обязательная строка «This service uses the ESCO classification of the European Commission.» + «Any modified or adapted version of ESCO must be clearly indicated as such»; occupations-часть — ISCO/ILO («can be adapted and reproduced with permission»), skills-часть — ЕС (Decision 2011/833/EU). **Решение: подключать skills-часть** → задача [ESCO-001](../tasks/ESCO-001-import-skills.md) |
-| 7 | Email | **Остаётся in-app**; email-канал — отдельная задача позже (`send_email` denied во всех матрицах) |
+| 1 | Result ordering | **Switch to ranker v4** (0.892 versus 0.421 for catalog order) → task B23 |
+| 2 | Batch/privacy | **Remains closed** + a local generative model evaluation task (MODEL-001) → measured: 1.5–1.7B on CPU do not serve the rubric; **MODEL-002** is registered — a CUDA spike (7–8B, RTX 5060) |
+| 3 | jobicy ML | **Grant `process_with_ml`** — executed: policy v5, indexing 202/202, B13 closed |
+| 4 | Retention | **12-month journal + tombstone** for closed records → task RET-001 (executed) |
+| 5 | Company filters | **Leave as is** (hiding a job + weight downgrade of the neighborhood already work); come back when frequency appears in the data |
+| 6 | ESCO | The conditions were **read verbatim** (handbook §5): a mandatory line «This service uses the ESCO classification of the European Commission.» + «Any modified or adapted version of ESCO must be clearly indicated as such»; the occupations part — ISCO/ILO («can be adapted and reproduced with permission»), the skills part — EU (Decision 2011/833/EU). **Decision: connect the skills part** → task [ESCO-001](../tasks/ESCO-001-import-skills.md) |
+| 7 | Email | **Remains in-app**; the email channel — a separate task later (`send_email` denied in all matrices) |
 
-## 10. Следующие задачи по решениям партии №4
+## 10. Next tasks following the decisions of packet No. 4
 
-| Задача | Из решения | Состав |
+| Task | From decision | Scope |
 |---|---|---|
-| B23 | §1 | переключение `/matched` на ранкер v4 — **исполнено 2026-10-02** |
-| RET-001 | §4 | TTL журнала 12 мес + tombstone — **исполнено 2026-10-02** |
-| MODEL-001 | §2 | оценка локальной генеративной модели на CPU — **исполнено 2026-10-02** (отрицательный результат, числа в задаче) |
-| MODEL-002 | §2 | **зарегистрирована**: спайк локального скоринга на CUDA (RTX 5060, модель 7–8B), той же матрицей замеров |
-| ESCO-001 | §9 п.6 | **зарегистрирована**: подключение skills-части ESCO с атрибуцией (условия прочитаны, см. §9) |
-| E.5–E.7 | — | решения приняты 2026-10-02 (см. §9) |
+| B23 | §1 | switching `/matched` to ranker v4 — **executed 2026-10-02** |
+| RET-001 | §4 | journal TTL of 12 months + tombstone — **executed 2026-10-02** |
+| MODEL-001 | §2 | evaluation of a local generative model on CPU — **executed 2026-10-02** (negative result, the numbers are in the task) |
+| MODEL-002 | §2 | **registered**: a spike of local scoring on CUDA (RTX 5060, 7–8B model), with the same measurement matrix |
+| ESCO-001 | §9 item 6 | **registered**: connecting the skills part of ESCO with attribution (the conditions have been read, see §9) |
+| E.5–E.7 | — | decisions taken 2026-10-02 (see §9) |
 
-Отдельно, решением владельца 2026-10-02 (мелкая правка интерфейса): кнопки
-AI-анализа («AI-анализ всех» и «AI-рейтинг» на карточке) убраны с `/matched`, так
-как скоринг закрыт границей и кнопки всегда отвечали 503; бейджи кэшированных
-оценок помечены «справочно: новые не считаются». Записи — задача EDEC-002.
+Separately, by the owner's decision of 2026-10-02 (a minor interface fix): the AI analysis
+buttons («Analyze all with AI» and «AI rating» on the card) were removed from `/matched`, since
+scoring is closed by the boundary and the buttons always answered 503; the badges of cached
+ratings are marked «for information: new ones are not computed». The records — task EDEC-002.
 
-Рекомендованный порядок: B23 (выигрыш измерен, ворота готовы) → RET-001
-(политика + миграция) → MODEL-001 → ESCO (по решению) → MODEL-002 (спайк).
+Recommended order: B23 (the gain is measured, the gates are ready) → RET-001
+(policy + migration) → MODEL-001 → ESCO (per the decision) → MODEL-002 (spike).

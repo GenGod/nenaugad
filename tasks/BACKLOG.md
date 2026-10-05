@@ -1,15 +1,15 @@
-# Минимальный backlog после старта
+# Minimal backlog after the start
 
-S0-001 — установить, проверить и принять текущий стартер (активно).
-S1-001 — один одобренный источник с сохранением и каталогом.
-S1-002 — второй источник только после устойчивого первого.
-S2-001 — auth и ручной приватный профиль; отрицательные owner-тесты.
-S2-002 — детерминированный подбор и сохранение; unknown/AND/OR/evidence.
-S3-001 — безопасный parser и подтверждение CV, без внешней модели при отсутствии допуска.
-S3-002 — минимальные финансовые предохранители + один одобренный AI transport.
-S4-001 — приватный редактор писем, версии, TXT, конфликты и удаление.
-S4-002 — явная bounded-генерация, полная проверка, версия-предложение.
-S5-001 — реальный сквозной путь, небольшой reviewed eval, restore и приглашённая beta.
+S0-001 — install, check and accept the current starter (active).
+S1-001 — one approved source with saving and a catalog.
+S1-002 — a second source only after a stable first one.
+S2-001 — auth and a manual private profile; negative owner tests.
+S2-002 — deterministic matching and saving; unknown/AND/OR/evidence.
+S3-001 — a safe parser and CV confirmation, without an external model in the absence of an eligibility gate.
+S3-002 — minimal financial guards + one approved AI transport.
+S4-001 — a private letter editor, versions, TXT, conflicts and deletion.
+S4-002 — explicit bounded generation, full validation, a suggestion version.
+S5-001 — a real end-to-end path, a small reviewed eval, restore and an invited beta.
 
-Это порядок зависимостей, не обещание сроков. Сценарии разбивать дальше только при
-реальной необходимости. Вторая модель, vector search и ops-портал — не стартовые задачи.
+This is a dependency order, not a promise of deadlines. Split scenarios further only when
+really necessary. A second model, vector search and an ops portal are not starter tasks.

@@ -1,58 +1,58 @@
-# Фактическая проверка поставки Atlas Starter 0.1
+# Factual verification of the Atlas Starter 0.1 delivery
 
-Дата: 23 сентября 2026. Объект проверки — локальный starter, не production Atlas.
+Date: 23 September 2026. The object of verification is the local starter, not production Atlas.
 
-**Обновление 2026-10-02 (FDOC-001).** Записи ниже — про среду подготовки 23.09
-(реестр был недоступен). На рабочей машине владельца всё перечисленное в
-«Заблокировано средой» с тех пор выполнено: `npm install` создал настоящий
-`package-lock.json` (он в git), `check`/`lint`/`typecheck`/`build`/`test:db` на
-изолированной PostgreSQL и Playwright e2e выполняются и зелёные; S0-001 принят
-владельцем 2026-09-24. Актуальные факты и числа — `IMPLEMENTATION_STATUS.md`.
+**Update 2026-10-02 (FDOC-001).** The records below concern the preparation environment of 23.09
+(the registry was unavailable). On the owner's working machine everything listed under
+«Заблокировано средой» [Blocked by the environment] has since been done: `npm install` created a real
+`package-lock.json` (it is in git), `check`/`lint`/`typecheck`/`build`/`test:db` on
+an isolated PostgreSQL and Playwright e2e run and are green; S0-001 was accepted
+by the owner 2026-09-24. The current facts and numbers are in `IMPLEMENTATION_STATUS.md`.
 
-## Выполнено
-- `npm run tokens`: CSS aliases получены из приложенного исходного Atlas JSON.
-- `npm run check:offline`: 30 unit-тестов, все прошли; skipped=0; токены и статические
-  guardrails прошли. Это НЕ проверка серверных Next handlers.
-- `tsc -p tsconfig.core.json` с установленным compiler TypeScript 5.8.3 и локальным
-  @types/node: exit 0. Проверяется только чистое ядро и unit-тесты. Не полный app.
-- Syntax/transpile inspection TypeScript 5.8.3: 36 TS/TSX-файлов без синтаксических
-  диагностик. Реальные Next/React/pg types не загружались.
-- `npm run setup` дважды: создание приватной .env и отказ от её перезаписи.
-  `.env` с локальным паролем НЕ включена в архив.
-- `npm run doctor`, `npm run task -- show`: выполнены, секреты не выводятся.
-- Статическая проверка layout: см. static-layout.json. Реальные компоненты
-  сериализовались QA-only JSX serializer, затем HTML/CSS открывались в Chromium.
-  Это не React, не Next runtime, не hydration и не E2E. Найденный min-width overflow
-  в каталоге при 320 px исправлен; повторный результат отражён в JSON.
+## Done
+- `npm run tokens`: CSS aliases were derived from the attached source Atlas JSON.
+- `npm run check:offline`: 30 unit tests, all passed; skipped=0; tokens and the static
+  guardrails passed. This is NOT a check of the server-side Next handlers.
+- `tsc -p tsconfig.core.json` with the installed compiler TypeScript 5.8.3 and a local
+  @types/node: exit 0. Only the pure core and the unit tests are checked. Not the full app.
+- Syntax/transpile inspection TypeScript 5.8.3: 36 TS/TSX files without syntactic
+  diagnostics. The real Next/React/pg types were not loaded.
+- `npm run setup` twice: creation of a private .env and refusal to overwrite it.
+  The `.env` with the local password is NOT included in the archive.
+- `npm run doctor`, `npm run task -- show`: run, no secrets are printed.
+- Static layout check: see static-layout.json. The real components were
+  serialized by a QA-only JSX serializer, then the HTML/CSS was opened in Chromium.
+  This is not React, not a Next runtime, not hydration and not E2E. A found min-width overflow
+  in the catalog at 320 px was fixed; the repeated result is reflected in the JSON.
 
-## Заблокировано средой / не выполнено
-- npm registry probe вернул `EAI_AGAIN` на registry.npmjs.org.
-- `npm install` dependency tree не разрешён; настоящий package-lock.json не создан.
-- `npm run lint`, полный `npm run typecheck`, `npm run build`, `npm run dev` не выполнены:
-  Next/React/pg/Biome и type declarations приложения не установлены.
-- `npm run test:db`: не выполнено; Docker/PostgreSQL и pg отсутствуют.
-- `npm run test:e2e`: сценарии написаны, но настоящий Next-сервер/Playwright Test
-  не запускались. Нельзя считать статический layout тест эквивалентом.
-- npm audit, dependency/Actions/image-digest verification, WCAG-аудит, pen test,
-  нагрузка, restore и live sources/AI не выполнялись.
-- GitHub-репозиторий не создавался, CI/deploy не запускались, подписки не покупались.
+## Blocked by the environment / not done
+- The npm registry probe returned `EAI_AGAIN` on registry.npmjs.org.
+- `npm install`: the dependency tree was not resolved; a real package-lock.json was not created.
+- `npm run lint`, the full `npm run typecheck`, `npm run build`, `npm run dev` were not run:
+  Next/React/pg/Biome and the application's type declarations are not installed.
+- `npm run test:db`: not done; Docker/PostgreSQL and pg are absent.
+- `npm run test:e2e`: the scenarios are written, but a real Next server/Playwright Test
+  was not started. The static layout test cannot be considered equivalent.
+- npm audit, dependency/Actions/image-digest verification, a WCAG audit, a pen test,
+  load, restore and live sources/AI were not performed.
+- No GitHub repository was created, no CI/deploy was run, no subscriptions were purchased.
 
-## Среда
-Node 22.16.0, npm 10.9.2, доступный TypeScript 5.8.3,
-Chromium 144.0.7559.96 (только статическая проверка).
-Рекомендуемый toolchain для установки задан в .nvmrc/package.json.
-Различие runtime/compiler среды и выбранных зависимостей явно сохраняется.
+## Environment
+Node 22.16.0, npm 10.9.2, the available TypeScript 5.8.3,
+Chromium 144.0.7559.96 (static check only).
+The recommended toolchain for installation is set in .nvmrc/package.json.
+The difference between the environment's runtime/compiler and the chosen dependencies is explicitly preserved.
 
-## Что не является готовой функцией
-*(Запись 23.09.)* Авторизация, приватные профили, загрузка CV, worker, runtime ledger,
-реальные источники и генерация писем отсутствуют. Их отсутствие и блокировка
-не доказывают готовность будущей реализации.
+## What is not a finished feature
+*(Record of 23.09.)* Authorization, private profiles, CV upload, a worker, a runtime ledger,
+real sources and letter generation are absent. Their absence and the blockage
+do not prove the readiness of a future implementation.
 
-*(Обновление 2026-10-02.)* Всё перечисленное реализовано отдельными задачами
-S1–S4 и AI-001…AI-007 со своими гейтами; «реализовано» и здесь не значит
-«активировано»: живые вызовы AI запрещены (`LIVE_AI_ENABLED=false`), батч-путь
-закрыт, restore отсутствует.
+*(Update 2026-10-02.)* Everything listed has been implemented by separate tasks
+S1–S4 and AI-001…AI-007 with their own gates; «реализовано» [implemented] here too does not mean
+«активировано» [activated]: live AI calls are forbidden (`LIVE_AI_ENABLED=false`), the batch path
+is closed, restore is absent.
 
-S0-001 принят владельцем 2026-09-24 после настоящей установки и проверок;
-задача [S0-001](../tasks/S0-001-install-and-verify.md) остаётся контрактом этих
-проверок, а их фактические результаты — в `IMPLEMENTATION_STATUS.md`.
+S0-001 was accepted by the owner 2026-09-24 after a real installation and checks;
+the task [S0-001](../tasks/S0-001-install-and-verify.md) remains the contract of these
+checks, and their actual results are in `IMPLEMENTATION_STATUS.md`.

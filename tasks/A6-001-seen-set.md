@@ -1,138 +1,154 @@
-# A6-001 — seen-set: «видел, не кликнул» не возвращается раньше времени
+# A6-001 — seen-set: "seen, not clicked" does not return early
 
-**Результат:** подбор перестал показывать вакансии, которые кандидат уже видел и не
-тронул. Вакансия возвращается, когда пайплайн увидел её содержимое изменившимся
-(новый `content_hash`), либо когда истёк период показа (14 дней). В журнале
-появился факт «что именно было показано», и клиент впервые отправляет показы из
-выдачи — та половина A8, которую тот оставил следующей задачей. Пустой список
-объясняется честно («скрыто N, вернутся при изменении или через 14 дней»), а не
-молчит.
+**Result:** matching stopped showing jobs the candidate had already seen and not
+touched. A job returns when the pipeline has seen its content change (a new
+`content_hash`), or when the shown period has expired (14 days). The journal gained
+the fact of "what exactly was shown", and the client sends impressions from the
+feed for the first time — the half of A8 that it left to the next task. An empty
+list is explained honestly («скрыто N, вернутся при изменении или через 14 дней»
+["N hidden; they return on change or after 14 days"]), not with silence.
 
-**Не входит:** весовое понижение окрестности скрытого (вторая часть пункта A6 —
-отдельная малая задача A6-002, чтобы у каждой был свой обозримый diff);
-структурные фильтры «не показывать компанию X» (расширение reason-кодов — решение
-владельца); push-алерты и дайджест (A7); чтение журнала в UI.
+**Out of scope:** weight demotion of the neighborhood of the hidden (the second
+part of item A6 — a separate small task A6-002, so that each has its own
+reviewable diff); structural filters "do not show company X" (an extension of the
+reason codes — an owner decision); push alerts and the digest (A7); reading the
+journal in the UI.
 
-**Контекст:** [бриф](../docs/design/2026-09-27-matching-implementation-brief.md)
-(пункт A6, зависимость A8); [исследование](../docs/research/2026-09-26-job-matching-research.md)
-ч.2 C1 (seen-set) и C2 (негативные предпочтения — в A6-002).
+**Context:** [the brief](../docs/design/2026-09-27-matching-implementation-brief.md)
+(item A6, dependency A8); [the
+research](../docs/research/2026-09-26-job-matching-research.md) part 2 C1
+(seen-set) and C2 (negative preferences — in A6-002).
 
-## Что добавлено
+## What was added
 
-- `migrations/0015_job_events_shown_hash.sql` — колонка `shown_content_hash` в
-  `job_events`: отпечаток содержимого на момент показа. Заполняется **сервером** из
-  `job_snapshots.content_hash`, а не клиентом (клиентский отпечаток позволил бы
-  заявить «вы этого не видели» и вернуть скрытую вакансию в выдачу). NULL = «что
-  показывали — неизвестно», и неизвестность никогда не скрывает.
-- `src/domain/seen-set.ts` — правило: нет записи → показываем; было действие
-  (клик/сохранение) → показываем; отпечаток другой → показываем немедленно; иначе
-  окно `SEEN_TTL_DAYS = 14`; на границе окна — возврат. Без улик (нет отпечатка,
-  нечитаемое время, метка далеко из будущего) — показываем: ошибочно скрытая
-  вакансия это молчаливая потеря. `SEEN_CLOCK_SKEW_TOLERANCE_MS = 5 минут` —
-  журнал ставит время часами БД, вызывающий передаёт свои; расхождение на секунды
-  это норма, и без допуска правило молча выключалось бы целиком.
-- `src/server/seen-service.ts` — реестр показов **выводится из журнала**, а не из
-  новой таблицы: «показано во столько-то с таким содержимым» — уже факт журнала, и
-  вторая копия создала бы второй источник правды и второе место, которое можно
-  забыть при удалении. Чтения владельческие (id только из сессии); `acted` —
-  клик в журнале или сохранение.
-- `src/server/events-service.ts` — запись показа: отдельный параметризованный
-  SELECT отпечатков + вставка массива через `unnest` (строкового SQL нет). Отметка
-  о клике отпечатка не несёт: клик — не показ.
-- `src/server/matching-service.ts` — выдача применяет правило к дубль-группе целиком
-  (кандидат видел вакансию, а не копию конкретной доски) и считает скрытое
-  по вкладкам: пустая вкладка говорит, почему она пуста, вместо «ничего не нашлось».
-- `src/components/impression-reporter.tsx` — клиентская отправка показов: id и
-  позиции, позиция = место в отрендеренном списке; ошибка отчёта никогда не влияет
-  на выдачу. «Показ» определён честно: вакансия была в отрендеренном списке;
-  отслеживание видимой области не заявляется.
-- `src/app/matched/page.tsx` — честная строка «Скрыто как уже показанное: N», пустое
-  состояние с причиной, и явная метка порядка выдачи в журнале
-  (`v0-ai-score-then-catalog` / `v0-review-catalog-order`): версионированного
-  ранкера в продуктовом пути пока нет (A9), выдумывать его версию нельзя.
-- `.gitignore` — `.playwright-mcp/` (каталог снапшотов браузерного инструмента,
-  которым проверялся клиент).
+- `migrations/0015_job_events_shown_hash.sql` — the `shown_content_hash` column in
+  `job_events`: the content fingerprint at the moment of showing. It is filled by
+  the **server** from `job_snapshots.content_hash`, not by the client (a client
+  fingerprint would make it possible to claim "you did not see this" and return a
+  hidden job to the feed). NULL = "what was shown is unknown", and unknown never
+  hides.
+- `src/domain/seen-set.ts` — the rule: no record → show; there was an action
+  (click/save) → show; the fingerprint is different → show immediately; otherwise
+  the window `SEEN_TTL_DAYS = 14`; at the window boundary — return. Without
+  evidence (no fingerprint, an unreadable time, a timestamp far in the future) —
+  show: a wrongly hidden job is a silent loss. `SEEN_CLOCK_SKEW_TOLERANCE_MS =
+  5 minutes` — the journal stamps time with DB clocks while the caller passes its
+  own; a divergence of seconds is the norm, and without the tolerance the rule
+  would silently switch itself off entirely.
+- `src/server/seen-service.ts` — the impression registry is **derived from the
+  journal**, not from a new table: "shown at such a time with such content" is
+  already a fact of the journal, and a second copy would create a second source of
+  truth and a second place that can be forgotten at deletion. Reads are
+  owner-scoped (ids only from the session); `acted` — a click in the journal or a
+  save.
+- `src/server/events-service.ts` — recording an impression: a separate
+  parameterized SELECT of fingerprints + an array insert via `unnest` (no
+  string-built SQL). A click mark carries no fingerprint: a click is not an
+  impression.
+- `src/server/matching-service.ts` — the feed applies the rule to the whole
+  duplicate group (the candidate saw the job, not a copy on a particular board)
+  and counts the hidden per tab: an empty tab says why it is empty, instead of
+  "nothing found".
+- `src/components/impression-reporter.tsx` — client-side sending of impressions:
+  ids and positions, position = the place in the rendered list; a report error
+  never affects the feed. "Impression" is defined honestly: the job was in the
+  rendered list; tracking of the visible area is not claimed.
+- `src/app/matched/page.tsx` — the honest line «Скрыто как уже показанное: N»
+  ["Hidden as already shown: N"], an empty state with a reason, and an explicit
+  feed-order label in the journal (`v0-ai-score-then-catalog` /
+  `v0-review-catalog-order`): there is no versioned ranker in the production path
+  yet (A9), and its version must not be invented.
+- `.gitignore` — `.playwright-mcp/` (the snapshot directory of the browser tool
+  the client was checked with).
 
-## Протокол V0–V6
+## Protocol V0–V6
 
-- **V0.** Отдельная задача; миграция 0015 — единственное изменение схемы
-  (аддитивное, одна колонка). План записан до кода в этом файле.
-- **V1.** Пункт A6 и ч.2 C1 перечитаны: «явный dismiss — навсегда; seen-no-action —
-  TTL 7–14 дней, возврат только при изменении вакансии (content-hash или
-  version+1)». Подтверждено по коду: `job_snapshots.content_hash` и `version`
-  действительно растут на семантическое изменение (`pipeline.ts`), то есть
-  сравнение отпечатков — существующий факт, а не новая эвристика. Весовое
-  понижение (ч.2 C2) вынесено в A6-002, чтобы диффы были обозримыми.
-- **V2.** Принципы: golden 9 — сигналы одного кандидата не влияют на другого
-  (integration-тест двух пользователей); неизвестность не угадывается — без
-  улик вакансия показывается, «показано» без отпечатка не скрывает; удаление
-  профиля удаляет журнал, а с ним и реестр (тест), потому что производное не
-  живёт отдельно; ничего фейкового — показов без реального рендера нет, вероятность
-  показа (propensity) по-прежнему NULL до A10.
-- **V3.** `npm run check` → exit 0 (**170/170** unit, было 163; biome 163 файла;
-  tsc чисто); **`npm run test:db` → exit 0, 37/37** (было 31; 6 новых A6 на живой
-  тестовой БД); `npm run build` → exit 0; **`npm run test:e2e` → 93 passed**;
-  `npm run eval:matching` → exit 0, числа не изменились (ранкер не тронут):
-  R@5 0.742 · R@10 0.877 · NDCG@5 0.914 · NDCG@10 0.916 · MRR 1.000, guards 0/0.
-  Дополнительно сценарий пройден вручную на локальной dev-БД в режиме postgres:
-  первая загрузка вкладки «Нужно уточнить» — 46 карточек, **46 показов записаны с
-  отпечатками** (`v0-review-catalog-order`, позиции 0..45); повторная загрузка —
-  все 46 скрыты, вкладка 0, строка «скрыто 46 ... вернутся через 14 дней»; повтор
-  не создал дублей; записи тестового пользователя после проверки удалены.
-- **V4.** Золотые случаи A6: «dismiss не возвращается» — существующее скрытие
-  (`hidden_jobs`) не менялось; «seen-TTL возвращает после изменения, не раньше» —
-  unit на границе окна + integration на реальное изменение содержимого
-  (переимпорт с новым заголовком → новый отпечаток → вакансия вернулась);
-  golden 9 — integration-тест двух пользователей.
-- **V5.** Существующие тесты не ослаблены и не менялись; `check:offline` (включая
-  guardrails) зелёный; diff просмотрен целиком; несвязанные файлы не тронуты
-  (`next-env.d.ts`, переписанный dev-сервером, восстановлен).
-- **V6.** Этот файл + запись в `IMPLEMENTATION_STATUS.md`.
+- **V0.** A separate task; migration 0015 is the only schema change (additive, one
+  column). The plan was written into this file before the code.
+- **V1.** Item A6 and part 2 C1 re-read: «явный dismiss — навсегда; seen-no-action
+  — TTL 7–14 дней, возврат только при изменении вакансии (content-hash или
+  version+1)» [an explicit dismiss is forever; seen-no-action — a TTL of 7–14
+  days, a return only on a job change (content-hash or version+1)]. Confirmed in
+  the code: `job_snapshots.content_hash` and `version` do grow on a semantic
+  change (`pipeline.ts`), that is, fingerprint comparison is an existing fact, not
+  a new heuristic. Weight demotion (part 2 C2) is moved to A6-002, so that the
+  diffs stay reviewable.
+- **V2.** Principles: golden 9 — one candidate's signals do not affect another's
+  (an integration test of two users); unknown is not guessed — without evidence
+  the job is shown, "shown" without a fingerprint does not hide; deleting the
+  profile deletes the journal, and with it the registry (test), because the
+  derivative does not live separately; nothing fake — no impressions without a
+  real render, the propensity is still NULL until A10.
+- **V3.** `npm run check` → exit 0 (**170/170** unit, previously 163; biome 163
+  files; tsc clean); **`npm run test:db` → exit 0, 37/37** (previously 31; 6 new
+  A6 tests on a live test DB); `npm run build` → exit 0; **`npm run test:e2e` → 93
+  passed**; `npm run eval:matching` → exit 0, the numbers did not change (the
+  ranker untouched): R@5 0.742 · R@10 0.877 · NDCG@5 0.914 · NDCG@10 0.916 ·
+  MRR 1.000, guards 0/0. Additionally the scenario was walked manually on the
+  local dev DB in postgres mode: the first load of the «Нужно уточнить» ["Needs
+  clarification"] tab — 46 cards, **46 impressions recorded with fingerprints**
+  (`v0-review-catalog-order`, positions 0..45); a second load — all 46 hidden, the
+  tab at 0, the line «скрыто 46 ... вернутся через 14 дней» ["46 hidden ... they
+  return after 14 days"]; the repeat created no duplicates; the test user's
+  records were deleted after the check.
+- **V4.** The golden cases of A6: "a dismiss does not return" — the existing
+  hiding (`hidden_jobs`) was not changed; "seen-TTL returns after a change, not
+  earlier" — a unit test at the window boundary + an integration test on a real
+  content change (a re-import with a new title → a new fingerprint → the job
+  returned); golden 9 — an integration test of two users.
+- **V5.** Existing tests were not weakened and were not changed; `check:offline`
+  (including the guardrails) green; the diff reviewed in full; unrelated files not
+  touched (`next-env.d.ts`, rewritten by the dev server, restored).
+- **V6.** This file + a record in `IMPLEMENTATION_STATUS.md`.
 
-## Важное из проверки e2e (окружение, не код)
+## Important from the e2e check (environment, not code)
 
-Первый прогон `test:e2e` дал 90 passed / 3 failed: `DELETE /api/v1/profile` падал на
-`job_events`, потому что локальная dev-БД была мигрирована только до 0013 — миграция
-0014 (A8) в неё не применялась, а A8 e2e не запускал. Это разрыв окружения, а не
-дефект правки: `npm run db:migrate` применил 2 миграции (0014, 0015), после чего
-93/93 зелёные. Полезный факт для следующих задач: **после аддитивной миграции
-нужно применять её к локальной dev-БД**, иначе e2e-путь удаления профиля краснеет.
+The first `test:e2e` run gave 90 passed / 3 failed: `DELETE /api/v1/profile`
+failed on `job_events`, because the local dev DB had been migrated only to 0013 —
+migration 0014 (A8) had not been applied to it, and A8 did not run e2e. That is an
+environment gap, not a defect of the change: `npm run db:migrate` applied 2
+migrations (0014, 0015), after which 93/93 were green. A useful fact for the
+following tasks: **after an additive migration it must be applied to the local dev
+DB**, otherwise the e2e path of profile deletion goes red.
 
-## Циклы ремонта: 2/2 (лимит исчерпан, работа зелёная)
+## Repair cycles: 2/2 (the limit is exhausted, the work is green)
 
-1. Первый прогон проверок: незакрытый generic в типе `MatchedResult` (`};` вместо
-   `}>;`) — ошибка разбора biome; тест брал «первую строку снапшотов» в общей
-   тестовой БД, где уже лежат снапшоты других наборов; показ, записанный на
-   миллисекунды позже переданных часов, читался как метка из будущего. Гипотеза:
-   красное — это дефекты вокруг правила (тип, недетерминированный ключ фикстуры,
-   расхождение часов), а не в правиле. Подтвердилось: тип исправлен, ключ фикстуры
-   детерминирован (`jobicy:<id>` после сброса состояния источника), допуск часов
-   стал явной константой, а метка далеко из будущего по-прежнему не скрывает.
-2. Оставался один красный тест «содержимое изменилось»: повторный импорт внутри
-   `min_poll_interval` адаптер правильно пропускает (`retry_scheduled`), поэтому
-   изменения содержимого не происходило вовсе. Гипотеза: тест должен имитировать
-   следующий запланированный опрос (сброс `import_state`), а не ждать окно.
-   Подтвердилось.
+1. The first checks run: an unclosed generic in the `MatchedResult` type (`};`
+   instead of `}>;`) — a biome parse error; a test took "the first row of
+   snapshots" in the shared test DB, where snapshots of other sets already lie; an
+   impression recorded milliseconds after the passed clocks was read as a
+   timestamp from the future. Hypothesis: the red is defects around the rule (the
+   type, a nondeterministic fixture key, a clock divergence), not in the rule.
+   Confirmed: the type fixed, the fixture key deterministic (`jobicy:<id>` after
+   resetting the source state), the clock tolerance an explicit constant, and a
+   far-future timestamp still does not hide.
+2. One red test remained, "the content changed": a re-import within
+   `min_poll_interval` is correctly skipped by the adapter (`retry_scheduled`), so
+   no content change happened at all. Hypothesis: the test must imitate the next
+   scheduled poll (a reset of `import_state`), not wait for the window. Confirmed.
 
-Дальнейших циклов нет и не требуется: все проверки зелёные.
+There are no further cycles and none are needed: all checks are green.
 
-## Ограничения
+## Limitations
 
-1. «Показ» = вакансия была в отрендеренном списке; видимая область не
-   отслеживается и не заявляется. Для OPE (D7) это определение придётся уточнять.
-2. Окно 14 дней — верхняя граница исследованного диапазона 7–14, зафиксированная
-   константой. Тюнить не на чем: трафика нет; менять — только с замером.
-3. Реестр выводится из журнала, поэтому retention журнала (решение владельца №8)
-   ограничивает и память о показах: старые события — «снова не видел».
-4. Порядок выдачи в журнале помечен как `v0-*`: настоящего версионированного
-   ранкера в продуктовом пути нет (A9 подключит его и заменит метку).
-5. Каталог `/jobs` остаётся витриной для просмотра: seen-set действует в подборе
-   (`/matched`), а не скрывает вакансии из каталога.
-6. Клиентская отправка не покрыта e2e (e2e идёт на fixture-бэкенде, где снапшотов
-   нет) — проверена вручную на локальной БД (числа выше).
+1. "Impression" = the job was in the rendered list; the visible area is not
+   tracked and not claimed. For OPE (D7) this definition will have to be refined.
+2. The 14-day window is the upper bound of the researched 7–14 range, fixed as a
+   constant. There is nothing to tune on: no traffic; changing it — only with a
+   measurement.
+3. The registry is derived from the journal, so the journal's retention (owner
+   decision #8) also bounds the memory of impressions: old events are "not seen
+   again".
+4. The feed order in the journal is labelled `v0-*`: there is no real versioned
+   ranker in the production path yet (A9 will wire it in and replace the label).
+5. The `/jobs` catalog remains a browsing showcase: the seen-set acts in matching
+   (`/matched`), it does not hide jobs from the catalog.
+6. Client-side sending is not covered by e2e (e2e runs against the fixture
+   backend, where there are no snapshots) — verified manually on the local DB
+   (the numbers above).
 
-## Риск и откат
+## Risk and rollback
 
-Риск обычный: аддитивная миграция + правило выдачи + клиентский компонент. Откат —
-`git revert` коммита; колонка `shown_content_hash` может остаться (аддитивная,
-никем не читается после отката кода).
+Ordinary risk: an additive migration + a feed rule + a client component. Rollback
+— `git revert` of the commit; the `shown_content_hash` column may remain
+(additive, read by no one after the code rollback).

@@ -1,554 +1,557 @@
-# Бриф для следующей сессии ИИ: проектирование и реализация системы подбора вакансий
+# Brief for the next AI session: designing and implementing the job matching system
 
-Дата: 2026-09-27. Ветка: `design/job-matching`.
-Основа: [docs/research/2026-09-26-job-matching-research.md](../research/2026-09-26-job-matching-research.md)
-(часть 1 — топ-10 методов, часть 2 — неочевидные улучшения; далее «research»).
+Date: 2026-09-27. Branch: `design/job-matching`.
+Basis: [docs/research/2026-09-26-job-matching-research.md](../research/2026-09-26-job-matching-research.md)
+(part 1 — top-10 methods, part 2 — non-obvious improvements; hereinafter "research").
 
-## 1. Как пользоваться этим документом
+## 1. How to use this document
 
-1. Сначала прочитай: `AGENTS.md`, `START_HERE.md`, `docs/ARCHITECTURE.md` (ADR-001),
-   `docs/SAFETY_GATES.md`, research (целиком), текущую задачу `npm run task -- show`,
-   и этот бриф целиком.
-2. Реализуй **строго один пункт реестра за одну задачу** через рабочий цикл SP 1.0
-   (`npm run task -- ...`): короткий план → минимальное полное изменение → реальные
-   проверки → diff review. Максимум два цикла ремонта; новую проверяемую гипотезу
-   записывать через `npm run task -- repair "..."` ДО цикла.
-3. Каждый пункт проходит **протокол перепроверки V0–V6** (раздел 4). Без него пункт
-   не считается выполненным — ни при зелёных тестах, ни при «работает локально».
-4. Статусы честные: `implemented` ≠ `tested locally` ≠ `verified` ≠ `accepted`.
-   Команды, которые не запускались, помечаются `not_run`, никогда не «прошли».
-5. Делегирование: несложные правки/тесты/грепы — субагентам-исполнителям
-   (см. `docs/PROMPT_EXECUTOR.md`); архитектура, security, source-policy, деньги —
-   только в основной сессии. Весь вывод субагентов ревьюится основным агентом.
-6. Не коммитить без явного слова владельца. Не пушить, не мержить, не деплоить.
+1. Read first: `AGENTS.md`, `START_HERE.md`, `docs/ARCHITECTURE.md` (ADR-001),
+   `docs/SAFETY_GATES.md`, research (in full), the current task `npm run task -- show`,
+   and this brief in full.
+2. Implement **strictly one registry item per task** through the SP 1.0 working loop
+   (`npm run task -- ...`): short plan → minimal complete change → real
+   checks → diff review. At most two repair cycles; record a new testable hypothesis
+   via `npm run task -- repair "..."` BEFORE the cycle.
+3. Every item goes through the **V0–V6 re-verification protocol** (section 4). Without it
+   an item is not considered done — not with green tests, not with "works locally".
+4. Statuses are honest: `implemented` ≠ `tested locally` ≠ `verified` ≠ `accepted`.
+   Commands that were not run are marked `not_run`, never "passed".
+5. Delegation: non-complex edits/tests/greps — to executor subagents
+   (see `docs/PROMPT_EXECUTOR.md`); architecture, security, source-policy, money —
+   only in the main session. All subagent output is reviewed by the main agent.
+6. Do not commit without the owner's explicit word. Do not push, do not merge, do not deploy.
 
-## 2. Состояние проекта на 2026-09-27 (факты, от которых отталкиваться)
+## 2. Project state as of 2026-09-27 (facts to start from)
 
-Это НЕ «первый день»: значительная часть каскада уже существует. Перед
-проектированием любого пункта читай перечисленные файлы — они источник правды,
-не этот бриф.
+This is NOT "day one": a significant part of the cascade already exists. Before
+designing any item, read the listed files — they are the source of truth,
+not this brief.
 
-**Уже реализовано:**
-- Auth (next-auth@4.24.15, scrypt), профили с версиями, ownership-дисциплина 401/404.
-- Детерминированный движок допуска `src/domain/matching.ts`: правила GEO-01,
-  CONTRACT-01, REMOTE-01, SAL-01, TIME-01, SKILL-01; исходы
-  `pass/fail/unknown/not_applicable`, reason codes, AND-в-опции/OR-между-опциями;
-  job-level fail ограничивает итоговый статус. Это и есть «hard-фильтры с
-  трёхзначной логикой» из research (метод 2) — **не пере-реализовывать, расширять**.
-- Справочник навыков `src/domain/skills.ts` (aliases, категории; SKILL-01 —
+**Already implemented:**
+- Auth (next-auth@4.24.15, scrypt), versioned profiles, ownership discipline 401/404.
+- Deterministic eligibility-gate engine `src/domain/matching.ts`: rules GEO-01,
+  CONTRACT-01, REMOTE-01, SAL-01, TIME-01, SKILL-01; outcomes
+  `pass/fail/unknown/not_applicable`, reason codes, AND-within-option/OR-between-options;
+  job-level fail caps the final status. This is the "hard filters with
+  three-valued logic" from research (method 2) — **do not re-implement, extend**.
+- Skills dictionary `src/domain/skills.ts` (aliases, categories; SKILL-01 —
   count-based ≥2, category-aware).
-- Скрытие с фиксированными причинами (миграция 0008 `hidden_jobs`), пометка отклика,
-  возврат в подбор — `src/server/feedback-service.ts`, `src/domain/feedback.ts`.
-- Два импорт-источника: himalayas (approved+enabled) и jobicy (approved,
-  enabled=true, политика v2, активирована владельцем 2026-09-25 после S1-003;
-  сверх них — синтетические atlas-fixtures, не импорт-источник),
-  пайплайн импорта с идемпотентностью (`src/server/import/pipeline.ts`),
-  closure-checks с бюджетом HEAD, quarantine-guard, «мягкое/жёсткое закрытие»
+- Hiding with fixed reasons (migration 0008 `hidden_jobs`), application marking,
+  return to the feed — `src/server/feedback-service.ts`, `src/domain/feedback.ts`.
+- Two import sources: himalayas (approved+enabled) and jobicy (approved,
+  enabled=true, policy v2, activated by the owner on 2026-09-25 after S1-003;
+  beyond them — synthetic atlas-fixtures, not an import source),
+  the import pipeline with idempotency (`src/server/import/pipeline.ts`),
+  closure-checks with a HEAD budget, quarantine-guard, "soft/hard closure"
   (`src/server/import/closure-checks.ts`).
-- CV-интейк: извлечение текста txt/md/docx без сети, fail-closed лимиты,
-  минимизация (`src/server/cv/`); «ничего не выводится автоматически» — принцип
-  `draft ≠ факт` уже установлен.
-- Письма: S4-001/002/003 (приватный CRUD, версии, validator, general-mode).
-- AI-инфраструктура: `src/server/ai/` (gateway, provider, openai-transport,
-  openai-batch, batch-queue-service, spending, disabled.ts), бюджеты (`npm run seed:budgets`, задача
-  AI-001), transport-гейты. Owner-approved purpose сегодня один — `cover_letter`
-  (AI-002); whitelist `approvedPurposes` (`provider.ts`) шлюзом не исполняется
-  (мёртвый код). Синхронные вызовы идут через `executeGuardedOperation`, но путь
-  OpenAI Batch в `/api/v1/relevance` ходит в провайдер напрямую, минуя шлюз, —
-  без резервирования бюджета. Это известная дыра; закрытие — часть 1 C0
-  (раздел 6), решение владельца №10. Новые вызовы мимо контура не добавлять.
-- Дизайн-система 1.3 (`--ng-*` токены, иконки, витринные экраны) — принята и
-  слита в main (DS-001). Появление новых UI-элементов — только в Atlas/Nenaugad 1.3.
-- Тесты: unit (117+), integration на отдельной тестовой БД (`npm run test:db`),
-  e2e Playwright 93 сценария, скриншотные базлайны.
+- CV intake: text extraction txt/md/docx without network, fail-closed limits,
+  minimization (`src/server/cv/`); "nothing is output automatically" — the
+  `draft ≠ факт` principle is already established.
+- Letters: S4-001/002/003 (private CRUD, versions, validator, general-mode).
+- AI infrastructure: `src/server/ai/` (gateway, provider, openai-transport,
+  openai-batch, batch-queue-service, spending, disabled.ts), budgets (`npm run seed:budgets`, task
+  AI-001), transport gates. There is one owner-approved purpose today — `cover_letter`
+  (AI-002); the whitelist `approvedPurposes` (`provider.ts`) is not enforced by the gateway
+  (dead code). Synchronous calls go through `executeGuardedOperation`, but the path
+  OpenAI Batch in `/api/v1/relevance` goes to the provider directly, bypassing the gateway —
+  without budget reservation. This is a known hole; closing it is part 1 of C0
+  (section 6), owner decision #10. Do not add new calls bypassing the contour.
+- Design system 1.3 (`--ng-*` tokens, icons, showcase screens) — accepted and
+  merged into main (DS-001). New UI elements appear only in Atlas/Nenaugad 1.3.
+- Tests: unit (117+), integration on a separate test DB (`npm run test:db`),
+  e2e Playwright 93 scenarios, screenshot baselines.
 
-**Что уже есть сверх допуска (важно для A9 и C2):** LLM-скоринг релевантности
-уже реализован — `src/server/relevance-service.ts` + `/api/v1/relevance`
-(синхронный и OpenAI Batch режимы; кэш `job_relevance_scores`, миграция 0011).
-Это НЕ ранкер: `matching-service.ts` не использует эти скоры в выдаче; ключ
-кэша `(user_id, snapshot_id, profile_version)` без `prompt_version`/`job_version`;
-`model_id` захардкожен в маршруте вместо константы провайдера. C2 поглощает
-подсистему, не дублирует её.
+**What already exists beyond the eligibility gate (important for A9 and C2):** LLM relevance
+scoring is already implemented — `src/server/relevance-service.ts` + `/api/v1/relevance`
+(synchronous and OpenAI Batch modes; cache `job_relevance_scores`, migration 0011).
+This is NOT a ranker: `matching-service.ts` does not use these scores in the feed; the cache
+key `(user_id, snapshot_id, profile_version)` without `prompt_version`/`job_version`;
+`model_id` is hardcoded in the route instead of the provider constant. C2 absorbs the
+subsystem, does not duplicate it.
 
-**Чего нет (дыры, которые закрывает этот бриф):** поисковый retrieval слабый
-(подстрочный поиск), скор-ранжирования в pull-выдаче нет (см. выше),
-cross-source дедупликации нет, события impression/click/propensity не собираются,
-push/алертов нет, eval-сета нет, эмбеддингов/реранка нет.
+**What is missing (the holes this brief closes):** search retrieval is weak
+(substring search), there is no score ranking in the pull feed (see above),
+there is no cross-source deduplication, impression/click/propensity events are not collected,
+there are no push/alerts, no eval set, no embeddings/rerank.
 
-## 3. Неизменные принципы (проверять V2 в каждом пункте)
+## 3. Invariant principles (verify V2 in every item)
 
-- Eligibility ≠ relevance; unknown ≠ fail и ≠ pass; «не указано» показывается с
-  пометкой, молчаливого отбрасывания нет.
-- Remote — не «весь мир»: пересечение зон найма работодателя и регионов кандидата.
-- No auto-apply; ничего не отправляется внешним сторонам от лица кандидата.
-- Профили/CV/сигналы приватны по умолчанию; минимизация; удаление удаляет производные.
-- Источники: только purpose-specific approval (матрицы прав, terms_hash, retention).
-- Real AI не включается флагом: ownership, approved provider/purpose, atomic budget
-  reservation, квоты, персистентные счётчики, deadline, uncertain billing,
-  cancellation, commit-time revalidation — всё через существующий `src/server/ai`.
-- Никаких фейковых данных: mocks только с явной маркировкой synthetic.
-- ADR-001: без отдельного vector DB-сервиса, очередей, model router, нового API-слоя.
-  Postgres остаётся единственным хранилищем; новые зависимости — решения владельца.
-- Guardrails: расширение allowlist импортов/транспорта — явный review, не обход.
+- Eligibility ≠ relevance; unknown ≠ fail and ≠ pass; "not specified" is shown with
+  a mark, there is no silent dropping.
+- Remote is not "the whole world": the intersection of the employer's hiring zones and the candidate's regions.
+- No auto-apply; nothing is sent to external parties on the candidate's behalf.
+- Profiles/CV/signals are private by default; minimization; deletion deletes derivatives.
+- Sources: only purpose-specific approval (rights matrices, terms_hash, retention).
+- Real AI is not enabled by a flag: ownership, approved provider/purpose, atomic budget
+  reservation, quotas, persistent counters, deadline, uncertain billing,
+  cancellation, commit-time revalidation — all through the existing `src/server/ai`.
+- No fake data: mocks only with explicit synthetic marking.
+- ADR-001: no separate vector DB service, queues, model router, new API layer.
+  Postgres remains the only storage; new dependencies are owner decisions.
+- Guardrails: extending the import/transport allowlist is an explicit review, not a bypass.
 
-## 4. Протокол обязательной перепроверки V0–V6 (применяется к каждому пункту)
+## 4. Mandatory re-verification protocol V0–V6 (applies to every item)
 
-- **V0. Задача и гипотеза.** Пункт оформляется задачей (`npm run task -- start`),
-  короткий план записан до кода. Область минимальна: один пункт = одна задача.
-- **V1. Перепроверка исследования.** До проектирования перечитать раздел research
-  по этому пункту И ключевые первоисточники из его карточки (arXiv/документация).
-  Подтвердить: (а) утверждение о пользе действительно в источнике, (б) подход
-  применим к текущему коду (не дублирует `matching.ts`/`relevance-service.ts`),
-  (в) стек-ограничения ADR-001 не нарушаются. Если что-то из этого не сходится —
-  СТОП: записать новую гипотезу через repair, не импровизировать.
-- **V2. Принципы.** Прогнать чек-лист раздела 3; для каждого затронутого принципа —
-  автоматический тест, фиксирующий поведение (например: unknown-зарплата не
-  угадывается; чужие сигналы не видны другому пользователю).
-- **V3. Автопроверки.** `npm run check` (unit+biome+tsc) — обязателен; `npm run
-  test:db` — если менялась схема/запросы; `npm run build` — всегда; `npm run
-  test:e2e` — если менялся UI/API. Все exit codes и числа — в отчёт.
-- **V4. Золотые случаи.** Фикстурные сценарии из раздела 5 (общий список ниже) +
-  специфичные для пункта — как исполняемые тесты, не как ручные привычки.
-- **V5. Анти-регрессия и diff review.** Ни один существующий тест не ослаблен;
-  `npm run guardrails` зелёный; несвязанные изменения не тронуты; diff просмотрен
-  основным агентом целиком.
-- **V6. Отчёт.** Запись в `IMPLEMENTATION_STATUS.md` по правилам Handoff: результат,
-  файлы, команды + exit codes, не выполненные проверки (not_run), mock/live,
-  расходы (unknown, если невидимы), ограничения, откат, следующий маленький шаг.
+- **V0. Task and hypothesis.** The item is formalized as a task (`npm run task -- start`),
+  the short plan is written before the code. The scope is minimal: one item = one task.
+- **V1. Research re-verification.** Before designing, re-read the research section
+  for this item AND the key primary sources from its card (arXiv/documentation).
+  Confirm: (a) the claim about the benefit really is in the source, (b) the approach
+  is applicable to the current code (does not duplicate `matching.ts`/`relevance-service.ts`),
+  (c) the ADR-001 stack constraints are not violated. If any of this does not add up —
+  STOP: record a new hypothesis via repair, do not improvise.
+- **V2. Principles.** Run the section 3 checklist; for each affected principle —
+  an automated test fixing the behavior (for example: an unknown salary is not
+  guessed; another user's signals are not visible to a different user).
+- **V3. Automated checks.** `npm run check` (unit+biome+tsc) — mandatory; `npm run
+  test:db` — if the schema/queries changed; `npm run build` — always; `npm run
+  test:e2e` — if UI/API changed. All exit codes and numbers — in the report.
+- **V4. Golden cases.** Fixture scenarios from section 5 (the common list below) +
+  item-specific ones — as executable tests, not as manual habits.
+- **V5. Anti-regression and diff review.** No existing test weakened;
+  `npm run guardrails` green; unrelated changes untouched; the diff reviewed
+  by the main agent in full.
+- **V6. Report.** An entry in `IMPLEMENTATION_STATUS.md` per the Handoff rules: result,
+  files, commands + exit codes, checks not performed (not_run), mock/live,
+  costs (unknown if invisible), limitations, rollback, next small step.
 
-**Золотые случаи (общий список; пункты реестра добавляют свои):**
-1. Вакансия без указания remote-зон → статус unknown, показывается с пометкой
-   «не указано», не попадает в «гарантированно подходящие», не отфильтрована молча.
-2. Зарплата «конкурентная»/отсутствует → unknown; ни правило, ни LLM её не угадывают.
-3. «js» в профиле матчит «JavaScript» в вакансии (и наоборот) через справочник.
-4. Непокрытый must-have → итог не `pass`; объяснение «не хватает X».
-5. Непокрытый nice-to-have → итог не портит pass.
-6. Кросс-источниковый дубликат → один канонический объект, провенанс сохранён.
-7. Закрытая вакансия исключена из поиска, каталога и из отправляемых алертов.
-8. Детерминизм фазы A: одинаковый вход → байт-в-байт одинаковая выдача.
-9. Пользователь B не видит никаких артефактов (выдача, алерты, объяснения, логи,
-   дайджесты), выведенных из данных пользователя A.
-10. Любой AI-вызов — включая существующий путь job_matching и новые purposes
-    фазы C — вне одобренного purpose/бюджета → fail-closed отказ (сегодня
-    batch-путь это условие нарушает — см. C0).
-11. Пустая выдача честная: «ничего не найдено» ≠ скрытие по неработающему фильтру.
+**Golden cases (common list; registry items add their own):**
+1. A vacancy without remote zones specified → status unknown, shown with the mark
+   "not specified", does not fall into "guaranteed suitable", not silently filtered out.
+2. Salary "competitive"/absent → unknown; neither the rule nor the LLM guesses it.
+3. "js" in the profile matches "JavaScript" in the vacancy (and vice versa) via the dictionary.
+4. An uncovered must-have → the outcome is not `pass`; the explanation is "X is missing".
+5. An uncovered nice-to-have → does not spoil the pass outcome.
+6. A cross-source duplicate → one canonical object, provenance preserved.
+7. A closed vacancy is excluded from search, the catalog and the alerts being sent.
+8. Determinism of phase A: identical input → a byte-for-byte identical feed.
+9. User B sees no artifacts (feed, alerts, explanations, logs,
+   digests) derived from user A's data.
+10. Any AI call — including the existing job_matching path and the new purposes
+    of phase C — outside the approved purpose/budget → fail-closed refusal (today
+    the batch path violates this condition — see C0).
+11. An empty feed is honest: "nothing found" ≠ hiding by a broken filter.
 
-## 5. Архитектурная рамка
+## 5. Architectural frame
 
 ```
-Инжест (pipeline.ts) → нормализация навыков (skills.ts) → дедуп [A4/B5]
-  → freshness-поля [A5] → (C1: LLM-извлечение)
-Профиль (candidate_profiles + skills) → (C1: LLM-извлечение из CV, draft ≠ факт)
-Pull-выдача: matching.ts (допуск) → retrieval [A3→B2] → реранк [B3]
-  → EV-множители [A10/B6] → объяснение [шаблонное; C2 опционально]
-Push: job→profiles при инжесте [A7] → дайджест/алерты (фильтр статуса на отправке)
-Фон: события+propensities [A8] → eval [A1/C6] → позже D1/D2
+Ingest (pipeline.ts) → skill normalization (skills.ts) → dedup [A4/B5]
+  → freshness fields [A5] → (C1: LLM extraction)
+Profile (candidate_profiles + skills) → (C1: LLM extraction from CV, draft ≠ fact)
+Pull feed: matching.ts (eligibility gate) → retrieval [A3→B2] → rerank [B3]
+  → EV multipliers [A10/B6] → explanation [template; C2 optional]
+Push: job→profiles on ingest [A7] → digest/alerts (status filter at send time)
+Background: events+propensities [A8] → eval [A1/C6] → later D1/D2
 ```
 
-**Открытое решение по векторам (владелец, до B1):** ADR-001 запрещает отдельный
-vector DB, но pgvector — расширение в существующем Postgres (смена образа Docker —
-изменение `compose.yaml`, которого исполнитель касаться не может). Альтернатива
-без расширений: `float8[]` + косинус в SQL/Node — при каталоге ≤ нескольких тысяч
-вакансий этого достаточно. Оба варианта допустимы; выбор — V1-проверка объёма
-каталога + решение владельца.
+**Open decision on vectors (owner, before B1):** ADR-001 forbids a separate
+vector DB, but pgvector is an extension in the existing Postgres (changing the Docker image is
+a modification of `compose.yaml` that the executor cannot touch). The alternative
+without extensions: `float8[]` + cosine in SQL/Node — with a catalog of ≤ a few thousand
+vacancies this is enough. Both options are permissible; the choice is a V1 check of the catalog
+volume + an owner decision.
 
 ---
 
-## 6. Реестр подходов
+## 6. Registry of approaches
 
-Пометки покрытия: ✅ уже есть · 🟡 частично · ❌ отсутствует.
-Каждая карточка: источник в research → зависимости → что спроектировать →
-реализация → обязательная верификация сверх V0–V6 → решения владельца.
+Coverage marks: ✅ already present · 🟡 partial · ❌ absent.
+Each card: source in research → dependencies → what to design →
+implementation → mandatory verification beyond V0–V6 → owner decisions.
 
-### Фаза A — детерминированная (без новых моделей и AI; можно начинать сегодня)
+### Phase A — deterministic (no new models or AI; can start today)
 
-#### A1. Golden set + eval-харнесс (Recall@k / NDCG@10)
-- Research: ч.1 «Датасеты, бенчмарки, метрики»; ч.2 D3/D4.
-- Покрытие: ❌ (поведенческие e2e есть, ранжирование не измеряется).
-- Зависимости: нет. **Делать первым — без него остальные пункты не измеримы.**
-- Спроектировать: файл фикстур «профиль → ожидаемый порядок/множество релевантных
-  вакансий» (100–200 пар по сегментам: грейды, стеки, таймзоны, языки);
-  скрипт-харнесс, считающий Recall@k, NDCG@10, MRR поверх фактического порядка
-  pull-выдачи (matching-flow; LLM-скор `relevance-service` в выдачу не
-  интегрирован — см. раздел 2); первый прогон фиксирует baseline текущей выдачи
-  как версионируемый артефакт, с ним сравниваются A5/A10/B2/B3/C2;
-  порог деградации как фейлящий тест.
-- Верификация сверх V0–V6: (V4) golden-прогон стабилен — повторный запуск даёт
-  те же числа; (V1) сверить формулы NDCG/RRF с источником (Stanford IR book /
-  sbert.net) до написания кода; (V2) фикстуры — synthetic, помечены.
-- Решения владельца: включать ли харнесс в `npm run check` сразу или отдельным скриптом.
+#### A1. Golden set + eval harness (Recall@k / NDCG@10)
+- Research: part 1 "Datasets, benchmarks, metrics"; part 2 D3/D4.
+- Coverage: ❌ (behavioral e2e exist, ranking is not measured).
+- Dependencies: none. **Do it first — without it the remaining items are not measurable.**
+- Design: a fixture file "profile → expected order/set of relevant
+  vacancies" (100–200 pairs across segments: grades, stacks, timezones, languages);
+  a harness script computing Recall@k, NDCG@10, MRR over the actual order of the
+  pull feed (matching-flow; the LLM score from `relevance-service` is not
+  integrated into the feed — see section 2); the first run fixes the baseline of the current
+  feed as a versionable artifact, A5/A10/B2/B3/C2 are compared against it;
+  the degradation threshold as a failing test.
+- Verification beyond V0–V6: (V4) the golden run is stable — a repeated run gives the
+  same numbers; (V1) verify the NDCG/RRF formulas against the source (Stanford IR book /
+  sbert.net) before writing code; (V2) the fixtures are synthetic, marked.
+- Owner decisions: whether to include the harness in `npm run check` right away or as a separate script.
 
-#### A2. Requirement-декомпозиция: структурные требования + детерминированный матчинг
-- Research: ч.2 A1 (детерминированная часть; NLI/LLM — фазы B/C).
-- Покрытие: 🟡 (допуск по правилам есть; «перечень требований вакансии с must/nice»
-  как данные — нет).
-- Зависимости: A1.
-- Спроектировать: схему `requirements` снапшота (текст, тип must/nice, категория,
-  ссылка на skill-ID, nullable-поля с unknown) без LLM — для живых источников поля
-  выводятся из имеющихся структурированных данных, для фикстур — руками; матчинг
-  «требование → улика в профиле» (skill-ID, грейд, опыт), агрегация: must-uncovered
-  ≠ fail допуска (это relevance-слой!), но управляет объяснением и бонусом ранга.
-- Верификация сверх V0–V6: (V4) золотые 4–5; (V2) декомпозиция не подменяет
-  eligibility — тест «вакансия с непокрытым must-have и unknown-географией остаётся
-  unknown по допуску, а не fail»; (V3) test:db при изменении схемы снапшота.
-- Риск: не сломать контракт `job_snapshots` (CHECK-констрейнты, миграция 0004) —
-  изменения схемы только новой миграцией (последняя — 0013, следующая — 0014;
-  сверить по каталогу `migrations/` перед созданием).
+#### A2. Requirement decomposition: structural requirements + deterministic matching
+- Research: part 2 A1 (the deterministic part; NLI/LLM — phases B/C).
+- Coverage: 🟡 (rule-based eligibility gate exists; "a list of vacancy requirements with
+  must/nice" as data — does not).
+- Dependencies: A1.
+- Design: the `requirements` schema of a snapshot (text, must/nice type, category,
+  link to skill-ID, nullable fields with unknown) without LLM — for live sources the fields
+  are derived from the available structured data, for fixtures — by hand; matching
+  "requirement → evidence in the profile" (skill-ID, grade, experience), aggregation:
+  must-uncovered ≠ eligibility-gate fail (this is the relevance layer!), but it drives
+  the explanation and the rank bonus.
+- Verification beyond V0–V6: (V4) golden 4–5; (V2) decomposition does not substitute for
+  eligibility — the test "a vacancy with an uncovered must-have and unknown geography stays
+  unknown by the eligibility gate, not fail"; (V3) test:db when the snapshot schema changes.
+- Risk: do not break the `job_snapshots` contract (CHECK constraints, migration 0004) —
+  schema changes only via a new migration (the latest is 0013, the next is 0014;
+  verify against the `migrations/` directory before creating it).
 
-#### A3. Нормализация навыков: развитие справочника
-- Research: ч.1 метод 1; ч.2 A3 (инструкционная часть — позже).
-- Покрытие: 🟡 (`skills.ts` есть: aliases + категории).
-- Зависимости: A2.
-- Спроектировать: словарь как версионируемые данные (не код), дельты через
-  миграцию/сид; нормализация на инжесте и на входе профиля (одна функция);
-  метрика покрытия (доля ненормализованных токенов в каталоге) в отчёте харнесса A1.
-- Верификация: (V4) золотой 3; тест-матрица алиасов js/JavaScript/ECMAScript,
-  k8s/Kubernetes; (V1) выбор подмножества ESCO как источника пополнения — сверить
-  лицензию и формат на esco.ec.europa.eu (это перепроверка источника, записать дату).
-- Решения владельца: подключение ESCO-данных (это внешний контент — как «источник»
-  без публичного показа; оформить явно).
+#### A3. Skill normalization: developing the dictionary
+- Research: part 1 method 1; part 2 A3 (the instructional part — later).
+- Coverage: 🟡 (`skills.ts` exists: aliases + categories).
+- Dependencies: A2.
+- Design: the dictionary as versionable data (not code), deltas via a
+  migration/seed; normalization on ingest and on profile input (one function);
+  a coverage metric (the share of non-normalized tokens in the catalog) in the report
+  of the A1 harness.
+- Verification: (V4) golden 3; a test matrix of aliases js/JavaScript/ECMAScript,
+  k8s/Kubernetes; (V1) choosing a subset of ESCO as a replenishment source — verify
+  the license and format at esco.ec.europa.eu (this is a source re-verification, record the date).
+- Owner decisions: connecting ESCO data (this is external content — as a "source"
+  without public display; formalize explicitly).
 
-#### A4. Cross-source дедупликация (точные ключи)
-- Research: ч.1 «дедупликация» в аспектах; ч.2 D2 (эмбеддинговая часть — B5).
-- Покрытие: ❌ (dedup только по ID внутри источника).
-- Зависимости: A3 (нормализация заголовка/компании).
-- Спроектировать: нормализованный ключ (canonical company + title + локация/
-  worldwide); таблица/поля канонической вакансии с массивом source_ids; выбор
-  primary по свежести и полноте полей; UI показывает провенанс без слияния текстов.
-- Верификация: (V4) золотой 6; тест «одна вакансия на himalayas и jobicy → одна
-  карточка, оба backlink'а сохранены» (атрибуция источников — принцип, тест обязателен);
-  (V2) слияние не переписывает provenance (см. урок closure-checks: даты/провенанс
-  не трогать).
+#### A4. Cross-source deduplication (exact keys)
+- Research: part 1 "deduplication" in the aspects; part 2 D2 (the embedding part — B5).
+- Coverage: ❌ (dedup only by ID within a source).
+- Dependencies: A3 (normalization of title/company).
+- Design: a normalized key (canonical company + title + location/
+  worldwide); a table/fields of the canonical vacancy with an array of source_ids; choosing
+  the primary by freshness and field completeness; the UI shows provenance without merging texts.
+- Verification: (V4) golden 6; the test "one vacancy on himalayas and jobicy → one
+  card, both backlinks preserved" (source attribution is a principle, the test is mandatory);
+  (V2) merging does not rewrite provenance (see the closure-checks lesson: do not touch
+  dates/provenance).
 
-#### A5. Freshness: поля возраста и сигнал в ранжировании/объяснении
-- Research: ч.1 «Freshness и recency» (аспекты); ч.2 B6 (модель — позже).
-- Покрытие: 🟡 (закрытие есть; возраст в ранжировании/объяснении — нет).
-- Зависимости: A1.
-- Спроект (`first_seen_at` уже есть в пайплайне — проверить по коду, не по брифу):
-  буст свежести как явный множитель в `relevance-service`; «опубликовано N дней
-  назад» в карточке и объяснении; никаких бинов «новое/старое» вместо непрерывного
-  значения.
-- Верификация: (V4) тест «две релевантные вакансии с разным возрастом → свежая выше
-  при прочих равных»; (V2) возраст берётся от `first_seen_at`, не от заявленного
-  `posted_at` (анти-гейминг источника).
+#### A5. Freshness: age fields and a signal in ranking/explanation
+- Research: part 1 "Freshness and recency" (aspects); part 2 B6 (the model — later).
+- Coverage: 🟡 (closure exists; age in ranking/explanation — does not).
+- Dependencies: A1.
+- Design (`first_seen_at` already exists in the pipeline — verify by code, not by the brief):
+  a freshness boost as an explicit multiplier in `relevance-service`; "published N days
+  ago" in the card and the explanation; no "new/old" bins instead of a continuous
+  value.
+- Verification: (V4) the test "two relevant vacancies of different age → the fresh one is higher
+  all else being equal"; (V2) age is taken from `first_seen_at`, not from the declared
+  `posted_at` (anti-gaming of the source).
 
-#### A6. Seen-set и негативные предпочтения (весовые)
-- Research: ч.2 C1, C2.
-- Покрытие: 🟡 (явное скрытие с причинами есть; «видел, не кликнул», возврат при
-  изменении, весовое понижение — нет).
-- Зависимости: A1, A8 (события показа).
-- Спроектировать: реестр показов per-user; правила: явный dismiss — навсегда;
-  seen-no-action — TTL 7–14 дней, возврат только при изменении вакансии (content-hash
-  или version+1 из pipeline.ts); весовое понижение окрестности скрытого
-  (эмбеддинги не нужны: категория/компания/навыки из справочника). Структурные
-  фильтры «не показывать компанию X» — только через существующий уточняющий UX
-  скрытия (расширение reason-кодов — решение владельца).
-- Верификация: (V4) тесты: dismissed не возвращается; seen-TTL возвращает после
-  изменения, не раньше; (V2) золотой 9 — сигналы одного пользователя не влияют на
-  выдачу другого (integration-тест двух пользователей).
+#### A6. Seen-set and negative preferences (weighted)
+- Research: part 2 C1, C2.
+- Coverage: 🟡 (explicit hiding with reasons exists; "saw, did not click", return on
+  change, weighted demotion — do not).
+- Dependencies: A1, A8 (impression events).
+- Design: a per-user impression registry; rules: an explicit dismiss — forever;
+  seen-no-action — TTL 7–14 days, return only if the vacancy changed (content-hash
+  or version+1 from pipeline.ts); weighted demotion of the neighborhood of what was hidden
+  (embeddings are not needed: category/company/skills from the dictionary). Structural
+  filters "do not show company X" — only through the existing clarifying
+  hide UX (extending reason codes is an owner decision).
+- Verification: (V4) tests: a dismissed one does not return; the seen-TTL returns it after
+  a change, not earlier; (V2) golden 9 — one user's signals do not affect
+  another's feed (an integration test with two users).
 
-#### A7. Push-матчинг: алерты/дайджест (детерминированные)
-- Research: ч.2 D1.
-- Покрытие: ❌.
-- Зависимости: A1, A5, A4 (дедуп до алертов).
-- Спроектировать: при инжесте/обновлении вакансии — офлайн-скоринг против активных
-  профилей (тот же допуск + relevance); таблица candidate-set; digest-генерация
-  «новое с последнего визита»; при отправке — фильтр по статусу вакансии (закрытые
-  не отправляются никогда); frequency cap.
-- Верификация: (V4) золотой 7; тест «закрытие между скорингом и отправкой → вакансия
-  исключена на отправке»; (V2) письмо/дайджест не покидает локальный контур без
-  owner-решения (send_email в матрицах источников — denied; значит MVP — только
-  страница «что нового», не email). Записать это ограничение явно.
-- Решения владельца: канал доставки (in-app сейчас; email — отдельная задача).
+#### A7. Push matching: alerts/digest (deterministic)
+- Research: part 2 D1.
+- Coverage: ❌.
+- Dependencies: A1, A5, A4 (dedup before alerts).
+- Design: on ingest/update of a vacancy — offline scoring against active
+  profiles (the same eligibility gate + relevance); a candidate-set table; digest generation
+  "new since the last visit"; at send time — filtering by vacancy status (closed
+  ones are never sent); a frequency cap.
+- Verification: (V4) golden 7; the test "closure between scoring and sending → the vacancy
+  is excluded at send time"; (V2) the letter/digest does not leave the local contour without an
+  owner decision (send_email in the source matrices — denied; therefore the MVP is only a
+  "what's new" page, not email). Record this limitation explicitly.
+- Owner decisions: the delivery channel (in-app for now; email — a separate task).
 
-#### A8. Журнал событий + propensities
-- Research: ч.1 «Feedback loop» (аспекты); ч.2 D6.
-- Покрытие: 🟡 (save/hide/apply-пометка есть; impression/click/dwell и propensity — нет).
-- Зависимости: A1.
-- Спроектировать: таблица событий (impression/click/save/hide/apply-пометка,
-  timestamp, позиция в выдаче, нормированный скор показа = propensity, версия
-  ранкера); приватность: события принадлежат пользователю, удаляются с профилем;
-  никаких чтений событий в UI без явной функции.
-- Верификация: (V2) golden 9; retention-политика событий согласована с минимизацией
-  (решение владельца: срок хранения); (V3) test:db.
+#### A8. Event journal + propensities
+- Research: part 1 "Feedback loop" (aspects); part 2 D6.
+- Coverage: 🟡 (save/hide/apply-marking exists; impression/click/dwell and propensity — do not).
+- Dependencies: A1.
+- Design: an events table (impression/click/save/hide/apply-marking,
+  timestamp, position in the feed, normalized impression score = propensity, ranker
+  version); privacy: events belong to the user, are deleted with the profile;
+  no reads of events in the UI without an explicit function.
+- Verification: (V2) golden 9; the event retention policy is consistent with minimization
+  (owner decision: the retention period); (V3) test:db.
 
-#### A9. Инфраструктура ранкеров: shadow-режим и guardrails на запрос
-- Research: ч.2 D7/D10.
-- Покрытие: ❌.
-- Зависимости: A1.
-- Спроектировать: интерфейс ranker-версии (id, функция) — вводится с нуля:
-  скор-ранкера в выдаче сегодня нет (раздел 2), точка отсчёта — baseline A1;
-  shadow-прогон новой версии на тех же входах с логированием диффов; guardrails
-  на каждый запрос: доля пустых
-  выдач, доля закрытых/дублей в топ-10, p95 latency, доля записей вне одобренных
-  источников — с порогами как фейлящими тестами.
-- Верификация: (V4) тест «новый ранкер с деградацией порогов ловится guardrail'ом»;
-  shadow-прогон не влияет на пользовательскую выдачу (тест).
+#### A9. Ranker infrastructure: shadow mode and per-request guardrails
+- Research: part 2 D7/D10.
+- Coverage: ❌.
+- Dependencies: A1.
+- Design: a ranker-version interface (id, function) — introduced from scratch:
+  there is no score ranker in the feed today (section 2), the reference point is the A1
+  baseline; a shadow run of a new version on the same inputs with diff logging; guardrails
+  on every request: the share of empty
+  feeds, the share of closed/duplicates in the top-10, p95 latency, the share of records outside approved
+  sources — with thresholds as failing tests.
+- Verification: (V4) the test "a new ranker with threshold degradation is caught by the guardrail";
+  the shadow run does not affect the user feed (test).
 
-#### A10. EV-множители фазы 1 (фиксированные)
-- Research: ч.2 B1/B3 (фаза 1); arXiv:2106.01941.
-- Покрытие: ❌.
-- Зависимости: A1, A5, A9 (guardrails до изменения ранкера).
-- Спроектировать: итоговый порядок = relevance × m_ghost × m_urgency, где m_ghost —
-  грубый множитель из closure-статусов (quarantined/мягко закрытые вниз), m_urgency —
-  из возраста. Множители — константы с объяснением в коде и в UI-объяснении.
-- Верификация: (V4) тесты: quarantined-вакансия не в топе при равной релевантности;
-  объяснение «понижена: возможно неактивна» показывается; (V2) понижение — не скрытие;
-  (V5) golden-set A1 не деградировал ниже порога.
+#### A10. Phase 1 EV multipliers (fixed)
+- Research: part 2 B1/B3 (phase 1); arXiv:2106.01941.
+- Coverage: ❌.
+- Dependencies: A1, A5, A9 (guardrails before changing the ranker).
+- Design: the final order = relevance × m_ghost × m_urgency, where m_ghost is a
+  rough multiplier from closure statuses (quarantined/soft-closed down), m_urgency —
+  from age. The multipliers are constants with an explanation in the code and in the UI
+  explanation.
+- Verification: (V4) tests: a quarantined vacancy is not in the top at equal relevance;
+  the explanation "demoted: possibly inactive" is shown; (V2) demotion is not hiding;
+  (V5) the golden set of A1 has not degraded below the threshold.
 
-### Фаза B — локальные модели (эмбеддинги/NLI; не генеративные; решения владельца по зависимостям)
+### Phase B — local models (embeddings/NLI; not generative; owner decisions on dependencies)
 
-#### B1. Контракт эмбеддингов + dense retrieval + playbook смены модели
-- Research: ч.1 метод 4; ч.2 A3 (инструкционная модель), D8 (playbook).
-- Покрытие: ❌.
-- Зависимости: A1; решение владельца по векторам (раздел 5) и модели.
-- Спроектировать: контракт: модель+версия+instruction-шаблон (resume-запрос vs
-  job-документ — асимметрия фиксируется в коде как контракт эмбеддингов, ч.2 A3);
-  хранение вектора с `model_version`; пересчёт при изменении контента; playbook:
-  shadow-колонка/таблица → dual-write → замороженный eval A1 → проверка ANN recall
-  (если ANN) → переключение → окно отката; смешение версий в одном запросе запрещено.
-- Верификация: (V4) тест «смена model_version без переиндексации → fail-closed
-  (запрос не выполняется со смешанными версиями)»; (V2) эмбеддинг профиля —
-  производное персональных данных: удаляется с профилем (integration-тест);
+#### B1. Embedding contract + dense retrieval + model-swap playbook
+- Research: part 1 method 4; part 2 A3 (the instructional model), D8 (playbook).
+- Coverage: ❌.
+- Dependencies: A1; owner decision on vectors (section 5) and the model.
+- Design: the contract: model+version+instruction template (resume query vs
+  job document — the asymmetry is fixed in the code as the embedding contract, part 2 A3);
+  vector storage with `model_version`; recomputation when content changes; playbook:
+  shadow column/table → dual-write → frozen eval A1 → ANN recall check
+  (if ANN) → switchover → rollback window; mixing versions in one query is forbidden.
+- Verification: (V4) the test "changing model_version without reindexing → fail-closed
+  (the query is not executed with mixed versions)"; (V2) the profile embedding is a
+  derivative of personal data: deleted with the profile (integration test);
   (V3) test:db.
-- Решения владельца: расширение pgvector + смена образа compose (или float8[]-путь);
-  модель: локальная (новая зависимость → review guardrails allowlist) vs API через
-  существующий openai-transport (деньги, purpose в матрице). MRL-совместимость
-  (Matryoshka, ч.2 A5) — критерий выбора.
+- Owner decisions: the pgvector extension + changing the compose image (or the float8[] path);
+  the model: local (a new dependency → guardrails allowlist review) vs API via the
+  existing openai-transport (money, purpose in the matrix). MRL compatibility
+  (Matryoshka, part 2 A5) is a selection criterion.
 
-#### B2. Полноценный BM25 + RRF-слияние
-- Research: ч.1 методы 3 и 5.
-- Покрытие: 🟡 (подстрочный поиск каталога).
-- Зависимости: A1, B1.
-- Спроектировать: BM25 по нормализованному тексту (tsvector GIN или ParadeDB
-  `pg_search` — оба требуют решения владельца по расширениям; вариант без расширений
-  — BM25 в Node поверх каталога, допустим при малом каталоге, зафиксировать порог
-  перелома); RRF k≈60 по позициям; pre-filter допуска до слияния; калибровка k на A1.
-- Верификация: (V4) тест-матрица на синонимах: «ML developer» находится dense-ногой
-  при отсутствии точного вхождения; «C#» — BM25-ногой; RRF поднимает документ,
-  выигравший в одной ноге; (V1) формулы сверены с источником.
-- Решения владельца: расширение, если нужно.
+#### B2. Full-fledged BM25 + RRF fusion
+- Research: part 1 methods 3 and 5.
+- Coverage: 🟡 (substring search of the catalog).
+- Dependencies: A1, B1.
+- Design: BM25 over normalized text (tsvector GIN or ParadeDB
+  `pg_search` — both require an owner decision on extensions; the no-extensions variant —
+  BM25 in Node over the catalog, acceptable with a small catalog, fix the breaking-point
+  threshold); RRF k≈60 over positions; an eligibility-gate pre-filter before fusion; calibration of k on A1.
+- Verification: (V4) a test matrix on synonyms: "ML developer" is found by the dense
+  leg in the absence of an exact occurrence; "C#" — by the BM25 leg; RRF lifts the document
+  that won in one leg; (V1) the formulas are verified against the source.
+- Owner decisions: the extension, if needed.
 
-#### B3. Cross-encoder реранк топ-K
-- Research: ч.1 метод 6.
-- Покрытие: ❌.
-- Зависимости: B1, B2, A9 (shadow перед включением).
-- Спроектировать: реранк топ-50 после RRF; модель bge-reranker-v2-m3 локально или
-  API; латентность-бюджет (p95 в guardrails A9); отключаемость (флаг без него
-  система остаётся корректной).
-- Верификация: (V4) golden A1: реранк улучшает NDCG@10 или не включается; тест
-  детерминизма вывода при фиксированной модели; (V2) реранк не может поднять
-  fail/unknown допуска — тест-инвариант порядка слоёв.
+#### B3. Cross-encoder rerank of the top-K
+- Research: part 1 method 6.
+- Coverage: ❌.
+- Dependencies: B1, B2, A9 (shadow before enabling).
+- Design: rerank the top-50 after RRF; the bge-reranker-v2-m3 model locally or
+  via API; a latency budget (p95 in the A9 guardrails); disableability (a flag; without it
+  the system remains correct).
+- Verification: (V4) golden A1: the rerank improves NDCG@10 or is not enabled; a test
+  of output determinism with a fixed model; (V2) the rerank cannot lift an eligibility-gate
+  fail/unknown — a layer-order invariant test.
 
-#### B4. NLI pre-check противоречий (опционально, решение владельца)
-- Research: ч.2 A1 (NLI-часть).
-- Покрытие: ❌.
-- Зависимости: A2.
-- Спроектировать: пары «требование ↔ фрагмент профиля» → DeBERTa-mnli локально;
-  результат: contradiction → барьер в объяснении (не в допуске); neutral — не
-  трактуется как противоречие (честность: «тихие» отрицания ненадёжны — это
-  задокументировано в research).
-- Верификация: (V4) тест: «требуется гражданство США» + профиль без него →
-  contradiction в объяснении; «нужен Kubernetes» + «5 лет Docker» → neutral, не
-  contradiction; (V2) результат NLI никогда не меняет статус допуска.
-- Решения владельца: новая зависимость модели; можно отложить в C2 (LLM-скоринг
-  покрывает то же).
+#### B4. NLI contradiction pre-check (optional, owner decision)
+- Research: part 2 A1 (the NLI part).
+- Coverage: ❌.
+- Dependencies: A2.
+- Design: "requirement ↔ profile fragment" pairs → DeBERTa-mnli locally;
+  the result: contradiction → a barrier in the explanation (not in the eligibility gate); neutral is not
+  treated as a contradiction (honesty: "silent" negations are unreliable — this is
+  documented in research).
+- Verification: (V4) the test: "US citizenship required" + a profile without it →
+  contradiction in the explanation; "Kubernetes required" + "5 years of Docker" → neutral, not
+  contradiction; (V2) the NLI result never changes the eligibility status.
+- Owner decisions: the new model dependency; can be deferred to C2 (LLM scoring
+  covers the same).
 
-#### B5. Cross-lingual дедупликация (эмбеддинговая часть)
-- Research: ч.2 D2.
-- Покрытие: ❌.
-- Зависимости: A4, B1.
-- Спроектировать: попарный косинус эмбеддингов вакансий (O(n²) — допустимо до
-  тысяч; зафиксировать порог перехода к LSH позже); кандидаты > порога → очередь на
-  подтверждение (LLM — C5; до него — ручной review-лист, не автоматическое слияние).
-- Верификация: (V4) тест на синтетической паре «одна вакансия EN/RU» → кандидат в
-  очередь; «две разные роли одной компании» → НЕ кандидат (порог недостаточен —
-  известный из research провал чистого порога).
+#### B5. Cross-lingual deduplication (the embedding part)
+- Research: part 2 D2.
+- Coverage: ❌.
+- Dependencies: A4, B1.
+- Design: pairwise cosine of vacancy embeddings (O(n²) — acceptable up to
+  thousands; fix the threshold for switching to LSH later); candidates > threshold → a queue for
+  confirmation (LLM — C5; before it — a manual review list, not automatic merging).
+- Verification: (V4) the test on a synthetic pair "one vacancy EN/RU" → a candidate for the
+  queue; "two different roles at one company" → NOT a candidate (the threshold is insufficient —
+  the failure of a pure threshold, known from research).
 
-#### B6. Urgency/survival прокси-модель
-- Research: ч.2 B3.
-- Покрытие: 🟡 (closure-эвристики есть; hazard/бакеты — нет).
-- Зависимости: A5, A10; данные closure-checks.
-- Спроектировать: бакеты «опубликована недавно / несколько недель / давно» из
-  наблюдаемого возраста и статусов закрытия; UI — только грубые бакеты, никогда
-  «осталось N дней»; подмена m_urgency из A10 на модельную оценку — за guardrails A9.
-- Верификация: (V4) тест на синтетическом распределении исчезновений: бакеты
-  монотонны; (V2) не пугать пользователя точностью, которой нет (формулировка
-  честная — тест на копирайт).
+#### B6. Urgency/survival proxy model
+- Research: part 2 B3.
+- Coverage: 🟡 (closure heuristics exist; hazard/buckets — do not).
+- Dependencies: A5, A10; closure-checks data.
+- Design: buckets "published recently / a few weeks / long ago" from the
+  observed age and closure statuses; the UI — only coarse buckets, never
+  "N days left"; replacing m_urgency from A10 with a model estimate — behind the guardrails of A9.
+- Verification: (V4) a test on a synthetic disappearance distribution: the buckets
+  are monotone; (V2) do not scare the user with precision that does not exist (the wording
+  is honest — a copy test).
 
-### Фаза C — генеративный LLM (строго за существующими AI-границами)
+### Phase C — generative LLM (strictly behind the existing AI boundaries)
 
-**Предусловие фазы: C0.** Без него ни один пункт C не начинается.
+**Phase precondition: C0.** Without it not a single C item starts.
 
-#### C0. Ревизия AI-границ: ремонт существующего пути + новые purposes
-- Часть 1 — ремонт существующего (выполняется первым; не ждёт фазы C —
-  решение владельца №10): (а) исполнить whitelist: `isPurposeApproved`/
-  `approvedPurposes` (`src/server/ai/provider.ts`) проверяется шлюзом до
-  dispatch, а не остаётся мёртвым кодом; (б) путь OpenAI Batch
-  `/api/v1/relevance` (`submitBatch`/`checkBatch` в
-  `src/server/ai/openai-batch.ts` идут в провайдер напрямую) завести за
-  `executeGuardedOperation` (резервирование worst-case, ai_operations,
-  счётчики, deadline, uncertain billing) или отключить до завода; (в)
-  валидировать mapping custom_id → snapshot_id на сервере — сейчас он приходит
-  из тела запроса, и `persistBatchResults` пишет скоры для любых snapshot_id;
-  (г) идемпотентность без `Date.now()` в ключе; (д) честный totalCost из
-  settled. Сегодняшний batch-путь проваливает золотой 10 — это исходное
-  состояние, а не целевое.
-- Часть 2 — новые purposes: расширение `TaskType` (`src/server/ai/spending.ts`)
-  и `approvedPurposes` (`provider.ts`) на «matching-scoring», «extraction»,
-  «hyde», «dedup-confirm», «eval-judge» — каждый отдельно одобряется владельцем.
-  `job_matching`, `job_extraction`, `cv_extraction` уже существуют как TaskType —
-  расширять существующее, не строить параллельную «матрицу purposes» (такого
-  механизма в коде нет). Убедиться по коду (не по памяти), что ownership,
-  atomic budget reservation, персистентные счётчики, deadline, uncertain billing,
-  cancellation, commit-time revalidation покрывают вызовы (см. AI-001,
-  `docs/SAFETY_GATES.md`); тесты каждого свойства.
-- Верификация: (V2) золотой 10 — включая СУЩЕСТВУЮЩИЙ путь job_matching, а не
-  только новые purposes; (V5) существующие safety-тесты писем не ослаблены.
+#### C0. AI-boundaries revision: repairing the existing path + new purposes
+- Part 1 — repairing the existing one (performed first; does not wait for phase C —
+  owner decision #10): (a) enforce the whitelist: `isPurposeApproved`/
+  `approvedPurposes` (`src/server/ai/provider.ts`) is checked by the gateway before
+  dispatch instead of remaining dead code; (b) bring the OpenAI Batch path
+  `/api/v1/relevance` (`submitBatch`/`checkBatch` in
+  `src/server/ai/openai-batch.ts` go to the provider directly) behind
+  `executeGuardedOperation` (worst-case reservation, ai_operations,
+  counters, deadline, uncertain billing) or disable it until it is brought behind; (c)
+  validate the custom_id → snapshot_id mapping on the server — right now it comes
+  from the request body, and `persistBatchResults` writes scores for any snapshot_ids;
+  (d) idempotency without `Date.now()` in the key; (e) an honest totalCost from
+  settled. Today's batch path fails golden 10 — this is the initial
+  state, not the target one.
+- Part 2 — new purposes: extending `TaskType` (`src/server/ai/spending.ts`)
+  and `approvedPurposes` (`provider.ts`) with "matching-scoring", "extraction",
+  "hyde", "dedup-confirm", "eval-judge" — each approved separately by the owner.
+  `job_matching`, `job_extraction`, `cv_extraction` already exist as TaskType —
+  extend the existing, do not build a parallel "purposes matrix" (no such
+  mechanism exists in the code). Confirm by code (not from memory) that ownership,
+  atomic budget reservation, persistent counters, deadline, uncertain billing,
+  cancellation, commit-time revalidation cover the calls (see AI-001,
+  `docs/SAFETY_GATES.md`); tests for each property.
+- Verification: (V2) golden 10 — including the EXISTING job_matching path, and not
+  only the new purposes; (V5) the existing letter safety tests are not weakened.
 
-#### C1. LLM-извлечение полей (инжест вакансий; CV — только по явному действию)
-- Research: ч.1 метод 1; уроки ч.2 A1 (галлюцинация unknown-полей).
-- Покрытие: ❌.
-- Зависимости: C0, A2 (схема), A3.
-- Спроектировать: JSON-схема = схема требований A2; правило системы: отсутствующее
-  в тексте поле → `unknown`, модель инструктирована не додумывать, валидатор
-  отклоняет выдуманные значения; версия промпта и модели в провенансе записи;
-  для CV — повторить контур писем (draft ≠ факт, ручное подтверждение).
-- Верификация: (V4) тесты: вакансия без зарплаты → unknown (не null-угадывание);
-  модель вернула зарплату при её отсутствии в тексте → запись отклонена валидатором;
-  (V2) данные вакансий не отправляются провайдеру без одобренного purpose;
-  неизвестные источники не проходят.
+#### C1. LLM field extraction (vacancy ingest; CV — only on an explicit action)
+- Research: part 1 method 1; lessons of part 2 A1 (hallucination of unknown fields).
+- Coverage: ❌.
+- Dependencies: C0, A2 (the schema), A3.
+- Design: the JSON schema = the A2 requirements schema; a system rule: a field absent
+  from the text → `unknown`, the model is instructed not to invent, the validator
+  rejects fabricated values; the prompt and model version in the record's provenance;
+  for CV — repeat the letters contour (draft ≠ fact, manual confirmation).
+- Verification: (V4) tests: a vacancy without salary → unknown (not null-guessing);
+  the model returned a salary when it is absent from the text → the record is rejected by the validator;
+  (V2) vacancy data is not sent to the provider without an approved purpose;
+  unknown sources do not pass.
 
-#### C2. LLM-скоринг топ-K: rubric + structured output (decomposition)
-- Research: ч.1 метод 7; ч.2 A1 (ядро витка 2).
-- Покрытие: 🟡 (примитивный LLM-скоринг уже есть — `relevance-service.ts`,
-  `/api/v1/relevance`, кэш `job_relevance_scores`; см. раздел 2).
-- Зависимости: C0, C1, B1–B3 (каскад ограничивает цену), A9 (shadow-включение),
-  решение владельца №11 (судьба существующей подсистемы).
-- Спроектировать: поглощение существующей подсистемы, не дублирование: ключ кэша
-  расширяется до (profile_version, job_version, prompt_version); model_id из
-  конфига провайдера (сейчас хардкод «gpt-6-luna» в маршруте); изменения таблицы
-  `job_relevance_scores` — отдельной миграцией. Вход — только нормализованные
-  поля (не сырой CV); rubric-промпт: per-requirement verdict pass/unknown/missed +
-  evidence-цитата + missing_skills; temperature=0, валидация схемы, повторная
-  проверка при commit; объяснение в UI строится из полей, а не из свободного
-  текста модели; кэш по (profile_version, job_version, prompt_version).
-- Верификация: (V4) тесты: выдуманный skill в ответе → отклонён валидатором
-  (grounding на извлечённых полях); unknown-требование не превращается в pass;
-  (V2) ownership: скоринг запускается только для своего профиля (integration-тест);
-  лимит топ-K — квота на пользователя (персистентный счётчик).
+#### C2. LLM scoring of the top-K: rubric + structured output (decomposition)
+- Research: part 1 method 7; part 2 A1 (the core of round 2).
+- Coverage: 🟡 (a primitive LLM scoring already exists — `relevance-service.ts`,
+  `/api/v1/relevance`, cache `job_relevance_scores`; see section 2).
+- Dependencies: C0, C1, B1–B3 (the cascade limits the cost), A9 (shadow enablement),
+  owner decision #11 (the fate of the existing subsystem).
+- Design: absorption of the existing subsystem, not duplication: the cache key
+  is extended to (profile_version, job_version, prompt_version); model_id from the
+  provider config (right now the hardcode "gpt-6-luna" in the route); changes to the table
+  `job_relevance_scores` via a separate migration. The input is only normalized
+  fields (not the raw CV); the rubric prompt: per-requirement verdict pass/unknown/missed +
+  an evidence quote + missing_skills; temperature=0, schema validation, a repeated
+  check at commit; the UI explanation is built from the fields, not from the model's free
+  text; cache by (profile_version, job_version, prompt_version).
+- Verification: (V4) tests: a fabricated skill in the response → rejected by the validator
+  (grounding on the extracted fields); an unknown requirement does not turn into pass;
+  (V2) ownership: scoring is launched only for one's own profile (integration test);
+  the top-K limit is a per-user quota (a persistent counter).
 
-#### C3. HyDE: гипотетическая вакансия из профиля, кэш на версию
-- Research: ч.2 A2; arXiv:2212.10496.
-- Покрытие: ❌.
-- Зависимости: C0, B1 (векторное хранилище), C1-подобные границы.
-- Спроектировать: генерация «идеальной вакансии» на смену профиля (кэш по
-  profile_version), её эмбеддинг — третий сигнал RRF; гибрид с BM25 по реальному
-  тексту обязателен (исследование: галлюцинации HyDE сглаживаются гибридом).
-- Верификация: (V4) тест: регенерация при смене версии, отсутствие вызова при
-  повторном поиске без изменений; (V2) гипотетический текст нигде не показывается
-  пользователю как вакансия (это служебный артефакт — тест на UI-отсутствие).
+#### C3. HyDE: a hypothetical vacancy from the profile, cache per version
+- Research: part 2 A2; arXiv:2212.10496.
+- Coverage: ❌.
+- Dependencies: C0, B1 (vector storage), C1-like boundaries.
+- Design: generation of an "ideal vacancy" on profile change (cache by
+  profile_version), its embedding — a third RRF signal; a hybrid with BM25 over the real
+  text is mandatory (research: HyDE hallucinations are smoothed out by the hybrid).
+- Verification: (V4) the test: regeneration on version change, no call on a
+  repeated search without changes; (V2) the hypothetical text is never shown
+  to the user as a vacancy (it is an internal artifact — a UI-absence test).
 
-#### C4. Doc2query расширение каталога на инжесте
-- Research: ч.2 A4.
-- Покрытие: ❌.
-- Зависимости: C0, B1.
-- Спроектировать: офлайн, при инжесте, бюджетировано (batch-контур уже есть —
-  `src/server/ai/batch-queue-service.ts`); расширения — служебные поля, не показываются
-  как текст вакансии; индекс ×3 — оценить объём до включения.
-- Верификация: (V2) атрибуция и запрет publish_full_text матриц источников не
-  нарушаются: расширения хранятся и используются для поиска, не публикуются
-  (тест на API-ответ); budget-лимиты соблюдаются.
+#### C4. Doc2query catalog expansion on ingest
+- Research: part 2 A4.
+- Coverage: ❌.
+- Dependencies: C0, B1.
+- Design: offline, on ingest, budgeted (the batch contour already exists —
+  `src/server/ai/batch-queue-service.ts`); the expansions are internal fields, not shown
+  as vacancy text; the index ×3 — estimate the volume before enabling.
+- Verification: (V2) attribution and the publish_full_text prohibition of the source matrices are not
+  violated: the expansions are stored and used for search, not published
+  (a test on the API response); budget limits are respected.
 
-#### C5. LLM-подтверждение дедупа
-- Research: ч.2 D2.
-- Зависимости: C0, B5.
-- Верификация: (V4) пара «да/нет одинаковая вакансия» детерминирована (temperature 0),
-  ответ логируется с провенансом; (V2) автослияние только по подтверждению, спорные —
-  в очередь человеку.
+#### C5. LLM dedup confirmation
+- Research: part 2 D2.
+- Dependencies: C0, B5.
+- Verification: (V4) the "yes/no same vacancy" pair is deterministic (temperature 0),
+  the response is logged with provenance; (V2) automatic merging only upon
+  confirmation, disputed ones — to a human queue.
 
-#### C6. LLM-judge как третий сигнал eval
-- Research: ч.2 D4.
-- Зависимости: A1 (gold-сет обязателен и первичен), C0.
-- Спроектировать: протокол против смещений из research (12 biases): pointwise rubric,
-  swap-consistency (усреднение по порядкам), жюри из другого семейства моделей, чем
-  реализация; жюри — только в eval-харнессе A1, никогда в прод-выдаче.
-- Верификация: (V4) тест протокола: перестановка порядка не меняет вердикт более чем
-  на допуск; (V2) вызовы жюри не видят персональных данных реальных пользователей —
-  только синтетику золотого сета.
+#### C6. LLM-judge as a third eval signal
+- Research: part 2 D4.
+- Dependencies: A1 (the gold set is mandatory and primary), C0.
+- Design: a protocol against the biases from research (12 biases): pointwise rubric,
+  swap-consistency (averaging over orders), a jury from a different model family than
+  the implementation; the jury — only in the A1 eval harness, never in the production feed.
+- Verification: (V4) a protocol test: swapping the order does not change the verdict by more than
+  the tolerance; (V2) the jury calls do not see real users' personal data —
+  only the synthetic data of the golden set.
 
-### Фаза D — по мере данных и трафика (каждая — отдельное решение владельца)
+### Phase D — as data and traffic accumulate (each is a separate owner decision)
 
-- **D1. LTR (lambdarank)** на событиях A8: research ч.1 метод 8. Предусловие:
-  накопленные события, guardrails, golden A1. Не раньше, чем события покроют месяцы.
-- **D2. Фидбэк-персонализация + Rocchio + MMR/квоты**: research ч.1 метод 10, ч.2 A5.
-  Rocchio — одна формула поверх векторов B1; MMR λ≈0.7 на топ-k; квоты per-company.
-- **D3. Skill graph / adjacent roles**: research ч.1 метод 9. Co-occurrence по
-  каталогу + справочник A3; слоты с объяснением «совпало через смежный навык X».
-- **D4. Экспериментальные слоты: stretch match (gap ≤2 навыков) и adjacent-роли**:
-  research ч.2 C3/C4. Помеченные слоты, измерение через скрытия/сохранения (не клики),
-  вмешательство в основной ранк — только после измерений.
-- **D5. p(ответ) и bilateral-принцип**: research ч.2 B1/B4. Self-reported исходы
-  («ответили за 2 недели?») — приватный опрос, отдельное owner-решение; score =
-  min(подходит, вероятно-допустила-бы) как принцип агрегации.
-- **D6. Team-draft interleaving** для кликовых сравнений: research ч.2 D5. Только
-  парные кликовые метрики; не для application-конверсии.
-- **D7. OPE + процентный canary**: research ч.2 D6/D10. Предусловие: propensities A8
-  копятся с первого дня (проверить при ревизии A8: поле есть даже если OPE не
-  используется).
-- **D8. Синтетика hard negatives для дообучения**: research ч.2 A5. Только с явной
-  маркировкой synthetic; смешивание с ин-домен сэмплами каталога.
+- **D1. LTR (lambdarank)** on A8 events: research part 1 method 8. Precondition:
+  accumulated events, guardrails, golden A1. Not before the events cover months.
+- **D2. Feedback personalization + Rocchio + MMR/quotas**: research part 1 method 10, part 2 A5.
+  Rocchio — one formula over the B1 vectors; MMR λ≈0.7 on the top-k; per-company quotas.
+- **D3. Skill graph / adjacent roles**: research part 1 method 9. Co-occurrence over the
+  catalog + the A3 dictionary; slots with the explanation "matched via the adjacent skill X".
+- **D4. Experimental slots: stretch match (gap ≤2 skills) and adjacent roles**:
+  research part 2 C3/C4. Marked slots, measurement via hides/saves (not clicks),
+  interference with the main rank — only after measurements.
+- **D5. p(response) and the bilateral principle**: research part 2 B1/B4. Self-reported outcomes
+  ("did they reply within 2 weeks?") — a private survey, a separate owner decision; score =
+  min(fits, would-probably-admit) as the aggregation principle.
+- **D6. Team-draft interleaving** for click comparisons: research part 2 D5. Only
+  paired click metrics; not for application conversion.
+- **D7. OPE + percentage canary**: research part 2 D6/D10. Precondition: A8 propensities
+  accumulate from day one (check during the A8 revision: the field exists even if OPE is not
+  used).
+- **D8. Synthetic hard negatives for fine-tuning**: research part 2 A5. Only with explicit
+  synthetic marking; mixing with in-domain catalog samples.
 
-### Отклонённые подходы — не реализовывать без нового owner-решения и V1-цикла
+### Rejected approaches — do not implement without a new owner decision and a V1 cycle
 
-SPLADE/learned sparse (нет inverted index в Postgres-стеке); ColBERT/late interaction
-(нет multi-vector в pgvector, хранение ×10–100, нишу закрывает B3); генеративный
-retrieval/семантические ID (ломается на меняющемся каталоге); суточный/недельный
-тайминг отклика (доказательства слабые, обесценен таймзонами); полный bilateral GNN
-(нет логов обеих сторон); отдельный vector DB, Redis/очереди, model router, внешний
-rerank-сервис (ADR-001).
+SPLADE/learned sparse (no inverted index in the Postgres stack); ColBERT/late interaction
+(no multi-vector in pgvector, storage ×10–100, the niche is covered by B3); generative
+retrieval/semantic IDs (breaks on a changing catalog); daily/weekly response
+timing (the evidence is weak, devalued by timezones); full bilateral GNN
+(no logs from both sides); a separate vector DB, Redis/queues, model router, external
+rerank service (ADR-001).
 
-## 7. Сводный список решений владельца (собирать заранее)
+## 7. Consolidated list of owner decisions (collect in advance)
 
-1. Векторы: pgvector (смена образа compose — правка `compose.yaml`) или float8[]+
-   косинус; критерий — объём каталога, V1-проверка.
-2. Эмбеддинг-модель: локальная (новая зависимость + review guardrails allowlist) или
-   API через существующий transport (purpose в матрице, деньги). Критерии выбора
-   включают MRL-совместимость и мультиязычность (RU/EN).
-3. Reranker: локальный bge-reranker или API; латентность-бюджет.
-4. NLI (B4): отдельная модель сейчас или покрытие средствами C2.
-5. ESCO-данные для пополнения справочника (A3) — как внешний контент.
-6. Расширение reason-кодов скрытия (A6) и матрица purposes AI (C0).
-7. Канал алертов: in-app сейчас, email — отдельная задача (send_email denied в матрицах).
-8. Retention журнала событий (A8).
-9. Коммит research-дока и этого брифа (оба сейчас не закоммичены).
-10. Судьба существующего AI-пути job_matching (часть 1 C0): завод batch-режима
-    за шлюз или отключение до ремонта; утверждать ли purpose `job_matching`
-    (сегодня одобрен только `cover_letter`, AI-002).
-11. Судьба существующей LLM-подсистемы relevance (`/api/v1/relevance`, кэш
-    `job_relevance_scores`): поглощение в C2 или выключение до C2.
+1. Vectors: pgvector (changing the compose image — an edit to `compose.yaml`) or float8[]+
+   cosine; the criterion is the catalog volume, a V1 check.
+2. Embedding model: local (a new dependency + guardrails allowlist review) or
+   API via the existing transport (purpose in the matrix, money). The selection criteria
+   include MRL compatibility and multilingualism (RU/EN).
+3. Reranker: local bge-reranker or API; the latency budget.
+4. NLI (B4): a separate model now or coverage by C2 means.
+5. ESCO data for replenishing the dictionary (A3) — as external content.
+6. Extending the hide reason codes (A6) and the AI purposes matrix (C0).
+7. Alert channel: in-app for now, email — a separate task (send_email denied in the matrices).
+8. Retention of the event journal (A8).
+9. Committing the research doc and this brief (both are currently uncommitted).
+10. The fate of the existing job_matching AI path (part 1 C0): bringing the batch mode
+    behind the gateway or disabling it until repair; whether to approve the `job_matching`
+    purpose (today only `cover_letter` is approved, AI-002).
+11. The fate of the existing LLM relevance subsystem (`/api/v1/relevance`, cache
+    `job_relevance_scores`): absorption into C2 or switching it off until C2.
 
-## 8. Порядок работ (рекомендация, не замена решению владельца)
+## 8. Order of work (a recommendation, not a replacement for the owner decision)
 
-A1 → A2 → A3 → A4 → A5 → A8 → A6 → A7 → A9 → A10 → (решения владельца) → B1 → B2 →
-B3 → B5 → B6 → B4 → C0 → C1 → C2 → C3 → C4 → C5 → C6 → D-* по мере данных.
-Каждый шаг — отдельная задача SP 1.0 с полным протоколом V0–V6. Пункты одной фазы
-можно комбинировать в задачу только если вместе они меньше, чем один содержательный
-шаг, — по умолчанию не комбинировать. Ремонтная часть 1 C0 — не «позже, с фазой C»:
-по решению владельца (№10) она выполняется досрочно, до/параллельно фазе A, —
-незащищённый batch-путь тратит реальные деньги при наличии ключа в окружении
-и не должен дожидаться фазы C.
+A1 → A2 → A3 → A4 → A5 → A8 → A6 → A7 → A9 → A10 → (owner decisions) → B1 → B2 →
+B3 → B5 → B6 → B4 → C0 → C1 → C2 → C3 → C4 → C5 → C6 → D-* as data accumulates.
+Each step is a separate SP 1.0 task with the full V0–V6 protocol. Items of one phase
+can be combined into a task only if together they are less than one substantive
+step — by default do not combine. The repair part 1 of C0 is not "later, with phase C":
+by owner decision (#10) it is performed ahead of schedule, before/in parallel with phase A —
+the unprotected batch path spends real money when a key is present in the environment
+and must not wait for phase C.
 
-## 9. Честные ограничения этого брифа
+## 9. Honest limitations of this brief
 
-- Ссылки на файлы (`relevance-service.ts`, детали схем) даны по IMPLEMENTATION_STATUS
-  и структуре репозитория; перед проектированием читать код — расхождения фиксировать
-  в задаче (это тоже V1).
-- Исследование опирается на веб-источники 2026-09-26; отдельные цифры (доля дубликатов
-  50–80%, «~100x» interleaving) — из вторичных источников, помечены там же; для
-  решения «делать/нет» опираться на направление эффекта, не на точные числа.
-- Бриф не отменяет SP 1.0 и не расширяет чьих-либо прав; противоречие между брифом и
-  AGENTS.md/ADR решается в пользу последних, с записью расхождения.
-- Ревизия 2026-09-27 (глубокое ревью против кода): исправлены jobicy (enabled=true),
-  номер следующей миграции (0014), учтены существующая LLM-подсистема relevance
-  и незакрытый batch-обход AI-контура (часть 1 C0; решения владельца №10–11).
+- References to files (`relevance-service.ts`, schema details) are given per IMPLEMENTATION_STATUS
+  and the repository structure; read the code before designing — record discrepancies
+  in the task (this is V1 too).
+- The research relies on web sources from 2026-09-26; individual numbers (the duplicate share
+  50–80%, "~100x" interleaving) come from secondary sources and are marked there; for a
+  "do/don't" decision rely on the direction of the effect, not on exact numbers.
+- The brief does not override SP 1.0 and does not expand anyone's rights; a contradiction between the brief and
+  AGENTS.md/ADR is resolved in favor of the latter, with the discrepancy recorded.
+- Revision 2026-09-27 (a deep review against the code): jobicy fixed (enabled=true),
+  the number of the next migration (0014), the existing LLM relevance subsystem
+  and the unclosed batch bypass of the AI contour taken into account (part 1 C0; owner decisions #10–11).

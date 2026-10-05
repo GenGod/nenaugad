@@ -1,37 +1,37 @@
-# S0-001 — принять стартовый репозиторий
+# S0-001 — accept the starter repository
 
-**Результат:** один локально запускаемый Atlas с честным synthetic-каталогом,
-реальным lockfile и фактически выполненными проверками.
+**Result:** one locally runnable Atlas with an honest synthetic catalog, a real
+lockfile and actually executed checks.
 
-**Статус передачи:** код создан, офлайн-часть проверяется в reports/DELIVERY.md;
-npm/PostgreSQL/Next/Playwright пока не квалифицированы. Не пересоздавать проект.
+**Handover status:** the code is created, the offline part is verified in reports/DELIVERY.md;
+npm/PostgreSQL/Next/Playwright are not yet qualified. Do not recreate the project.
 
-**Не входит:** auth, реальные CV, live API, paid models, deploy, новые архитектуры.
-**Риск:** обычный; supply-chain и DB требуют внимательного review.
-**Данные:** только восемь bundled synthetic records.
-**Контекст:** AGENTS, README, docs/ARCHITECTURE, reports/DELIVERY, package/scripts.
+**Not included:** auth, real CVs, a live API, paid models, deploy, new architectures.
+**Risk:** ordinary; supply-chain and DB require a careful review.
+**Data:** only the eight bundled synthetic records.
+**Context:** AGENTS, README, docs/ARCHITECTURE, reports/DELIVERY, package/scripts.
 
-## Приёмка
-1. Установлены указанные direct dependencies; реальный package-lock.json создан
-   package manager, не написан моделью. Peer conflicts устранены обоснованно.
-2. check:offline, lint, typecheck, build завершены; exact commands/exit codes записаны.
-3. Реальный Next открывает главную, каталог из 4 активных примеров, поиск и detail.
-4. Playwright проходит на 320/390/1440; исключённая вакансия недоступна по прямому ID.
-5. Локальная PostgreSQL: migrate/seed повторяемы, чтение переключается явно;
-   отдельная test DB проходит test:db. Ошибка БД не даёт фикстур.
-6. Нет новых сетевых AI-вызовов, секретов в git, авто-авторизации и production обхода.
-7. Статус implemented/tested/accepted разделён; владелец принимает S0.
+## Acceptance
+1. The specified direct dependencies are installed; a real package-lock.json created by
+   the package manager, not written by a model. Peer conflicts resolved with justification.
+2. check:offline, lint, typecheck, build completed; exact commands/exit codes recorded.
+3. A real Next opens the home page, the catalog of 4 active examples, search and detail.
+4. Playwright passes on 320/390/1440; the excluded vacancy is unavailable by direct ID.
+5. Local PostgreSQL: migrate/seed repeatable, the read switches explicitly; a separate
+   test DB passes test:db. A DB error does not yield fixtures.
+6. No new network AI calls, no secrets in git, no auto-auth and no production bypass.
+7. The implemented/tested/accepted statuses are separated; the owner accepts S0.
 
-## План
-Проверить tree и версии -> установка -> реальные команды -> diff review.
-При отсутствующем npm не выдумывать build, lock или pass; сохранить блокер.
-Максимум два цикла исправлений, счётчик в tasks/current.json.
+## Plan
+Check the tree and versions -> install -> real commands -> diff review.
+With npm missing, do not invent a build, lock or pass; record the blocker.
+At most two repair cycles, the counter in tasks/current.json.
 
-## Допуск
-Локальная установка обычных зависимостей и контейнера требует доступной среды;
-платный AI и реальные источники выключены. Не совершать покупки и deploy.
-Автоматическая команда git commit/push не разрешена этим шаблоном.
-Расход coding-host: unknown до доступного счёта.
+## Eligibility gate
+Local installation of ordinary dependencies and a container requires an available environment;
+paid AI and real sources are off. Make no purchases and no deploy.
+An automatic git commit/push command is not permitted by this template.
+Coding-host spend: unknown until an accessible bill.
 
-## Отключение
-Остановить npm dev и локальный DB-контейнер. Не удалять volume или чужие изменения.
+## Shutdown
+Stop npm dev and the local DB container. Do not delete the volume or other people's changes.
