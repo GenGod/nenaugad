@@ -82,6 +82,8 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   ([DEVX-003](tasks/DEVX-003-weekly-checks.md)).
 - Whether to normalize the himalayas "Current as of" date in the terms fingerprint
   (source-rights tooling). It is the precondition for a weekly `terms:check`.
+- Dependabot pull request #1: GitHub Actions v4 → v7 (checkout, setup-node,
+  upload-artifact). These are major versions: review before merging.
 
 ## Known limits
 - The monthly quota window is stored but has no calendar reset (OPEN_GAPS A5).

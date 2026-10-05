@@ -56,8 +56,8 @@ does not cover, so it never runs.
   approval): success in 9 min 17 s. `npm ci` 19 s, `check` 18 s, `build` 20 s,
   `test:db` 10 s, Playwright install 5 min 37 s, `test:e2e` 1 min 54 s. Of the
   Playwright install, 5 min 3 s was an Ubuntu mirror serving 32 MB of OS packages at
-  106 kB/s, while the browser downloads took 14 s; a typical run should take about
-  4 minutes. Workflow lint (run 37358307259): success.
+  106 kB/s, while the browser downloads took 14 s. The second run (`8fca1e0`) took
+  4 min 2 s, with a 28 s Playwright install. Workflow lint (run 37358307259): success.
 
 ## Rollback
 
