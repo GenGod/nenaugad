@@ -1,10 +1,10 @@
 {
-  "task_id": "B6-001",
-  "file": "tasks/B6-001-survival-urgency-proxy.md",
+  "task_id": "B4-001",
+  "file": "tasks/B4-001-nli-precheck.md",
   "status": "implemented",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Urgency/survival прокси-модель (карточка B6 брифа). Честная поправка: наблюдаемых закрытий нет (700 active, closure_checks пуст) — фаза 1 = структура с провизорными константами. survival.ts (survival-l1): hazard-окно 14-45-90 (пик -6), бакеты recent/weeks/long/unknown, availabilityNoteFor (ghost сильнее возраста, без цифр). Ранкер: слой urgency, RANKER_VERSION v5-...-urgency, контрол rankJobsWithoutUrgency в реестре. Измерения: eval:matching идентичен baseline (0.892, guards 0/0); eval:shadow — контроль v5-minus-urgency двигает 0/189 позиций (маргинально нулевой эффект измерен); без freshness NDCG@10 0.878463 - A5 сохраняет строгий вклад. Проверки: check 263/263, test:db 58/58, build 0, e2e 99, базалайны не менялись."
+  "note": "NLI-пре-чек противоречий (карточка B4 брифа) — исполнена как ОЦЕНКА с отрицательным результатом: интеграция не выполнена. Модель MoritzLaurer/mDeBERTa-v3-base-mnli-xnli (MIT, ru, ONNX q8, sha256 VERIFIED) работает на текстовых парах, но на рабочих: V4-a «гражданство США» дает neutral 0.82/0.85 при contradiction 0.08/0.11; порог, ловящий V4-a (~0.1), начинал бы ловить ОТСУТСТВИЕ («Java vs Python» 0.258); даже жёсткий конфликт по присутствию 0.032 в рабочем порядке. Отсутствие факта в профиле по правилам проекта — не доказательство противоположного. Рекомендация: пере-попытка вместе с C2 (карточка сама допускает). Пин артефакта записан; продуктовый код не менялся, check зелёный."
 }
