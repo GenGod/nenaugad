@@ -1,7 +1,8 @@
 # DEVX-002 — CI on GitHub Actions: rehearsed before its first run, plus agent tooling
 
-**Status: implemented, 2026-10-05; uncommitted.** Owner request of 2026-10-05: implement
-the CI scripts for GitHub Actions. Risk: normal (CI and tooling; no product code).
+**Status: implemented, 2026-10-05; CI's first run on GitHub is green (`d679a9d`).**
+Owner request of 2026-10-05: implement the CI scripts for GitHub Actions. Risk: normal
+(CI and tooling; no product code).
 
 ## Why
 
@@ -51,8 +52,12 @@ does not cover, so it never runs.
 - actionlint 1.7.12 on both workflows: exit 0, no findings.
 - `npm run check:agent`: exit 0, 275/275 (the two new tests included).
 - `npm run ci:status` against GitHub: "No GitHub Actions run for 3a73e9f" (not pushed).
-- Not run: the workflows on GitHub themselves, which start with the next push. Linux-only
-  differences in e2e (fonts, timing) remain possible.
+- GitHub Actions, the first run ever (run 37358307037, `d679a9d`, pushed with owner
+  approval): success in 9 min 17 s. `npm ci` 19 s, `check` 18 s, `build` 20 s,
+  `test:db` 10 s, Playwright install 5 min 37 s, `test:e2e` 1 min 54 s. Of the
+  Playwright install, 5 min 3 s was an Ubuntu mirror serving 32 MB of OS packages at
+  106 kB/s, while the browser downloads took 14 s; a typical run should take about
+  4 minutes. Workflow lint (run 37358307259): success.
 
 ## Rollback
 
@@ -61,6 +66,6 @@ fails on GitHub as described above.
 
 ## What remains
 
-- Push to `main` to run CI for the first time; `npm run ci:status` reads the result.
-- Owner decisions, not done: a scheduled `npm run terms:check` (it reads the sources'
-  live terms pages), a weekly `npm audit`, Dependabot for action versions.
+- The optional extras (a scheduled `terms:check`, a weekly `npm audit` and Dependabot
+  for action versions) were approved and are handled in
+  [DEVX-003](DEVX-003-weekly-checks.md).

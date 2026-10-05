@@ -1,0 +1,24 @@
+name: Weekly checks
+on:
+  schedule:
+    # Mondays 06:00 UTC. A failed scheduled run is emailed by GitHub.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      # Reads package-lock.json only: nothing is installed or upgraded. High and
+      # critical advisories fail the run; lower ones are listed in the log.
+      - run: npm audit --audit-level=high

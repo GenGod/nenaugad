@@ -9,6 +9,7 @@
 | `npm run test:db` | An isolated real PostgreSQL | RLS/auth of future personal entities |
 | `npm run test:e2e` | A real local Next + Chromium at 3 widths | full accessibility/all browsers |
 | CI on GitHub Actions (`npm run ci:status`) | `check`, `build`, `test:db` on a fresh pgvector DB and `test:e2e` on Linux, from a clean checkout without `.env` | the visual baselines: they are Windows-only, so CI skips pixel comparisons |
+| Weekly checks (`weekly.yml`, Mondays) | `npm audit` of the lockfile: high and critical advisories fail the run | that a dependency is safe; low and moderate advisories only appear in the log |
 | A future live benchmark | Real usage receipts + independent labelling | unlimited safety and universal accuracy |
 
 SP-T03/06/07 have small starting checks; this is not full coverage of the requirements

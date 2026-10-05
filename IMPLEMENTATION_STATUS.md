@@ -7,7 +7,7 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-10-05 by [DEVX-002](tasks/DEVX-002-ci-github-actions.md).
+**Updated:** 2026-10-05 by [DEVX-003](tasks/DEVX-003-weekly-checks.md).
 
 ## Switches and boundaries
 - **Live AI is off** (`LIVE_AI_ENABLED=false`, a real switch since AI-007): no provider
@@ -55,14 +55,16 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 - **Development process:** Claude Code setup, model and effort policy, CI on pushes
   to `main` that change more than Markdown (DEVX-001, 2026-10-05). The CI job was
   rehearsed locally and fixed before its first run; workflow lint; `npm run ci:status`
-  reads results compactly (DEVX-002).
+  reads results compactly (DEVX-002). A weekly `npm audit` and Dependabot for the
+  Actions versions (DEVX-003).
 
 ## Latest checks
 - 2026-10-05 (DEVX-002): `npm run check` exit 0 — 275/275 unit, Biome, tsc. A CI
   rehearsal on a clean clone without `.env` against a fresh pgvector database:
   `build` exit 0, `test:db` 69/69, `test:e2e` 99 passed.
-- CI on GitHub has never run (before 2026-10-05 it triggered on pull requests only).
-  The first run comes with the next push to `main`.
+- CI on GitHub: the first run ever passed on 2026-10-05 (`d679a9d`, 9 min 17 s, most
+  of it a slow Ubuntu mirror). Before that, CI triggered on pull requests only and
+  never ran.
 
 ## Waiting for the owner
 - The first live extraction run: `LIVE_AI_ENABLED=true` plus a key, then
@@ -74,6 +76,12 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 - Account deletion (B11, a high-risk review) and restore (SP-T22, a beta prerequisite).
 - Which design document is authoritative: AGENTS.md and README still name Atlas 1.1,
   while the tokens come from the design system 1.3 (flagged by DEVX-001).
+- **Jobicy changed its API page (`terms:check`, 2026-10-05):** the fair-use rules are
+  unchanged, but listings now come from a 7-day window and closure checks moved to a
+  batch status endpoint. Re-read it, and decide whether S1-005 and A10 need a task
+  ([DEVX-003](tasks/DEVX-003-weekly-checks.md)).
+- Whether to normalize the himalayas "Current as of" date in the terms fingerprint
+  (source-rights tooling). It is the precondition for a weekly `terms:check`.
 
 ## Known limits
 - The monthly quota window is stored but has no calendar reset (OPEN_GAPS A5).

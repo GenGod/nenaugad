@@ -1,0 +1,13 @@
+# Weekly pull requests that bump the GitHub Actions the workflows use, grouped into
+# one PR. npm dependencies are deliberately not here: they are pinned exactly and
+# change only by an owner decision (docs/DEPENDENCIES.md).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns:
+          - "*"

@@ -89,3 +89,10 @@ Do not write package-lock by hand and do not hide a peer conflict with the --for
 If the chosen version is unavailable, check the official registry/release,
 propose a compatible supported replacement and record the reason for the change.
 Do not roll Next back to a vulnerable version for the sake of a successful build.
+
+## Watching for updates
+`npm audit --audit-level=high` runs every Monday in the `Weekly checks` workflow
+(`.github/workflows/weekly.yml`). It reads the lockfile and installs or upgrades
+nothing; a high or critical advisory fails the run. Dependabot (`.github/dependabot.yml`)
+opens one grouped weekly pull request for the GitHub Actions versions only. npm
+packages are not updated automatically, because each version above is an owner decision.
