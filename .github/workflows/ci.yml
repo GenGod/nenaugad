@@ -26,10 +26,12 @@ env:
   NEXT_TELEMETRY_DISABLED: "1"
 
 # Three parallel jobs, one status check each: Code quality, Build, Tests.
+# Runners are pinned to ubuntu-24.04: ubuntu-latest moves to Ubuntu 26 from
+# 2026-10-19, and the move should be a deliberate change, not a surprise.
 jobs:
   quality:
     name: Code quality
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -56,7 +58,7 @@ jobs:
 
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -71,7 +73,7 @@ jobs:
 
   tests:
     name: Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       TEST_DATABASE_URL: postgresql://atlas:atlas_ci_synthetic@127.0.0.1:5432/atlas_starter_test

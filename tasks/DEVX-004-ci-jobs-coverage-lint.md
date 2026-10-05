@@ -74,6 +74,20 @@ got an independent fresh-context review.
   and drift exit 0; build exit 0 (50 s); unit and DB tests 344/344 with the same
   coverage (21 s); e2e 99 passed (95 s; on Windows the visual baselines held).
 
+## On GitHub
+
+- First push (`a53209d`): Code quality and Build passed. Tests and Workflow lint were
+  cancelled without running a step. GitHub's annotation reads "The job was not acquired
+  by Runner of type hosted even after multiple attempts", and Dependabot's job hit the
+  same failure. That is a hosted-runner capacity problem, not a check failure, so no
+  repair cycle was used.
+- The same annotations announced that `ubuntu-latest` moves to Ubuntu 26 from
+  2026-10-19. Every workflow now pins `ubuntu-24.04`, which is identical to what runs
+  today, so the move happens deliberately.
+- `npm run ci:status` now names each job that did not succeed. For a job that never
+  ran a step, it prints the failure annotation; that is how the runner problem above
+  was read. Cancelled and timed-out runs exit 1, like failures.
+
 ## Rollback
 
 `git revert` the commit: one CI job again, the four-rule lint, no coverage step.
