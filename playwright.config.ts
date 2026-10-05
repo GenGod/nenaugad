@@ -7,6 +7,10 @@ export default defineConfig({
   retries: 0,
   timeout: 30000,
   reporter: "list",
+  // Visual baselines are recorded on Windows (*-win32.png). Elsewhere, such as
+  // the Linux CI runner, every functional assertion still runs and only the
+  // pixel comparisons are skipped instead of failing on missing baselines.
+  ignoreSnapshots: process.platform !== "win32",
   use: { baseURL: "http://127.0.0.1:3100", trace: "off", screenshot: "only-on-failure" },
   webServer: {
     command: "npm run dev -- --port 3100",

@@ -1,10 +1,10 @@
 {
-  "task_id": "DOC-EN-001",
-  "file": "tasks/DOC-EN-001-documentation-in-english.md",
+  "task_id": "DEVX-001",
+  "file": "tasks/DEVX-001-claude-code-process.md",
   "status": "implemented",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Owner request done: 73 tracked markdown files (~9,500 lines) translated in place to English by 11 parallel subagents under one shared rule set (facts/numbers/IDs/paths/links byte-identical; owner-decision and licence quotes verbatim RU + bracketed EN; Russian product/UI strings kept). Already-English files (AGENTS.md, CLAUDE.md, EMBEDDING_PLAYBOOK.md, PROMPT_EXECUTOR.md) and Reference/** untouched. Verified in the main session: 0 heading-count mismatches, no link lost (the 2 deltas are this session's own pre-translation edits), 401 Cyrillic-bearing lines remaining of which only 17 lie outside quotes (all legitimate: item labels, one JSON key, dictionary/worklist data, a product sample). check 273/273 + guardrails green. Subagent usage ~24.2M tokens (monetary cost unknown). Uncommitted."
+  "note": "Claude Code process set up per owner decisions of 2026-10-05 (Opus main + Sonnet executor / Opus reviewer, effort by task risk, status snapshot + frozen log, CI on pushes to main; GitHub default branch switched to main). check:agent 273/273, exit 0. Owner action pending: apply .claude/settings.json (hook registration, permissions, CLAUDE_CODE_SUBAGENT_MODEL). Uncommitted."
 }

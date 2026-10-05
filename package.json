@@ -23,6 +23,8 @@
     "guardrails": "node scripts/guardrails.mjs",
     "check:offline": "npm run tokens:check && npm run icons:check && npm run guardrails && npm test",
     "check": "npm run check:offline && npm run lint && npm run typecheck",
+    "test:quiet": "node scripts/test-quiet.mjs",
+    "check:agent": "npm run -s tokens:check && npm run -s icons:check && npm run -s guardrails && npm run -s test:quiet && npm run -s lint && npm run -s typecheck",
     "db:migrate": "node --experimental-strip-types --env-file-if-exists=.env scripts/migrate.ts",
     "db:seed": "node --experimental-strip-types --env-file-if-exists=.env scripts/seed.ts",
     "test:db": "node --experimental-strip-types --env-file-if-exists=.env --test --test-concurrency=1 tests/integration/*.test.ts",

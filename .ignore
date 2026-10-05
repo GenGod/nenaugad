@@ -1,0 +1,6 @@
+# Search-only exclusion (ripgrep and tools built on it, including Claude Code's
+# Grep). Reference/ holds archived source bundles whose live copies are under
+# docs/; files here stay tracked and readable by path. Reference/Nenaugad/ keeps
+# the design system 1.3 source, so it stays searchable.
+Reference/*
+!Reference/Nenaugad/
