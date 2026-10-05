@@ -22,7 +22,7 @@ import {
 } from "../../src/domain/eval-metrics.ts";
 import { runMatchingEval, type Ranker } from "../../src/domain/matching-eval.ts";
 import {
-  rankJobs, rankJobsBaselineV0, rankJobsWithoutFreshness,
+  rankJobs, rankJobsBaselineV0, rankJobsWithoutFreshness, rankJobsWithoutUrgency,
 } from "../../src/domain/match-ranker.ts";
 import { parseManualProfileInput } from "../../src/domain/profile.ts";
 import { isJobSnapshot } from "../../src/domain/source-contracts.ts";
@@ -149,7 +149,7 @@ test("evaluation: the harness detects degradation (control ranker scores strictl
   // A deliberately bad but deterministic ranker: input order reversed, no scores.
   // Annotated as Ranker so the (jobs, profile, now) contract stays explicit.
   const control: Ranker = (jobs) =>
-    jobs.map(job => ({ ...job, score: 0, freshness: 0, preference: 0, ghost: 0 })).reverse();
+    jobs.map(job => ({ ...job, score: 0, freshness: 0, preference: 0, ghost: 0, urgency: 0 })).reverse();
   const degraded = runMatchingEval(GOLDEN_SET, control);
   assert.ok(degraded.aggregate.ndcgAt10 !== null && baseline.aggregate.ndcgAt10 !== null);
   assert.ok(degraded.aggregate.ndcgAt10 < baseline.aggregate.ndcgAt10,
@@ -193,6 +193,34 @@ test("evaluation: the freshness layer never scores worse than the same ranker wi
     assert.ok(fresh.ndcgAt10 !== null && stale.ndcgAt10 !== null);
     assert.ok(fresh.ndcgAt10 >= stale.ndcgAt10,
       `${fresh.profileId}: freshness degraded NDCG@10 (${fresh.ndcgAt10} < ${stale.ndcgAt10})`);
+  }
+});
+
+test("evaluation: the urgency layer never scores worse than the same ranker without it", () => {
+  // The B6 ratchet. Measured 2026-10-04: on this frozen set the hazard window
+  // has ZERO marginal aggregate effect — the only posting inside the window
+  // (golden-j33, 45 days old) is already demoted below its fresh twin by A5, so
+  // the second time layer cannot move the aggregate. Its own effect is asserted
+  // at the fixture level in tests/unit/freshness.test.ts and on a synthetic age
+  // distribution in tests/unit/survival.test.ts. The guarantee here is
+  // therefore non-harm, per profile and in aggregate: a strict gain cannot be
+  // stated honestly on this set, and inventing one would be a lie.
+  const withUrgency = runMatchingEval(GOLDEN_SET, rankJobs);
+  const withoutUrgency = runMatchingEval(GOLDEN_SET, rankJobsWithoutUrgency);
+  assert.ok(withUrgency.aggregate.ndcgAt5 >= withoutUrgency.aggregate.ndcgAt5,
+    "the urgency term must not lower aggregate NDCG@5");
+  assert.ok(withUrgency.aggregate.ndcgAt10 >= withoutUrgency.aggregate.ndcgAt10,
+    "the urgency term must not lower aggregate NDCG@10");
+  assert.ok(withUrgency.aggregate.recallAt10 >= withoutUrgency.aggregate.recallAt10,
+    "the urgency term must not lower aggregate R@10");
+  for (let i = 0; i < withUrgency.profiles.length; i += 1) {
+    const withTerm = withUrgency.profiles[i];
+    const withoutTerm = withoutUrgency.profiles[i];
+    assert.ok(withTerm !== undefined && withoutTerm !== undefined);
+    assert.equal(withTerm.profileId, withoutTerm.profileId);
+    assert.ok(withTerm.ndcgAt10 !== null && withoutTerm.ndcgAt10 !== null);
+    assert.ok(withTerm.ndcgAt10 >= withoutTerm.ndcgAt10,
+      `${withTerm.profileId}: the urgency term degraded NDCG@10 (${withTerm.ndcgAt10} < ${withoutTerm.ndcgAt10})`);
   }
 });
 

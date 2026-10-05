@@ -11,7 +11,9 @@ import {
 } from "../../src/domain/freshness.ts";
 import { GOLDEN_PROFILES, GOLDEN_SET } from "../../src/data/matching-golden.ts";
 import { evaluateJob } from "../../src/domain/matching.ts";
-import { rankJobs, rankJobsWithoutFreshness, type RankableJob } from "../../src/domain/match-ranker.ts";
+import {
+  rankJobs, rankJobsBaselineV0, rankJobsWithoutFreshness, rankJobsWithoutUrgency, type RankableJob,
+} from "../../src/domain/match-ranker.ts";
 
 const NOW = "2026-09-29T12:00:00.000Z";
 const DAY_MS = 86_400_000;
@@ -55,7 +57,13 @@ test("age label is honest about the observation and declines Russian plurals", (
   assert.equal(firstSeenLabel(undefined, NOW), null);
 });
 
-test("ranked order: the fresh twin wins, and the stale one is not dropped", () => {
+test("ranked order: each time layer independently fixes the stale/fresh twin", () => {
+  // Measured 2026-10-04 (B6): the fixture pair is 45 days apart, which puts the
+  // stale twin in B6's hazard window as well — so the pair now demonstrates
+  // EITHER layer, and both are asserted here. The layers' aggregate effects are
+  // measured separately in tests/unit/matching-eval.test.ts (freshness still
+  // shows a strict aggregate gain on its own; the hazard window's marginal
+  // aggregate effect on this frozen set is zero and is recorded there).
   const backend = GOLDEN_PROFILES.find(profile => profile.id === "p-backend-eu");
   assert.ok(backend);
   const stale = GOLDEN_SET.jobs.find(job => job.snapshot.id === "golden-j33");
@@ -66,19 +74,29 @@ test("ranked order: the fresh twin wins, and the stale one is not dropped", () =
     assert.ok(evaluation.status === "eligible" || evaluation.status === "needs_review");
     return { snapshot: job.snapshot, status: evaluation.status, firstSeenAt: job.firstSeenAt };
   });
-  const withFreshness = rankJobs(shown, backend.profile, GOLDEN_SET.evaluatedAt);
-  const withoutFreshness = rankJobsWithoutFreshness(shown, backend.profile, GOLDEN_SET.evaluatedAt);
-  // Without the term they tie and id order decides (stale j33 first) — the
-  // fixture pair is what makes the layer measurable.
-  assert.equal(withoutFreshness[0]?.snapshot.id, "golden-j33");
-  // With it, the fresh posting leads and the stale one still appears (demoted,
-  // not dropped).
-  assert.equal(withFreshness[0]?.snapshot.id, "golden-j34");
-  assert.equal(withFreshness.length, 2);
-  // The fresh listing's own score is untouched; only the stale one moves down,
-  // so freshness can never lift anything above a better match.
-  assert.equal(withFreshness[0]?.score, withoutFreshness[1]?.score);
-  assert.ok((withFreshness[1]?.score ?? 0) < (withoutFreshness[0]?.score ?? 0));
-  assert.equal(withFreshness[0]?.freshness, 0);
-  assert.ok((withFreshness[1]?.freshness ?? 0) < 0);
+  const now = GOLDEN_SET.evaluatedAt;
+  // Neither time term: the twins tie and id order decides (stale j33 first).
+  const neither = rankJobsBaselineV0(shown, backend.profile, now);
+  assert.equal(neither[0]?.snapshot.id, "golden-j33");
+  // Freshness alone fixes the pair…
+  assert.equal(rankJobsWithoutUrgency(shown, backend.profile, now)[0]?.snapshot.id, "golden-j34");
+  // …the hazard window alone fixes it too…
+  assert.equal(rankJobsWithoutFreshness(shown, backend.profile, now)[0]?.snapshot.id, "golden-j34");
+  // …and the product ranker (both) keeps the fresh twin first, stale present.
+  const product = rankJobs(shown, backend.profile, now);
+  assert.equal(product[0]?.snapshot.id, "golden-j34");
+  assert.equal(product.length, 2);
+  // The fresh listing's own score is untouched: both terms act on the stale one
+  // only, so a time term can never lift a posting above a better match.
+  const freshInBaseline = neither.find(entry => entry.snapshot.id === "golden-j34");
+  const freshInProduct = product.find(entry => entry.snapshot.id === "golden-j34");
+  assert.ok(freshInBaseline && freshInProduct);
+  assert.equal(freshInProduct.score, freshInBaseline.score);
+  assert.equal(freshInProduct.freshness, 0);
+  assert.equal(freshInProduct.urgency, 0);
+  const staleInProduct = product.find(entry => entry.snapshot.id === "golden-j33");
+  assert.ok(staleInProduct);
+  assert.ok(staleInProduct.freshness < 0);
+  assert.ok(staleInProduct.urgency < 0);
+  assert.ok(staleInProduct.score < freshInProduct.score);
 });

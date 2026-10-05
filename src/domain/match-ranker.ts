@@ -29,14 +29,15 @@
 // Determinism: `now` is always passed in, never read from the clock, so the same
 // inputs and the same reference time produce the same order.
 import { assessSnapshotRequirements } from "./requirements.ts";
-import { FRESHNESS_MAX_DEMOTION, freshnessDemotion } from "./freshness.ts";
+import { FRESHNESS_MAX_DEMOTION, ageInDays, freshnessDemotion } from "./freshness.ts";
 import { preferenceDemotion, type DislikedPosting } from "./negative-preference.ts";
 import { ghostDemotion, type ClosureSignal } from "./ev-multipliers.ts";
+import { SURVIVAL_CONSTANTS, urgencyDemotion } from "./survival.ts";
 import { extractSkills, skillOverlap } from "./skills.ts";
 import type { ManualProfileInput } from "./profile.ts";
 import type { JobSnapshot } from "./source-contracts.ts";
 
-export const RANKER_VERSION = "v4-status-skills-role-must-stale-preference-ghost";
+export const RANKER_VERSION = "v5-status-skills-role-must-stale-preference-ghost-urgency";
 
 export const RANKER_WEIGHTS = {
   eligibleStatus: 30,
@@ -44,6 +45,7 @@ export const RANKER_WEIGHTS = {
   targetRoleInTitle: 15,
   mustRequirementUncovered: -15,
   freshnessMaxDemotion: FRESHNESS_MAX_DEMOTION,
+  urgencyMaxDemotion: SURVIVAL_CONSTANTS.windowMaxDemotion,
 } as const;
 
 export type RankableJob = Readonly<{
@@ -66,6 +68,8 @@ export type RankedJob = RankableJob & Readonly<{
   preference: number;
   /** Ghost demotion from closure signals (0 or negative); reported for transparency. */
   ghost: number;
+  /** Hazard-window urgency demotion (0 or negative); reported for transparency. */
+  urgency: number;
 }>;
 
 /** What the caller knows about this candidate's stated dislikes (item A6). */
@@ -80,7 +84,7 @@ export type Ranker = (
   now: string,
 ) => readonly RankedJob[];
 
-type LayerOptions = Readonly<{ requirements: boolean; freshness: boolean; ghost: boolean }>;
+type LayerOptions = Readonly<{ requirements: boolean; freshness: boolean; ghost: boolean; urgency: boolean }>;
 
 /**
  * Whole-word role matching (docs/OPEN_GAPS.md B6). Substring matching both
@@ -113,6 +117,7 @@ function scoreJob(
   now: string,
   preference: number,
   ghost: number,
+  urgency: number,
 ): number {
   const jobSkills = extractSkills(`${job.snapshot.title} ${job.snapshot.description_text}`);
   const { matched } = skillOverlap(profile.skills, jobSkills);
@@ -134,8 +139,9 @@ function scoreJob(
   // Also demotion only: hiding a posting lowers its neighbours, never the rest —
   // the layer's worst case is the neighbour's own position.
   // The ghost layer (A10) works the same way: a posting we could not confirm
-  // sinks, it is never removed and never lifted.
-  return score + preference + ghost;
+  // sinks, it is never removed and never lifted. The urgency layer (B6) adds the
+  // hazard-window demotion on top of the smooth freshness decay — same rule.
+  return score + preference + ghost + urgency;
 }
 
 function orderByScore(
@@ -151,12 +157,15 @@ function orderByScore(
       const freshness = layers.freshness ? freshnessDemotion(job.firstSeenAt, now) : 0;
       const preference = preferenceDemotion(job.snapshot, disliked);
       const ghost = layers.ghost ? ghostDemotion(job.closure) : 0;
+      const urgency = layers.urgency && job.firstSeenAt !== undefined
+        ? urgencyDemotion(ageInDays(job.firstSeenAt, now)) : 0;
       return {
         ...job,
-        score: scoreJob(job, profile, layers, now, preference, ghost),
+        score: scoreJob(job, profile, layers, now, preference, ghost, urgency),
         freshness,
         preference,
         ghost,
+        urgency,
       };
     })
     .sort((a, b) => {
@@ -173,7 +182,7 @@ export function rankJobs(
   now: string,
   preferences: RankerPreferences = {},
 ): readonly RankedJob[] {
-  return orderByScore(jobs, profile, { requirements: true, freshness: true, ghost: true }, now, preferences);
+  return orderByScore(jobs, profile, { requirements: true, freshness: true, ghost: true, urgency: true }, now, preferences);
 }
 
 /** Same ranker with the requirement terms off — the A2 ratchet's control. */
@@ -182,7 +191,7 @@ export function rankJobsWithoutRequirements(
   profile: ManualProfileInput,
   now: string,
 ): readonly RankedJob[] {
-  return orderByScore(jobs, profile, { requirements: false, freshness: true, ghost: true }, now, {});
+  return orderByScore(jobs, profile, { requirements: false, freshness: true, ghost: true, urgency: true }, now, {});
 }
 
 /** Same ranker with the freshness term off — the A5 ratchet's control. */
@@ -191,7 +200,16 @@ export function rankJobsWithoutFreshness(
   profile: ManualProfileInput,
   now: string,
 ): readonly RankedJob[] {
-  return orderByScore(jobs, profile, { requirements: true, freshness: false, ghost: true }, now, {});
+  return orderByScore(jobs, profile, { requirements: true, freshness: false, ghost: true, urgency: true }, now, {});
+}
+
+/** Same ranker with the hazard-window term off — the B6 ratchet's control. */
+export function rankJobsWithoutUrgency(
+  jobs: readonly RankableJob[],
+  profile: ManualProfileInput,
+  now: string,
+): readonly RankedJob[] {
+  return orderByScore(jobs, profile, { requirements: true, freshness: true, ghost: true, urgency: false }, now, {});
 }
 
 /** The A1 baseline: none of the later layers. Exists only for measurement. */
@@ -200,5 +218,5 @@ export function rankJobsBaselineV0(
   profile: ManualProfileInput,
   _now: string,
 ): readonly RankedJob[] {
-  return orderByScore(jobs, profile, { requirements: false, freshness: false, ghost: false }, _now, {});
+  return orderByScore(jobs, profile, { requirements: false, freshness: false, ghost: false, urgency: false }, _now, {});
 }

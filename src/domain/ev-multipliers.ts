@@ -13,10 +13,10 @@
 //     SHOWN (a single failed check is not proof, and the pipeline deliberately
 //     refuses to close on one) but it sinks, and the candidate is told why.
 //   * m_urgency — NOT re-implemented here. Age is already a measured demotion
-//     (item A5, with the numbers recorded in its task file); duplicating it as a
-//     second multiplier would double-count the same fact. The phase-1 "urgency"
-//     slot is that layer; the survival/hazard model is B6, which explicitly needs
-//     more data than one catalog pass.
+//     (item A5, numbers in its task file), and B6 landed the hazard-window
+//     structure in src/domain/survival.ts (survival-l1) instead of a second
+//     copy of the same fact here. This module carries only the ghost evidence;
+//     the "urgency" slot is A5 + B6, each with its own fixture.
 //
 // Bounded, like every other layer: the demotion is a fixed, documented constant
 // small enough that a suspected posting sinks below an equally relevant live one
@@ -24,7 +24,7 @@
 //
 // Deterministic: the signal is data, the weights are constants, no clock.
 
-export const EV_LAYER_VERSION = "ev1-ghost-demotion-urgency-is-A5";
+export const EV_LAYER_VERSION = "ev1-ghost-demotion-urgency-is-A5-and-B6";
 
 export const GHOST_WEIGHTS = {
   /**

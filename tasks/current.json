@@ -1,10 +1,10 @@
 {
-  "task_id": "B5-001",
-  "file": "tasks/B5-001-near-dup-candidates.md",
+  "task_id": "B6-001",
+  "file": "tasks/B6-001-survival-urgency-proxy.md",
   "status": "implemented",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Cross-lingual near-dup очередь (карточка B5 брифа). Правило src/domain/near-dup.ts: предфильтр по косинусу текстов (O(n^2), LSH-граница измерена ~0.24M пар/с) + гейт по косинусу заголовков + пропуск точных A4-дублей + вето по наймовой географии. Пороги 0.70/0.75 замерены референсным артефактом (EN/RU 0.811/0.846; разные роли одной компании 0.582/0.731). CLI npm run dedup:candidates (JSON-очередь, без авто-слияния; process_with_ml по источникам). Прогон на 700 постах: 429 пар выше текстового порога, 41 точный дубль пропущен, 130 кандидатов, 0 кросс-источниковых. Проверки: check 256/256, test:db 58/58, build 0, e2e 99."
+  "note": "Urgency/survival прокси-модель (карточка B6 брифа). Честная поправка: наблюдаемых закрытий нет (700 active, closure_checks пуст) — фаза 1 = структура с провизорными константами. survival.ts (survival-l1): hazard-окно 14-45-90 (пик -6), бакеты recent/weeks/long/unknown, availabilityNoteFor (ghost сильнее возраста, без цифр). Ранкер: слой urgency, RANKER_VERSION v5-...-urgency, контрол rankJobsWithoutUrgency в реестре. Измерения: eval:matching идентичен baseline (0.892, guards 0/0); eval:shadow — контроль v5-minus-urgency двигает 0/189 позиций (маргинально нулевой эффект измерен); без freshness NDCG@10 0.878463 - A5 сохраняет строгий вклад. Проверки: check 263/263, test:db 58/58, build 0, e2e 99, базалайны не менялись."
 }

@@ -10,7 +10,7 @@ import { Icon } from "../../components/icon.tsx";
 import { tint } from "../../components/job-card.tsx";
 import { getAllCachedScores } from "../../server/relevance-service.ts";
 import { firstSeenLabel } from "../../domain/freshness.ts";
-import { ghostNote } from "../../domain/ev-multipliers.ts";
+import { availabilityNoteFor } from "../../domain/survival.ts";
 import { SEEN_TTL_DAYS } from "../../domain/seen-set.ts";
 import { ImpressionReporter } from "../../components/impression-reporter.tsx";
 import { TrackedJobLink } from "../../components/tracked-job-link.tsx";
@@ -93,9 +93,11 @@ function MatchedCard({ job, score, tone, now, feed, position }: {
   // Item A5: when OUR pipeline first saw the posting, next to (not instead of)
   // the source's own publication date — the two are different facts.
   const foundAge = firstSeenLabel(card.firstSeenAt, now);
-  // Item A10: a posting whose availability we could not confirm is still shown —
-  // one failed check is a suspicion, not proof — but the candidate is told.
-  const availabilityNote = ghostNote(job.closure);
+  // Items A10/B6: a posting whose availability we could not confirm is still
+  // shown — one failed check is a suspicion, not proof — and a posting that has
+  // been in the catalog for months carries the soft age caution. One honest
+  // source of the line (src/domain/survival.ts).
+  const availabilityNote = availabilityNoteFor(card.firstSeenAt, now, job.closure);
   return <article className="job-card">
     <div className="job-top">
       <span className={`company-mark ${tint(card.company)}`} aria-hidden="true">{card.company.slice(0, 1)}</span>

@@ -10,7 +10,7 @@
 // against, not as something candidates receive.
 import {
   RANKER_VERSION, rankJobs, rankJobsBaselineV0, rankJobsWithoutFreshness, rankJobsWithoutRequirements,
-  type RankableJob, type RankedJob, type RankerPreferences,
+  rankJobsWithoutUrgency, type RankableJob, type RankedJob, type RankerPreferences,
 } from "./match-ranker.ts";
 import type { ManualProfileInput } from "./profile.ts";
 
@@ -39,7 +39,7 @@ export const REGISTERED_RANKERS: readonly RegisteredRanker[] = [
   {
     id: FEED_DEFAULT_ORDER_ID,
     description: "Not a ranker: the catalog order as delivered (measurement baseline since B23).",
-    rank: (jobs) => jobs.map(job => ({ ...job, score: 0, freshness: 0, preference: 0, ghost: 0 })),
+    rank: (jobs) => jobs.map(job => ({ ...job, score: 0, freshness: 0, preference: 0, ghost: 0, urgency: 0 })),
   },
   {
     id: "v0-status-skills-role",
@@ -58,8 +58,13 @@ export const REGISTERED_RANKERS: readonly RegisteredRanker[] = [
   },
   {
     id: RANKER_VERSION,
-    description: "Current: A2 requirements, A5 freshness, A6 preference demotion.",
+    description: "Current: A2 requirements, A5 freshness, A10 ghost, A6 preference demotion, B6 hazard-window urgency.",
     rank: rankJobs,
+  },
+  {
+    id: "v5-minus-urgency",
+    description: "B6's control: the current ranker with the hazard-window term off (kept for measurement).",
+    rank: rankJobsWithoutUrgency,
   },
 ];
 
