@@ -81,7 +81,8 @@ git. If wanted, set the default branch back with `gh repo edit --default-branch`
 
 ## What remains
 
-- The owner applies `.claude/settings.json` (the content is in the session report).
+- Done 2026-10-05: the owner applied `.claude/settings.json` (hook, permissions,
+  `CLAUDE_CODE_SUBAGENT_MODEL=sonnet`).
 - The first CI run comes at the next push to `main`; fix forward if it is red.
 - Which design document is authoritative: AGENTS.md and README name Atlas 1.1, while
   the tokens come from the design system 1.3 (`Reference/Nenaugad/`).
