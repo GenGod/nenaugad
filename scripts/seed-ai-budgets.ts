@@ -8,9 +8,15 @@
 //     approved quota was unenforceable (docs/OPEN_GAPS.md A5). New users get their
 //     row at registration (src/server/users.ts); this script backfills everyone
 //     who already existed.
+//
+// Since C1 there is one more row, and it is not a user: the extraction pass runs
+// under a dedicated system owner (u_extraction_001, src/server/ai/extraction-pass.ts).
+// Provisioned here explicitly — the ledger refuses a missing owner row, and the
+// extraction pass names `OWNER_BUDGET_MISSING` until this script has run.
 import { localDatabaseUrl, readConfig, ConfigurationError } from "../src/server/config.ts";
 import { localPool, migrate } from "./db.ts";
 import { ensureBudget, GLOBAL_BUDGET_ID } from "../src/server/ai/spending.ts";
+import { EXTRACTOR_OWNER_ID } from "../src/server/ai/extraction-pass.ts";
 import { GPT6_LUNA, ownerBudgetId } from "../src/server/ai/provider.ts";
 
 try {
@@ -28,6 +34,10 @@ try {
       period: "monthly", approvedLimitMinor: GPT6_LUNA.ownerMonthlyQuotaMicroCents,
     });
   }
+  await ensureBudget({
+    pool, budgetId: ownerBudgetId(EXTRACTOR_OWNER_ID), scope: "owner", ownerId: EXTRACTOR_OWNER_ID,
+    period: "monthly", approvedLimitMinor: GPT6_LUNA.ownerMonthlyQuotaMicroCents,
+  });
   const quotas = await pool.query("SELECT COUNT(*) AS total FROM ai_budgets WHERE scope = 'owner'");
   console.log(JSON.stringify({
     ok: true,

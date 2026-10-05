@@ -6,6 +6,8 @@ import { getSourcePolicy } from "../src/server/source-policies.ts";
 import { runJobicyImport } from "../src/server/import/jobicy-adapter.ts";
 import { fetchJobicyWindow } from "../src/server/import/fetcher.ts";
 import { createPostgresPersistence } from "../src/server/storage/snapshots.ts";
+import { runExtractionPass, summarizeExtractionPass } from "../src/server/ai/extraction-pass.ts";
+import { openAiTransport } from "../src/server/ai/openai-transport.ts";
 import { localPool, migrate } from "./db.ts";
 
 try {
@@ -29,8 +31,17 @@ try {
     policy,
     now: new Date().toISOString(),
   });
+  // C1: after a successful pass, extract what this source has not been extracted
+  // for yet (jobicy's success result is "partial" — a window feed is never a
+  // complete catalog). Guarded and non-fatal to the import; with LIVE_AI_ENABLED
+  // off the pass reports live_ai_disabled and nothing is sent or spent.
+  const extraction = report.result === "partial"
+    ? summarizeExtractionPass(await runExtractionPass({
+        pool, sourceId: "jobicy", transport: openAiTransport, now: new Date().toISOString(),
+      }))
+    : null;
   await pool.end();
-  console.log(JSON.stringify(report));
+  console.log(JSON.stringify({ ...report, extraction }));
   process.exit(report.result === "partial" ? 0 : 1);
 } catch (error) {
   const code = error instanceof ConfigurationError ? error.message : "IMPORT_FAILED";

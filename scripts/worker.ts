@@ -20,8 +20,12 @@ import {
 import {
   processPendingBatches, checkForStaleAnalyses, submitRelevanceBatch,
 } from "../src/server/ai/batch-queue-service.ts";
+import { runExtractionPass } from "../src/server/ai/extraction-pass.ts";
+import { openAiTransport } from "../src/server/ai/openai-transport.ts";
 
 const SOURCES = ["himalayas", "jobicy"] as const;
+/** Postings extracted per source per tick (C1): polite and resumable; the pass skips records it already has. */
+const EXTRACTION_PER_TICK_LIMIT = 25;
 const args = process.argv.slice(2);
 const flag = (name: string) => args.includes(`--${name}`);
 const resumeSource = args[args.indexOf("--resume") + 1];
@@ -39,6 +43,7 @@ type Setup = {
   source: (typeof SOURCES)[number];
   policy: NonNullable<ReturnType<typeof getSourcePolicy>>;
   persistence: ReturnType<typeof createPostgresPersistence>;
+  pool: ReturnType<typeof localPool>;
   pausedAnnounced: boolean;
 };
 
@@ -76,6 +81,27 @@ async function attempt(setup: Setup): Promise<void> {
       log({ source: setup.source, event: "paused",
         hint: `npm run worker -- --resume ${setup.source}` });
     }
+    if (success) {
+      // C1: extract whatever this source has not been extracted for yet. The
+      // pass is guarded (approved purpose, per-source send_to_ai_provider, the
+      // paid record answers repeats) and non-fatal to the import above.
+      const extraction = await runExtractionPass({
+        pool: setup.pool, sourceId: setup.source, transport: openAiTransport,
+        now, limit: EXTRACTION_PER_TICK_LIMIT,
+      });
+      // The switched-off state is the normal one (LIVE_AI_ENABLED=false) and is
+      // reported by --status, not logged every tick; anything that actually
+      // happened is logged.
+      if (extraction.outcome !== "live_ai_disabled") {
+        log({
+          source: setup.source, event: "extraction",
+          outcome: extraction.outcome,
+          code: extraction.code,
+          counts: extraction.counts,
+          settledMicroCents: extraction.settledMicroCents.toString(),
+        });
+      }
+    }
   } catch (error) {
     // The failure streak must really grow. A swallowed write failure used to
     // leave the pause threshold unreachable with an empty trail (B18), so the
@@ -105,6 +131,7 @@ async function main(): Promise<void> {
     setups.push({
       source, policy,
       persistence: createPostgresPersistence(pool, policy),
+      pool,
       pausedAnnounced: false,
     });
   }
@@ -118,6 +145,7 @@ async function main(): Promise<void> {
         event: "status", source: setup.source,
         enabled: setup.policy.enabled,
         fetch: permissionFor(setup.policy, "fetch", new Date().toISOString()),
+        liveAi: readConfig(process.env).liveAi,
         paused: state ? isPaused({
           lastRunAt: state.lastRunAt, lastAttemptAt: state.lastAttemptAt ?? null,
           consecutiveFailures: state.consecutiveFailures ?? 0,

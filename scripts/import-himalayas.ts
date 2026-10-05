@@ -6,6 +6,8 @@ import { getSourcePolicy } from "../src/server/source-policies.ts";
 import { runHimalayasImport } from "../src/server/import/himalayas-adapter.ts";
 import { fetchHimalayasPage } from "../src/server/import/fetcher.ts";
 import { createPostgresPersistence } from "../src/server/storage/snapshots.ts";
+import { runExtractionPass, summarizeExtractionPass } from "../src/server/ai/extraction-pass.ts";
+import { openAiTransport } from "../src/server/ai/openai-transport.ts";
 import { localPool, migrate } from "./db.ts";
 
 function pagesArg(): number {
@@ -36,8 +38,16 @@ try {
     now: new Date().toISOString(),
     maxPages: pagesArg(),
   });
+  // C1: after an applied pass, extract what this source has not been extracted
+  // for yet. Guarded and non-fatal to the import; with LIVE_AI_ENABLED off the
+  // pass reports live_ai_disabled and nothing is sent or spent.
+  const extraction = report.result === "applied" || report.result === "partial"
+    ? summarizeExtractionPass(await runExtractionPass({
+        pool, sourceId: "himalayas", transport: openAiTransport, now: new Date().toISOString(),
+      }))
+    : null;
   await pool.end();
-  console.log(JSON.stringify(report));
+  console.log(JSON.stringify({ ...report, extraction }));
   process.exit(report.result === "applied" || report.result === "partial" ? 0 : 1);
 } catch (error) {
   const code = error instanceof ConfigurationError ? error.message : "IMPORT_FAILED";
