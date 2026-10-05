@@ -323,3 +323,105 @@ test("gateway fails closed without a provider; the mock transport path settles h
   const budget3 = await pool.query("SELECT held_minor FROM ai_budgets WHERE id = $1", [GLOBAL_BUDGET_ID]);
   assert.equal((budget3.rows[0] as { held_minor: string }).held_minor, "1000");
 });
+
+// --- C0 (part 2): the properties the brief names, each with its own test ----
+// The gateway's list is: ownership, atomic reservation, persistent counters,
+// deadline, uncertain billing, cancellation, commit-time revalidation, kill
+// switch. Reservation/attempts/deadline/uncertain/kill-switch already have
+// tests above; these four cover the remaining named properties — ownership
+// isolation, the commit-time state guard, quota exhaustion at the owner's
+// scope, and the documented deadline/settlement boundary.
+
+test("ownership: another owner cannot read, settle or cancel this operation", async () => {
+  await migrate(pool);
+  const owner = await registerUser(pool, email(), "long-enough-password");
+  const stranger = await registerUser(pool, email(), "long-enough-password");
+  await freshBudgets(owner.id, 10_000n, null);
+  const operation = await reserveBudget({
+    pool: pool, operationId: "", ownerId: owner.id, taskType: "cover_letter",
+    idempotencyKey: "own-1", worstCaseMinor: 500n, now: NOW,
+  });
+  await beginAttempt({ pool: pool, ownerId: owner.id, operationId: operation.id,
+    taskType: "cover_letter", now: NOW });
+
+  // Every spending statement is scoped by owner_id, so a foreign id looks like
+  // a missing one — never like someone else's operation.
+  assert.equal(await getOperation({ pool: pool, ownerId: stranger.id, operationId: operation.id }), null);
+  await assert.rejects(settleOperation({
+    pool: pool, ownerId: stranger.id, operationId: operation.id, actualMinor: 1n, now: NOW,
+  }), (error: unknown) => error instanceof BudgetError && error.message === "OPERATION_NOT_FOUND");
+  await assert.rejects(cancelOperation({
+    pool: pool, ownerId: stranger.id, operationId: operation.id, now: NOW,
+  }), (error: unknown) => error instanceof BudgetError && error.message === "OPERATION_NOT_FOUND");
+
+  // The owner's operation is untouched by the attempts above and still settles.
+  const settled = await settleOperation({
+    pool: pool, ownerId: owner.id, operationId: operation.id, actualMinor: 500n, now: NOW,
+  });
+  assert.equal(settled.status, "settled");
+});
+
+test("commit-time revalidation: cancelled refuses settlement, settled refuses cancellation", async () => {
+  await migrate(pool);
+  const owner = await registerUser(pool, email(), "long-enough-password");
+  await freshBudgets(owner.id, 10_000n, null);
+
+  // A cancelled operation must not be settled afterwards: the money was
+  // released, and booking it again would double-count the release.
+  const cancelled = await reserveBudget({
+    pool: pool, operationId: "", ownerId: owner.id, taskType: "cover_letter",
+    idempotencyKey: "ct-1", worstCaseMinor: 300n, now: NOW,
+  });
+  await cancelOperation({ pool: pool, ownerId: owner.id, operationId: cancelled.id, now: NOW });
+  await assert.rejects(settleOperation({
+    pool: pool, ownerId: owner.id, operationId: cancelled.id, actualMinor: 300n, now: NOW,
+  }), (error: unknown) => error instanceof BudgetError && error.message === "WRONG_STATE");
+
+  // And a settled one must not be cancelled: the hold is already gone.
+  const done = await reserveBudget({
+    pool: pool, operationId: "", ownerId: owner.id, taskType: "cover_letter",
+    idempotencyKey: "ct-2", worstCaseMinor: 300n, now: NOW,
+  });
+  await beginAttempt({ pool: pool, ownerId: owner.id, operationId: done.id, taskType: "cover_letter", now: NOW });
+  await settleOperation({ pool: pool, ownerId: owner.id, operationId: done.id, actualMinor: 100n, now: NOW });
+  await assert.rejects(cancelOperation({
+    pool: pool, ownerId: owner.id, operationId: done.id, now: NOW,
+  }), (error: unknown) => error instanceof BudgetError && error.message === "WRONG_STATE");
+});
+
+test("the owner's monthly quota is exhausted by settled spend, not only checked for existence", async () => {
+  await migrate(pool);
+  const owner = await registerUser(pool, email(), "long-enough-password");
+  await freshBudgets(owner.id, 10_000n, 100n); // owner quota: 100 micro-cents
+  const first = await reserveBudget({
+    pool: pool, operationId: "", ownerId: owner.id, taskType: "cover_letter",
+    idempotencyKey: "q-1", worstCaseMinor: 100n, now: NOW,
+  });
+  await beginAttempt({ pool: pool, ownerId: owner.id, operationId: first.id, taskType: "cover_letter", now: NOW });
+  await settleOperation({ pool: pool, ownerId: owner.id, operationId: first.id, actualMinor: 100n, now: NOW });
+  await assert.rejects(reserveBudget({
+    pool: pool, operationId: "", ownerId: owner.id, taskType: "cover_letter",
+    idempotencyKey: "q-2", worstCaseMinor: 50n, now: NOW,
+  }), (error: unknown) => error instanceof BudgetError && error.message === "BUDGET_EXCEEDED");
+});
+
+test("deadline stops new steps; it does not block settling an already dispatched call", async () => {
+  await migrate(pool);
+  const owner = await registerUser(pool, email(), "long-enough-password");
+  await freshBudgets(owner.id, 10_000n, null);
+  const operation = await reserveBudget({
+    pool: pool, operationId: "", ownerId: owner.id, taskType: "cover_letter",
+    idempotencyKey: "dl-set-1", worstCaseMinor: 400n, now: NOW,
+  });
+  await beginAttempt({ pool: pool, ownerId: owner.id, operationId: operation.id,
+    taskType: "cover_letter", now: NOW });
+  // The call went out before the deadline; the response arrives after it. The
+  // money may already be spent, so the settlement must still be recordable —
+  // refusing here would leave a hold with no way to convert it honestly.
+  const afterDeadline = new Date(Date.parse(NOW) + OPERATION_DEADLINE_MS + 1000).toISOString();
+  const settled = await settleOperation({
+    pool: pool, ownerId: owner.id, operationId: operation.id, actualMinor: 120n, now: afterDeadline,
+  });
+  assert.equal(settled.status, "settled");
+  assert.equal(settled.settledMinor, 120n);
+});
