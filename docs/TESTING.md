@@ -8,7 +8,8 @@
 | `npm run build` | Next production compilation | the right and readiness for a public launch |
 | `npm run test:db` | An isolated real PostgreSQL | RLS/auth of future personal entities |
 | `npm run test:e2e` | A real local Next + Chromium at 3 widths | full accessibility/all browsers |
-| CI on GitHub Actions (`npm run ci:status`) | `check`, `build`, `test:db` on a fresh pgvector DB and `test:e2e` on Linux, from a clean checkout without `.env` | the visual baselines: they are Windows-only, so CI skips pixel comparisons |
+| `npm run test:coverage` | Unit and DB tests in one run; line, branch and function coverage of the `src/` .ts files, including files no test loads, with minimum thresholds | that covered code is correct; e2e, `.tsx` components and UI paths are not in the number |
+| CI on GitHub Actions (`npm run ci:status`) | Three jobs from a clean checkout without `.env`: Code quality (Biome recommended rules with warnings failing, `tsc`, guardrails, drift), Build, Tests (`test:coverage` on a fresh pgvector DB, then `test:e2e` on Linux) | the visual baselines: they are Windows-only, so CI skips pixel comparisons |
 | Weekly checks (`weekly.yml`, Mondays) | `npm audit` of the lockfile: high and critical advisories fail the run | that a dependency is safe; low and moderate advisories only appear in the log |
 | A future live benchmark | Real usage receipts + independent labelling | unlimited safety and universal accuracy |
 

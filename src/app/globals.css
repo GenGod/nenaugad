@@ -234,6 +234,7 @@ dialog::backdrop{background:#20284070}
 .weekday-toggle{min-height:44px;min-width:44px;padding:9px 12px;border:1px solid transparent;background:transparent;font-size:.875rem;color:var(--secondary)}
 .weekday-toggle[aria-pressed=true]{border-color:var(--control);background:white;color:var(--ink);font-weight:600}
 .field-error{display:block;font-size:.875rem;color:var(--red);line-height:1.45}
+/* biome-ignore lint/style/noDescendingSpecificity: `.hero .actions` above is the deliberate hero variant; specificity, not order, decides between them */
 .actions{display:flex;flex-wrap:wrap;gap:16px;align-items:center}
 .letter-area textarea{min-height:480px;line-height:1.85}
 .filters-body{display:flex;flex-wrap:wrap;gap:16px;align-items:end;margin-bottom:20px}
@@ -315,6 +316,7 @@ dialog::backdrop{background:#20284070}
  .demo-note{font-size:.875rem;padding-bottom:24px}
 }
 @media(prefers-reduced-motion:reduce){
+ /* biome-ignore lint/complexity/noImportantStyles: the reduced-motion reset must override every component's motion */
  *,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 }
 @media(forced-colors:active){

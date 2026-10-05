@@ -10,7 +10,7 @@ function at(key) {
   return value;
 }
 function resolve(token, seen = new Set()) {
-  let value = token.$value;
+  const value = token.$value;
   if (typeof value === "string" && /^\{[^}]+\}$/.test(value)) {
     const ref = value.slice(1, -1);
     if (seen.has(ref)) throw new Error(`Token cycle: ${ref}`);

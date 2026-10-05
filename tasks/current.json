@@ -1,10 +1,10 @@
 {
-  "task_id": "DEVX-003",
-  "file": "tasks/DEVX-003-weekly-checks.md",
+  "task_id": "DEVX-004",
+  "file": "tasks/DEVX-004-ci-jobs-coverage-lint.md",
   "status": "implemented",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Weekly npm audit (Mondays, lockfile only; 0 vulnerabilities today) and grouped weekly Dependabot PRs for GitHub Actions versions. The scheduled terms:check is held for the owner: himalayas changes only by its render date (always 'changed'), and Jobicy changed its API page (fair-use rules unchanged; 7-day window, commercial tier, batch status endpoint). CI's first GitHub run (DEVX-002, d679a9d) passed."
+  "note": "CI split into three parallel jobs (Code quality, Build, Tests); npm run test:coverage runs unit+DB tests with a coverage ratchet over src/**/*.ts including never-loaded files (thresholds 82/85/91, measured 82.14/85.19/91.10); Biome's recommended rules with warnings failing, today's 22 findings fixed or suppressed with reasons, four rules off on purpose. Rehearsed on a clean clone: all green. Independent review: behaviour-neutral; its three findings handled (jobicy geography gap recorded as OPEN_GAPS B24, include-all coverage, corrected rule reason)."
 }

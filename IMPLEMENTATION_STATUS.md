@@ -7,7 +7,7 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-10-05 by [DEVX-003](tasks/DEVX-003-weekly-checks.md).
+**Updated:** 2026-10-05 by [DEVX-004](tasks/DEVX-004-ci-jobs-coverage-lint.md).
 
 ## Switches and boundaries
 - **Live AI is off** (`LIVE_AI_ENABLED=false`, a real switch since AI-007): no provider
@@ -56,12 +56,15 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   to `main` that change more than Markdown (DEVX-001, 2026-10-05). The CI job was
   rehearsed locally and fixed before its first run; workflow lint; `npm run ci:status`
   reads results compactly (DEVX-002). A weekly `npm audit` and Dependabot for the
-  Actions versions (DEVX-003).
+  Actions versions (DEVX-003). CI runs as three jobs (Code quality, Build, Tests), with a
+  coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
-- 2026-10-05 (DEVX-002): `npm run check` exit 0 — 275/275 unit, Biome, tsc. A CI
-  rehearsal on a clean clone without `.env` against a fresh pgvector database:
-  `build` exit 0, `test:db` 69/69, `test:e2e` 99 passed.
+- 2026-10-05 (DEVX-004): `npm run test:coverage` — unit and DB tests 344/344. Coverage of
+  the `src/` .ts files, counting files no test loads: 82.14% lines, 85.19% branches,
+  91.10% functions. Strict Biome: 0
+  diagnostics; `tsc` clean. A rehearsal of the three CI jobs on a clean clone against a
+  fresh pgvector database: lint, typecheck, drift, build and e2e (99 passed) all green.
 - CI on GitHub: the first run ever passed on 2026-10-05 (`d679a9d`, 9 min 17 s, most
   of it a slow Ubuntu mirror). Before that, CI triggered on pull requests only and
   never ran.
@@ -84,6 +87,9 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   (source-rights tooling). It is the precondition for a weekly `terms:check`.
 - Dependabot pull request #1: GitHub Actions v4 → v7 (checkout, setup-node,
   upload-artifact). These are major versions: review before merging.
+- **Jobicy geography ignores the posting text** ([OPEN_GAPS](docs/OPEN_GAPS.md) B24): a
+  post labelled "Anywhere" with "must reside in the US" in its text becomes worldwide.
+  It needs its own task with tests.
 
 ## Known limits
 - The monthly quota window is stored but has no calendar reset (OPEN_GAPS A5).

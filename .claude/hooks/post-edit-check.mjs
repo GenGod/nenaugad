@@ -27,7 +27,7 @@ function run(label, args) {
 run("guardrails", ["scripts/guardrails.mjs"]);
 // Without installed dependencies only the guardrails can run; do not block edits on that.
 const biome = "node_modules/@biomejs/biome/bin/biome";
-if (existsSync(path.join(root, biome))) run("biome", [biome, "lint", "--colors=off", relative]);
+if (existsSync(path.join(root, biome))) run("biome", [biome, "lint", "--colors=off", "--error-on-warnings", relative]);
 
 if (findings.length) {
   process.stderr.write(`Post-edit check failed after editing ${relative}:\n${findings.join("\n")}\nFix this before moving on.\n`);

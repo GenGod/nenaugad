@@ -1,10 +1,10 @@
 // Executable source rights registry (technical spec section 6).
 // Every permission is allowed|denied|unknown; unknown blocks exactly the
 // disputed operation. A working API endpoint is not approval.
-import {
-  type SourcePolicy,
-  type SourcePolicyPermission,
-  type TriState,
+import type {
+  SourcePolicy,
+  SourcePolicyPermission,
+  TriState,
 } from "../domain/source-contracts.ts";
 
 // Synthetic bundled fixtures: the only source approved for public display today.

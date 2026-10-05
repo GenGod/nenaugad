@@ -216,7 +216,7 @@ function geographyFor(raw: HimalayasRawRecord, text: string, evidenceId: string,
   };
 }
 
-function workplaceFor(raw: HimalayasRawRecord, text: string, evidenceId: string, recordId: string): {
+function workplaceFor(_raw: HimalayasRawRecord, text: string, evidenceId: string, recordId: string): {
   workplace: Workplace; conflict: string | null; evidence: Evidence;
 } {
   // The feed is a remote-only jobs board: an authoritative structured signal

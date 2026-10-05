@@ -115,7 +115,7 @@ test("A9: a shadow that throws cannot change the feed", async () => {
   const errored: string[] = [];
   const originalError = console.error;
   console.error = (...args: unknown[]) => { errored.push(args.map(String).join(" ")); };
-  let broken;
+  let broken: Awaited<ReturnType<typeof matchedForUser>>;
   try {
     broken = await matchedForUser(userId, {
       pool,

@@ -53,6 +53,9 @@ CI runs on pushes to `main`, except those that touch only Markdown or `Reference
 After a push, `npm run ci:status` shows this commit's runs; a failed run prints only
 the tail of each failed step's log.
 Database: `npm run db:migrate`, `npm run db:seed`, `npm run test:db` (isolated test DB).
+`npm run test:coverage` runs the unit and DB tests with the coverage ratchet CI enforces:
+new code needs tests to stay above it. Raise its thresholds when coverage rises; never
+lower them to get green. `npm run lint` fails on warnings.
 `npm run doctor` never prints secrets. `npm run task -- show` shows the current task.
 Never claim a missing/skipped command passed. See `reports/DELIVERY.md`.
 

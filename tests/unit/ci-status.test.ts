@@ -12,7 +12,8 @@ test("ci-status groups a failed log by step and strips timestamps and colour cod
   const summary = summarizeFailedLog(log);
   assert.match(summary, /── check › Run npm run check \(last 2 of 2 lines\)/u);
   assert.match(summary, /^✖ fails with detail$/mu);
-  assert.doesNotMatch(summary, /2026-10-05T|\u001b/u);
+  assert.doesNotMatch(summary, /2026-10-05T/u);
+  assert.ok(!summary.includes("\u001b"), "colour codes are stripped");
   assert.match(summary, /── check › Run npm run test:db \(last 1 of 1 lines\)\nError: connect ECONNREFUSED/u);
 });
 

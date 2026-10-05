@@ -66,7 +66,7 @@ async function main(): Promise<number> {
   console.log(`Set ${GOLDEN_SET.id} v${GOLDEN_SET.version} · reference time ${GOLDEN_SET.evaluatedAt}`);
   console.log(`Legs: dense ${DENSE_LEG_VERSION} (${EMBEDDING_MODEL.version}) · ${BM25_LEG_VERSION} · ${RRF_VERSION} k=${RRF_K}`);
 
-  let embedder;
+  let embedder: Awaited<ReturnType<typeof loadLocalEmbedder>>;
   try {
     embedder = await loadLocalEmbedder();
   } catch (error) {
@@ -146,7 +146,7 @@ async function main(): Promise<number> {
 
   const denseTop = collectTopK(GOLDEN_SET, orderOf(denseOrders), 10);
   const bm25Top = collectTopK(GOLDEN_SET, orderOf(bm25Orders), 10);
-  const shared = complementarity(GOLDEN_SET, denseTop, bm25Top, 10);
+  const shared = complementarity(GOLDEN_SET, denseTop, bm25Top);
 
   // Calibration, not preference: what the harness says about other k values and
   // about weighting the legs differently. A fusion cannot be better than its legs

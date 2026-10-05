@@ -147,7 +147,10 @@ export function LetterEditor({ letterId, initialRevision, initialVersions, evide
         <p style={{ marginTop: 8 }}>Валидатор обнаружил проблемы. Исправьте текст вручную
           или уточните данные:</p>
         <ul style={{ marginTop: 8, paddingLeft: 20 }}>
-          {needsInput.map((question, index) => <li key={index}>{question}</li>)}
+          {needsInput.map((question, index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: a static list, replaced as a whole and never reordered
+            <li key={index}>{question}</li>
+          ))}
         </ul>
         <button type="button" className="btn secondary" style={{ marginTop: 12 }}
           onClick={() => setNeedsInput(null)}>Понятно, правлю вручную</button>

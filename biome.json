@@ -12,17 +12,22 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": false,
+      "recommended": true,
       "correctness": {
         "noUnusedImports": "error",
-        "noUnusedVariables": "error"
+        "noUnusedVariables": "error",
+        "useUniqueElementIds": "off"
       },
       "suspicious": {
         "noExplicitAny": "error",
         "noDuplicateObjectKeys": "error"
       },
-      "a11y": {
-        "recommended": true
+      "style": {
+        "noNonNullAssertion": "off",
+        "useTemplate": "off"
+      },
+      "complexity": {
+        "noUselessConstructor": "off"
       }
     }
   }

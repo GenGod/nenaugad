@@ -22,6 +22,7 @@ export function summarizeFailedLog(log: string, tail = TAIL): string {
     if (!rest.length) continue;
     const key = `${job} › ${step}`;
     const lines = steps.get(key) ?? [];
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: colour codes start with ESC; matching it is the point
     lines.push(rest.join("\t").replace(/^\S+Z /u, "").replace(/\u001b\[[0-9;]*m/gu, ""));
     steps.set(key, lines);
   }

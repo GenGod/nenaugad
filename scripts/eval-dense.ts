@@ -55,7 +55,7 @@ async function main(): Promise<number> {
   console.log(`Set ${GOLDEN_SET.id} v${GOLDEN_SET.version} · ${GOLDEN_SET.jobs.length} postings × ${GOLDEN_SET.profiles.length} profiles`
     + ` · reference time ${GOLDEN_SET.evaluatedAt}`);
 
-  let embedder;
+  let embedder: Awaited<ReturnType<typeof loadLocalEmbedder>>;
   try {
     embedder = await loadLocalEmbedder();
   } catch (error) {

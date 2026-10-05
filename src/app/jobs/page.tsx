@@ -18,13 +18,13 @@ export default async function Jobs({ searchParams }: { searchParams: Promise<Sea
     if (Array.isArray(value)) for (const item of value) params.append(key, item);
     else if (value !== undefined) params.set(key, value);
   }
-  let query;
+  let query: ReturnType<typeof parseCatalogQuery>;
   try { query = parseCatalogQuery(params); } catch {
     return <section className="empty"><h1>Проверьте параметры поиска</h1>
       <p>Запрос — до 100 символов; параметры не должны повторяться.</p>
       <Link className="btn primary" href="/jobs">Сбросить поиск</Link></section>;
   }
-  let result;
+  let result: Awaited<ReturnType<typeof readCatalog>>;
   try { result = await readCatalog(query); } catch {
     return <section className="empty"><h1>Каталог временно недоступен</h1>
       <p>Проверьте подключение к локальной базе, миграцию и seed. Демо-данные не подставляются вместо ошибки.</p>

@@ -14,6 +14,7 @@ export async function Header() {
     <header className="site-header">
       <div className="wrap header-inner">
         <Link className="logo" href="/" aria-label="Ненаугад — главная">
+          {/* biome-ignore lint/performance/noImgElement: a fixed 208×31 brand asset; next/image would change the header markup that every visual baseline covers */}
           <img className="brand-logo" src="/brand/wordmark.png" alt="ненаугад" width={208} height={31} />
         </Link>
         <span className="tagline">Только удалённо</span>

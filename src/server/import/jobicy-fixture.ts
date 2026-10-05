@@ -107,7 +107,10 @@ const TEMPORARY_MARKERS = [
   /temporarily remote/iu,
 ] as const;
 
-function geographyFor(raw: JobicyRawRecord, text: string, evidenceId: string, recordId: string): {
+// `_text` (description + excerpt) is not read yet. Unlike the himalayas adapter, a
+// jobGeo label such as "Anywhere" is taken as is, so an exclusion stated only in the
+// text is missed: docs/OPEN_GAPS.md B24.
+function geographyFor(raw: JobicyRawRecord, _text: string, evidenceId: string, recordId: string): {
   geography: Geography; evidence: Evidence;
 } {
   const label = (raw.jobGeo ?? "").trim();

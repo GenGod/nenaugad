@@ -140,7 +140,6 @@ export function complementarity(
   set: GoldenSet,
   first: ReadonlyMap<string, ReadonlySet<string>>,
   second: ReadonlyMap<string, ReadonlySet<string>>,
-  cutoff = 10,
 ): RetrievalComplementarity {
   let relevantTotal = 0;
   let foundByAll = 0;

@@ -66,7 +66,7 @@ const DOWNLOAD_TIMEOUT_MS = 30 * 60 * 1000;
 async function fileDigest(filename: string): Promise<Readonly<{ sha256: string; bytes: number }>> {
   const hash = createHash("sha256");
   let bytes = 0;
-  await pipeline(createReadStream(filename), async function* (source) {
+  await pipeline(createReadStream(filename), async (source) => {
     for await (const chunk of source) {
       const buffer = chunk as Buffer;
       hash.update(buffer);

@@ -43,6 +43,7 @@ export function parseCatalogQuery(params: URLSearchParams): CatalogQuery {
     if (!allowed.has(key) || params.getAll(key).length !== 1) throw new InvalidQueryError();
   }
   const q = (params.get("q") ?? "").trim();
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting control characters in the query is the point of this check
   if (q.length > 100 || /[\u0000-\u001f]/u.test(q)) throw new InvalidQueryError();
   const integer = (key: string, fallback: number, max: number): number => {
     const raw = params.get(key);

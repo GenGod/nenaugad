@@ -29,7 +29,7 @@ function isOpenAIConfigured(): boolean {
 }
 
 export const openAiTransport: ModelTransport = {
-  async dispatchOnce(operation: OperationRow, _attempt: number, prompt?: string) {
+  async dispatchOnce(_operation: OperationRow, _attempt: number, prompt?: string) {
     if (!isOpenAIConfigured()) {
       return { kind: "uncertain" as const };
     }
