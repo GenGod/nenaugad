@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       # Before setup-node: its npm cache needs the lock and would fail less clearly.
@@ -44,7 +44,7 @@ jobs:
             echo "S0 incomplete: run npm install locally, review and commit the real package-lock.json."
             exit 1
           fi
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -61,10 +61,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -92,10 +92,10 @@ jobs:
           --health-cmd "pg_isready -h 127.0.0.1 -U atlas -d atlas_starter_test"
           --health-interval 5s --health-timeout 3s --health-retries 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -127,7 +127,7 @@ jobs:
         run: npm run test:e2e
       - name: Keep the Playwright failure output
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-test-results
           path: test-results/
