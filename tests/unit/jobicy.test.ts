@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { isJobSnapshot } from "../../src/domain/source-contracts.ts";
+import { isJobSnapshot, type JobSnapshot } from "../../src/domain/source-contracts.ts";
 import {
-  jobicyContractFixture, mapJobicyFixture, mapJobicyRecord,
+  jobicyContractFixture, mapJobicyFixture, mapJobicyRecord, type JobicyRawRecord,
 } from "../../src/server/import/jobicy-fixture.ts";
 import {
   mapHimalayasFixture, AdapterInputError as HimalayaAdapterInputError,
@@ -11,10 +11,41 @@ import { runJobicyImport } from "../../src/server/import/jobicy-adapter.ts";
 import { createMemoryPersistence } from "../../src/server/import/himalayas-adapter.ts";
 import { jobicyCandidatePolicy, permissionFor } from "../../src/server/source-policies.ts";
 import { fetchJobicyWindow } from "../../src/server/import/fetcher.ts";
-import { classifySnapshot } from "../../src/domain/snapshot-projection.ts";
+import { classifySnapshot, projectCard } from "../../src/domain/snapshot-projection.ts";
+import { evaluateJob } from "../../src/domain/matching.ts";
+import { parseManualProfileInput } from "../../src/domain/profile.ts";
 
 const NOW = "2026-09-25T12:00:00.000Z";
 const enabledPolicy = { ...jobicyCandidatePolicy, enabled: true };
+
+// The worldwide fixture record with another posting text (still synthetic).
+function anywhere(sentences: string, jobExcerpt = "Synthetic fixture: remote role."): JobicyRawRecord {
+  return {
+    ...jobicyContractFixture[0]!,
+    jobDescription: `<p>Synthetic contract fixture. Fully remote position. ${sentences}</p>`,
+    jobExcerpt,
+  };
+}
+
+function geoRule(snapshot: JobSnapshot, residenceCountry: string) {
+  const profile = parseManualProfileInput({
+    residenceCountry, timezone: null, targetRoles: ["engineer"], skills: [],
+    employmentTypes: ["employment_full_time"],
+    availabilityWindows: [{ weekdays: [1, 2, 3, 4, 5], start: "08:00", end: "18:00" }],
+    zeroMandatoryAttendance: true, minimumCompensation: null, showNeedsReview: true,
+  });
+  const evaluation = evaluateJob(snapshot, profile);
+  return { status: evaluation.status, outcome: evaluation.rules.find(rule => rule.ruleId === "GEO-01")?.outcome };
+}
+
+function geoEvidence(snapshot: JobSnapshot) {
+  return snapshot.evidence.filter(item => item.id.startsWith(`ev:${snapshot.id}:geo`));
+}
+
+const LABEL_EVIDENCE = {
+  id: "ev:jobicy:900001:geo", origin_type: "job_source", origin_id: "jobicy:900001",
+  origin_version: 1, field_path: "jobGeo", quote: "Anywhere", method: "source_field", confidence: 1,
+} as const;
 
 test("policy: jobicy matrix approved and activated; a disabled clone denies everything", () => {
   assert.equal(jobicyCandidatePolicy.status, "approved");
@@ -65,6 +96,88 @@ test("mapper: fixture validates; ids stable; labels are honest", () => {
   assert.equal(usa.workplace.verification_state, "conflicting");
   assert.equal(classifySnapshot(usa), "excluded");
   assert.equal(usa.compensation.original_text, "40–60 USD / hourly");
+});
+
+test("geography: a residence rule in the text overrides the 'Anywhere' label (B24, spec 11.1)", () => {
+  const snapshot = mapJobicyRecord(anywhere("Applicants must reside in the US."), NOW);
+  assert.equal(isJobSnapshot(snapshot), true);
+  const geography = snapshot.hiring_options[0]!.geography;
+  assert.deepEqual(geography, {
+    scope: "restricted", allowed_countries: ["US"], excluded_countries: [],
+    allowed_subdivisions: [], region_text: "must reside in the US", exhaustive: true,
+    evidence_ids: ["ev:jobicy:900001:geo", "ev:jobicy:900001:geo:restriction"],
+  });
+  assert.deepEqual(snapshot.hiring_options[0]!.evidence_ids, geography.evidence_ids);
+  assert.deepEqual(snapshot.conflicts, ["geography-source-vs-text"]);
+  // Both sides of the contradiction stay on record: the label and the employer's text.
+  assert.deepEqual(geoEvidence(snapshot), [LABEL_EVIDENCE, {
+    id: "ev:jobicy:900001:geo:restriction", origin_type: "job_source",
+    origin_id: "jobicy:900001", origin_version: 1, field_path: "jobDescription",
+    quote: "must reside in the US", method: "rule", confidence: 0.9,
+  }]);
+  // Geography is not the catalog gate: the post stays, but no longer as worldwide.
+  assert.equal(classifySnapshot(snapshot), "main_catalog");
+  const card = projectCard({
+    sourceId: "jobicy", snapshot, contentHash: "", firstSeenAt: NOW, fullPassMisses: 0,
+  }, enabledPolicy);
+  assert.deepEqual(card.geography, { scope: "restricted", countries: ["US"] });
+  assert.deepEqual(geoRule(snapshot, "DE"), { status: "ineligible", outcome: "fail" });
+  assert.equal(geoRule(snapshot, "US").outcome, "pass");
+});
+
+test("geography: a rule naming a region leaves the countries unknown, never worldwide", () => {
+  const snapshot = mapJobicyRecord(anywhere("Candidates must be based in Europe."), NOW);
+  assert.equal(isJobSnapshot(snapshot), true);
+  assert.deepEqual(snapshot.hiring_options[0]!.geography, {
+    scope: "restricted", allowed_countries: [], excluded_countries: [],
+    allowed_subdivisions: [], region_text: "must be based in Europe", exhaustive: false,
+    evidence_ids: ["ev:jobicy:900001:geo", "ev:jobicy:900001:geo:restriction"],
+  });
+  assert.deepEqual(snapshot.conflicts, ["geography-source-vs-text"]);
+  assert.deepEqual(geoRule(snapshot, "DE"), { status: "needs_review", outcome: "unknown" });
+});
+
+test("geography: an exclusion in the text keeps worldwide minus the named country", () => {
+  const snapshot = mapJobicyRecord(anywhere("We hire worldwide, except in Brazil."), NOW);
+  assert.equal(isJobSnapshot(snapshot), true);
+  assert.deepEqual(snapshot.hiring_options[0]!.geography, {
+    scope: "worldwide", allowed_countries: [], excluded_countries: ["BR"],
+    allowed_subdivisions: [], region_text: "worldwide, except in Brazil", exhaustive: true,
+    evidence_ids: ["ev:jobicy:900001:geo", "ev:jobicy:900001:geo:exclusion"],
+  });
+  assert.deepEqual(snapshot.conflicts, ["geography-source-vs-text"]);
+  assert.equal(geoEvidence(snapshot)[1]?.quote, "worldwide, except in Brazil");
+  assert.deepEqual(geoRule(snapshot, "BR"), { status: "ineligible", outcome: "fail" });
+  assert.equal(geoRule(snapshot, "DE").outcome, "pass");
+});
+
+test("geography: a rule stated only in the excerpt cites the excerpt", () => {
+  const snapshot = mapJobicyRecord(anywhere("", "Remote role; must be based in Canada."), NOW);
+  assert.deepEqual(snapshot.hiring_options[0]!.geography.allowed_countries, ["CA"]);
+  assert.equal(geoEvidence(snapshot)[1]?.field_path, "jobExcerpt");
+});
+
+test("geography: text without a hiring rule keeps 'Anywhere' worldwide, with no conflict", () => {
+  const plain = mapJobicyFixture(NOW)[0]!;
+  assert.deepEqual(plain.conflicts, []);
+  assert.deepEqual(plain.evidence.map(item => item.id),
+    ["ev:jobicy:900001:geo", "ev:jobicy:900001:workplace", "ev:jobicy:900001:comp"]);
+  const traps = mapJobicyRecord(anywhere(
+    "We are based in San Francisco, CA. If you are located in the EEA, see our privacy notice. " +
+    "You must reside outside of a 50 mile radius from our office. You don't need to be based " +
+    "in the US. Work from anywhere in the world. Health insurance (US only). You should live " +
+    "in a time zone within three hours of UTC."), NOW);
+  assert.deepEqual(traps.hiring_options[0]!.geography, plain.hiring_options[0]!.geography);
+  assert.deepEqual(traps.conflicts, []);
+  assert.deepEqual(geoEvidence(traps), [LABEL_EVIDENCE]);
+});
+
+test("geography: country and region labels are not cross-checked against the text", () => {
+  const snapshot = mapJobicyRecord({
+    ...anywhere("Applicants must reside in Canada."), jobGeo: "USA",
+  }, NOW);
+  assert.deepEqual(snapshot.hiring_options[0]!.geography.allowed_countries, ["US"]);
+  assert.deepEqual(snapshot.conflicts, []);
 });
 
 test("mapper: employment types mapped, unknown when absent; invalid input rejected", () => {

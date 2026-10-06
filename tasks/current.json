@@ -1,10 +1,10 @@
 {
-  "task_id": "DEVX-004",
-  "file": "tasks/DEVX-004-ci-jobs-coverage-lint.md",
+  "task_id": "B24-001",
+  "file": "tasks/B24-001-jobicy-text-geography.md",
   "status": "implemented",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "CI split into three parallel jobs (Code quality, Build, Tests); npm run test:coverage runs unit+DB tests with a coverage ratchet over src/**/*.ts including never-loaded files (thresholds 82/85/91, measured 82.14/85.19/91.10); Biome's recommended rules with warnings failing, today's 22 findings fixed or suppressed with reasons, four rules off on purpose. Rehearsed on a clean clone: all green. Independent review: behaviour-neutral; its three findings handled (jobicy geography gap recorded as OPEN_GAPS B24, include-all coverage, corrected rule reason)."
+  "note": "OPEN_GAPS B24 closed: a worldwide jobicy label is tested against the posting text (src/server/import/geography-text.ts); a residence rule narrows it or leaves the countries unknown, an exclusion is kept, geography-source-vs-text recorded. Country and region labels unchanged. 0 of 202 local jobicy records change; detector finds no contradiction in the 36 worldwide local posts. check, test:coverage (82.51/85.64/91.39), build and e2e (99) exit 0. Found and recorded: B25, B26."
 }

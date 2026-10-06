@@ -7,7 +7,7 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-10-06 by [DEVX-004](tasks/DEVX-004-ci-jobs-coverage-lint.md).
+**Updated:** 2026-10-06 by [B24-001](tasks/B24-001-jobicy-text-geography.md).
 
 ## Switches and boundaries
 - **Live AI is off** (`LIVE_AI_ENABLED=false`, a real switch since AI-007): no provider
@@ -30,6 +30,8 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   breaker (S1-004); jobicy closure checks (S1-005); cross-source dedup with provenance
   (A4); a cross-language near-dup queue for a human, nothing merged automatically
   (B5-001); expired records become tombstones, and the journal keeps 12 months (RET-001).
+  A worldwide jobicy label is checked against the posting text: a stated residence
+  rule narrows it or leaves the countries unknown, and an exclusion is kept (B24-001).
 - **Auth and profiles:** manual private profile, explainable matching, saved jobs
   (S2-001, owner-accepted); hide with a reason and applied marks (S2-002).
 - **CV intake:** offline text/txt/md/docx intake and private storage (S3-001,
@@ -60,6 +62,9 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-10-06 (B24-001): `npm run check` (unit 289/289), `npm run test:coverage` (unit
+  and DB 358/358; 82.51% lines, 85.64% branches, 91.39% functions), `npm run build` and
+  `npm run test:e2e` (99 passed), all exit 0. Not pushed, so no CI run yet.
 - 2026-10-05 (DEVX-004): `npm run test:coverage` — unit and DB tests 344/344. Coverage of
   the `src/` .ts files, counting files no test loads: 82.14% lines, 85.19% branches,
   91.10% functions. Strict Biome: 0
@@ -87,9 +92,11 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   ([DEVX-003](tasks/DEVX-003-weekly-checks.md)).
 - Whether to normalize the himalayas "Current as of" date in the terms fingerprint
   (source-rights tooling). It is the precondition for a weekly `terms:check`.
-- **Jobicy geography ignores the posting text** ([OPEN_GAPS](docs/OPEN_GAPS.md) B24): a
-  post labelled "Anywhere" with "must reside in the US" in its text becomes worldwide.
-  It needs its own task with tests.
+- **Jobicy country labels** ([OPEN_GAPS](docs/OPEN_GAPS.md) B25): 52 of 202 local posts
+  name countries in a label the map does not read ("Canada, USA", "Portugal"), so their
+  geography is unknown. A label that mixes regions and countries needs a decision first.
+  The himalayas text check is narrower than jobicy's (B26); widening it changes that
+  catalog, so it is a separate task.
 
 ## Known limits
 - The monthly quota window is stored but has no calendar reset (OPEN_GAPS A5).

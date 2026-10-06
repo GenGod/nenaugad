@@ -9,6 +9,7 @@ import type {
   Geography, JobSnapshot, Workplace, Evidence,
 } from "../../domain/source-contracts.ts";
 import { AdapterInputError, descriptionToText } from "./himalayas-fixture.ts";
+import { readTextGeography } from "./geography-text.ts";
 
 export type JobicyRawRecord = Readonly<{
   id: number;
@@ -107,22 +108,63 @@ const TEMPORARY_MARKERS = [
   /temporarily remote/iu,
 ] as const;
 
-// `_text` (description + excerpt) is not read yet. Unlike the himalayas adapter, a
-// jobGeo label such as "Anywhere" is taken as is, so an exclusion stated only in the
-// text is missed: docs/OPEN_GAPS.md B24.
-function geographyFor(raw: JobicyRawRecord, _text: string, evidenceId: string, recordId: string): {
-  geography: Geography; evidence: Evidence;
+// "Anywhere" is the source's claim, and the employer's own text can contradict it
+// (SP 1.0 §2; spec 11.1: an exclusion beats a broad permission; docs/OPEN_GAPS.md B24).
+// A residence rule in the description or excerpt narrows the scope, or leaves the
+// countries unknown when it names a region; an explicit exclusion keeps worldwide minus
+// those countries. The label and the text both stay as evidence and the contradiction is
+// recorded, as in the himalayas adapter.
+function worldwideUnlessTextSays(
+  raw: JobicyRawRecord, description: string, labelEvidence: Evidence,
+): { geography: Geography; conflict: string | null; evidence: readonly Evidence[] } {
+  const stated = readTextGeography(`${description} ${raw.jobExcerpt ?? ""}`);
+  const contradicted = stated.restriction !== null || stated.exclusion !== null;
+  const textEvidence = (kind: string, quote: string): Evidence => ({
+    id: `${labelEvidence.id}:${kind}`, origin_type: "job_source",
+    origin_id: labelEvidence.origin_id, origin_version: 1,
+    field_path: description.includes(quote) ? "jobDescription" : "jobExcerpt",
+    quote, method: "rule", confidence: 0.9,
+  });
+  const evidence = [
+    labelEvidence,
+    ...(stated.restriction ? [textEvidence("restriction", stated.restriction.quote)] : []),
+    ...(stated.exclusion ? [textEvidence("exclusion", stated.exclusion.quote)] : []),
+  ];
+  const excluded = stated.exclusion?.countries ?? [];
+  const evidenceIds = evidence.map(item => item.id);
+  const geography: Geography = stated.restriction === null
+    ? {
+        scope: "worldwide", allowed_countries: [], excluded_countries: excluded,
+        allowed_subdivisions: [], region_text: stated.exclusion?.quote ?? null,
+        exhaustive: true, evidence_ids: evidenceIds,
+      }
+    : {
+        scope: "restricted", allowed_countries: stated.restriction.countries,
+        excluded_countries: excluded, allowed_subdivisions: [],
+        region_text: stated.restriction.quote,
+        // No country set means the rule names a region: GEO-01 stays unknown.
+        exhaustive: stated.restriction.countries.length > 0, evidence_ids: evidenceIds,
+      };
+  return { geography, conflict: contradicted ? "geography-source-vs-text" : null, evidence };
+}
+
+// Country and region labels are already narrower than worldwide and are taken as they
+// are; only a worldwide label is tested against the text.
+function geographyFor(raw: JobicyRawRecord, description: string, evidenceId: string, recordId: string): {
+  geography: Geography; conflict: string | null; evidence: readonly Evidence[];
 } {
   const label = (raw.jobGeo ?? "").trim();
   const normalized = label.toUpperCase();
-  let geography: Geography;
+  const labelEvidence: Evidence = {
+    id: evidenceId, origin_type: "job_source", origin_id: recordId,
+    origin_version: 1, field_path: "jobGeo",
+    quote: label.length > 0 ? label : null, method: "source_field", confidence: 1,
+  };
   if (GEO_WORLDWIDE_LABELS.has(normalized)) {
-    geography = {
-      scope: "worldwide", allowed_countries: [], excluded_countries: [],
-      allowed_subdivisions: [], region_text: null, exhaustive: true,
-      evidence_ids: [evidenceId],
-    };
-  } else if (GEO_COUNTRY_ISO[normalized] !== undefined) {
+    return worldwideUnlessTextSays(raw, description, labelEvidence);
+  }
+  let geography: Geography;
+  if (GEO_COUNTRY_ISO[normalized] !== undefined) {
     geography = {
       scope: "restricted", allowed_countries: [GEO_COUNTRY_ISO[normalized]!],
       excluded_countries: [], allowed_subdivisions: [], region_text: label,
@@ -137,14 +179,7 @@ function geographyFor(raw: JobicyRawRecord, _text: string, evidenceId: string, r
       evidence_ids: [evidenceId],
     };
   }
-  return {
-    geography,
-    evidence: {
-      id: evidenceId, origin_type: "job_source", origin_id: recordId,
-      origin_version: 1, field_path: "jobGeo",
-      quote: label.length > 0 ? label : null, method: "source_field", confidence: 1,
-    },
-  };
+  return { geography, conflict: null, evidence: [labelEvidence] };
 }
 
 function workplaceFor(text: string, evidenceId: string, recordId: string): {
@@ -202,7 +237,7 @@ export function mapJobicyRecord(raw: JobicyRawRecord, fetchedAt: string): JobSna
 
   const id = `jobicy:${raw.id}`;
   const evidenceText = `${text} ${raw.jobExcerpt ?? ""}`;
-  const geo = geographyFor(raw, evidenceText, `ev:${id}:geo`, id);
+  const geo = geographyFor(raw, text, `ev:${id}:geo`, id);
   const workplace = workplaceFor(evidenceText, `ev:${id}:workplace`, id);
   const salaryKnown = raw.salaryMin != null || raw.salaryMax != null;
   const period = raw.salaryPeriod ? SALARY_PERIOD_MAP[raw.salaryPeriod.toLowerCase()] : undefined;
@@ -240,7 +275,7 @@ export function mapJobicyRecord(raw: JobicyRawRecord, fetchedAt: string): JobSna
         mode: "not_stated", local_windows: [], required_overlap_minutes: null,
         accepted_utc_offsets_minutes: [], original_text: null, evidence_ids: [],
       },
-      evidence_ids: [geo.evidence.id],
+      evidence_ids: geo.geography.evidence_ids,
     }],
     requirements: [],
     compensation: {
@@ -263,8 +298,8 @@ export function mapJobicyRecord(raw: JobicyRawRecord, fetchedAt: string): JobSna
       expires_at: null,
     },
     lifecycle: "active",
-    conflicts: workplace.conflict === null ? [] : [workplace.conflict],
-    evidence: [geo.evidence, workplace.evidence, ...(salaryKnown ? [{
+    conflicts: [geo.conflict, workplace.conflict].filter((c): c is string => c !== null),
+    evidence: [...geo.evidence, workplace.evidence, ...(salaryKnown ? [{
       id: `ev:${id}:comp`, origin_type: "job_source" as const,
       origin_id: id, origin_version: 1,
       field_path: "salary", quote: salaryOriginal, method: "source_field" as const,
