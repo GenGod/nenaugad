@@ -7,7 +7,7 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-10-06 by [B27-001](tasks/B27-001-himalayas-location-countries.md).
+**Updated:** 2026-10-06 by [REMAP-001](tasks/REMAP-001-stored-geography.md).
 
 ## Switches and boundaries
 - **Live AI is off** (`LIVE_AI_ENABLED=false`, a real switch since AI-007): no provider
@@ -35,7 +35,9 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   Other jobicy labels are read part by part: countries only make the complete list, and
   a label that also names a region keeps its countries as an incomplete list (B25-001).
   Himalayas location restrictions become the allowed countries, by name or ISO code,
-  and a non-empty list never becomes worldwide (B27-001).
+  and a non-empty list never becomes worldwide (B27-001). The local catalog was
+  re-mapped to both once (REMAP-001, 2026-10-06: 518 rows, with a backup without posting
+  text and a rollback proven on the real rows).
 - **Auth and profiles:** manual private profile, explainable matching, saved jobs
   (S2-001, owner-accepted); hide with a reason and applied marks (S2-002).
 - **CV intake:** offline text/txt/md/docx intake and private storage (S3-001,
@@ -69,7 +71,8 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 ## Latest checks
 - 2026-10-06 (B27-001): `npm run check` (unit 297/297), `npm run test:coverage` (unit
   and DB 366/366; 82.58% lines, 86.07% branches, 91.54% functions; the ratchet is now
-  82/86/91), `npm run build` and `npm run test:e2e` (99 passed), all exit 0. Not pushed.
+  82/86/91), `npm run build` and `npm run test:e2e` (99 passed), all exit 0. CI green on
+  `b8348c3`. REMAP-001 changed no code; its run verified itself (see its task file).
 - 2026-10-05 (DEVX-004): `npm run test:coverage` — unit and DB tests 344/344. Coverage of
   the `src/` .ts files, counting files no test loads: 82.14% lines, 85.19% branches,
   91.10% functions. Strict Biome: 0
@@ -98,10 +101,6 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   ([DEVX-003](tasks/DEVX-003-weekly-checks.md)).
 - Whether to normalize the himalayas "Current as of" date in the terms fingerprint
   (source-rights tooling). It is the precondition for a weekly `terms:check`.
-- **Re-mapping stored records:** B24, B25 and B27 change how imports map geography, but a
-  stored record changes only when an import re-reads it. Locally that leaves 52 jobicy
-  and 466 himalayas posts on their old, unknown geography until retention tombstones
-  them. A one-off re-map of the local catalog rewrites local data; it needs a decision.
 - **Before the first live extraction run** ([OPEN_GAPS](docs/OPEN_GAPS.md) B28): a
   geography-only re-map gives a record a new version, and the paid extraction ledger
   keys on the version, so every such change would pay again for unchanged text.
@@ -113,7 +112,12 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 - Constants of the new ranking layers wait for accumulated data; measurements come
   from one machine (DGAP-001).
 - A stored record takes a new mapping only when an import re-reads it: the jobicy feed
-  is a 7-day window, and the himalayas pass resumes at its cursor, 25 pages a run.
+  is a 7-day window, and the himalayas pass resumes at its cursor, 25 pages a run. A
+  later mapping change needs its own re-map (REMAP-001's script is guarded for the
+  shapes of 2026-10-06), and B28 should be settled first.
+- The 518 re-mapped rows' embeddings carry an old content hash; the next
+  `npm run embeddings:index -- --embedder=local` re-embeds them, with unchanged text
+  (B28).
 
 ## Next
 The current task is in `tasks/current.json`.

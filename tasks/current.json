@@ -1,10 +1,10 @@
 {
-  "task_id": "B27-001",
-  "file": "tasks/B27-001-himalayas-location-countries.md",
+  "task_id": "REMAP-001",
+  "file": "tasks/REMAP-001-stored-geography.md",
   "status": "implemented",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "OPEN_GAPS B27 closed: himalayas location restrictions resolve to countries (name through the shared dictionary, else a well-formed alpha2 code) into allowed_countries; an unresolved entry makes the list incomplete (B25 rule); a non-empty list never becomes worldwide ([{}] did before). Exactly 466 of 498 local himalayas records change, only in geography and its evidence quote; GEO-01 only moves from unknown to pass/fail; the 7 wrong dedup groups split. check, test:coverage (82.58/86.07/91.54, branch ratchet raised to 86), build and e2e (99) exit 0. Found and recorded: B28 (a geography-only re-map re-pays extraction). Stored records keep their old geography until re-read: owner decision."
+  "note": "Done on the local database (owner decision 2026-10-06): 518 stored records re-mapped to the B25 and B27 geography (52 jobicy, 466 himalayas) through runSnapshotImport and saveStore at each record's own last_seen_at. Gates passed on 700 rows; apply, rollback (all 700 rows identical to the start) and re-apply proven; a re-import reports every record seen; 182 other rows byte-identical; 0 exact dedup groups. Backup without posting text and the scripts in the gitignored backups/remap-2026-10-06/. No code changed."
 }
