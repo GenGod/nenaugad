@@ -6,7 +6,9 @@ import { registerUser } from "../../src/server/users.ts";
 import { mapHimalayasFixture } from "../../src/server/import/himalayas-fixture.ts";
 import { ensureBudget, GLOBAL_BUDGET_ID } from "../../src/server/ai/spending.ts";
 import { GPT6_LUNA, ownerBudgetId } from "../../src/server/ai/provider.ts";
-import { extractPostingFields, extractionKey } from "../../src/server/ai/extraction-service.ts";
+import {
+  extractPostingFields, extractionInputHash, extractionKey,
+} from "../../src/server/ai/extraction-service.ts";
 import { loadExtraction } from "../../src/server/ai/extraction-store.ts";
 import { UNKNOWN_VALUE } from "../../src/domain/extraction.ts";
 import type { ModelTransport } from "../../src/server/ai/gateway.ts";
@@ -106,9 +108,10 @@ test("extraction: a grounded answer is stored accepted with provenance, and a re
   assert.ok(seenPrompt.includes(UNKNOWN_VALUE));
   assert.ok(!seenPrompt.toLowerCase().includes("profile"));
 
-  const stored = await loadExtraction(pool, { snapshotId: snapshot.id, snapshotVersion: snapshot.version });
+  const stored = await loadExtraction(pool, { snapshotId: snapshot.id, inputHash: extractionInputHash(snapshot) });
   assert.ok(stored);
   assert.equal(stored.status, "accepted");
+  assert.equal(stored.snapshotVersion, snapshot.version);
   assert.equal(stored.fields?.requirements[0]?.value, "Python");
   assert.equal(stored.provenance.modelVersion, GPT6_LUNA.modelId);
   assert.equal(stored.provenance.operationId.length > 0, true);
@@ -145,7 +148,7 @@ test("extraction: an invented value rejects the record, and the rejection is sto
   assert.ok(outcome.status === "rejected");
   assert.ok(outcome.reasons.some(reason => reason.code === "VALUE_NOT_GROUNDED"));
 
-  const stored = await loadExtraction(pool, { snapshotId: snapshot.id, snapshotVersion: snapshot.version });
+  const stored = await loadExtraction(pool, { snapshotId: snapshot.id, inputHash: extractionInputHash(snapshot) });
   assert.ok(stored);
   assert.equal(stored.status, "rejected");
   assert.equal(stored.fields, null);
@@ -160,6 +163,57 @@ test("extraction: an invented value rejects the record, and the rejection is sto
   assert.equal(replay.status, "already_rejected");
   assert.equal(await operationCount(extractionKey(snapshot)), 1);
   await cleanup();
+});
+
+test("extraction: a new posting version with the same input is answered from the paid record (B28)", async () => {
+  await migrate(pool);
+  await cleanup();
+  try {
+    const ownerId = await freshOwner();
+    const [template] = mapHimalayasFixture(NOW);
+    assert.ok(template);
+    const first = snapshotWith(template, "himalayas:ext-e", "Backend Engineer (Remote)");
+    await insertSnapshot("himalayas", first);
+    const paid = await extractPostingFields({
+      pool, ownerId, sourceId: "himalayas", snapshot: first, transport: transportReturning(VALID_OUTPUT), now: NOW });
+    assert.ok(paid.status === "extracted");
+
+    // A geography-only re-map: the import gives the posting a new version, the input stays.
+    const option = first.hiring_options[0]!;
+    const remapped: JobSnapshot = {
+      ...first, version: first.version + 1,
+      hiring_options: [{ ...option, geography: { ...option.geography, scope: "restricted", allowed_countries: ["US"] } }],
+    };
+    const exploding: ModelTransport = { async dispatchOnce() { throw new Error("MUST_NOT_BE_CALLED"); } };
+    const answered = await extractPostingFields({
+      pool, ownerId, sourceId: "himalayas", snapshot: remapped, transport: exploding, now: NOW });
+    assert.ok(answered.status === "already_extracted");
+    assert.equal(answered.provenance.operationId, paid.provenance.operationId);
+    const operations = await pool.query(
+      "SELECT COUNT(*)::int AS n FROM ai_operations WHERE idempotency_key LIKE $1", ["extraction:himalayas:ext-e:%"]);
+    assert.equal((operations.rows[0] as { n: number }).n, 1);
+    const records = await pool.query(
+      "SELECT COUNT(*)::int AS n, min(snapshot_version)::int AS paid_at FROM job_llm_fields WHERE snapshot_id = $1", [first.id]);
+    assert.deepEqual(records.rows[0], { n: 1, paid_at: 1 });
+    const budget = await pool.query("SELECT settled_minor FROM ai_budgets WHERE id = $1", [GLOBAL_BUDGET_ID]);
+    assert.equal((budget.rows[0] as { settled_minor: string }).settled_minor, "90");
+
+    // Changed text is a new input: one more paid call and its own record; the first stays.
+    const rewritten: JobSnapshot = {
+      ...remapped, version: remapped.version + 1,
+      description_text: `${POSTING_TEXT}\nNice to have: Go.`,
+    };
+    const repaid = await extractPostingFields({
+      pool, ownerId, sourceId: "himalayas", snapshot: rewritten, transport: transportReturning(VALID_OUTPUT), now: NOW });
+    assert.equal(repaid.status, "extracted");
+    assert.notEqual(extractionKey(rewritten), extractionKey(first));
+    const after = await pool.query("SELECT COUNT(*)::int AS n FROM job_llm_fields WHERE snapshot_id = $1", [first.id]);
+    assert.equal((after.rows[0] as { n: number }).n, 2);
+    const budgetAfter = await pool.query("SELECT settled_minor FROM ai_budgets WHERE id = $1", [GLOBAL_BUDGET_ID]);
+    assert.equal((budgetAfter.rows[0] as { settled_minor: string }).settled_minor, "180");
+  } finally {
+    await cleanup();
+  }
 });
 
 test("extraction: an unknown source never passes, and an expired policy refuses before any call", async () => {

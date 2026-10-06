@@ -1,10 +1,15 @@
 {
-  "task_id": "REMAP-001",
-  "file": "tasks/REMAP-001-stored-geography.md",
+  "task_id": "B28-001",
+  "file": "tasks/B28-001-input-keyed-derivatives.md",
   "status": "implemented",
-  "repair_cycles_used": 0,
+  "repair_cycles_used": 1,
   "max_repair_cycles": 2,
-  "hypotheses": [],
+  "hypotheses": [
+    {
+      "text": "extraction-pass.test.ts fails whenever other active himalayas postings are left in the shared test DB (here the contract fixtures h-002/h-003): runExtractionPass reads every himalayas posting, so its 90-unit expectation holds only if seeding clears the source first; clearing himalayas rows in seedTwoSnapshots makes the file pass alone and in suite order",
+      "recorded_at": "2026-10-06T12:25:25.503Z"
+    }
+  ],
   "coding_host_spend": "unknown",
-  "note": "Done on the local database (owner decision 2026-10-06): 518 stored records re-mapped to the B25 and B27 geography (52 jobicy, 466 himalayas) through runSnapshotImport and saveStore at each record's own last_seen_at. Gates passed on 700 rows; apply, rollback (all 700 rows identical to the start) and re-apply proven; a re-import reports every record seen; 182 other rows byte-identical; 0 exact dedup groups. Backup without posting text and the scripts in the gitignored backups/remap-2026-10-06/. No code changed."
+  "note": "OPEN_GAPS B28 closed: paid extraction keyed by (posting, prompt version, hash of title/company/description); embedding index compares a text hash; migration 0020 (fail-closed re-key; text_hash backfill, 700/700 current locally, nothing re-embedded). Repair cycle 1: extraction-pass test isolation. Mutation 9/9. Independent review: ready for owner acceptance; finding 1 is an owner decision; B31/B32 recorded; the B27 coverage-flag space restored (function threshold enforced again). check, test:coverage (82.62/86.06/91.56), build, e2e (99) exit 0."
 }

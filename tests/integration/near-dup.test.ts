@@ -78,7 +78,8 @@ test("near-dup: the loader returns current-artifact vectors of live rows, and th
   assert.equal(normalizeCompany(a.company_name), normalizeCompany(b.company_name));
 
   const work = [a, b, c, t].map(snapshot => ({
-    snapshotId: snapshot.id, contentHash: `hash-${snapshot.id}`, text: snapshot.description_text,
+    snapshotId: snapshot.id, contentHash: `hash-${snapshot.id}`, textHash: `text-${snapshot.id}`,
+    text: snapshot.description_text,
   }));
   const stored = await storeChunk(pool, work, [unit(1), unit(0.85), unit(1), unit(0.2)]);
   assert.equal(stored.stored, 4);

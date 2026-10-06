@@ -62,6 +62,10 @@ async function cleanup(): Promise<void> {
 async function seedTwoSnapshots(): Promise<{ pre: JobSnapshot; fresh: JobSnapshot }> {
   await migrate(pool);
   await cleanup();
+  // The pass reads every himalayas posting, so the two seeded here must be the only
+  // ones: another file's rows (the contract fixtures, say) would be extracted and paid
+  // for too, and the counts below would depend on which file ran before this one.
+  await pool.query("DELETE FROM job_snapshots WHERE source_id = 'himalayas'");
   const [template] = mapHimalayasFixture(NOW);
   assert.ok(template);
   const pre = snapshotWith(template, "himalayas:extp-pre");

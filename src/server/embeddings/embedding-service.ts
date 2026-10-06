@@ -8,9 +8,8 @@
 //     have one at all, and what was written.
 //
 // Statements follow the house form used in src/server/storage/snapshots.ts: one
-// static SQL literal per call, every value and every bound passed as a $n
-// parameter. Nothing is assembled from data — the optional row bound is a
-// parameter too (UNBOUNDED_LIMIT), not a fragment glued in when absent.
+// static SQL literal per call, every value passed as a $n parameter. Nothing is
+// assembled from data.
 //
 // The ML permission is asked HERE, at the point of use, not at startup. A policy
 // can expire (himalayas and jobicy carry valid_until = 2026-12-23), and an
@@ -21,6 +20,7 @@
 //
 // Counts and codes are all this module ever reports: no posting text, no vector,
 // no profile field reaches a log line or an error message.
+import { createHash } from "node:crypto";
 import type { Pool } from "pg";
 import {
   assertEmbedderOutput, jobEmbeddingText, makeEmbeddingVector,
@@ -28,12 +28,6 @@ import {
 } from "../../domain/embeddings.ts";
 import { isJobSnapshot, type JobSnapshot } from "../../domain/source-contracts.ts";
 import { getSourcePolicy, permissionFor } from "../source-policies.ts";
-
-/**
- * Row bound for "embed everything this source has". int4 max: far above any
- * catalog we run against, and it keeps one statement for both cases.
- */
-const UNBOUNDED_LIMIT = 2147483647;
 
 /**
  * How many postings are handed to the embedder between progress reports. The
@@ -97,8 +91,15 @@ function fromVectorLiteral(
 export type EmbeddingWork = Readonly<{
   snapshotId: string;
   contentHash: string;
+  /** The hash of `text`, stored with the vector (job_embeddings.text_hash). */
+  textHash: string;
   text: string;
 }>;
+
+/** The hash of the exact text a vector is made from (migration 0020). */
+export function embeddingTextHash(text: string): string {
+  return createHash("sha256").update(text, "utf8").digest("hex");
+}
 
 export type EmbeddingIndexReport = Readonly<{
   sourceId: string;
@@ -126,21 +127,27 @@ export type EmbeddingIndexReport = Readonly<{
 
 /**
  * Postings of a source that need a vector: no row for this model version yet, or
- * the text changed since the vector was made (content_hash). Ordered by id so a
- * limited run is deterministic and resumable.
+ * the posting's text is no longer the text the vector was made from (text_hash).
+ * A change elsewhere in the snapshot, such as a geography re-map, leaves the vector
+ * alone (docs/OPEN_GAPS.md B28). The comparison runs here, on the text the indexer
+ * would embed. Ordered by id so a limited run is deterministic and resumable.
  */
 export async function embeddingWork(
   pool: Pool, sourceId: string, modelVersion: string, limit?: number,
 ): Promise<readonly EmbeddingWork[]> {
   const result = await pool.query(`
-    SELECT j.id, j.content_hash, j.snapshot FROM job_snapshots j
+    SELECT j.id, j.content_hash, j.snapshot, e.text_hash FROM job_snapshots j
     LEFT JOIN job_embeddings e ON e.snapshot_id = j.id AND e.model_version = $2
-    WHERE j.source_id = $1 AND (e.snapshot_id IS NULL OR e.content_hash <> j.content_hash)
-    ORDER BY j.id LIMIT $3`, [sourceId, modelVersion, limit ?? UNBOUNDED_LIMIT]);
+    WHERE j.source_id = $1
+    ORDER BY j.id`, [sourceId, modelVersion]);
   const work: EmbeddingWork[] = [];
-  for (const row of result.rows as { id: string; content_hash: string; snapshot: unknown }[]) {
+  for (const row of result.rows as { id: string; content_hash: string; snapshot: unknown; text_hash: string | null }[]) {
+    if (limit !== undefined && work.length >= limit) break;
     if (!isJobSnapshot(row.snapshot)) continue; // a row the storage layer should have refused
-    work.push({ snapshotId: row.id, contentHash: row.content_hash, text: jobEmbeddingText(row.snapshot) });
+    const text = jobEmbeddingText(row.snapshot);
+    const textHash = embeddingTextHash(text);
+    if (row.text_hash === textHash) continue;
+    work.push({ snapshotId: row.id, contentHash: row.content_hash, textHash, text });
   }
   return work;
 }
@@ -189,7 +196,7 @@ export async function indexSourceEmbeddings(params: Readonly<{
   // Embedded in chunks, and each chunk is stored in its own transaction: a full
   // catalog is tens of minutes of CPU, and one unwritable row must not throw that
   // work away. A stopped run is resumed by running it again — the work list is
-  // derived from content_hash, so what was stored is not recomputed.
+  // derived from the text hash, so what was stored is not recomputed.
   let embedded = 0;
   const unreachable: string[] = [];
   for (let start = 0; start < work.length; start += PROGRESS_CHUNK) {
@@ -240,15 +247,16 @@ export async function storeChunk(
       await client.query("SAVEPOINT row");
       try {
         await client.query(`
-          INSERT INTO job_embeddings (snapshot_id, model_version, instruction_version, content_hash, embedding)
-          VALUES ($1, $2, $3, $4, $5::vector)
+          INSERT INTO job_embeddings (snapshot_id, model_version, instruction_version, content_hash, text_hash, embedding)
+          VALUES ($1, $2, $3, $4, $5, $6::vector)
           ON CONFLICT (snapshot_id, model_version) DO UPDATE SET
             instruction_version = EXCLUDED.instruction_version,
             content_hash = EXCLUDED.content_hash,
+            text_hash = EXCLUDED.text_hash,
             embedding = EXCLUDED.embedding,
             created_at = now()`, [
           entry.snapshotId, vector.modelVersion, vector.instructionVersion, entry.contentHash,
-          toVectorLiteral(vector.values),
+          entry.textHash, toVectorLiteral(vector.values),
         ]);
         await client.query("RELEASE SAVEPOINT row");
       } catch (error) {

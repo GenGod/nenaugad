@@ -9,15 +9,17 @@
 //   * the source's `send_to_ai_provider` is asked HERE, at the point of use: a
 //     source without the grant (or with an expired policy) is refused before any
 //     text is assembled, and an unknown source never passes;
-//   * the idempotency key is content-addressed — the posting version and the
-//     prompt version are in it — so the same input is paid for at most once, and
-//     a stored record answers a repeat with no call at all;
+//   * the idempotency key is content-addressed — the hash of the fields the
+//     provider receives and the prompt version are in it, not the posting version,
+//     which moves on any re-map (docs/OPEN_GAPS.md B28) — so the same input is paid
+//     for at most once, and a stored record answers a repeat with no call at all;
 //   * the prompt is built through `buildJobOnlyPrompt`, the single constructor
 //     the personal-data boundary allows: its input type cannot carry a profile
 //     field, so this feature cannot leak candidate facts by construction.
 //
 // Codes, ids and counts travel outward; posting text and prompt text do not
 // (the stored payload is the extraction itself — job data by construction).
+import { createHash } from "node:crypto";
 import type { Pool } from "pg";
 import { jobEmbeddingText } from "../../domain/embeddings.ts";
 import {
@@ -42,15 +44,29 @@ export type ExtractionOutcome =
   | Readonly<{ status: "no_permission" }>
   | Readonly<{ status: "empty_text" }>;
 
-/** The idempotency key: same posting version + same prompt = same paid operation. */
-export function extractionKey(snapshot: Readonly<{ id: string; version: number }>): string {
-  return `extraction:${snapshot.id}:v${snapshot.version}:${EXTRACTION_PROMPT_VERSION}`;
+type ExtractionInput = Readonly<Pick<JobSnapshot, "title" | "company_name" | "description_text">>;
+
+/**
+ * The input of a paid extraction: the hash of exactly the fields the provider
+ * receives, as a JSON array, so text moved from one field to another is another
+ * input. The posting version is not the input: a re-map that leaves these fields
+ * alone finds the record it already paid for (docs/OPEN_GAPS.md B28).
+ */
+export function extractionInputHash(snapshot: ExtractionInput): string {
+  return createHash("sha256")
+    .update(JSON.stringify([snapshot.title, snapshot.company_name, snapshot.description_text]), "utf8")
+    .digest("hex");
+}
+
+/** The idempotency key: same posting + same input + same prompt = same paid operation. */
+export function extractionKey(snapshot: ExtractionInput & Readonly<{ id: string }>): string {
+  return `extraction:${snapshot.id}:${extractionInputHash(snapshot)}:${EXTRACTION_PROMPT_VERSION}`;
 }
 
 /**
  * Extracts fields for one posting. Refusals come before any money or text
- * moves; a stored record for the same posting version and prompt answers
- * without a second call.
+ * moves; a stored record for the same input and prompt answers without a
+ * second call, whatever the posting version.
  */
 export async function extractPostingFields(params: Readonly<{
   pool: Pool;
@@ -69,10 +85,8 @@ export async function extractPostingFields(params: Readonly<{
   const text = jobEmbeddingText(params.snapshot);
   if (text.trim().length === 0) return { status: "empty_text" };
 
-  const stored = await loadExtraction(params.pool, {
-    snapshotId: params.snapshot.id,
-    snapshotVersion: params.snapshot.version,
-  });
+  const inputHash = extractionInputHash(params.snapshot);
+  const stored = await loadExtraction(params.pool, { snapshotId: params.snapshot.id, inputHash });
   if (stored !== null) {
     return stored.status === "accepted" && stored.fields !== null
       ? { status: "already_extracted", fields: stored.fields, provenance: stored.provenance }
@@ -108,6 +122,7 @@ export async function extractPostingFields(params: Readonly<{
     await storeExtraction(params.pool, {
       snapshotId: params.snapshot.id,
       snapshotVersion: params.snapshot.version,
+      inputHash,
       status: "accepted",
       fields: parsed.fields,
       rawOutput: null,
@@ -119,6 +134,7 @@ export async function extractPostingFields(params: Readonly<{
   await storeExtraction(params.pool, {
     snapshotId: params.snapshot.id,
     snapshotVersion: params.snapshot.version,
+    inputHash,
     status: "rejected",
     fields: null,
     rawOutput: settled.output,

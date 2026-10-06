@@ -7,7 +7,7 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-10-06 by [REMAP-001](tasks/REMAP-001-stored-geography.md).
+**Updated:** 2026-10-06 by [B28-001](tasks/B28-001-input-keyed-derivatives.md).
 
 ## Switches and boundaries
 - **Live AI is off** (`LIVE_AI_ENABLED=false`, a real switch since AI-007): no provider
@@ -54,9 +54,12 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 - **Retrieval:** pinned local embedding model (`npm run models:fetch`), pgvector, dense
   leg, BM25 and RRF are implemented and measured but not switched on: BM25 alone beats
   fusion, and the ranker beats every leg (B1-001, B1-002, B2-001). The rerank input is
-  measured (B3-001); its implementation waits on owner decisions.
+  measured (B3-001); its implementation waits on owner decisions. The index re-embeds a
+  posting only when its text changes (B28-001).
 - **LLM field extraction:** core, validator and immutable evidence rows (C1-001); wired
   into the worker and the import scripts (C1-002). Without the switch it touches nothing.
+  A paid record is keyed by its input, so a re-map that leaves the text alone is never
+  paid again (B28-001).
 - **NLI pre-check:** evaluated with a negative result, not integrated (B4-001).
 - **Design:** the Nenaugad design system 1.3 with `--ng-*` tokens (DS-001,
   owner-accepted 2026-09-27); visual baselines are recorded on Windows.
@@ -69,10 +72,11 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
-- 2026-10-06 (B27-001): `npm run check` (unit 297/297), `npm run test:coverage` (unit
-  and DB 366/366; 82.58% lines, 86.07% branches, 91.54% functions; the ratchet is now
-  82/86/91), `npm run build` and `npm run test:e2e` (99 passed), all exit 0. CI green on
-  `b8348c3`. REMAP-001 changed no code; its run verified itself (see its task file).
+- 2026-10-06 (B28-001): `npm run check` (unit 299/299), `npm run test:coverage` (unit
+  and DB 371/371; 82.62% lines, 86.06% branches, 91.56% functions), `npm run build` and
+  `npm run test:e2e` (99 passed), all exit 0. The B27 commit had lost a space between two
+  coverage flags, which silently disabled the 91% function threshold; fixed, and the
+  ratchet 82/86/91 is enforced again. Not pushed.
 - 2026-10-05 (DEVX-004): `npm run test:coverage` — unit and DB tests 344/344. Coverage of
   the `src/` .ts files, counting files no test loads: 82.14% lines, 85.19% branches,
   91.10% functions. Strict Biome: 0
@@ -101,9 +105,13 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   ([DEVX-003](tasks/DEVX-003-weekly-checks.md)).
 - Whether to normalize the himalayas "Current as of" date in the terms fingerprint
   (source-rights tooling). It is the precondition for a weekly `terms:check`.
-- **Before the first live extraction run** ([OPEN_GAPS](docs/OPEN_GAPS.md) B28): a
-  geography-only re-map gives a record a new version, and the paid extraction ledger
-  keys on the version, so every such change would pay again for unchanged text.
+- **B28-001 acceptance** (money): paid extraction is now keyed by its input, and
+  migration 0020 is applied locally. The independent review found it ready for
+  acceptance; one decision is open: whether 0020's guard should also have refused
+  old-format extraction operations (none exist anywhere).
+- **Before live AI:** a stuck extraction operation stops the pass and can pause a
+  healthy import (OPEN_GAPS B31), and the pass may never get past its first 25 rows
+  (B32).
 - **Himalayas text check** (B26): narrower than jobicy's; widening it changes that
   catalog, so it is a separate task.
 
@@ -114,10 +122,9 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 - A stored record takes a new mapping only when an import re-reads it: the jobicy feed
   is a 7-day window, and the himalayas pass resumes at its cursor, 25 pages a run. A
   later mapping change needs its own re-map (REMAP-001's script is guarded for the
-  shapes of 2026-10-06), and B28 should be settled first.
-- The 518 re-mapped rows' embeddings carry an old content hash; the next
-  `npm run embeddings:index -- --embedder=local` re-embeds them, with unchanged text
-  (B28).
+  shapes of 2026-10-06).
+- The embedding index has no tombstone filter: once retention tombstones a posting, the
+  next index run would embed its blank text (OPEN_GAPS B29).
 
 ## Next
 The current task is in `tasks/current.json`.

@@ -8,11 +8,11 @@ import { createPostgresPersistence } from "../../src/server/storage/snapshots.ts
 import { mapHimalayasFixture } from "../../src/server/import/himalayas-fixture.ts";
 import { himalayasCandidatePolicy } from "../../src/server/source-policies.ts";
 import {
-  EmbeddingStoreError, countJobEmbeddings, countProfileEmbeddings, embeddingWork,
+  EmbeddingStoreError, countJobEmbeddings, countProfileEmbeddings, embeddingTextHash, embeddingWork,
   indexSourceEmbeddings, loadJobEmbeddings, loadProfileEmbedding, saveProfileEmbedding, storeChunk,
 } from "../../src/server/embeddings/embedding-service.ts";
 import { denseSearchForProfile } from "../../src/server/embeddings/dense-search-service.ts";
-import { PROFILE_TEXT_VERSION, profileEmbeddingText } from "../../src/domain/embeddings.ts";
+import { PROFILE_TEXT_VERSION, jobEmbeddingText, profileEmbeddingText } from "../../src/domain/embeddings.ts";
 import type { ManualProfileInput } from "../../src/domain/profile.ts";
 import type { JobSnapshot } from "../../src/domain/source-contracts.ts";
 import { createFakeEmbedder, FAKE_MODEL_VERSION } from "../support/fake-embedder.ts";
@@ -116,15 +116,21 @@ test("embeddings: an approved source is indexed; an expired (or unlicensed) poli
   assert.equal(unknown.outcome, "unknown_source");
 });
 
-test("embeddings: a changed posting is re-embedded, an unchanged one is left alone", async () => {
+test("embeddings: a posting is re-embedded when its text changes, not when the rest of it does (B28)", async () => {
   await seedCatalog();
   const embedder = createFakeEmbedder();
   await indexSourceEmbeddings({ pool, sourceId: "himalayas", embedder, now: NOW });
 
-  // The trigger is the stored content hash, which is what the import pipeline
-  // updates when the text changes.
-  await pool.query("UPDATE job_snapshots SET content_hash = 'hash-changed' WHERE id = $1",
+  // A geography-only re-map gives the posting a new content hash; the embedded text
+  // (title and description) is the same, so the vector is still current.
+  await pool.query("UPDATE job_snapshots SET content_hash = 'hash-geography-only' WHERE id = $1",
     ["himalayas:b1-python"]);
+  assert.deepEqual(await embeddingWork(pool, "himalayas", FAKE_MODEL_VERSION), []);
+
+  // A text change is what the vector depends on.
+  await pool.query(
+    "UPDATE job_snapshots SET content_hash = 'hash-text-changed', snapshot = jsonb_set(snapshot, '{description_text}', to_jsonb($2::text)) WHERE id = $1",
+    ["himalayas:b1-python", "Senior python developer, remote, postgres, async services and Kafka."]);
   const work = await embeddingWork(pool, "himalayas", FAKE_MODEL_VERSION);
   assert.deepEqual(work.map(entry => entry.snapshotId), ["himalayas:b1-python"]);
 
@@ -133,6 +139,34 @@ test("embeddings: a changed posting is re-embedded, an unchanged one is left alo
   assert.equal(report.embedded, 1);
   assert.equal(report.current, 1);
   assert.equal((await embeddingWork(pool, "himalayas", FAKE_MODEL_VERSION)).length, 0);
+});
+
+test("embeddings: a limited run counts only postings that need a vector", async () => {
+  await seedCatalog();
+  const embedder = createFakeEmbedder();
+  await indexSourceEmbeddings({ pool, sourceId: "himalayas", embedder, now: NOW });
+  // b1-python comes first by id and is current; the limit must reach b1-welder.
+  await pool.query(
+    "UPDATE job_snapshots SET snapshot = jsonb_set(snapshot, '{description_text}', to_jsonb($2::text)) WHERE id = $1",
+    ["himalayas:b1-welder", "Welder for an offshore platform, on-site, night shifts."]);
+  const work = await embeddingWork(pool, "himalayas", FAKE_MODEL_VERSION, 1);
+  assert.deepEqual(work.map(entry => entry.snapshotId), ["himalayas:b1-welder"]);
+});
+
+test("embeddings: the database hashes a posting's text exactly as the indexer does (migration 0020)", async () => {
+  await seedCatalog();
+  const [template] = mapHimalayasFixture(NOW);
+  assert.ok(template);
+  const id = "himalayas:b1-unicode";
+  await insertSnapshot("himalayas", id, snapshotWith(template, id,
+    "Ingénieur·e données — Zürich/Kraków, 東京, “quotes” and a tab\there 🚀"));
+  // The expression migration 0020 uses to fill text_hash for the vectors that are current.
+  const row = await pool.query<{ hash: string; snapshot: JobSnapshot }>(
+    "SELECT encode(sha256(convert_to(concat(snapshot->>'title', E'\\n\\n', snapshot->>'description_text'), 'UTF8')), 'hex') AS hash, snapshot FROM job_snapshots WHERE id = $1",
+    [id]);
+  const stored = row.rows[0];
+  assert.ok(stored);
+  assert.equal(stored.hash, embeddingTextHash(jobEmbeddingText(stored.snapshot)));
 });
 
 test("embeddings: retention blanks the posting's text, and the vector dies with it", async () => {
@@ -266,7 +300,7 @@ test("embeddings: a posting the database cannot resolve is stepped over and name
   // working database this happens for real when a btree's ordering no longer
   // matches the server collation (12 of 700 ids on 2026-09-30); reproducing it
   // here needs only an id that does not exist.
-  const ghostWork = { snapshotId: "himalayas:no-such-posting", contentHash: "x", text: "python developer remote" };
+  const ghostWork = { snapshotId: "himalayas:no-such-posting", contentHash: "x", textHash: "x", text: "python developer remote" };
   const requests = [ghostWork, ...work].map(entry => ({ role: "document" as const, text: entry.text }));
   const vectors = await embedder.embed(requests, "matching");
 
