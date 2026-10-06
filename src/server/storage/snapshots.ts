@@ -80,15 +80,19 @@ export function createPostgresPersistence(pool: Pool, policy: SourcePolicy): Sna
       return { store: { records, lastFullPassAt: null }, excerpts };
     },
     async saveStore(store: SnapshotStore, excerpts: Record<string, string>): Promise<void> {
+      // `excerpts` holds the records this run fetched; every other stored record keeps its
+      // excerpt, as the in-memory persistence always did (docs/OPEN_GAPS.md B30). Writing
+      // "" for them blanked the card of every posting an import did not see.
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
         for (const stored of Object.values(store.records)) {
+          const id = stored.snapshot.id;
           await client.query(
-            "INSERT INTO job_snapshots (id, source_id, content_hash, first_seen_at, full_pass_misses, excerpt, snapshot, tombstoned_at) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8) ON CONFLICT (id) DO UPDATE SET content_hash = EXCLUDED.content_hash, full_pass_misses = EXCLUDED.full_pass_misses, excerpt = EXCLUDED.excerpt, snapshot = EXCLUDED.snapshot, tombstoned_at = EXCLUDED.tombstoned_at",
-            [stored.snapshot.id, sourceId, stored.contentHash, stored.firstSeenAt,
-              stored.fullPassMisses, excerpts[stored.snapshot.id] ?? "",
-              JSON.stringify(stored.snapshot), stored.tombstonedAt ?? null],
+            "INSERT INTO job_snapshots (id, source_id, content_hash, first_seen_at, full_pass_misses, excerpt, snapshot, tombstoned_at) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8) ON CONFLICT (id) DO UPDATE SET content_hash = EXCLUDED.content_hash, full_pass_misses = EXCLUDED.full_pass_misses, excerpt = CASE WHEN $9::boolean THEN EXCLUDED.excerpt ELSE job_snapshots.excerpt END, snapshot = EXCLUDED.snapshot, tombstoned_at = EXCLUDED.tombstoned_at",
+            [id, sourceId, stored.contentHash, stored.firstSeenAt,
+              stored.fullPassMisses, excerpts[id] ?? "",
+              JSON.stringify(stored.snapshot), stored.tombstonedAt ?? null, Object.hasOwn(excerpts, id)],
           );
         }
         await client.query("COMMIT");

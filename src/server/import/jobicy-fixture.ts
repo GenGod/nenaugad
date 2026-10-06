@@ -10,6 +10,7 @@ import type {
 } from "../../domain/source-contracts.ts";
 import { AdapterInputError, descriptionToText } from "./himalayas-fixture.ts";
 import { countryCodeOf, readTextGeography } from "./geography-text.ts";
+import { decodeHtmlEntities } from "./html-entities.ts";
 
 export type JobicyRawRecord = Readonly<{
   id: number;
@@ -305,8 +306,10 @@ export function mapJobicyRecord(raw: JobicyRawRecord, fetchedAt: string): JobSna
   };
 }
 
+// The card's excerpt. The feed sends it HTML-escaped, and the card shows characters
+// (docs/OPEN_GAPS.md B30); the mapping above reads the raw text and is not affected.
 export function jobicyExcerptOf(raw: JobicyRawRecord): string {
-  return typeof raw.jobExcerpt === "string" ? raw.jobExcerpt : "";
+  return typeof raw.jobExcerpt === "string" ? decodeHtmlEntities(raw.jobExcerpt) : "";
 }
 
 export function mapJobicyFixture(fetchedAt: string): readonly JobSnapshot[] {

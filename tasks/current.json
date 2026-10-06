@@ -1,15 +1,10 @@
 {
-  "task_id": "B28-001",
-  "file": "tasks/B28-001-input-keyed-derivatives.md",
+  "task_id": "B30-001",
+  "file": "tasks/B30-001-card-excerpts.md",
   "status": "implemented",
-  "repair_cycles_used": 1,
+  "repair_cycles_used": 0,
   "max_repair_cycles": 2,
-  "hypotheses": [
-    {
-      "text": "extraction-pass.test.ts fails whenever other active himalayas postings are left in the shared test DB (here the contract fixtures h-002/h-003): runExtractionPass reads every himalayas posting, so its 90-unit expectation holds only if seeding clears the source first; clearing himalayas rows in seedTwoSnapshots makes the file pass alone and in suite order",
-      "recorded_at": "2026-10-06T12:25:25.503Z"
-    }
-  ],
+  "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "OPEN_GAPS B28 closed: paid extraction keyed by (posting, prompt version, hash of title/company/description); embedding index compares a text hash; migration 0020 (fail-closed re-key; text_hash backfill, 700/700 current locally, nothing re-embedded). Repair cycle 1: extraction-pass test isolation. Mutation 9/9. Independent review: ready for owner acceptance; finding 1 is an owner decision; B31/B32 recorded; the B27 coverage-flag space restored (function threshold enforced again). check, test:coverage (82.62/86.06/91.56), build, e2e (99) exit 0."
+  "note": "OPEN_GAPS B30 closed: jobicy excerpts decoded once at import (html-entities.ts); PostgreSQL saveStore writes an excerpt only for the records a run fetched (imports had blanked every other card); himalayas maps every fetched record. Proven with the real persistence (failed on the old code). 200 stored jobicy excerpts decoded in place, no other column moved; backup to delete after acceptance. Mutation 9/9. check, test:coverage (82.67/86.33/91.60), build, e2e (99) exit 0."
 }

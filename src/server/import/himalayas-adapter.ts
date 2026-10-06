@@ -142,7 +142,9 @@ export async function runHimalayasImport(params: Readonly<{
       try {
         const snapshot = mapHimalayasRecord(raw, now);
         snapshots.push(snapshot);
-        if (typeof raw.excerpt === "string") excerpts[snapshot.id] = raw.excerpt;
+        // Every fetched record gets its excerpt, an empty one when the source gives none;
+        // a record this run did not fetch keeps its stored excerpt (B30).
+        excerpts[snapshot.id] = typeof raw.excerpt === "string" ? raw.excerpt : "";
       } catch (error) {
         if (error instanceof AdapterInputError) rejected += 1;
         else throw error;

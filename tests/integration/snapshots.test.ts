@@ -97,6 +97,57 @@ test("retention tombstones snapshots whose last_seen passed the policy window", 
   assert.equal(await persistence.tombstoneExpired("2026-09-24T12:00:00.000Z"), 0);
 });
 
+test("an import keeps the stored excerpt of every record it did not fetch (B30)", async () => {
+  await migrate(pool);
+  await pool.query("DELETE FROM job_snapshots WHERE source_id = 'jobicy'");
+  await pool.query("DELETE FROM import_state WHERE source_id = 'jobicy'");
+  const { jobicyCandidatePolicy } = await import("../../src/server/source-policies.ts");
+  const { runJobicyImport } = await import("../../src/server/import/jobicy-adapter.ts");
+  const { jobicyContractFixture } = await import("../../src/server/import/jobicy-fixture.ts");
+  const jobicyEnabled = { ...jobicyCandidatePolicy, enabled: true };
+  const persistence = createPostgresPersistence(pool, jobicyEnabled);
+  const [first, second, third] = jobicyContractFixture;
+  assert.ok(first && second && third);
+  const windowOf = (jobs: readonly (typeof first)[]) => async () => ({ status: "ok" as const, jobs: [...jobs] });
+  await runJobicyImport({
+    transport: windowOf([first, second, { ...third, jobExcerpt: "R&amp;D tools&hellip;" }]),
+    persistence, policy: jobicyEnabled, now: "2026-09-25T12:00:00.000Z",
+  });
+  // Six hours later the window has moved on: only the first posting is listed, now without an excerpt.
+  await runJobicyImport({
+    transport: windowOf([{ ...first, jobExcerpt: null }]),
+    persistence, policy: jobicyEnabled, now: "2026-09-25T18:00:00.000Z",
+  });
+  const rows = await pool.query<{ id: string; excerpt: string }>(
+    "SELECT id, excerpt FROM job_snapshots WHERE source_id = 'jobicy' ORDER BY id");
+  assert.deepEqual(rows.rows.map(row => [row.id, row.excerpt]), [
+    ["jobicy:900001", ""],
+    ["jobicy:900002", second.jobExcerpt],
+    ["jobicy:900003", "R&D tools…"],
+  ]);
+});
+
+test("a himalayas record fetched without an excerpt shows none; one not fetched keeps its own (B30)", async () => {
+  await migrate(pool);
+  await pool.query("DELETE FROM job_snapshots WHERE source_id = 'himalayas'");
+  await pool.query("DELETE FROM import_state WHERE source_id = 'himalayas'");
+  const persistence = createPostgresPersistence(pool, enabledPolicy);
+  await runHimalayasImport({ transport: fullPage, persistence, policy: enabledPolicy, now: "2026-09-24T12:00:00.000Z" });
+  const [h1, h2, h3] = himalayasContractFixture;
+  assert.ok(h1 && h2 && h3);
+  await runHimalayasImport({
+    transport: async () => ({ status: "ok" as const, jobs: [{ ...h1, excerpt: null }], nextCursor: null }),
+    persistence, policy: enabledPolicy, now: "2026-09-25T12:00:00.000Z",
+  });
+  const rows = await pool.query<{ id: string; excerpt: string }>(
+    "SELECT id, excerpt FROM job_snapshots WHERE source_id = 'himalayas' ORDER BY id");
+  assert.deepEqual(rows.rows.map(row => [row.id, row.excerpt]), [
+    ["himalayas:jobs-fixture-h-001", ""],
+    ["himalayas:jobs-fixture-h-002", h2.excerpt],
+    ["himalayas:jobs-fixture-h-003", h3.excerpt],
+  ]);
+});
+
 test("jobicy rows share the snapshot tables after migration 0004", async () => {
   await migrate(pool);
   await pool.query("DELETE FROM job_snapshots WHERE source_id = 'jobicy'");

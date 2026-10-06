@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { isJobSnapshot, type JobSnapshot } from "../../src/domain/source-contracts.ts";
 import {
-  jobicyContractFixture, mapJobicyFixture, mapJobicyRecord, type JobicyRawRecord,
+  jobicyContractFixture, jobicyExcerptOf, mapJobicyFixture, mapJobicyRecord, type JobicyRawRecord,
 } from "../../src/server/import/jobicy-fixture.ts";
 import {
   mapHimalayasFixture, AdapterInputError as HimalayaAdapterInputError,
@@ -257,6 +257,13 @@ test("geography: a label without a country maps exactly as before", () => {
       evidence_ids: ["ev:jobicy:900001:geo"],
     });
   }
+});
+
+test("excerpt: the feed's HTML entities are decoded for the card (B30)", () => {
+  const record = jobicyContractFixture[0]!;
+  assert.equal(jobicyExcerptOf({ ...record, jobExcerpt: "R&amp;D tools for &gt;40% of teams&hellip;" }),
+    "R&D tools for >40% of teams…");
+  assert.equal(jobicyExcerptOf({ ...record, jobExcerpt: null }), "");
 });
 
 test("mapper: employment types mapped, unknown when absent; invalid input rejected", () => {

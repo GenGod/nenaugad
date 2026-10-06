@@ -7,7 +7,7 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-10-06 by [B28-001](tasks/B28-001-input-keyed-derivatives.md).
+**Updated:** 2026-10-06 by [B30-001](tasks/B30-001-card-excerpts.md).
 
 ## Switches and boundaries
 - **Live AI is off** (`LIVE_AI_ENABLED=false`, a real switch since AI-007): no provider
@@ -37,7 +37,9 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   Himalayas location restrictions become the allowed countries, by name or ISO code,
   and a non-empty list never becomes worldwide (B27-001). The local catalog was
   re-mapped to both once (REMAP-001, 2026-10-06: 518 rows, with a backup without posting
-  text and a rollback proven on the real rows).
+  text and a rollback proven on the real rows). Card excerpts are decoded once at import
+  and an import no longer blanks the excerpts of records it did not fetch (B30-001; the
+  200 stored jobicy excerpts were decoded in place).
 - **Auth and profiles:** manual private profile, explainable matching, saved jobs
   (S2-001, owner-accepted); hide with a reason and applied marks (S2-002).
 - **CV intake:** offline text/txt/md/docx intake and private storage (S3-001,
@@ -72,11 +74,12 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
-- 2026-10-06 (B28-001): `npm run check` (unit 299/299), `npm run test:coverage` (unit
-  and DB 371/371; 82.62% lines, 86.06% branches, 91.56% functions), `npm run build` and
-  `npm run test:e2e` (99 passed), all exit 0. The B27 commit had lost a space between two
-  coverage flags, which silently disabled the 91% function threshold; fixed, and the
-  ratchet 82/86/91 is enforced again. Not pushed.
+- 2026-10-06 (B30-001): `npm run check` (unit 302/302), `npm run test:coverage` (unit
+  and DB 376/376; 82.67% lines, 86.33% branches, 91.60% functions), `npm run build` and
+  `npm run test:e2e` (99 passed), all exit 0. Not pushed.
+- 2026-10-06 (B28-001): the same checks, all exit 0 (unit and DB 371/371). The B27 commit
+  had lost a space between two coverage flags, which silently disabled the 91% function
+  threshold; fixed, and the ratchet 82/86/91 is enforced again.
 - 2026-10-05 (DEVX-004): `npm run test:coverage` — unit and DB tests 344/344. Coverage of
   the `src/` .ts files, counting files no test loads: 82.14% lines, 85.19% branches,
   91.10% functions. Strict Biome: 0
@@ -109,6 +112,8 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   migration 0020 is applied locally. The independent review found it ready for
   acceptance; one decision is open: whether 0020's guard should also have refused
   old-format extraction operations (none exist anywhere).
+- **B30-001 acceptance:** then delete `backups/excerpts-2026-10-06/backup.json`. It holds
+  the 200 old excerpts, which is posting text that must not outlive retention.
 - **Before live AI:** a stuck extraction operation stops the pass and can pause a
   healthy import (OPEN_GAPS B31), and the pass may never get past its first 25 rows
   (B32).
