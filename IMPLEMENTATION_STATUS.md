@@ -7,7 +7,7 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-10-06 by [B24-001](tasks/B24-001-jobicy-text-geography.md).
+**Updated:** 2026-10-06 by [B25-001](tasks/B25-001-jobicy-country-labels.md).
 
 ## Switches and boundaries
 - **Live AI is off** (`LIVE_AI_ENABLED=false`, a real switch since AI-007): no provider
@@ -32,6 +32,8 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   (B5-001); expired records become tombstones, and the journal keeps 12 months (RET-001).
   A worldwide jobicy label is checked against the posting text: a stated residence
   rule narrows it or leaves the countries unknown, and an exclusion is kept (B24-001).
+  Other jobicy labels are read part by part: countries only make the complete list, and
+  a label that also names a region keeps its countries as an incomplete list (B25-001).
 - **Auth and profiles:** manual private profile, explainable matching, saved jobs
   (S2-001, owner-accepted); hide with a reason and applied marks (S2-002).
 - **CV intake:** offline text/txt/md/docx intake and private storage (S3-001,
@@ -43,7 +45,8 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   golden set v4 (39 vacancies, A1 and DGAP-001). Skills dictionary v2 with Russian
   aliases (A3) plus 13,939 ESCO v1.2.1 skills with mandatory attribution (ESCO-001).
   Freshness, seen-set, negative preference, digest, journal, ghost demotion and shadow
-  guardrails (A5–A10).
+  guardrails (A5–A10). Matching rules v4: GEO-01 never fails a candidate on an incomplete
+  country list (B25-001).
 - **Retrieval:** pinned local embedding model (`npm run models:fetch`), pgvector, dense
   leg, BM25 and RRF are implemented and measured but not switched on: BM25 alone beats
   fusion, and the ranker beats every leg (B1-001, B1-002, B2-001). The rerank input is
@@ -62,8 +65,8 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
-- 2026-10-06 (B24-001): `npm run check` (unit 289/289), `npm run test:coverage` (unit
-  and DB 358/358; 82.51% lines, 85.64% branches, 91.39% functions), `npm run build` and
+- 2026-10-06 (B25-001): `npm run check` (unit 294/294), `npm run test:coverage` (unit
+  and DB 363/363; 82.56% lines, 85.87% branches, 91.49% functions), `npm run build` and
   `npm run test:e2e` (99 passed), all exit 0. Not pushed, so no CI run yet.
 - 2026-10-05 (DEVX-004): `npm run test:coverage` — unit and DB tests 344/344. Coverage of
   the `src/` .ts files, counting files no test loads: 82.14% lines, 85.19% branches,
@@ -92,16 +95,18 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   ([DEVX-003](tasks/DEVX-003-weekly-checks.md)).
 - Whether to normalize the himalayas "Current as of" date in the terms fingerprint
   (source-rights tooling). It is the precondition for a weekly `terms:check`.
-- **Jobicy country labels** ([OPEN_GAPS](docs/OPEN_GAPS.md) B25): 52 of 202 local posts
-  name countries in a label the map does not read ("Canada, USA", "Portugal"), so their
-  geography is unknown. A label that mixes regions and countries needs a decision first.
-  The himalayas text check is narrower than jobicy's (B26); widening it changes that
-  catalog, so it is a separate task.
+- **Himalayas geography** ([OPEN_GAPS](docs/OPEN_GAPS.md) B27, B26): GEO-01 is unknown
+  for 466 of 498 local himalayas posts, because the adapter keeps their location
+  restrictions as names rather than countries; the same gap merges one employer's
+  per-country postings into one card (7 groups, 25 posts). Its text check is also
+  narrower than jobicy's (B26). Both change that catalog, so they are separate tasks.
 
 ## Known limits
 - The monthly quota window is stored but has no calendar reset (OPEN_GAPS A5).
 - Constants of the new ranking layers wait for accumulated data; measurements come
   from one machine (DGAP-001).
+- A stored jobicy record takes a new mapping only when the 7-day window lists it again:
+  the 52 local records B25-001 re-reads keep their old, unknown geography until then.
 
 ## Next
 The current task is in `tasks/current.json`.

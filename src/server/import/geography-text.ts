@@ -1,6 +1,7 @@
 // Hiring geography a posting states in its own text (spec 11.1: the employer's
 // exclusions take priority over a broad permission). The jobicy adapter reads it to test
-// a worldwide label (docs/OPEN_GAPS.md B24).
+// a worldwide label (docs/OPEN_GAPS.md B24), and reads its country labels through the
+// same dictionary (`countryCodeOf`, B25).
 //
 // Only phrasing about where the hire may live counts, anchored on a cue such as "must
 // reside in", "open to candidates based in" or "we can only hire in". An office line
@@ -51,6 +52,18 @@ const COUNTRY_CODES: Readonly<Record<string, string>> = {
   Pakistan: "PK", Bangladesh: "BD", "Sri Lanka": "LK", Nepal: "NP", Kazakhstan: "KZ",
   Uzbekistan: "UZ",
 };
+
+const CODE_BY_NAME: ReadonlyMap<string, string> = new Map(
+  Object.entries(COUNTRY_CODES).map(([name, code]) => [name.toUpperCase(), code]));
+
+/**
+ * The ISO code of a whole country name in any case ("Portugal", "USA", "canada"); null
+ * for a region, a state or a name outside the dictionary. For structured labels, where
+ * case carries no meaning; running text goes through `readTextGeography`.
+ */
+export function countryCodeOf(name: string): string | null {
+  return CODE_BY_NAME.get(name.trim().toUpperCase()) ?? null;
+}
 
 // Longest first, so "United States of America" wins over "United States" and "USA" over "US".
 const COUNTRY_NAME = Object.keys(COUNTRY_CODES)

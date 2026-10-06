@@ -10,6 +10,7 @@ import { Icon } from "../../components/icon.tsx";
 import { tint } from "../../components/job-card.tsx";
 import { getAllCachedScores } from "../../server/relevance-service.ts";
 import { firstSeenLabel } from "../../domain/freshness.ts";
+import { hiringCountriesText } from "../../domain/snapshot-projection.ts";
 import { availabilityNoteFor } from "../../domain/survival.ts";
 import { SEEN_TTL_DAYS } from "../../domain/seen-set.ts";
 import { ImpressionReporter } from "../../components/impression-reporter.tsx";
@@ -33,9 +34,7 @@ const EMPLOYMENT_LABELS: Readonly<Record<string, string>> = {
 function geographyFact(job: MatchedJob): string {
   return job.card.geography.scope === "worldwide"
     ? "По всему миру (по контракту источника)"
-    : job.card.geography.countries.length > 0
-      ? job.card.geography.countries.join(", ")
-      : "География не указана";
+    : hiringCountriesText(job.card.geography) ?? "География не указана";
 }
 
 function RulesList({ rules }: { rules: readonly RuleResult[] }) {

@@ -75,11 +75,14 @@ export function normalizeTitle(title: string): string {
 // Geography is part of the key: the same title at the same company but with a
 // different hiring scope is a different opportunity and must not be merged
 // (silently widening or narrowing geography would break the eligibility rule).
+// An incomplete country list (B25: the label also names a region) is a wider scope than
+// the same countries listed in full, so it gets its own key; every other key is as before.
 export function geographyKey(snapshot: JobSnapshot): string {
   const geography = snapshot.hiring_options[0]?.geography;
   if (!geography) return "unspecified";
   const countries = [...geography.allowed_countries].sort().join(",");
-  return `${geography.scope}:${countries}`;
+  const partial = countries.length > 0 && !geography.exhaustive ? ":partial" : "";
+  return `${geography.scope}:${countries}${partial}`;
 }
 
 export function dedupKey(snapshot: JobSnapshot): string {

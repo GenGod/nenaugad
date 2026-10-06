@@ -1,13 +1,13 @@
 import type { SnapshotCardView } from "../server/snapshot-catalog-service.ts";
 import { firstSeenLabel } from "../domain/freshness.ts";
+import { hiringCountriesText } from "../domain/snapshot-projection.ts";
 import { availabilityNoteFor } from "../domain/survival.ts";
 import { Icon } from "./icon.tsx";
 
 function geographyLabel(card: SnapshotCardView): string {
   if (card.geography.scope === "worldwide") return "По всему миру (по контракту источника)";
-  if (card.geography.scope === "restricted" && card.geography.countries.length > 0) {
-    return `Страны найма: ${card.geography.countries.join(", ")}`;
-  }
+  const countries = hiringCountriesText(card.geography);
+  if (card.geography.scope === "restricted" && countries !== null) return `Страны найма: ${countries}`;
   return "Страны найма не указаны";
 }
 

@@ -6,7 +6,7 @@ import type { JobSnapshot, HiringOption } from "./source-contracts.ts";
 import type { ManualProfileInput } from "./profile.ts";
 import { extractSkills, skillOverlap, skillCategory } from "./skills.ts";
 
-export const RULESET_VERSION = 3;
+export const RULESET_VERSION = 4;
 
 export type RuleOutcome = "pass" | "fail" | "unknown" | "not_applicable";
 
@@ -70,11 +70,19 @@ function ruleGeography(
       explanation: "Источник заявляет найм по всему миру (по контракту источника)." };
   }
   if (geo.scope === "restricted" && geo.allowed_countries.length > 0) {
-    return geo.allowed_countries.includes(profile.residenceCountry)
-      ? { ...base, outcome: "pass", reasonCodes: [],
-          explanation: `Страна ${profile.residenceCountry} входит в опубликованный список.` }
-      : { ...base, outcome: "fail", reasonCodes: ["LOCATION_MISMATCH"],
-          explanation: `Найм только из: ${geo.allowed_countries.join(", ")}; профиль — ${profile.residenceCountry}.` };
+    if (geo.allowed_countries.includes(profile.residenceCountry)) {
+      return { ...base, outcome: "pass", reasonCodes: [],
+        explanation: `Страна ${profile.residenceCountry} входит в опубликованный список.` };
+    }
+    // An incomplete list (spec 11.1: the label also names a region such as EMEA) cannot
+    // rule out a country it does not name (docs/OPEN_GAPS.md B25). This is a
+    // rule-behaviour change, hence RULESET_VERSION 4.
+    if (!geo.exhaustive) {
+      return { ...base, outcome: "unknown", reasonCodes: ["LOCATION_UNKNOWN"],
+        explanation: `Список стран неполный: названы ${geo.allowed_countries.join(", ")}, но не только они — страну ${profile.residenceCountry} нужно уточнить у работодателя.` };
+    }
+    return { ...base, outcome: "fail", reasonCodes: ["LOCATION_MISMATCH"],
+      explanation: `Найм только из: ${geo.allowed_countries.join(", ")}; профиль — ${profile.residenceCountry}.` };
   }
   return { ...base, outcome: "unknown", reasonCodes: ["LOCATION_UNKNOWN"],
     explanation: "География найма не опубликована в машиночитаемом виде." };

@@ -1,10 +1,10 @@
 {
-  "task_id": "B24-001",
-  "file": "tasks/B24-001-jobicy-text-geography.md",
+  "task_id": "B25-001",
+  "file": "tasks/B25-001-jobicy-country-labels.md",
   "status": "implemented",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "OPEN_GAPS B24 closed: a worldwide jobicy label is tested against the posting text (src/server/import/geography-text.ts); a residence rule narrows it or leaves the countries unknown, an exclusion is kept, geography-source-vs-text recorded. Country and region labels unchanged. 0 of 202 local jobicy records change; detector finds no contradiction in the 36 worldwide local posts. check, test:coverage (82.51/85.64/91.39), build and e2e (99) exit 0. Found and recorded: B25, B26."
+  "note": "OPEN_GAPS B25 closed: jobicy labels are read part by part through the shared country dictionary (countryCodeOf). Countries only make the complete list; by owner decision a label that also names a region keeps its countries as an incomplete list (exhaustive false), and GEO-01 (ruleset 4) never fails a candidate on it. Card says the list is incomplete; dedup keeps it apart. Exactly 52 of 202 local jobicy records change (43 complete, 9 incomplete); 0 GEO-01 changes on stored data. check, test:coverage (82.56/85.87/91.49), build and e2e (99) exit 0. Found and recorded: B27 (himalayas location restrictions never reach GEO-01; 7 wrong dedup groups)."
 }

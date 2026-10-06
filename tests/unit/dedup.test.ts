@@ -69,6 +69,18 @@ test("grouping keeps different geography apart and merges the same posting", () 
   assert.deepEqual(new Set([merged.primary.snapshot.id, ...merged.duplicates.map(d => d.snapshot.id)]), new Set(["job-a", "job-b"]));
 });
 
+test("grouping never merges an incomplete country list with the complete one (B25)", () => {
+  const listing = (id: string, exhaustive: boolean) => jobWith({
+    id, geography: { scope: "restricted", allowed_countries: ["US", "CA"], excluded_countries: [], allowed_subdivisions: [], region_text: null, exhaustive, evidence_ids: [] },
+  });
+  const groups = groupDuplicates(
+    [listing("job-full", true), listing("job-partial", false), listing("job-full-copy", true)].map(snapshot => ({ snapshot })),
+    record => record.snapshot,
+  );
+  assert.deepEqual(groups.map(group => group.members.map(member => member.snapshot.id)),
+    [["job-full", "job-full-copy"], ["job-partial"]]);
+});
+
 test("primary choice: freshest wins, then completeness, then id order", () => {
   const older = { snapshot: jobWith({ id: "job-old", dates: { source_published_at: null, fetched_at: NOW, last_seen_at: "2026-09-28T00:00:00.000Z", expires_at: null } }) };
   const newer = { snapshot: jobWith({ id: "job-new", dates: { source_published_at: null, fetched_at: NOW, last_seen_at: "2026-09-29T00:00:00.000Z", expires_at: null } }) };

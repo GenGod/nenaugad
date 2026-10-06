@@ -9,7 +9,7 @@ import type {
   Geography, JobSnapshot, Workplace, Evidence,
 } from "../../domain/source-contracts.ts";
 import { AdapterInputError, descriptionToText } from "./himalayas-fixture.ts";
-import { readTextGeography } from "./geography-text.ts";
+import { countryCodeOf, readTextGeography } from "./geography-text.ts";
 
 export type JobicyRawRecord = Readonly<{
   id: number;
@@ -79,14 +79,6 @@ export const jobicyContractFixture: readonly JobicyRawRecord[] = [
   },
 ];
 
-// jobGeo labels seen in the live feed. Countries map to ISO codes; regions
-// stay region_text without an invented country list (spec 11.1: "Europe",
-// "EU", "EMEA" are not interchangeable with a country set).
-const GEO_COUNTRY_ISO: Readonly<Record<string, string>> = {
-  USA: "US", "UNITED STATES": "US", UK: "GB", "UNITED KINGDOM": "GB",
-  CANADA: "CA", AUSTRALIA: "AU", GERMANY: "DE", FRANCE: "FR",
-  NETHERLANDS: "NL", POLAND: "PL", SPAIN: "ES", JAPAN: "JP",
-};
 const GEO_WORLDWIDE_LABELS: ReadonlySet<string> = new Set(["ANYWHERE", "ANY", "WORLDWIDE", "GLOBAL"]);
 const EMPLOYMENT_TYPE_MAP: Readonly<Record<string, string>> = {
   "full-time": "employment_full_time",
@@ -148,37 +140,42 @@ function worldwideUnlessTextSays(
   return { geography, conflict: contradicted ? "geography-source-vs-text" : null, evidence };
 }
 
+// A jobGeo label names countries, regions or both, joined by commas ("Canada,  USA",
+// "EMEA,  LATAM,  Canada,  USA"). Countries come from the shared dictionary; a region or
+// an unknown name never becomes a country set (spec 11.1: "Europe", "EU" and "EMEA" are
+// not interchangeable with one). A label of countries only is the complete list. A label
+// that also names something else keeps its countries as an incomplete list, which GEO-01
+// never uses to fail a candidate (docs/OPEN_GAPS.md B25).
+function labelGeography(label: string, evidenceId: string): Geography {
+  const codes = label.split(",").filter(part => part.trim().length > 0).map(part => countryCodeOf(part));
+  const countries = [...new Set(codes.filter(code => code !== null))];
+  return {
+    scope: "restricted", allowed_countries: countries, excluded_countries: [],
+    allowed_subdivisions: [], region_text: label,
+    exhaustive: countries.length > 0 && !codes.includes(null), evidence_ids: [evidenceId],
+  };
+}
+
 // Country and region labels are already narrower than worldwide and are taken as they
 // are; only a worldwide label is tested against the text.
 function geographyFor(raw: JobicyRawRecord, description: string, evidenceId: string, recordId: string): {
   geography: Geography; conflict: string | null; evidence: readonly Evidence[];
 } {
   const label = (raw.jobGeo ?? "").trim();
-  const normalized = label.toUpperCase();
   const labelEvidence: Evidence = {
     id: evidenceId, origin_type: "job_source", origin_id: recordId,
     origin_version: 1, field_path: "jobGeo",
     quote: label.length > 0 ? label : null, method: "source_field", confidence: 1,
   };
-  if (GEO_WORLDWIDE_LABELS.has(normalized)) {
+  if (GEO_WORLDWIDE_LABELS.has(label.toUpperCase())) {
     return worldwideUnlessTextSays(raw, description, labelEvidence);
   }
-  let geography: Geography;
-  if (GEO_COUNTRY_ISO[normalized] !== undefined) {
-    geography = {
-      scope: "restricted", allowed_countries: [GEO_COUNTRY_ISO[normalized]!],
-      excluded_countries: [], allowed_subdivisions: [], region_text: label,
-      exhaustive: true, evidence_ids: [evidenceId],
-    };
-  } else {
-    // Unknown label or a region like Europe/APAC: never invent a country set.
-    geography = {
-      scope: label.length === 0 ? "unspecified" : "restricted",
-      allowed_countries: [], excluded_countries: [], allowed_subdivisions: [],
-      region_text: label.length === 0 ? null : label, exhaustive: false,
-      evidence_ids: [evidenceId],
-    };
-  }
+  const geography: Geography = label.length === 0
+    ? {
+        scope: "unspecified", allowed_countries: [], excluded_countries: [],
+        allowed_subdivisions: [], region_text: null, exhaustive: false, evidence_ids: [evidenceId],
+      }
+    : labelGeography(label, evidenceId);
   return { geography, conflict: null, evidence: [labelEvidence] };
 }
 

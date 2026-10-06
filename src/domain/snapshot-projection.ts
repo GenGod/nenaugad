@@ -93,7 +93,12 @@ export type CatalogCardProjection = Readonly<{
   lastSeenAt: string;
   firstSeenAt: string;
   salaryOriginalText: string | null;
-  geography: Readonly<{ scope: "worldwide" | "restricted" | "unspecified"; countries: readonly string[] }>;
+  geography: Readonly<{
+    scope: "worldwide" | "restricted" | "unspecified";
+    countries: readonly string[];
+    /** False when the source named more than these countries (a region too, B25). */
+    exhaustive: boolean;
+  }>;
   visibility: SnapshotVisibility;
 }>;
 
@@ -126,9 +131,19 @@ export function projectCard(
     geography: {
       scope: geography?.scope ?? "unspecified",
       countries: geography?.allowed_countries ?? [],
+      exhaustive: geography?.exhaustive ?? false,
     },
     visibility: classifySnapshot(snapshot),
   };
+}
+
+// The hiring countries a card names, or null when it names none. A list the source left
+// incomplete (its label also names a region, B25) says so instead of reading as the
+// whole list.
+export function hiringCountriesText(geography: CatalogCardProjection["geography"]): string | null {
+  if (geography.countries.length === 0) return null;
+  const countries = geography.countries.join(", ");
+  return geography.exhaustive ? countries : `${countries} (список неполный)`;
 }
 
 // A record paired with the policy that governs it — the shape both read paths

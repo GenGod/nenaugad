@@ -11,7 +11,7 @@ import { runJobicyImport } from "../../src/server/import/jobicy-adapter.ts";
 import { createMemoryPersistence } from "../../src/server/import/himalayas-adapter.ts";
 import { jobicyCandidatePolicy, permissionFor } from "../../src/server/source-policies.ts";
 import { fetchJobicyWindow } from "../../src/server/import/fetcher.ts";
-import { classifySnapshot, projectCard } from "../../src/domain/snapshot-projection.ts";
+import { classifySnapshot, hiringCountriesText, projectCard } from "../../src/domain/snapshot-projection.ts";
 import { evaluateJob } from "../../src/domain/matching.ts";
 import { parseManualProfileInput } from "../../src/domain/profile.ts";
 
@@ -40,6 +40,25 @@ function geoRule(snapshot: JobSnapshot, residenceCountry: string) {
 
 function geoEvidence(snapshot: JobSnapshot) {
   return snapshot.evidence.filter(item => item.id.startsWith(`ev:${snapshot.id}:geo`));
+}
+
+// A jobGeo label as the live feed writes it: parts joined by a comma and two spaces.
+function labelled(jobGeo: string | null): JobSnapshot {
+  return mapJobicyRecord({ ...jobicyContractFixture[0]!, jobGeo }, NOW);
+}
+
+function labelGeography(jobGeo: string, countries: readonly string[], exhaustive: boolean) {
+  return {
+    scope: "restricted", allowed_countries: countries, excluded_countries: [],
+    allowed_subdivisions: [], region_text: jobGeo, exhaustive,
+    evidence_ids: ["ev:jobicy:900001:geo"],
+  };
+}
+
+function cardOf(snapshot: JobSnapshot) {
+  return projectCard({
+    sourceId: "jobicy", snapshot, contentHash: "", firstSeenAt: NOW, fullPassMisses: 0,
+  }, enabledPolicy);
 }
 
 const LABEL_EVIDENCE = {
@@ -117,10 +136,7 @@ test("geography: a residence rule in the text overrides the 'Anywhere' label (B2
   }]);
   // Geography is not the catalog gate: the post stays, but no longer as worldwide.
   assert.equal(classifySnapshot(snapshot), "main_catalog");
-  const card = projectCard({
-    sourceId: "jobicy", snapshot, contentHash: "", firstSeenAt: NOW, fullPassMisses: 0,
-  }, enabledPolicy);
-  assert.deepEqual(card.geography, { scope: "restricted", countries: ["US"] });
+  assert.deepEqual(cardOf(snapshot).geography, { scope: "restricted", countries: ["US"], exhaustive: true });
   assert.deepEqual(geoRule(snapshot, "DE"), { status: "ineligible", outcome: "fail" });
   assert.equal(geoRule(snapshot, "US").outcome, "pass");
 });
@@ -178,6 +194,69 @@ test("geography: country and region labels are not cross-checked against the tex
   }, NOW);
   assert.deepEqual(snapshot.hiring_options[0]!.geography.allowed_countries, ["US"]);
   assert.deepEqual(snapshot.conflicts, []);
+});
+
+test("geography: a label of countries only is the complete list (B25)", () => {
+  const table: readonly (readonly [string, readonly string[]])[] = [
+    ["Portugal", ["PT"]],
+    ["Hong Kong", ["HK"]],
+    ["Türkiye", ["TR"]],
+    ["canada", ["CA"]],
+    ["Canada,  USA", ["CA", "US"]],
+    ["Australia,  Canada,  Singapore,  UK,  USA", ["AU", "CA", "SG", "GB", "US"]],
+    ["USA,  United States", ["US"]],
+    ["USA,", ["US"]],
+  ];
+  for (const [jobGeo, countries] of table) {
+    const snapshot = labelled(jobGeo);
+    assert.equal(isJobSnapshot(snapshot), true, jobGeo);
+    assert.deepEqual(snapshot.hiring_options[0]!.geography, labelGeography(jobGeo, countries, true), jobGeo);
+    assert.deepEqual(snapshot.conflicts, [], jobGeo);
+  }
+  const listed = labelled("Canada,  USA");
+  assert.equal(geoRule(listed, "CA").outcome, "pass");
+  assert.equal(geoRule(listed, "US").outcome, "pass");
+  assert.deepEqual(geoRule(listed, "DE"), { status: "ineligible", outcome: "fail" });
+  assert.equal(hiringCountriesText(cardOf(listed).geography), "CA, US");
+});
+
+test("geography: a label that also names a region keeps its countries as an incomplete list (B25)", () => {
+  const table: readonly (readonly [string, readonly string[]])[] = [
+    ["EMEA,  LATAM,  Canada,  USA", ["CA", "US"]],
+    ["Europe,  Türkiye", ["TR"]],
+    // Georgia is a country and a US state (spec 11.1): it stays unknown, as in B24.
+    ["Georgia,  USA", ["US"]],
+  ];
+  for (const [jobGeo, countries] of table) {
+    const snapshot = labelled(jobGeo);
+    assert.equal(isJobSnapshot(snapshot), true, jobGeo);
+    assert.deepEqual(snapshot.hiring_options[0]!.geography, labelGeography(jobGeo, countries, false), jobGeo);
+    assert.deepEqual(snapshot.conflicts, [], jobGeo);
+  }
+  // A named country passes; a candidate in the region, or anywhere else, goes to review.
+  const mixed = labelled("EMEA,  LATAM,  Canada,  USA");
+  assert.equal(geoRule(mixed, "US").outcome, "pass");
+  assert.deepEqual(geoRule(mixed, "DE"), { status: "needs_review", outcome: "unknown" });
+  assert.deepEqual(geoRule(mixed, "JP"), { status: "needs_review", outcome: "unknown" });
+  // The card carries the completeness, so it cannot present CA, US as the whole list.
+  assert.deepEqual(cardOf(mixed).geography, { scope: "restricted", countries: ["CA", "US"], exhaustive: false });
+  assert.equal(hiringCountriesText(cardOf(mixed).geography), "CA, US (список неполный)");
+});
+
+test("geography: a label without a country maps exactly as before", () => {
+  for (const jobGeo of ["EMEA", "APAC", "LATAM", "Georgia", "EMEA,  LATAM", ","]) {
+    const snapshot = labelled(jobGeo);
+    assert.deepEqual(snapshot.hiring_options[0]!.geography, labelGeography(jobGeo, [], false), jobGeo);
+    assert.deepEqual(geoRule(snapshot, "DE"), { status: "needs_review", outcome: "unknown" }, jobGeo);
+    assert.equal(hiringCountriesText(cardOf(snapshot).geography), null, jobGeo);
+  }
+  for (const jobGeo of ["", "   ", null]) {
+    assert.deepEqual(labelled(jobGeo).hiring_options[0]!.geography, {
+      scope: "unspecified", allowed_countries: [], excluded_countries: [],
+      allowed_subdivisions: [], region_text: null, exhaustive: false,
+      evidence_ids: ["ev:jobicy:900001:geo"],
+    });
+  }
 });
 
 test("mapper: employment types mapped, unknown when absent; invalid input rejected", () => {

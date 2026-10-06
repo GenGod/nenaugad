@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { mapHimalayasFixture } from "../../src/server/import/himalayas-fixture.ts";
-import type { JobSnapshot } from "../../src/domain/source-contracts.ts";
+import type { Geography, JobSnapshot } from "../../src/domain/source-contracts.ts";
 import { parseManualProfileInput, profileFromDocuments, buildProfileDocuments } from "../../src/domain/profile.ts";
 import { evaluateJob, RULESET_VERSION } from "../../src/domain/matching.ts";
 
@@ -65,6 +65,23 @@ test("rule GEO-01: country matching follows the published sets, unknown stays un
 
   const noCountry = profileWith({ residenceCountry: null, timezone: null });
   assert.equal(ruleOf(evaluateJob(worldwide, noCountry), "GEO-01")?.outcome, "unknown");
+});
+
+test("rule GEO-01: an incomplete country list passes the countries it names and fails no one (B25)", () => {
+  const listing = (geography: Partial<Geography>) => snapshotMutated(snapshot => ({
+    ...snapshot,
+    hiring_options: [{
+      ...snapshot.hiring_options[0]!,
+      geography: { ...snapshot.hiring_options[0]!.geography,
+        scope: "restricted", allowed_countries: ["US", "CA"], exhaustive: false, ...geography },
+    }],
+  }));
+  const elsewhere = ruleOf(evaluateJob(listing({}), profileWith({})), "GEO-01");
+  assert.equal(elsewhere?.outcome, "unknown");
+  assert.deepEqual(elsewhere?.reasonCodes, ["LOCATION_UNKNOWN"]);
+  assert.equal(ruleOf(evaluateJob(listing({}), profileWith({ residenceCountry: "US" })), "GEO-01")?.outcome, "pass");
+  // The employer's exclusion still beats the list (spec 11.1).
+  assert.equal(ruleOf(evaluateJob(listing({ excluded_countries: ["DE"] }), profileWith({})), "GEO-01")?.outcome, "fail");
 });
 
 test("rule CONTRACT-01: unknown form stays unknown, mismatch fails", () => {
