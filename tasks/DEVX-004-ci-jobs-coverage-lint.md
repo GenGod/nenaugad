@@ -87,6 +87,14 @@ got an independent fresh-context review.
 - `npm run ci:status` now names each job that did not succeed. For a job that never
   ran a step, it prints the failure annotation; that is how the runner problem above
   was read. Cancelled and timed-out runs exit 1, like failures.
+- Second push (`a0f96cf`): Code quality and **Tests** passed. Tests ran unit and DB
+  tests 344/344 with Linux coverage of 82.14 / 85.19 / 91.10, identical to Windows, so
+  the ratchet holds; e2e passed 99 (2.0 min). Build and Workflow lint again never got a
+  runner. githubstatus.com reported "Actions: major outage" (an Actions incident under
+  investigation, 2026-10-05 20:47 UTC).
+- Across both runs, every CI job has passed on GitHub at least once: Build on
+  `a53209d`, Tests on `a0f96cf`, Code quality on both. Workflow lint has not run against
+  these workflow files; actionlint 1.7.12 passes on them locally.
 
 ## Rollback
 
@@ -94,7 +102,9 @@ got an independent fresh-context review.
 
 ## What remains
 
-- After the first run on GitHub, confirm that the Linux coverage numbers match.
+- After GitHub's Actions incident is resolved, re-run the two jobs that got no runner:
+  `gh run rerun 37371240442 --failed` (Build) and `gh run rerun 37371240424 --failed`
+  (Workflow lint). Then `npm run ci:status`.
 - Owner: B24, the jobicy geography gap. It needs its own task with tests, because it
   changes what the catalog shows.
 - Dependabot PR #1 edits `ci.yml`; Dependabot rebases it on the new layout.

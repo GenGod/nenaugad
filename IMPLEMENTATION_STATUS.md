@@ -67,7 +67,10 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   fresh pgvector database: lint, typecheck, drift, build and e2e (99 passed) all green.
 - CI on GitHub: the first run ever passed on 2026-10-05 (`d679a9d`, 9 min 17 s, most
   of it a slow Ubuntu mirror). Before that, CI triggered on pull requests only and
-  never ran.
+  never ran. With the three-job layout (DEVX-004), each job has passed at least once
+  (Build on `a53209d`; Tests on `a0f96cf`, with the same coverage as locally and e2e
+  99). The rest got no runner during GitHub's Actions outage that evening; re-run the
+  Build and Workflow lint jobs once it is over.
 
 ## Waiting for the owner
 - The first live extraction run: `LIVE_AI_ENABLED=true` plus a key, then
