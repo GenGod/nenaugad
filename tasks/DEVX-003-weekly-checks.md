@@ -48,7 +48,10 @@ re-baselined, because the script's rule is that a human re-reads the terms first
 - On GitHub after the push (`8fca1e0`): a manual run of Weekly checks succeeded (run
   37359927667). Dependabot picked up the configuration at once and opened pull request
   #1, which bumps `actions/checkout`, `actions/setup-node` and
-  `actions/upload-artifact` from v4 to v7 in all three workflows. It is not merged.
+  `actions/upload-artifact` from v4 to v7 in all three workflows. Dependabot regenerated
+  it on the DEVX-004 layout, and all four checks passed on it (ba76d20). It was merged
+  on 2026-10-06 as `9bb9e01` (squash, owner request), and CI on `main` was green
+  afterwards.
 
 ## Rollback
 

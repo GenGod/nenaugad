@@ -95,6 +95,10 @@ got an independent fresh-context review.
 - Across both runs, every CI job has passed on GitHub at least once: Build on
   `a53209d`, Tests on `a0f96cf`, Code quality on both. Workflow lint has not run against
   these workflow files; actionlint 1.7.12 passes on them locally.
+- 2026-10-06: the merge of Dependabot PR #1 (`9bb9e01`, actions v4 → v7) ran
+  everything on `main`. Code quality, Build, Tests and Workflow lint all passed, about
+  3 min 41 s end to end. That is the first fully green run of this layout, so the
+  re-runs are no longer needed.
 
 ## Rollback
 
@@ -102,9 +106,7 @@ got an independent fresh-context review.
 
 ## What remains
 
-- After GitHub's Actions incident is resolved, re-run the two jobs that got no runner:
-  `gh run rerun 37371240442 --failed` (Build) and `gh run rerun 37371240424 --failed`
-  (Workflow lint). Then `npm run ci:status`.
 - Owner: B24, the jobicy geography gap. It needs its own task with tests, because it
   changes what the catalog shows.
-- Dependabot PR #1 edits `ci.yml`; Dependabot rebases it on the new layout.
+- Done 2026-10-06: Dependabot regenerated PR #1 on this layout, and it was merged as
+  `9bb9e01`.

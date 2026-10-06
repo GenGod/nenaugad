@@ -7,7 +7,7 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-10-05 by [DEVX-004](tasks/DEVX-004-ci-jobs-coverage-lint.md).
+**Updated:** 2026-10-06 by [DEVX-004](tasks/DEVX-004-ci-jobs-coverage-lint.md).
 
 ## Switches and boundaries
 - **Live AI is off** (`LIVE_AI_ENABLED=false`, a real switch since AI-007): no provider
@@ -67,10 +67,9 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   fresh pgvector database: lint, typecheck, drift, build and e2e (99 passed) all green.
 - CI on GitHub: the first run ever passed on 2026-10-05 (`d679a9d`, 9 min 17 s, most
   of it a slow Ubuntu mirror). Before that, CI triggered on pull requests only and
-  never ran. With the three-job layout (DEVX-004), each job has passed at least once
-  (Build on `a53209d`; Tests on `a0f96cf`, with the same coverage as locally and e2e
-  99). The rest got no runner during GitHub's Actions outage that evening; re-run the
-  Build and Workflow lint jobs once it is over.
+  never ran. The three-job layout (DEVX-004) is fully green on `main` since 2026-10-06
+  (`9bb9e01`): Code quality, Build, Tests (Linux coverage identical to local; e2e 99)
+  and Workflow lint, about 3 min 41 s end to end.
 
 ## Waiting for the owner
 - The first live extraction run: `LIVE_AI_ENABLED=true` plus a key, then
@@ -88,8 +87,6 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   ([DEVX-003](tasks/DEVX-003-weekly-checks.md)).
 - Whether to normalize the himalayas "Current as of" date in the terms fingerprint
   (source-rights tooling). It is the precondition for a weekly `terms:check`.
-- Dependabot pull request #1: GitHub Actions v4 → v7 (checkout, setup-node,
-  upload-artifact). These are major versions: review before merging.
 - **Jobicy geography ignores the posting text** ([OPEN_GAPS](docs/OPEN_GAPS.md) B24): a
   post labelled "Anywhere" with "must reside in the US" in its text becomes worldwide.
   It needs its own task with tests.
