@@ -1,7 +1,7 @@
 // Hiring geography a posting states in its own text (spec 11.1: the employer's
 // exclusions take priority over a broad permission). The jobicy adapter reads it to test
-// a worldwide label (docs/OPEN_GAPS.md B24), and reads its country labels through the
-// same dictionary (`countryCodeOf`, B25).
+// a worldwide label (docs/OPEN_GAPS.md B24). Its country labels (B25) and the himalayas
+// location restrictions (B27) resolve through the same dictionary (`countryCodeOf`).
 //
 // Only phrasing about where the hire may live counts, anchored on a cue such as "must
 // reside in", "open to candidates based in" or "we can only hire in". An office line

@@ -7,13 +7,17 @@ import {
 } from "../../src/server/source-policies.ts";
 import {
   AdapterInputError, himalayasContractFixture, mapHimalayasFixture, mapHimalayasRecord,
+  type HimalayasRawRecord,
 } from "../../src/server/import/himalayas-fixture.ts";
 import {
   emptySnapshotStore, runSnapshotImport, type SnapshotStore,
 } from "../../src/server/import/pipeline.ts";
 import {
-  classifySnapshot, policyPublishes, projectCard, snapshotCatalogCards,
+  classifySnapshot, hiringCountriesText, policyPublishes, projectCard, snapshotCatalogCards,
 } from "../../src/domain/snapshot-projection.ts";
+import { groupDuplicates } from "../../src/domain/dedup.ts";
+import { evaluateJob } from "../../src/domain/matching.ts";
+import { parseManualProfileInput } from "../../src/domain/profile.ts";
 
 const NOW = "2026-09-24T12:00:00.000Z";
 const DAY_LATER = "2026-09-25T12:00:00.000Z";
@@ -161,6 +165,89 @@ test("acceptance 4: empty locations is worldwide only without a text contradicti
   assert.equal(restricted.hiring_options[0]?.geography.scope, "restricted");
   assert.deepEqual(restricted.hiring_options[0]?.geography.allowed_countries, ["DE", "NL"]);
   assert.equal(restricted.conflicts.includes("geography-source-vs-text"), true);
+});
+
+// The worldwide fixture record with other location restrictions; its text states no rule.
+function restrictedTo(locationRestrictions: HimalayasRawRecord["locationRestrictions"]): JobSnapshot {
+  return mapHimalayasRecord({ ...himalayasContractFixture[0]!, locationRestrictions }, NOW);
+}
+
+function geoRule(snapshot: JobSnapshot, residenceCountry: string) {
+  const profile = parseManualProfileInput({
+    residenceCountry, timezone: null, targetRoles: ["engineer"], skills: [],
+    employmentTypes: ["employment_full_time"],
+    availabilityWindows: [{ weekdays: [1, 2, 3, 4, 5], start: "08:00", end: "18:00" }],
+    zeroMandatoryAttendance: true, minimumCompensation: null, showNeedsReview: true,
+  });
+  const evaluation = evaluateJob(snapshot, profile);
+  return { status: evaluation.status, outcome: evaluation.rules.find(rule => rule.ruleId === "GEO-01")?.outcome };
+}
+
+test("B27: location restrictions become the allowed countries, by name or by alpha2 code", () => {
+  const table: readonly (readonly [HimalayasRawRecord["locationRestrictions"], readonly string[], string])[] = [
+    [[{ alpha2: "DE", name: "Germany" }], ["DE"], "Germany"],
+    [["United States", "Canada"], ["US", "CA"], "United States, Canada"],
+    // A name outside the dictionary resolves through its code; Georgia only with one (spec 11.1).
+    [[{ alpha2: "BH", name: "Bahrain" }], ["BH"], "Bahrain"],
+    [[{ alpha2: "GE", name: "Georgia" }], ["GE"], "Georgia"],
+    // A known name decides: "UK" is well-formed but no ISO code, and a GB profile must pass.
+    [[{ alpha2: "UK", name: "United Kingdom" }], ["GB"], "United Kingdom"],
+    [[{ alpha2: "US", name: "United States" }, "United States"], ["US"], "United States, United States"],
+  ];
+  for (const [locations, countries, names] of table) {
+    const snapshot = restrictedTo(locations);
+    assert.equal(isJobSnapshot(snapshot), true, names);
+    assert.deepEqual(snapshot.hiring_options[0]!.geography, {
+      scope: "restricted", allowed_countries: countries, excluded_countries: [],
+      allowed_subdivisions: [], region_text: names, exhaustive: true,
+      evidence_ids: ["ev:himalayas:jobs-fixture-h-001:geo"],
+    }, names);
+    assert.deepEqual(snapshot.conflicts, [], names);
+    // The source's own words are the evidence for the hiring countries.
+    assert.equal(snapshot.evidence.find(item => item.id === "ev:himalayas:jobs-fixture-h-001:geo")?.quote, names, names);
+  }
+});
+
+test("B27: an unresolved location leaves the list incomplete; a complete list decides GEO-01", () => {
+  // Georgia without a code and a region resolve to no country: the list is incomplete (B25).
+  const partial = restrictedTo([{ name: "Georgia" }, "Europe", { alpha2: "US", name: "United States" }]);
+  assert.deepEqual(partial.hiring_options[0]!.geography.allowed_countries, ["US"]);
+  assert.equal(partial.hiring_options[0]!.geography.exhaustive, false);
+  assert.deepEqual(geoRule(partial, "DE"), { status: "needs_review", outcome: "unknown" });
+  // Nothing resolves: no countries, never an invented list. A malformed code is no code,
+  // so the snapshot stays valid instead of being rejected at import.
+  for (const locations of [["Europe"], [{ alpha2: "deu", name: "Deutschland" }]]) {
+    const unresolved = restrictedTo(locations);
+    assert.equal(isJobSnapshot(unresolved), true);
+    assert.deepEqual(unresolved.hiring_options[0]!.geography.allowed_countries, []);
+    assert.equal(unresolved.hiring_options[0]!.geography.exhaustive, false);
+  }
+  // A non-empty list never becomes worldwide (spec 11.1): an unreadable entry is still a
+  // restriction, and an empty name falls back to the code.
+  assert.deepEqual(restrictedTo([{}]).hiring_options[0]!.geography, {
+    scope: "restricted", allowed_countries: [], excluded_countries: [], allowed_subdivisions: [],
+    region_text: null, exhaustive: false, evidence_ids: ["ev:himalayas:jobs-fixture-h-001:geo"],
+  });
+  assert.deepEqual(restrictedTo([{ alpha2: "DE", name: "" }]).hiring_options[0]!.geography, {
+    scope: "restricted", allowed_countries: ["DE"], excluded_countries: [], allowed_subdivisions: [],
+    region_text: "DE", exhaustive: true, evidence_ids: ["ev:himalayas:jobs-fixture-h-001:geo"],
+  });
+
+  const us = restrictedTo([{ alpha2: "US", name: "United States" }]);
+  assert.equal(geoRule(us, "US").outcome, "pass");
+  assert.deepEqual(geoRule(us, "DE"), { status: "ineligible", outcome: "fail" });
+  const card = projectCard({
+    sourceId: "himalayas", snapshot: us, contentHash: "", firstSeenAt: NOW, fullPassMisses: 0,
+  }, himalayasCandidatePolicy);
+  assert.equal(hiringCountriesText(card.geography), "US");
+});
+
+test("B27: one employer's postings for different countries are not merged", () => {
+  const peru = restrictedTo([{ alpha2: "PE", name: "Peru" }]);
+  const chile = { ...restrictedTo([{ alpha2: "CL", name: "Chile" }]), id: "himalayas:jobs-fixture-h-001-cl" };
+  const groups = groupDuplicates([peru, chile].map(snapshot => ({ snapshot })), record => record.snapshot);
+  assert.deepEqual(groups.map(group => group.members.map(member => member.snapshot.id)),
+    [["himalayas:jobs-fixture-h-001"], ["himalayas:jobs-fixture-h-001-cl"]]);
 });
 
 test("acceptance 4: remote-tag vs office text is conflicting, unknown stays unknown", () => {

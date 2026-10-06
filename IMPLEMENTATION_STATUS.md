@@ -7,7 +7,7 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-10-06 by [B25-001](tasks/B25-001-jobicy-country-labels.md).
+**Updated:** 2026-10-06 by [B27-001](tasks/B27-001-himalayas-location-countries.md).
 
 ## Switches and boundaries
 - **Live AI is off** (`LIVE_AI_ENABLED=false`, a real switch since AI-007): no provider
@@ -34,6 +34,8 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   rule narrows it or leaves the countries unknown, and an exclusion is kept (B24-001).
   Other jobicy labels are read part by part: countries only make the complete list, and
   a label that also names a region keeps its countries as an incomplete list (B25-001).
+  Himalayas location restrictions become the allowed countries, by name or ISO code,
+  and a non-empty list never becomes worldwide (B27-001).
 - **Auth and profiles:** manual private profile, explainable matching, saved jobs
   (S2-001, owner-accepted); hide with a reason and applied marks (S2-002).
 - **CV intake:** offline text/txt/md/docx intake and private storage (S3-001,
@@ -65,9 +67,9 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
-- 2026-10-06 (B25-001): `npm run check` (unit 294/294), `npm run test:coverage` (unit
-  and DB 363/363; 82.56% lines, 85.87% branches, 91.49% functions), `npm run build` and
-  `npm run test:e2e` (99 passed), all exit 0. Not pushed, so no CI run yet.
+- 2026-10-06 (B27-001): `npm run check` (unit 297/297), `npm run test:coverage` (unit
+  and DB 366/366; 82.58% lines, 86.07% branches, 91.54% functions; the ratchet is now
+  82/86/91), `npm run build` and `npm run test:e2e` (99 passed), all exit 0. Not pushed.
 - 2026-10-05 (DEVX-004): `npm run test:coverage` — unit and DB tests 344/344. Coverage of
   the `src/` .ts files, counting files no test loads: 82.14% lines, 85.19% branches,
   91.10% functions. Strict Biome: 0
@@ -77,7 +79,8 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   of it a slow Ubuntu mirror). Before that, CI triggered on pull requests only and
   never ran. The three-job layout (DEVX-004) is fully green on `main` since 2026-10-06
   (`9bb9e01`): Code quality, Build, Tests (Linux coverage identical to local; e2e 99)
-  and Workflow lint, about 3 min 41 s end to end.
+  and Workflow lint, about 3 min 41 s end to end. B24 and B25 (`83ce062`, pushed
+  2026-10-06): green; a duplicate run was cancelled by the concurrency group.
 
 ## Waiting for the owner
 - The first live extraction run: `LIVE_AI_ENABLED=true` plus a key, then
@@ -95,18 +98,22 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   ([DEVX-003](tasks/DEVX-003-weekly-checks.md)).
 - Whether to normalize the himalayas "Current as of" date in the terms fingerprint
   (source-rights tooling). It is the precondition for a weekly `terms:check`.
-- **Himalayas geography** ([OPEN_GAPS](docs/OPEN_GAPS.md) B27, B26): GEO-01 is unknown
-  for 466 of 498 local himalayas posts, because the adapter keeps their location
-  restrictions as names rather than countries; the same gap merges one employer's
-  per-country postings into one card (7 groups, 25 posts). Its text check is also
-  narrower than jobicy's (B26). Both change that catalog, so they are separate tasks.
+- **Re-mapping stored records:** B24, B25 and B27 change how imports map geography, but a
+  stored record changes only when an import re-reads it. Locally that leaves 52 jobicy
+  and 466 himalayas posts on their old, unknown geography until retention tombstones
+  them. A one-off re-map of the local catalog rewrites local data; it needs a decision.
+- **Before the first live extraction run** ([OPEN_GAPS](docs/OPEN_GAPS.md) B28): a
+  geography-only re-map gives a record a new version, and the paid extraction ledger
+  keys on the version, so every such change would pay again for unchanged text.
+- **Himalayas text check** (B26): narrower than jobicy's; widening it changes that
+  catalog, so it is a separate task.
 
 ## Known limits
 - The monthly quota window is stored but has no calendar reset (OPEN_GAPS A5).
 - Constants of the new ranking layers wait for accumulated data; measurements come
   from one machine (DGAP-001).
-- A stored jobicy record takes a new mapping only when the 7-day window lists it again:
-  the 52 local records B25-001 re-reads keep their old, unknown geography until then.
+- A stored record takes a new mapping only when an import re-reads it: the jobicy feed
+  is a 7-day window, and the himalayas pass resumes at its cursor, 25 pages a run.
 
 ## Next
 The current task is in `tasks/current.json`.

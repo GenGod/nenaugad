@@ -8,6 +8,7 @@
 import type {
   Geography, JobSnapshot, Workplace, Evidence, Schedule,
 } from "../../domain/source-contracts.ts";
+import { countryCodeOf } from "./geography-text.ts";
 
 export class AdapterInputError extends Error {
   constructor(code: string) { super(code); }
@@ -163,10 +164,22 @@ function detectRestrictedCountries(text: string): { countries: string[]; quote: 
   return countries.length > 0 ? { countries, quote: match[0] } : null;
 }
 
-function normalizeLocations(raw: HimalayasRawRecord["locationRestrictions"]): string[] {
-  return raw.map(entry =>
-    typeof entry === "string" ? entry : (entry.name ?? entry.alpha2 ?? ""),
-  ).filter(name => name.length > 0);
+const ISO_ALPHA2 = /^[A-Z]{2}$/u;
+
+// A location restriction names a country (spec 5.2: the source's own restriction). The
+// name resolves through the shared dictionary; a name outside it, or an ambiguous one such
+// as Georgia (spec 11.1), resolves through the entry's ISO alpha2 code when it has one.
+// Every entry counts: an unreadable one is a restriction without a country, because a
+// non-empty list never becomes worldwide (spec 11.1).
+function normalizeLocations(
+  raw: HimalayasRawRecord["locationRestrictions"],
+): { name: string; country: string | null }[] {
+  return raw.map(entry => {
+    if (typeof entry === "string") return { name: entry, country: countryCodeOf(entry) };
+    const byName = entry.name ? countryCodeOf(entry.name) : null;
+    const byCode = entry.alpha2 !== undefined && ISO_ALPHA2.test(entry.alpha2) ? entry.alpha2 : null;
+    return { name: entry.name || entry.alpha2 || "", country: byName ?? byCode };
+  });
 }
 
 function geographyFor(raw: HimalayasRawRecord, text: string, evidenceId: string, recordId: string): {
@@ -176,22 +189,26 @@ function geographyFor(raw: HimalayasRawRecord, text: string, evidenceId: string,
   const locations = normalizeLocations(raw.locationRestrictions);
   // Empty locations is a source-defined worldwide assertion — it survives only
   // when the description text does not contradict it (spec 5.2, SP section 2).
+  // A list is complete only when every location is a known country; an incomplete
+  // one fails no candidate (docs/OPEN_GAPS.md B25, B27).
   if (!restriction) {
+    const named = locations.map(location => location.name).filter(name => name.length > 0);
+    const names = named.length === 0 ? null : named.join(", ");
     return {
       geography: {
         scope: locations.length === 0 ? "worldwide" : "restricted",
-        allowed_countries: [],
+        allowed_countries: [...new Set(locations.map(location => location.country).filter(country => country !== null))],
         excluded_countries: [],
-        allowed_subdivisions: locations,
-        region_text: locations.length === 0 ? null : locations.join(", "),
-        exhaustive: true,
+        allowed_subdivisions: [],
+        region_text: names,
+        exhaustive: locations.every(location => location.country !== null),
         evidence_ids: [evidenceId],
       },
       conflict: null,
       evidence: {
         id: evidenceId, origin_type: "job_source",
         origin_id: recordId, origin_version: 1,
-        field_path: "locationRestrictions", quote: null,
+        field_path: "locationRestrictions", quote: names,
         method: "source_field", confidence: 1,
       },
     };
