@@ -1,6 +1,6 @@
 # B30-001 — Card excerpts: decoded once, and never blanked by an import
 
-**Status: implemented, 2026-10-06.** Tested locally; acceptance is with the owner.
+**Status: accepted by the owner, 2026-10-06.** Implemented and tested locally the same day.
 Basis: [docs/OPEN_GAPS.md](../docs/OPEN_GAPS.md) B30. The entities were found by
 [REMAP-001](REMAP-001-stored-geography.md) in the real catalog; the blanking was found
 while scoping their fix.
@@ -125,7 +125,10 @@ without an excerpt are the 2 the old import blanked.
 Not run: CI on GitHub (not pushed).
 
 **Acceptance:** 1–5 met and tested locally. No independent review was run: the risk is
-normal.
+normal. **Accepted by the owner 2026-10-06.** With that, the rollback of the local cleanup
+is retired: `backups/excerpts-2026-10-06/backup.json` holds the 200 old excerpts, which
+are posting text, and is to be deleted. Deleting it is left to the owner, because the
+folder is gitignored and the deletion cannot be undone.
 
 **Limitations.**
 - The 2 blanked excerpts stay empty until the feed lists those postings again.

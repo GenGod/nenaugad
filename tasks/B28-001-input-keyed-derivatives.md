@@ -1,6 +1,7 @@
 # B28-001 — Paid extraction and embeddings answer to their input text
 
-**Status: implemented and independently reviewed, 2026-10-06.** Owner acceptance is open.
+**Status: accepted by the owner, 2026-10-06.** Implemented and independently reviewed the
+same day.
 Basis: [docs/OPEN_GAPS.md](../docs/OPEN_GAPS.md) B28, found by
 [B27-001](B27-001-himalayas-location-countries.md); the ledger's own rule in migration
 0019 ("never a silent re-charge of the same input"); AGENTS.md (no SDK or queue retry may
@@ -166,5 +167,9 @@ service and `scripts/extract-fields.ts`), the migration in a rolled-back simulat
 
 Not run: CI on GitHub (not pushed).
 
-**Acceptance:** 1–6 met and tested locally; the independent review is done. Owner
-acceptance is open, together with the decision on review finding 1.
+**Acceptance:** 1–6 met and tested locally; the independent review is done.
+**Accepted by the owner 2026-10-06**, with migration 0020 as it is. On review finding 1
+the owner accepted the premise: no old-format extraction operation exists, because live
+AI has never run, so the guard is not amended and neither database's migration record is
+reset. If live AI had run before 0020, this would not hold. B31 and B32 stay open before
+live AI.
