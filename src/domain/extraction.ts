@@ -18,7 +18,10 @@
 //     contradiction);
 //   * one violation rejects the WHOLE record: a model that invents one field
 //     has not earned trust for the others, and a partially accepted record
-//     would smuggle the invented part into the catalog.
+//     would smuggle the invented part into the catalog;
+//   * a compensation is a stated amount: a grounded phrase without a digit
+//     ("competitive compensation") is stored as "unknown", not rejected — it is
+//     a misreading, not an invention, and the call was paid (prompt p2, B39).
 //
 // Versions: the prompt wording is a constant (EXTRACTION_PROMPT_VERSION) and it
 // travels into the stored provenance next to the model version, so a record can
@@ -29,7 +32,7 @@
 // call and the storage live in src/server/ai/extraction-service.ts.
 
 /** Bump when the wording below changes: the version travels into provenance. */
-export const EXTRACTION_PROMPT_VERSION = "extraction-p1";
+export const EXTRACTION_PROMPT_VERSION = "extraction-p2";
 
 /** The literal the model must return for a field the posting does not state. */
 export const UNKNOWN_VALUE = "unknown";
@@ -82,7 +85,10 @@ export function extractionInstruction(): string {
     `(2) never infer, estimate or complete — an unstated salary is "${UNKNOWN_VALUE}", not a guess;`,
     "(3) every requirement and every stated compensation must include an \"evidence\" quote copied verbatim from the posting;",
     `(4) when a value is "${UNKNOWN_VALUE}", its evidence must be the empty string "";`,
-    `(5) list at most ${MAX_EXTRACTED_REQUIREMENTS} requirements, strongest first; do not invent requirements the posting does not mention.`,
+    `(5) list at most ${MAX_EXTRACTED_REQUIREMENTS} requirements, strongest first; do not invent requirements the posting does not mention;`,
+    `(6) compensation is stated only when the posting gives an amount or a range of amounts; a phrase without an amount ("competitive salary", "depending on experience") is "${UNKNOWN_VALUE}";`,
+    '(7) a spoken or written language is always category "language", never "skill";',
+    '(8) personal qualities and general soft skills (communication, organisation, attitude, motivation) are category "other".',
   ].join("\n");
 }
 
@@ -189,7 +195,11 @@ export function parseExtraction(rawOutput: string, postingText: string): Extract
     } else if (!normalize(evidence).includes(normalize(originalText))) {
       reject("VALUE_NOT_GROUNDED", "compensation.originalText");
     } else {
-      compensation = { originalText, evidence };
+      // Rule (6): no digit, no amount. Grounded, so not an invention, but not a
+      // stated compensation either.
+      compensation = /\p{Nd}/u.test(originalText)
+        ? { originalText, evidence }
+        : { originalText: UNKNOWN_VALUE, evidence: "" };
     }
   }
 

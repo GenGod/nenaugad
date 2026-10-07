@@ -1,10 +1,10 @@
 {
-  "task_id": "B36-001",
-  "file": "tasks/B36-001-settlement-releases-own-hold.md",
+  "task_id": "B38-001",
+  "file": "tasks/B38-001-clean-text-and-prompt-p2.md",
   "status": "accepted",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Owner accepted B36-001 on 2026-10-07 (money): a settlement releases its own reservation and settles the actual; smoke-ai reserves its real prompt. B37 recorded (a retry after an uncertain call books only the last call)."
+  "note": "Owner accepted B38-001 on 2026-10-08 with the operating rule: clean description text and prompt extraction-p2. Before the worker extracts the catalog, with live AI off: re-read the catalog (himalayas pass from page 1, jobicy once), then live AI on. Open: B37, B40."
 }

@@ -9,6 +9,7 @@ import type {
   Geography, JobSnapshot, Workplace, Evidence, Schedule,
 } from "../../domain/source-contracts.ts";
 import { countryCodeOf } from "./geography-text.ts";
+import { decodeHtmlEntities } from "./html-entities.ts";
 
 export class AdapterInputError extends Error {
   constructor(code: string) { super(code); }
@@ -113,18 +114,41 @@ const SALARY_PERIOD_MAP: Readonly<Record<string, string>> = {
   monthly: "monthly", annual: "annual",
 };
 
-function decodeEntities(text: string): string {
-  return text
-    .replace(/&nbsp;/gu, " ")
-    .replace(/&amp;/gu, "&")
-    .replace(/&lt;/gu, "<")
-    .replace(/&gt;/gu, ">");
-}
+/**
+ * Tags that sit inside a word or a sentence: removed without a space, so markup
+ * that splits a word ("Py<b>thon</b>") leaves it whole. Every other tag (a
+ * paragraph, a heading, a list item, a line break, a cell, anything unknown) marks
+ * a boundary and leaves a space.
+ */
+const INLINE_TAGS: ReadonlySet<string> = new Set([
+  "a", "abbr", "b", "bdi", "bdo", "cite", "code", "data", "dfn", "em", "font", "i", "kbd",
+  "mark", "q", "s", "samp", "small", "span", "strike", "strong", "sub", "sup", "time", "tt",
+  "u", "var", "wbr",
+]);
 
+/**
+ * The longest description an adapter cleans. The largest stored on 2026-10-07 is
+ * 18,406 characters; a description far beyond it is refused as one bad record
+ * (`DESCRIPTION_TOO_LONG`), so a broken or hostile body cannot hold the worker on
+ * the patterns below (B38-001 review).
+ */
+const MAX_DESCRIPTION_CHARS = 100_000;
+
+/**
+ * The plain text of a posting's HTML description, for both adapters. It feeds the
+ * matching rules, BM25, the embeddings and the paid extraction (B38): the old
+ * version removed ten tag names without a space, so headings, divisions and rules
+ * stayed and paragraphs ran together ("…part of it?We bring…"). Entities are
+ * decoded once, after the tags are gone, so escaped markup in the source stays text.
+ */
 export function descriptionToText(html: string): string {
-  return decodeEntities(
-    html.replace(/<\/?(p|br|li|ul|ol|strong|em|b|i|a)[^>]*>/giu, ""),
-  ).replace(/\s+/gu, " ").trim();
+  if (html.length > MAX_DESCRIPTION_CHARS) throw new AdapterInputError("DESCRIPTION_TOO_LONG");
+  const withoutTags = html
+    .replace(/<!--[\s\S]*?-->/gu, " ")
+    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/giu, " ")
+    .replace(/<\/?([A-Za-z][A-Za-z0-9-]*)\b[^<>]*>/gu,
+      (_tag: string, name: string) => INLINE_TAGS.has(name.toLowerCase()) ? "" : " ");
+  return decodeHtmlEntities(withoutTags).replace(/\s+/gu, " ").trim();
 }
 
 function epochToIsoDateTime(epoch: number): string {

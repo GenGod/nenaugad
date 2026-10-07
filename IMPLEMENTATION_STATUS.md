@@ -7,7 +7,9 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-10-07 by [B36-001](tasks/B36-001-settlement-releases-own-hold.md), after
+**Updated:** 2026-10-08: the owner accepted [B38-001](tasks/B38-001-clean-text-and-prompt-p2.md),
+after
+[B36-001](tasks/B36-001-settlement-releases-own-hold.md),
 [B35-001](tasks/B35-001-tariff-unit.md),
 [B34-001](tasks/B34-001-import-extraction-cap.md),
 [B32-001](tasks/B32-001-extraction-pass-progress.md), [B33-001](tasks/B33-001-extract-fields-error-codes.md),
@@ -90,13 +92,12 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
-- 2026-10-07 (B36-001): `npm run check` (unit 306/306), `npm run test:coverage` (unit
-  and DB 394/394; 83.10% lines, 86.61% branches, 92.01% functions), `npm run build` and
-  `npm run test:e2e` (99 passed), all exit 0. Not pushed. The lines threshold stays at
-  82: coverage is too close to 83 to raise it.
-- 2026-10-07 (B35-001, B34-001, B32-001, B33-001, B31-001): the same checks, all exit 0.
-  CI on GitHub green on `e0f851a`, `cadad06`, `48b325d`, `beff301` and `fc9d545`, as on
-  `75e7484` (B29-001) and `936a8ba` (B28-001, B30-001).
+- 2026-10-07 (B38-001): `npm run check` (unit 315/315), `npm run test:coverage`
+  (unit and DB 403/403; 83.15% lines, 86.75% branches, 92.01% functions), `npm run build` and `npm run test:e2e` (99 passed), all exit 0. Not
+  pushed.
+- 2026-10-07 (B36-001, B35-001, B34-001, B32-001, B33-001, B31-001): the same checks, all
+  exit 0. CI on GitHub green on `c41ac65`, `e0f851a`, `cadad06`, `48b325d`, `beff301` and
+  `fc9d545`, as on `75e7484` (B29-001) and `936a8ba` (B28-001, B30-001).
 - 2026-10-06 (B28-001): the same checks, all exit 0 (unit and DB 371/371). The B27 commit
   had lost a space between two coverage flags, which silently disabled the 91% function
   threshold; fixed, and the ratchet 82/86/91 is enforced again.
@@ -115,9 +116,13 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 ## Waiting for the owner
 - **The first live extraction run happened (2026-10-07):** 5 himalayas postings, 5 calls
   settled on the first attempt, 5 records accepted, no hold left. It found B35 (fixed and
-  accepted). B36-001 (a settlement releases its own hold only) is accepted too. Before
-  the worker extracts: a look at the five records (one is a "talent community" posting,
-  not a job).
+  accepted). B36-001 (a settlement releases its own hold only) is accepted too. The five
+  records were reviewed: faithful, nothing invented, two salaries found where the source
+  has none. B38-001 (clean description text and prompt p2) is accepted (2026-10-08).
+  **Before the worker extracts the catalog**, with live AI off: `npm run import:himalayas` until a pass
+  that started at page 1 has finished (one run per 24 hours; the current pass is midway),
+  and `npm run import:jobicy` once; then live AI on. Otherwise a posting extracted on its
+  old text is paid again when re-read (under $0.40 for today's catalog). Then B40.
 - **A retry after an uncertain call books only the last call** (OPEN_GAPS B37, money,
   existed before): the ledger can undercount a letter or matching retry. The extraction
   pass cannot reach it; the other two paths are closed by the personal-data boundary.

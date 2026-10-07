@@ -147,7 +147,47 @@ test("the instruction pins the output shape and the unknown rules", () => {
   assert.ok(instruction.includes("evidence"));
   assert.ok(instruction.includes("requirements"));
   assert.ok(instruction.includes("compensation"));
-  assert.equal(EXTRACTION_PROMPT_VERSION, "extraction-p1");
+  assert.equal(EXTRACTION_PROMPT_VERSION, "extraction-p2");
+});
+
+test("prompt p2 states the three rules the first live run asked for (B39)", () => {
+  const instruction = extractionInstruction();
+  // A phrase without an amount is not a stated compensation.
+  assert.match(instruction, /compensation is stated only when the posting gives an amount/u);
+  // A spoken or written language is a language, never a skill.
+  assert.match(instruction, /language is always category "language"/u);
+  // Personal qualities and general soft skills are "other".
+  assert.match(instruction, /personal qualities and general soft skills .* are category "other"/u);
+});
+
+test("a compensation without an amount is stored as unknown, not as stated (B39)", () => {
+  const posting = "Competitive compensation packages (depending on experience, location). Must have Python.";
+  const parsed = parseExtraction(JSON.stringify({
+    requirements: [{ category: "skill", strength: "must", value: "Python", evidence: "Must have Python" }],
+    compensation: {
+      originalText: "Competitive compensation packages (depending on experience, location)",
+      evidence: "Competitive compensation packages (depending on experience, location)",
+    },
+  }), posting);
+  assert.ok(parsed.ok, "a paid call is not thrown away over a vague phrase");
+  assert.deepEqual(parsed.fields.compensation, { originalText: UNKNOWN_VALUE, evidence: "" });
+  assert.equal(parsed.fields.requirements.length, 1);
+
+  // An amount is kept as written, in any script's digits.
+  const stated = parseExtraction(payload(), POSTING);
+  assert.ok(stated.ok);
+  assert.equal(stated.fields.compensation.originalText, "80000 - 95000 EUR");
+  const arabicIndic = parseExtraction(JSON.stringify({
+    requirements: [], compensation: { originalText: "٥٠٠٠ AED", evidence: "٥٠٠٠ AED" },
+  }), "Salary ٥٠٠٠ AED monthly");
+  assert.ok(arabicIndic.ok);
+  assert.equal(arabicIndic.fields.compensation.originalText, "٥٠٠٠ AED");
+
+  // A vague phrase that is not in the posting is still an invention: the record is rejected.
+  const invented = parseExtraction(JSON.stringify({
+    requirements: [], compensation: { originalText: "Generous pay", evidence: "Generous pay" },
+  }), posting);
+  assert.equal(invented.ok, false);
 });
 
 test("parsing is deterministic: same output, same text, same verdict", () => {
