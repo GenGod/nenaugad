@@ -6,7 +6,7 @@ import { getSourcePolicy } from "../src/server/source-policies.ts";
 import { runHimalayasImport } from "../src/server/import/himalayas-adapter.ts";
 import { fetchHimalayasPage } from "../src/server/import/fetcher.ts";
 import { createPostgresPersistence } from "../src/server/storage/snapshots.ts";
-import { runExtractionPass, summarizeExtractionPass } from "../src/server/ai/extraction-pass.ts";
+import { runExtractionPassAfterImport } from "../src/server/ai/extraction-pass.ts";
 import { openAiTransport } from "../src/server/ai/openai-transport.ts";
 import { localPool, migrate } from "./db.ts";
 
@@ -39,12 +39,13 @@ try {
     maxPages: pagesArg(),
   });
   // C1: after an applied pass, extract what this source has not been extracted
-  // for yet. Guarded and non-fatal to the import; with LIVE_AI_ENABLED off the
-  // pass reports live_ai_disabled and nothing is sent or spent.
+  // for yet. Guarded, and it never throws, so it cannot fail the import or change
+  // its exit code (B31); with LIVE_AI_ENABLED off the pass reports
+  // live_ai_disabled and nothing is sent or spent.
   const extraction = report.result === "applied" || report.result === "partial"
-    ? summarizeExtractionPass(await runExtractionPass({
+    ? await runExtractionPassAfterImport({
         pool, sourceId: "himalayas", transport: openAiTransport, now: new Date().toISOString(),
-      }))
+      })
     : null;
   await pool.end();
   console.log(JSON.stringify({ ...report, extraction }));

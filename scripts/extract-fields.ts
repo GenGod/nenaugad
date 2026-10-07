@@ -25,7 +25,7 @@ import { isJobSnapshot } from "../src/domain/source-contracts.ts";
 import { extractionInstruction, EXTRACTION_PROMPT_VERSION } from "../src/domain/extraction.ts";
 import { extractionKey } from "../src/server/ai/extraction-service.ts";
 import {
-  runExtractionPass, summarizeExtractionPass,
+  holdHint, runExtractionPass, summarizeExtractionPass,
 } from "../src/server/ai/extraction-pass.ts";
 import { openAiTransport } from "../src/server/ai/openai-transport.ts";
 import { buildJobOnlyPrompt } from "../src/server/ai/personal-data-boundary.ts";
@@ -106,11 +106,13 @@ try {
 
     const passes: Record<string, unknown>[] = [];
     let budgetRefused = false;
+    let heldHint: string | undefined;
     for (const sourceId of sources) {
       const pass = await runExtractionPass({
         pool, sourceId, transport: openAiTransport, now, limit,
       });
       if (pass.outcome === "budget_refused") budgetRefused = true;
+      if (pass.held) heldHint ??= holdHint(pass.held, now);
       passes.push({ ...summarizeExtractionPass(pass), results: pass.results });
     }
     console.log(JSON.stringify({
@@ -121,6 +123,7 @@ try {
       passes,
       note: "counts, ids and codes only: posting text, prompt text and model output are not printed",
       ...(budgetRefused ? { hint: "the extractor's budget row is missing or exhausted: run npm run seed:budgets" } : {}),
+      ...(heldHint === undefined ? {} : { holdHint: heldHint }),
     }, null, 2));
     await pool.end();
   }

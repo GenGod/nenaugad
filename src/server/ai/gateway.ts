@@ -44,7 +44,7 @@ export class LiveAiDisabledError extends Error {
  * task type from the purpose instead of accepting both, so a purpose can never
  * borrow another operation's attempt budget or mix up the two registries.
  */
-const PURPOSE_TASK_TYPE: Readonly<Record<ApprovedPurpose, TaskType>> = {
+export const PURPOSE_TASK_TYPE: Readonly<Record<ApprovedPurpose, TaskType>> = {
   cover_letter: "cover_letter",
   job_matching: "job_matching",
   extraction: "job_extraction",

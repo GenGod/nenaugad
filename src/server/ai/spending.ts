@@ -296,6 +296,29 @@ export async function getOperation(params: Readonly<{
   return row ? toOperationRow(row) : null;
 }
 
+/**
+ * The operations that still hold money: the money question is open until the
+ * call settles or the owner cancels the hold (`npm run ai:holds` lists exactly
+ * these statuses).
+ */
+export const HOLDING_STATUSES: ReadonlySet<OperationStatus> = new Set(["reserved", "in_flight", "uncertain"]);
+
+/**
+ * The operation an idempotency key names, or null. Read-only: a caller that met a
+ * ledger refusal uses it to tell an operation that still holds money from one that
+ * is closed (the extraction pass, B31).
+ */
+export async function findOperationByKey(params: Readonly<{
+  pool: Pool; ownerId: string; taskType: TaskType; idempotencyKey: string;
+}>): Promise<OperationRow | null> {
+  const result = await params.pool.query(
+    "SELECT id, owner_id, task_type, idempotency_key, status, attempt_count, input_hash, deadline_at, reserved_minor, settled_minor FROM ai_operations WHERE owner_id = $1 AND task_type = $2 AND idempotency_key = $3",
+    [params.ownerId, params.taskType, params.idempotencyKey],
+  );
+  const row = result.rows[0] as Record<string, unknown> | undefined;
+  return row ? toOperationRow(row) : null;
+}
+
 export async function ensureBudget(params: Readonly<{
   pool: Pick<Pool, "query">; budgetId: string; scope: "global" | "owner";
   ownerId?: string; approvedLimitMinor: bigint; period?: "total" | "monthly" | "daily";

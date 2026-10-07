@@ -60,6 +60,15 @@ for (const [name, version] of Object.entries(pinnedDependencies)) {
   if (declared !== undefined && declared !== version)
     violations.push(`${name} must stay pinned to exactly ${version} (declared: ${declared})`);
 }
+// After an import, extraction goes through runExtractionPassAfterImport, which never
+// throws: a direct call let one stuck posting fail and pause a healthy import
+// (docs/OPEN_GAPS.md B31). The extract:fields CLI runs the pass on its own and may.
+const importCallers = ["scripts/worker.ts", ...(await readdir("scripts"))
+  .filter(name => /^import-.*\.ts$/.test(name)).map(name => `scripts/${name}`)];
+for (const filename of importCallers) {
+  if (/\brunExtractionPass\s*\(/.test(await readFile(filename, "utf8")))
+    violations.push(`${filename}: after an import, call runExtractionPassAfterImport (docs/OPEN_GAPS.md B31)`);
+}
 const env = await readFile(".env.example", "utf8");
 for (const flag of ["LIVE_AI_ENABLED","LIVE_SOURCES_ENABLED","UPLOADS_ENABLED"]) {
   if (!env.includes(`${flag}=false`)) violations.push(`${flag} must be false in template`);

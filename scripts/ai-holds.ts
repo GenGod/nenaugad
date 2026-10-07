@@ -18,9 +18,7 @@
 // (их здесь и нет), ни персональных данных.
 import { localDatabaseUrl, readConfig, ConfigurationError } from "../src/server/config.ts";
 import { localPool, migrate } from "./db.ts";
-import { BudgetError, cancelOperation } from "../src/server/ai/spending.ts";
-
-const HOLDING_STATUSES = "('reserved', 'in_flight', 'uncertain')";
+import { BudgetError, HOLDING_STATUSES, cancelOperation } from "../src/server/ai/spending.ts";
 
 function microCentsToCents(value: bigint): string {
   return (Number(value) / 10_000).toFixed(4);
@@ -62,7 +60,9 @@ try {
   } else {
     const held = await pool.query(
       `SELECT id, owner_id, task_type, status, attempt_count, reserved_minor, settled_minor, updated_at
-       FROM ai_operations WHERE status IN ${HOLDING_STATUSES} ORDER BY updated_at`,
+       FROM ai_operations WHERE status = ANY($1::text[]) ORDER BY updated_at`,
+      // The statuses the extraction pass stops on (B31): one list, so they cannot drift.
+      [[...HOLDING_STATUSES]],
     );
     const rows = held.rows.map(row => {
       const record = row as Record<string, unknown>;

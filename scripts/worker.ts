@@ -20,7 +20,7 @@ import {
 import {
   processPendingBatches, checkForStaleAnalyses, submitRelevanceBatch,
 } from "../src/server/ai/batch-queue-service.ts";
-import { runExtractionPass } from "../src/server/ai/extraction-pass.ts";
+import { holdHint, runExtractionPassAfterImport } from "../src/server/ai/extraction-pass.ts";
 import { openAiTransport } from "../src/server/ai/openai-transport.ts";
 
 const SOURCES = ["himalayas", "jobicy"] as const;
@@ -50,6 +50,7 @@ type Setup = {
 async function attempt(setup: Setup): Promise<void> {
   const now = new Date().toISOString();
   log({ source: setup.source, event: "attempt" });
+  let imported = false;
   try {
     const report = setup.source === "himalayas"
       ? await runHimalayasImport({
@@ -81,27 +82,7 @@ async function attempt(setup: Setup): Promise<void> {
       log({ source: setup.source, event: "paused",
         hint: `npm run worker -- --resume ${setup.source}` });
     }
-    if (success) {
-      // C1: extract whatever this source has not been extracted for yet. The
-      // pass is guarded (approved purpose, per-source send_to_ai_provider, the
-      // paid record answers repeats) and non-fatal to the import above.
-      const extraction = await runExtractionPass({
-        pool: setup.pool, sourceId: setup.source, transport: openAiTransport,
-        now, limit: EXTRACTION_PER_TICK_LIMIT,
-      });
-      // The switched-off state is the normal one (LIVE_AI_ENABLED=false) and is
-      // reported by --status, not logged every tick; anything that actually
-      // happened is logged.
-      if (extraction.outcome !== "live_ai_disabled") {
-        log({
-          source: setup.source, event: "extraction",
-          outcome: extraction.outcome,
-          code: extraction.code,
-          counts: extraction.counts,
-          settledMicroCents: extraction.settledMicroCents.toString(),
-        });
-      }
-    }
+    imported = success;
   } catch (error) {
     // The failure streak must really grow. A swallowed write failure used to
     // leave the pause threshold unreachable with an empty trail (B18), so the
@@ -117,6 +98,25 @@ async function attempt(setup: Setup): Promise<void> {
       attemptRecorded,
       consecutiveFailures: state?.consecutiveFailures ?? 1,
     });
+  }
+  if (imported) {
+    // C1: extract whatever this source has not been extracted for yet. The pass is
+    // guarded (approved purpose, per-source send_to_ai_provider, the paid record
+    // answers repeats). It runs after the import's bookkeeping and never throws
+    // (B31): nothing it meets can record a failed attempt or pause a healthy source.
+    const extraction = await runExtractionPassAfterImport({
+      pool: setup.pool, sourceId: setup.source, transport: openAiTransport,
+      now, limit: EXTRACTION_PER_TICK_LIMIT,
+    });
+    // The switched-off state is the normal one (LIVE_AI_ENABLED=false) and is
+    // reported by --status, not logged every tick; anything that actually
+    // happened is logged.
+    if (extraction.outcome !== "live_ai_disabled") {
+      log({
+        source: setup.source, event: "extraction", ...extraction,
+        ...("held" in extraction && extraction.held ? { hint: holdHint(extraction.held, now) } : {}),
+      });
+    }
   }
 }
 
