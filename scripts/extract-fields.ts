@@ -33,7 +33,7 @@ import {
 } from "../src/server/ai/extraction-pass.ts";
 import { openAiTransport } from "../src/server/ai/openai-transport.ts";
 import { buildJobOnlyPrompt } from "../src/server/ai/personal-data-boundary.ts";
-import { GPT6_LUNA, reservationFor, worstCaseCostMicroCents } from "../src/server/ai/provider.ts";
+import { GPT6_LUNA, reservationFor, worstCaseCostMicroUsd } from "../src/server/ai/provider.ts";
 
 function argValue(name: string): string | undefined {
   return process.argv.find(argument => argument.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -59,7 +59,7 @@ try {
         company: snapshot.company_name,
         description: snapshot.description_text,
       }, extractionInstruction());
-      const worstCase = worstCaseCostMicroCents(reservationFor(prompt));
+      const worstCase = worstCaseCostMicroUsd(reservationFor(prompt));
       console.log(JSON.stringify({
         ok: true,
         mode: "prompt_only",
@@ -68,8 +68,8 @@ try {
         promptVersion: EXTRACTION_PROMPT_VERSION,
         idempotencyKey: extractionKey(snapshot),
         prompt,
-        worstCaseMicroCents: worstCase.toString(),
-        operationCeilingMicroCents: GPT6_LUNA.operationCeilingMicroCents.toString(),
+        worstCaseMicroUsd: worstCase.toString(),
+        operationCeilingMicroUsd: GPT6_LUNA.operationCeilingMicroUsd.toString(),
         note: "nothing was sent and nothing was spent: this prints the exact prompt and its reservation",
       }, null, 2));
       await pool.end();

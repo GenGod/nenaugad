@@ -17,7 +17,12 @@ import { localDatabaseUrl, readConfig, ConfigurationError } from "../src/server/
 import { localPool, migrate } from "./db.ts";
 import { ensureBudget, GLOBAL_BUDGET_ID } from "../src/server/ai/spending.ts";
 import { EXTRACTOR_OWNER_ID } from "../src/server/ai/extraction-pass.ts";
-import { GPT6_LUNA, ownerBudgetId } from "../src/server/ai/provider.ts";
+import { GPT6_LUNA, MICRO_USD_PER_DOLLAR, ownerBudgetId } from "../src/server/ai/provider.ts";
+
+/** A μ$ amount as dollars, for the operator's eyes only. */
+function dollars(microUsd: bigint): string {
+  return `$${Number(microUsd) / Number(MICRO_USD_PER_DOLLAR)}`;
+}
 
 try {
   readConfig(process.env);
@@ -25,25 +30,25 @@ try {
   await migrate(pool);
   await ensureBudget({
     pool, budgetId: GLOBAL_BUDGET_ID, scope: "global",
-    approvedLimitMinor: GPT6_LUNA.globalBudgetMicroCents,
+    approvedLimitMinor: GPT6_LUNA.globalBudgetMicroUsd,
   });
   const users = await pool.query("SELECT id FROM users ORDER BY id");
   for (const row of users.rows as { id: string }[]) {
     await ensureBudget({
       pool, budgetId: ownerBudgetId(row.id), scope: "owner", ownerId: row.id,
-      period: "monthly", approvedLimitMinor: GPT6_LUNA.ownerMonthlyQuotaMicroCents,
+      period: "monthly", approvedLimitMinor: GPT6_LUNA.ownerMonthlyQuotaMicroUsd,
     });
   }
   await ensureBudget({
     pool, budgetId: ownerBudgetId(EXTRACTOR_OWNER_ID), scope: "owner", ownerId: EXTRACTOR_OWNER_ID,
-    period: "monthly", approvedLimitMinor: GPT6_LUNA.ownerMonthlyQuotaMicroCents,
+    period: "monthly", approvedLimitMinor: GPT6_LUNA.ownerMonthlyQuotaMicroUsd,
   });
   const quotas = await pool.query("SELECT COUNT(*) AS total FROM ai_budgets WHERE scope = 'owner'");
   console.log(JSON.stringify({
     ok: true,
-    globalBudget: `${GLOBAL_BUDGET_ID}: ${GPT6_LUNA.globalBudgetMicroCents} micro-cents ($${Number(GPT6_LUNA.globalBudgetMicroCents) / 10000 / 100})`,
-    operationCeiling: `${GPT6_LUNA.operationCeilingMicroCents} micro-cents`,
-    ownerQuota: `${GPT6_LUNA.ownerMonthlyQuotaMicroCents} micro-cents/month`,
+    globalBudget: `${GLOBAL_BUDGET_ID}: ${GPT6_LUNA.globalBudgetMicroUsd} μ$ (${dollars(GPT6_LUNA.globalBudgetMicroUsd)})`,
+    operationCeiling: `${GPT6_LUNA.operationCeilingMicroUsd} μ$ (${dollars(GPT6_LUNA.operationCeilingMicroUsd)})`,
+    ownerQuota: `${GPT6_LUNA.ownerMonthlyQuotaMicroUsd} μ$/month (${dollars(GPT6_LUNA.ownerMonthlyQuotaMicroUsd)})`,
     users: users.rowCount,
     ownerBudgetRows: Number((quotas.rows[0] as { total: string }).total),
   }));

@@ -76,7 +76,7 @@ export async function executeGuardedOperation(params: Readonly<{
   // The owner's per-operation ceiling, compared here because this is where the
   // provider tariff meets a reservation. It used to be printed by a seed script
   // and compared nowhere (docs/OPEN_GAPS.md A5).
-  if (params.worstCaseMinor > GPT6_LUNA.operationCeilingMicroCents) {
+  if (params.worstCaseMinor > GPT6_LUNA.operationCeilingMicroUsd) {
     throw new BudgetError("OPERATION_CEILING_EXCEEDED");
   }
   if (params.transport === null) throw new ProviderNotConfiguredError();

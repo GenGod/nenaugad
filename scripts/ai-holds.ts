@@ -19,9 +19,11 @@
 import { localDatabaseUrl, readConfig, ConfigurationError } from "../src/server/config.ts";
 import { localPool, migrate } from "./db.ts";
 import { BudgetError, HOLDING_STATUSES, cancelOperation } from "../src/server/ai/spending.ts";
+import { MICRO_USD_PER_DOLLAR } from "../src/server/ai/provider.ts";
 
-function microCentsToCents(value: bigint): string {
-  return (Number(value) / 10_000).toFixed(4);
+/** Ledger amounts are micro-dollars (μ$); shown here in cents. */
+function microUsdToCents(value: bigint): string {
+  return (Number(value) / Number(MICRO_USD_PER_DOLLAR / 100n)).toFixed(4);
 }
 
 try {
@@ -46,8 +48,8 @@ try {
       try {
         await cancelOperation({ pool, ownerId: row.owner_id, operationId: cancelId, now });
         console.log(JSON.stringify({
-          ok: true, operationId: cancelId, releasedMicroCents: row.reserved_minor,
-          releasedCents: microCentsToCents(BigInt(row.reserved_minor)),
+          ok: true, operationId: cancelId, releasedMicroUsd: row.reserved_minor,
+          releasedCents: microUsdToCents(BigInt(row.reserved_minor)),
           note: "the hold is released; if the provider did charge, the ledger now understates the spend —"
             + " check the provider's usage page before cancelling in bulk",
         }));
@@ -72,8 +74,8 @@ try {
         taskType: String(record.task_type),
         status: String(record.status),
         attempts: Number(record.attempt_count),
-        reservedMicroCents: String(record.reserved_minor),
-        heldCents: microCentsToCents(BigInt(String(record.reserved_minor)) - BigInt(String(record.settled_minor))),
+        reservedMicroUsd: String(record.reserved_minor),
+        heldCents: microUsdToCents(BigInt(String(record.reserved_minor)) - BigInt(String(record.settled_minor))),
         updatedAt: new Date(record.updated_at as Date).toISOString(),
       };
     });

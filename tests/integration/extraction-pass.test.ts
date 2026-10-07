@@ -65,7 +65,7 @@ async function provisionExtractorBudget(): Promise<void> {
   await pool.query("DELETE FROM ai_budgets");
   await ensureBudget({ pool, budgetId: GLOBAL_BUDGET_ID, scope: "global", approvedLimitMinor: 10_000n });
   await ensureBudget({ pool, budgetId: ownerBudgetId(EXTRACTOR_OWNER_ID), scope: "owner",
-    ownerId: EXTRACTOR_OWNER_ID, period: "monthly", approvedLimitMinor: GPT6_LUNA.ownerMonthlyQuotaMicroCents });
+    ownerId: EXTRACTOR_OWNER_ID, period: "monthly", approvedLimitMinor: GPT6_LUNA.ownerMonthlyQuotaMicroUsd });
 }
 
 async function insertSnapshot(sourceId: string, snapshot: JobSnapshot, firstSeenAt = NOW): Promise<void> {
@@ -133,14 +133,14 @@ test("the pass extracts only what is missing, skips tombstones, and honours the 
     assert.equal(pass.outcome, "ran");
     assert.equal(pass.counts.already_extracted, 1);
     assert.equal(pass.counts.extracted, 1);
-    assert.equal(pass.settledMicroCents, 90n);
+    assert.equal(pass.settledMicroUsd, 90n);
 
     // A second full pass pays nothing: both records are stored now.
     const again = await runExtractionPass({
       pool, sourceId: "himalayas", transport: transportReturning(VALID_OUTPUT), now: NOW,
     });
     assert.equal(again.counts.already_extracted, 2);
-    assert.equal(again.settledMicroCents, 0n, "stored records must not cost anything");
+    assert.equal(again.settledMicroUsd, 0n, "stored records must not cost anything");
 
     // The limit counts provider calls, not rows (B32): both postings are answered
     // from their records, so a pass limited to one call visits both and pays nothing.
@@ -150,7 +150,7 @@ test("the pass extracts only what is missing, skips tombstones, and honours the 
     assert.equal(capped.outcome, "ran");
     assert.equal(capped.results.length, 2);
     assert.equal(capped.counts.already_extracted, 2);
-    assert.equal(capped.settledMicroCents, 0n);
+    assert.equal(capped.settledMicroUsd, 0n);
 
     // Simulate retention's real path (RET-001): last_seen moves past the policy
     // window and the persistence tombstones the row — prose blanked, lifecycle
@@ -164,7 +164,7 @@ test("the pass extracts only what is missing, skips tombstones, and honours the 
       pool, sourceId: "himalayas", transport: transportReturning(VALID_OUTPUT), now: NOW,
     });
     assert.equal(withTombstone.counts.tombstoned_skipped, 1);
-    assert.equal(withTombstone.settledMicroCents, 0n);
+    assert.equal(withTombstone.settledMicroUsd, 0n);
   } finally {
     process.env.LIVE_AI_ENABLED = previous ?? "true";
   }
@@ -263,7 +263,7 @@ test("an open hold stops the source until the owner cancels it; then only its po
     assert.equal(resolved.counts.blocked, 1);
     assert.equal(resolved.counts.extracted, 1);
     assert.equal(counting.calls(), 1);
-    assert.equal(resolved.settledMicroCents, 90n);
+    assert.equal(resolved.settledMicroUsd, 90n);
     const blocked = resolved.results.find(result => result.status === "blocked");
     assert.deepEqual(blocked, {
       snapshotId: heldPosting, status: "blocked", codes: ["IDEMPOTENCY_COLLISION"], operationStatus: "cancelled",
@@ -420,7 +420,7 @@ test("after an import the pass never throws: a failure becomes a code (B31)", as
     assert.equal(ran.outcome, "ran");
     assert.ok("counts" in ran);
     assert.equal(ran.counts.extracted, 2);
-    assert.equal(ran.settledMicroCents, "180");
+    assert.equal(ran.settledMicroUsd, "180");
 
     // An error without a code of its own becomes a fixed code: its message could
     // quote a posting, and the worker logs what this returns.
@@ -499,7 +499,7 @@ test("the pass reaches the postings without a record, newest first, one call at 
 
     const done = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, now: NOW, limit: 1 });
     assert.equal(done.counts.already_extracted, 4);
-    assert.equal(done.settledMicroCents, 0n);
+    assert.equal(done.settledMicroUsd, 0n);
   } finally {
     process.env.LIVE_AI_ENABLED = previous ?? "true";
   }
@@ -557,7 +557,7 @@ test("a rejected output is a paid call and uses a slot of the limit (B32)", asyn
     assert.equal(pass.counts.rejected, 1);
     assert.equal(pass.results.length, 1);
     assert.deepEqual(pass.results[0]?.codes, ["INVALID_JSON"]);
-    assert.equal(pass.settledMicroCents, 90n);
+    assert.equal(pass.settledMicroUsd, 90n);
   } finally {
     process.env.LIVE_AI_ENABLED = previous ?? "true";
   }

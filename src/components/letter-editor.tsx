@@ -75,7 +75,7 @@ export function LetterEditor({ letterId, initialRevision, initialVersions, evide
         const warnings = body.validation?.issues?.filter(i => i.code !== "EMPTY") ?? [];
         setStatus(`Черновик создан и проверен (версия ${body.revision.version}).` +
           (warnings.length > 0 ? ` Замечания: ${warnings.map(w => w.message).join("; ")}` : "") +
-          ` Списано ${body.settledMinor ?? "?"} micro-cents.`);
+          ` Списано ${body.settledMinor ?? "?"} μ$ (миллионных долей доллара).`);
         router.refresh();
       }
     } finally {

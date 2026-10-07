@@ -1,10 +1,10 @@
 {
-  "task_id": "B34-001",
-  "file": "tasks/B34-001-import-extraction-cap.md",
-  "status": "implemented",
+  "task_id": "B35-001",
+  "file": "tasks/B35-001-tariff-unit.md",
+  "status": "accepted",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "OPEN_GAPS B34 closed (owner decision 2026-10-07): runExtractionPassAfterImport caps extraction at EXTRACTION_CALLS_AFTER_IMPORT = 25 provider calls per source for the worker and both import scripts; the worker's own constant is gone. check (304), test:coverage (391/391; 83.04/86.49/91.99), build, e2e (99) exit 0."
+  "note": "Owner accepted B35-001 on 2026-10-07 (money): micro-dollars defined once, the tariff matches the pricing page, the caps unchanged in dollars, the 14 settled rows kept as booked. Next: B36."
 }

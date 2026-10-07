@@ -6,7 +6,7 @@
 import OpenAI from "openai";
 import type { ModelTransport } from "./gateway.ts";
 import type { OperationRow } from "./spending.ts";
-import { GPT6_LUNA, worstCaseCostMicroCents } from "./provider.ts";
+import { GPT6_LUNA, worstCaseCostMicroUsd } from "./provider.ts";
 
 // Lazy client: never instantiated at module scope — the key is absent in
 // test/CI environments by design (fail-closed).
@@ -26,6 +26,18 @@ function getClient(): OpenAI {
 function isOpenAIConfigured(): boolean {
   return typeof process.env.OPENAI_API_KEY === "string" &&
     process.env.OPENAI_API_KEY.length > 0;
+}
+
+/**
+ * What a call cost, from the usage the provider reported: the same tariff as the
+ * reservation, so a hold and its settlement count in one unit (B35). Null when the
+ * usage is missing: that is uncertain billing, not a free call.
+ */
+export function usageCostMicroUsd(
+  usage: Readonly<{ prompt_tokens?: number; completion_tokens?: number }> | null | undefined,
+): bigint | null {
+  if (!usage || usage.prompt_tokens === undefined || usage.completion_tokens === undefined) return null;
+  return worstCaseCostMicroUsd({ inputTokens: usage.prompt_tokens, outputTokens: usage.completion_tokens });
 }
 
 export const openAiTransport: ModelTransport = {
@@ -48,15 +60,11 @@ export const openAiTransport: ModelTransport = {
         max_completion_tokens: GPT6_LUNA.maxOutputTokens,
         response_format: { type: "json_object" },
       });
-      const usage = completion.usage;
-      if (!usage || usage.prompt_tokens === undefined || usage.completion_tokens === undefined) {
+      const actualMinor = usageCostMicroUsd(completion.usage);
+      if (actualMinor === null) {
         // Response arrived but usage is missing: uncertain billing.
         return { kind: "uncertain" as const };
       }
-      const actualMinor = worstCaseCostMicroCents({
-        inputTokens: usage.prompt_tokens,
-        outputTokens: usage.completion_tokens,
-      });
       const output = completion.choices[0]?.message?.content ?? "";
       if (output.length === 0) {
         return { kind: "uncertain" as const };

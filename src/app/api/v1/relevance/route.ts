@@ -18,7 +18,7 @@ import { readSnapshotCardsData, snapshotPool } from "../../../../server/storage/
 import { isJobSnapshot } from "../../../../domain/source-contracts.ts";
 import { executeGuardedOperation } from "../../../../server/ai/gateway.ts";
 import { openAiTransport } from "../../../../server/ai/openai-transport.ts";
-import { reservationFor, worstCaseCostMicroCents } from "../../../../server/ai/provider.ts";
+import { reservationFor, worstCaseCostMicroUsd } from "../../../../server/ai/provider.ts";
 import { maySendTextToProvider, partitionSourcesByProviderRights } from "../../../../server/source-policies.ts";
 import type { RelevanceScore } from "../../../../server/relevance-service.ts";
 
@@ -123,7 +123,7 @@ async function dispatchWithPrompt(
   // previous fixed 1200/400 envelope under-reserved against a request that may
   // ask for 8192 output tokens (docs/OPEN_GAPS.md A4).
   const envelope = reservationFor(prompt);
-  const worstCase = worstCaseCostMicroCents(envelope);
+  const worstCase = worstCaseCostMicroUsd(envelope);
   return executeGuardedOperation({
     pool: snapshotPool(), ownerId: userId, purpose: "job_matching",
     idempotencyKey: idemKey, worstCaseMinor: worstCase,
@@ -180,7 +180,7 @@ export async function POST(request: Request) {
       const toAnalyze = eligibleIds.filter(id => !cachedMap.has(id));
       if (toAnalyze.length === 0) {
         return NextResponse.json({ analyzed: 0, cached: cachedMap.size,
-          scores: [...cachedMap.values()], totalCostMicroCents: "0" });
+          scores: [...cachedMap.values()], totalCostMicroUsd: "0" });
       }
       // Load job data.
       const jobs: { id: string; title: string; company: string; description: string }[] = [];
@@ -231,8 +231,8 @@ export async function POST(request: Request) {
       }
       return NextResponse.json({ analyzed: scores.length - cachedMap.size,
         cached: cachedMap.size, scores,
-        // Honest cost: the sum of what the ledger actually settled, in micro-cents.
-        totalCostMicroCents: totalCostMinor.toString(),
+        // Honest cost: the sum of what the ledger actually settled, in micro-dollars (μ$).
+        totalCostMicroUsd: totalCostMinor.toString(),
         duplicateChunks, failedChunks, rightsSkipped: rights.denied,
         ...(rights.denied.length > 0 ? { rightsMessage: RIGHTS_NOTE } : {}) });
     }
@@ -272,7 +272,7 @@ export async function POST(request: Request) {
     const score: RelevanceScore = { ...parsed, snapshotId };
     await storeScore({ pool, userId: user.id, profileVersion: profile.version,
       score, modelId: "gpt-6-luna" });
-    return NextResponse.json({ ...score, costMicroCents: result.settledMinor.toString() });
+    return NextResponse.json({ ...score, costMicroUsd: result.settledMinor.toString() });
   } catch (error) {
     return relevanceFailure(error);
   }

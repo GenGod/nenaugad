@@ -7,7 +7,7 @@ import {
   executeGuardedOperation,
 } from "../../../../../../server/ai/gateway.ts";
 import { openAiTransport } from "../../../../../../server/ai/openai-transport.ts";
-import { GPT6_LUNA, reservationFor, worstCaseCostMicroCents } from "../../../../../../server/ai/provider.ts";
+import { GPT6_LUNA, reservationFor, worstCaseCostMicroUsd } from "../../../../../../server/ai/provider.ts";
 import { snapshotPool, readSnapshotCardsData } from "../../../../../../server/storage/snapshots.ts";
 import { isJobSnapshot } from "../../../../../../domain/source-contracts.ts";
 import { latestProfile } from "../../../../../../server/profile-service.ts";
@@ -69,7 +69,7 @@ export async function POST(request: Request, { params }: Params) {
     // Reserve the request's own envelope, not a guess at the answer: the input is
     // bounded by the prompt's character count and the output by the transport's
     // hard maximum (docs/OPEN_GAPS.md A4).
-    const worstCase = worstCaseCostMicroCents(reservationFor(prompt));
+    const worstCase = worstCaseCostMicroUsd(reservationFor(prompt));
     const result = await executeGuardedOperation({
       pool,
       ownerId: user.id,

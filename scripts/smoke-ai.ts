@@ -10,7 +10,7 @@ import { localPool, migrate } from "./db.ts";
 import { executeGuardedOperation } from "../src/server/ai/gateway.ts";
 import { openAiTransport } from "../src/server/ai/openai-transport.ts";
 import { ensureBudget, GLOBAL_BUDGET_ID } from "../src/server/ai/spending.ts";
-import { GPT6_LUNA, ownerBudgetId, worstCaseCostMicroCents } from "../src/server/ai/provider.ts";
+import { GPT6_LUNA, ownerBudgetId, worstCaseCostMicroUsd } from "../src/server/ai/provider.ts";
 
 // A dedicated owner for probes. Its budget row is provisioned here because a
 // missing owner row is a refusal, not "no cap" (docs/OPEN_GAPS.md A5).
@@ -20,16 +20,16 @@ const pool = localPool(process.env.DATABASE_URL);
 await migrate(pool);
 await ensureBudget({
   pool, budgetId: GLOBAL_BUDGET_ID, scope: "global",
-  approvedLimitMinor: GPT6_LUNA.globalBudgetMicroCents,
+  approvedLimitMinor: GPT6_LUNA.globalBudgetMicroUsd,
 });
 await ensureBudget({
   pool, budgetId: ownerBudgetId(SMOKE_OWNER_ID), scope: "owner", ownerId: SMOKE_OWNER_ID,
-  period: "monthly", approvedLimitMinor: GPT6_LUNA.ownerMonthlyQuotaMicroCents,
+  period: "monthly", approvedLimitMinor: GPT6_LUNA.ownerMonthlyQuotaMicroUsd,
 });
 
-const worstCase = worstCaseCostMicroCents({ inputTokens: 1000, outputTokens: 2000 });
-console.log("worst-case:", worstCase.toString(), "micro-cents (ceiling:",
-  GPT6_LUNA.operationCeilingMicroCents.toString() + ")");
+const worstCase = worstCaseCostMicroUsd({ inputTokens: 1000, outputTokens: 2000 });
+console.log("worst-case:", worstCase.toString(), "μ$ (ceiling:",
+  GPT6_LUNA.operationCeilingMicroUsd.toString() + ")");
 
 try {
   const result = await executeGuardedOperation({
@@ -53,7 +53,7 @@ try {
   );
   const row = budget.rows[0] as { settled_minor: string; held_minor: string };
   console.log("budget after: settled=" + row.settled_minor + " held=" + row.held_minor);
-  console.log("remaining:", (10000000 - Number(row.settled_minor)).toString(), "micro-cents");
+  console.log("remaining:", (Number(GPT6_LUNA.globalBudgetMicroUsd) - Number(row.settled_minor)).toString(), "μ$");
 } catch (error) {
   console.error("ERROR:", error instanceof Error ? error.constructor.name + ": " + error.message : String(error));
   const budget = await pool.query(

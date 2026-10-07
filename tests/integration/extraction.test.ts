@@ -57,7 +57,7 @@ async function freshOwner(): Promise<string> {
   await pool.query("DELETE FROM ai_budgets");
   await ensureBudget({ pool, budgetId: GLOBAL_BUDGET_ID, scope: "global", approvedLimitMinor: 10_000n });
   await ensureBudget({ pool, budgetId: ownerBudgetId(owner.id), scope: "owner", ownerId: owner.id,
-    period: "monthly", approvedLimitMinor: GPT6_LUNA.ownerMonthlyQuotaMicroCents });
+    period: "monthly", approvedLimitMinor: GPT6_LUNA.ownerMonthlyQuotaMicroUsd });
   return owner.id;
 }
 

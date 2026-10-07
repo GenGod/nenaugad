@@ -7,7 +7,8 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-10-07 by [B34-001](tasks/B34-001-import-extraction-cap.md), after
+**Updated:** 2026-10-07 by [B35-001](tasks/B35-001-tariff-unit.md), after
+[B34-001](tasks/B34-001-import-extraction-cap.md),
 [B32-001](tasks/B32-001-extraction-pass-progress.md), [B33-001](tasks/B33-001-extract-fields-error-codes.md),
 [B31-001](tasks/B31-001-stuck-extraction-operations.md) and
 [B29-001](tasks/B29-001-tombstone-vectors.md); on 2026-10-06 the owner accepted [B28-001](tasks/B28-001-input-keyed-derivatives.md) and
@@ -22,7 +23,10 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   [MODEL-002](tasks/MODEL-002-gpu-spike.md).
 - **Approved AI purposes:** `job_matching` (AI-004, 2026-10-01) and `extraction`
   (2026-10-04, job text only). `send_to_ai_provider` is granted to all three sources
-  (AI-005). The user quota is $1/month; `npm run ai:holds` resolves stuck holds.
+  (AI-005). The user quota is $1/month; `npm run ai:holds` resolves stuck holds. Money
+  is counted in micro-dollars (μ$, 1 cent = 10,000); before B35-001 (owner-accepted
+  2026-10-07) the tariff was a tenth of the price, so every call was booked at a tenth of
+  its cost.
   Automatic background batch scoring is off (AI-006).
 - **Uploads:** `UPLOADS_ENABLED` gates the whole CV surface (every CV route, B22).
 - **Not beta:** no restore, no public deploy, no owner acceptance of the whole.
@@ -85,13 +89,13 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
-- 2026-10-07 (B34-001): `npm run check` (unit 304/304), `npm run test:coverage` (unit
-  and DB 391/391; 83.04% lines, 86.49% branches, 91.99% functions), `npm run build` and
+- 2026-10-07 (B35-001): `npm run check` (unit 306/306), `npm run test:coverage` (unit
+  and DB 393/393; 83.09% lines, 86.58% branches, 92.01% functions), `npm run build` and
   `npm run test:e2e` (99 passed), all exit 0. Not pushed. The lines threshold stays at
   82: coverage is too close to 83 to raise it.
-- 2026-10-07 (B32-001, B33-001, B31-001): the same checks, all exit 0. CI on GitHub
-  green on `48b325d`, `beff301` and `fc9d545`, as on `75e7484` (B29-001) and `936a8ba`
-  (B28-001, B30-001).
+- 2026-10-07 (B34-001, B32-001, B33-001, B31-001): the same checks, all exit 0. CI on
+  GitHub green on `cadad06`, `48b325d`, `beff301` and `fc9d545`, as on `75e7484`
+  (B29-001) and `936a8ba` (B28-001, B30-001).
 - 2026-10-06 (B28-001): the same checks, all exit 0 (unit and DB 371/371). The B27 commit
   had lost a space between two coverage flags, which silently disabled the 91% function
   threshold; fixed, and the ratchet 82/86/91 is enforced again.
@@ -108,8 +112,12 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   2026-10-06): green; a duplicate run was cancelled by the concurrency group.
 
 ## Waiting for the owner
-- The first live extraction run: `LIVE_AI_ENABLED=true` plus a key, then
-  `npm run seed:budgets` and `npm run extract:fields -- --source=himalayas --limit=5`.
+- **The first live extraction run happened (2026-10-07):** 5 himalayas postings, 5 calls
+  settled on the first attempt, 5 records accepted, no hold left. It found B35 (fixed and
+  accepted). Before the worker extracts: B36, then a look at the five records (one is a
+  "talent community" posting, not a job).
+- **Settlement above a reservation** (OPEN_GAPS B36, money, existed before): it frees
+  other operations' holds. Not reachable through `reservationFor`; `smoke-ai` can reach it.
 - The reranker (B3-001): purpose `rerank`, provider grants, profile privacy, and the
   quota and operation ceiling.
 - Profile privacy (§4.4), which also gates `matching-scoring`, `hyde` and `eval-judge`.

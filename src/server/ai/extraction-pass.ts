@@ -105,7 +105,7 @@ export type ExtractionPassResult = Readonly<{
   /** Set when outcome is `held`: the posting and the operation to resolve with `npm run ai:holds`. */
   held?: ExtractionHold;
   counts: ExtractionPassCounts;
-  settledMicroCents: bigint;
+  settledMicroUsd: bigint;
   /** Per posting: id, status, and reason codes for a rejection or a block. No text. */
   results: readonly PassEntry[];
 }>;
@@ -123,7 +123,7 @@ export type ExtractionPassSummary = Readonly<{
   code?: string;
   held?: ExtractionHold;
   counts: ExtractionPassCounts;
-  settledMicroCents: string;
+  settledMicroUsd: string;
 }>;
 
 /** The compact report the import scripts and the worker log: no per-posting list. */
@@ -134,7 +134,7 @@ export function summarizeExtractionPass(pass: ExtractionPassResult): ExtractionP
     ...(pass.code === undefined ? {} : { code: pass.code }),
     ...(pass.held === undefined ? {} : { held: pass.held }),
     counts: pass.counts,
-    settledMicroCents: pass.settledMicroCents.toString(),
+    settledMicroUsd: pass.settledMicroUsd.toString(),
   };
 }
 
@@ -170,7 +170,7 @@ export async function runExtractionPass(params: Readonly<{
    */
   limit?: number;
 }>): Promise<ExtractionPassResult> {
-  const base = { sourceId: params.sourceId, counts: emptyCounts(), settledMicroCents: 0n, results: [] as PassEntry[] };
+  const base = { sourceId: params.sourceId, counts: emptyCounts(), settledMicroUsd: 0n, results: [] as PassEntry[] };
   const policy = getSourcePolicy(params.sourceId);
   if (!policy) return { ...base, outcome: "unknown_source" };
   if (!readConfig(process.env).liveAi) return { ...base, outcome: "live_ai_disabled" };
@@ -188,7 +188,7 @@ export async function runExtractionPass(params: Readonly<{
     || (left.stored.snapshot.id < right.stored.snapshot.id ? -1 : left.stored.snapshot.id > right.stored.snapshot.id ? 1 : 0));
   const counts = emptyCounts();
   const results: PassEntry[] = [];
-  let settledMicroCents = 0n;
+  let settledMicroUsd = 0n;
   let calls = 0;
   for (const record of records) {
     // The limit counts calls, not rows: slicing rows first let answered and
@@ -219,7 +219,7 @@ export async function runExtractionPass(params: Readonly<{
       // counting it again would inflate the run's cost.
       if (outcome.status === "extracted" || outcome.status === "rejected") {
         calls += 1;
-        settledMicroCents += outcome.provenance.settledMinor;
+        settledMicroUsd += outcome.provenance.settledMinor;
       }
       results.push({
         snapshotId: snapshot.id,
@@ -242,14 +242,14 @@ export async function runExtractionPass(params: Readonly<{
             snapshotId: snapshot.id, operationId: operation.id, status: operation.status,
             deadlineAt: operation.deadlineAt,
           },
-          counts, settledMicroCents, results,
+          counts, settledMicroUsd, results,
         };
       }
       // A budget refusal stops the pass even for a posting whose operation is
       // closed: with the global budget at zero (the kill switch) the gateway
       // refuses before the ledger looks at the operation.
       if (BUDGET_REFUSAL_CODES.has(error.message)) {
-        return { sourceId: params.sourceId, outcome: "budget_refused", code: error.message, counts, settledMicroCents, results };
+        return { sourceId: params.sourceId, outcome: "budget_refused", code: error.message, counts, settledMicroUsd, results };
       }
       if (operation || POSTING_REFUSAL_CODES.has(error.message)) {
         counts.blocked += 1;
@@ -262,7 +262,7 @@ export async function runExtractionPass(params: Readonly<{
       throw error;
     }
   }
-  return { sourceId: params.sourceId, outcome: "ran", counts, settledMicroCents, results };
+  return { sourceId: params.sourceId, outcome: "ran", counts, settledMicroUsd, results };
 }
 
 export type ExtractionAfterImport =

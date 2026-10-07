@@ -29,7 +29,7 @@ import {
 import type { JobSnapshot } from "../../domain/source-contracts.ts";
 import { executeGuardedOperation, type ModelTransport } from "./gateway.ts";
 import { buildJobOnlyPrompt } from "./personal-data-boundary.ts";
-import { GPT6_LUNA, reservationFor, worstCaseCostMicroCents } from "./provider.ts";
+import { GPT6_LUNA, reservationFor, worstCaseCostMicroUsd } from "./provider.ts";
 import { getSourcePolicy, permissionFor } from "../source-policies.ts";
 import {
   loadExtraction, storeExtraction, type ExtractionProvenance,
@@ -98,7 +98,7 @@ export async function extractPostingFields(params: Readonly<{
     company: params.snapshot.company_name,
     description: params.snapshot.description_text,
   }, extractionInstruction());
-  const worstCase = worstCaseCostMicroCents(reservationFor(prompt));
+  const worstCase = worstCaseCostMicroUsd(reservationFor(prompt));
 
   const settled = await executeGuardedOperation({
     pool: params.pool,

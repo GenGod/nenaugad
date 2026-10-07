@@ -35,7 +35,7 @@ async function freshBudgets(ownerId: string, globalLimit: bigint, ownerLimit: bi
   // Every owner has a quota row now (registration provisions one and the ledger
   // refuses a missing row), so `null` means "the approved quota, not under test".
   await ensureBudget({ pool, budgetId: ownerBudgetId(ownerId), scope: "owner", ownerId,
-    period: "monthly", approvedLimitMinor: ownerLimit ?? GPT6_LUNA.ownerMonthlyQuotaMicroCents });
+    period: "monthly", approvedLimitMinor: ownerLimit ?? GPT6_LUNA.ownerMonthlyQuotaMicroUsd });
 }
 
 const NOW = "2026-09-25T12:00:00.000Z";
@@ -215,7 +215,7 @@ test("operation ceiling: a reservation above one cent is refused, not attempted"
   await freshBudgets(owner.id, 10_000_000n, null);
   await assert.rejects(executeGuardedOperation({
     pool: pool, ownerId: owner.id, purpose: "job_matching", idempotencyKey: "ceil-1",
-    worstCaseMinor: GPT6_LUNA.operationCeilingMicroCents + 1n,
+    worstCaseMinor: GPT6_LUNA.operationCeilingMicroUsd + 1n,
     transport: { async dispatchOnce() { return { kind: "result", actualMinor: 1n, output: "x" }; } },
     now: NOW,
   }), (error: unknown) => error instanceof BudgetError && error.message === "OPERATION_CEILING_EXCEEDED");
@@ -227,7 +227,7 @@ test("registration provisions the owner's quota; a missing owner budget refuses 
   const provisioned = await pool.query(
     "SELECT approved_limit_minor FROM ai_budgets WHERE id = $1", [ownerBudgetId(owner.id)]);
   assert.equal((provisioned.rows[0] as { approved_limit_minor: string } | undefined)?.approved_limit_minor,
-    GPT6_LUNA.ownerMonthlyQuotaMicroCents.toString(), "born with the approved quota");
+    GPT6_LUNA.ownerMonthlyQuotaMicroUsd.toString(), "born with the approved quota");
 
   // Removing the row must refuse, not unlock unlimited spending (OPEN_GAPS A5).
   await pool.query("DELETE FROM ai_budgets WHERE id = $1", [ownerBudgetId(owner.id)]);
@@ -392,7 +392,7 @@ test("commit-time revalidation: cancelled refuses settlement, settled refuses ca
 test("the owner's monthly quota is exhausted by settled spend, not only checked for existence", async () => {
   await migrate(pool);
   const owner = await registerUser(pool, email(), "long-enough-password");
-  await freshBudgets(owner.id, 10_000n, 100n); // owner quota: 100 micro-cents
+  await freshBudgets(owner.id, 10_000n, 100n); // owner quota: 100 μ$
   const first = await reserveBudget({
     pool: pool, operationId: "", ownerId: owner.id, taskType: "cover_letter",
     idempotencyKey: "q-1", worstCaseMinor: 100n, now: NOW,

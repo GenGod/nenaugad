@@ -1,39 +1,60 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  GPT6_LUNA, worstCaseCostMicroCents, isPurposeApproved, reservationFor,
+  GPT6_LUNA, MICRO_USD_PER_DOLLAR, worstCaseCostMicroUsd, isPurposeApproved, reservationFor,
 } from "../../src/server/ai/provider.ts";
 import {
   BatchDisabledError, isBatchEnabled, checkBatch, parseBatchOutput, retrieveBatchResults, submitBatch,
 } from "../../src/server/ai/openai-batch.ts";
-import { openAiTransport } from "../../src/server/ai/openai-transport.ts";
+import { openAiTransport, usageCostMicroUsd } from "../../src/server/ai/openai-transport.ts";
 import {
   PURPOSES_NEEDING_CANDIDATE_FACTS, PersonalDataBoundaryError, assertNoCandidateFacts, buildJobOnlyPrompt,
 } from "../../src/server/ai/personal-data-boundary.ts";
 
-test("provider config: GPT-6 Luna prices match the owner-approved tariff", () => {
+test("provider config: the tariff and the caps count in one unit, micro-dollars (B35)", () => {
   assert.equal(GPT6_LUNA.provider, "openai");
   assert.equal(GPT6_LUNA.modelId, "gpt-6-luna");
-  assert.equal(GPT6_LUNA.inputMicroCentsPerMTok, 10_000n); // $0.10/MTok
-  assert.equal(GPT6_LUNA.outputMicroCentsPerMTok, 50_000n); // $0.50/MTok
-  assert.equal(GPT6_LUNA.operationCeilingMicroCents, 10_000n); // 1 cent
-  assert.equal(GPT6_LUNA.ownerMonthlyQuotaMicroCents, 1_000_000n); // $1 (owner decision 2026-10-01)
-  assert.equal(GPT6_LUNA.globalBudgetMicroCents, 10_000_000n); // $10
+  assert.equal(MICRO_USD_PER_DOLLAR, 1_000_000n);
+  // developers.openai.com/api/docs/pricing, re-read 2026-10-07: gpt-6-luna, standard
+  // short context, $0.10 per million input tokens and $0.50 per million output tokens.
+  assert.equal(GPT6_LUNA.inputMicroUsdPerMTok, 100_000n); // $0.10
+  assert.equal(GPT6_LUNA.outputMicroUsdPerMTok, 500_000n); // $0.50
+  // The owner-approved caps, in the same unit.
+  assert.equal(GPT6_LUNA.operationCeilingMicroUsd, 10_000n); // 1 cent
+  assert.equal(GPT6_LUNA.ownerMonthlyQuotaMicroUsd, 1_000_000n); // $1 (owner decision 2026-10-01)
+  assert.equal(GPT6_LUNA.globalBudgetMicroUsd, 10_000_000n); // $10
+});
+
+test("a million tokens cost what the pricing page says (B35)", () => {
+  // The ledger used to book a tenth of this: the tariff was written as if a cent
+  // were 1,000 units while the caps count 10,000 to the cent.
+  assert.equal(worstCaseCostMicroUsd({ inputTokens: 1_000_000, outputTokens: 0 }), MICRO_USD_PER_DOLLAR / 10n);
+  assert.equal(worstCaseCostMicroUsd({ inputTokens: 0, outputTokens: 1_000_000 }), MICRO_USD_PER_DOLLAR / 2n);
+});
+
+test("a call is settled at the page's price from the usage the provider reports (B35)", () => {
+  // The path the defect lived on: the transport turns the reported tokens into the
+  // amount the ledger settles.
+  assert.equal(usageCostMicroUsd({ prompt_tokens: 1_000_000, completion_tokens: 0 }), 100_000n);
+  assert.equal(usageCostMicroUsd({ prompt_tokens: 0, completion_tokens: 1_000_000 }), 500_000n);
+  // A call like the first live run's: about 1,700 tokens in and 800 out, $0.00057.
+  assert.equal(usageCostMicroUsd({ prompt_tokens: 1_700, completion_tokens: 800 }), 570n);
+  // Missing usage is uncertain billing, never a free call.
+  assert.equal(usageCostMicroUsd(undefined), null);
+  assert.equal(usageCostMicroUsd({ prompt_tokens: 10 }), null);
 });
 
 test("worst-case cost uses integer ceiling, never float", () => {
   // 28K input + 6K output (cover letter envelope from SP 9)
-  const cost = worstCaseCostMicroCents({ inputTokens: 28_000, outputTokens: 6_000 });
-  // 28000*10000/1000000 = 280; 6000*50000/1000000 = 300 → 580 micro-cents
-  assert.equal(cost, 580n);
-  // Single token rounds UP (conservative)
-  const single = worstCaseCostMicroCents({ inputTokens: 1, outputTokens: 1 });
-  assert.ok(single >= 1n, "a single token must cost at least 1 micro-cent (ceil)");
+  const cost = worstCaseCostMicroUsd({ inputTokens: 28_000, outputTokens: 6_000 });
+  // 28000*100000/1000000 = 2800; 6000*500000/1000000 = 3000 → 5800 μ$ (0.58 cents)
+  assert.equal(cost, 5_800n);
+  // A single token rounds UP (conservative): 0.1 μ$ and 0.5 μ$ become 1 each.
+  assert.equal(worstCaseCostMicroUsd({ inputTokens: 1, outputTokens: 1 }), 2n);
   // Zero tokens = zero
-  assert.equal(worstCaseCostMicroCents({ inputTokens: 0, outputTokens: 0 }), 0n);
+  assert.equal(worstCaseCostMicroUsd({ inputTokens: 0, outputTokens: 0 }), 0n);
   // The ceiling is not exceeded even at the token-envelope maximum
-  const envelope = worstCaseCostMicroCents({ inputTokens: 28_000, outputTokens: 6_000 });
-  assert.ok(envelope <= GPT6_LUNA.operationCeilingMicroCents,
+  assert.ok(cost <= GPT6_LUNA.operationCeilingMicroUsd,
     "worst case must fit inside the 1-cent ceiling");
 });
 
@@ -57,14 +78,20 @@ test("reservation bounds the request, not the expected answer (A4)", () => {
   assert.equal(envelope.inputTokens, 4000);
   // Output is the transport's hard maximum, because that is what the request may ask for.
   assert.equal(envelope.outputTokens, GPT6_LUNA.maxOutputTokens);
-  const cost = worstCaseCostMicroCents(envelope);
-  // 4000 in + 8192 out = 40 + 410 = 450 micro-cents, comfortably inside the 1-cent ceiling.
-  assert.equal(cost, 450n);
-  assert.ok(cost <= GPT6_LUNA.operationCeilingMicroCents,
+  const cost = worstCaseCostMicroUsd(envelope);
+  // 4000 in + 8192 out = 400 + 4096 = 4496 μ$ (0.45 cents), inside the 1-cent ceiling.
+  assert.equal(cost, 4_496n);
+  assert.ok(cost <= GPT6_LUNA.operationCeilingMicroUsd,
     "a realistic prompt's worst case must fit the per-operation ceiling");
   // The envelope is monotone in the prompt: a longer prompt never reserves less.
-  assert.ok(worstCaseCostMicroCents(reservationFor("x".repeat(9000)))
-    > worstCaseCostMicroCents(reservationFor("x".repeat(4000))));
+  assert.ok(worstCaseCostMicroUsd(reservationFor("x".repeat(9000)))
+    > worstCaseCostMicroUsd(reservationFor("x".repeat(4000))));
+  // The longest prompt the ceiling admits: 59,040 characters (5904 + 4096 = 10,000 μ$).
+  // The longest posting on the local database (2026-10-07) is about 19,300 with the
+  // instruction, about 0.6 cents.
+  assert.equal(worstCaseCostMicroUsd(reservationFor("x".repeat(59_040))), GPT6_LUNA.operationCeilingMicroUsd);
+  assert.ok(worstCaseCostMicroUsd(reservationFor("x".repeat(59_041))) > GPT6_LUNA.operationCeilingMicroUsd);
+  assert.ok(worstCaseCostMicroUsd(reservationFor("x".repeat(19_400))) <= GPT6_LUNA.operationCeilingMicroUsd);
 });
 
 test("batch path is closed: nothing can reach a provider through it (C0 part 1)", async () => {

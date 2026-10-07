@@ -40,7 +40,7 @@ export async function registerUser(pool: Pool, email: string, password: string):
     await ensureBudget({
       pool: client, budgetId: ownerBudgetId(row.id), scope: "owner",
       ownerId: row.id, period: "monthly",
-      approvedLimitMinor: GPT6_LUNA.ownerMonthlyQuotaMicroCents,
+      approvedLimitMinor: GPT6_LUNA.ownerMonthlyQuotaMicroUsd,
     });
     await client.query("COMMIT");
     return { id: row.id, email: row.email, passwordHash: row.password_hash };
