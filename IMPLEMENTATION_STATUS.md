@@ -7,7 +7,9 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-10-06 by [B30-001](tasks/B30-001-card-excerpts.md).
+**Updated:** 2026-10-07 by [B29-001](tasks/B29-001-tombstone-vectors.md); on 2026-10-06 the
+owner accepted [B28-001](tasks/B28-001-input-keyed-derivatives.md) and
+[B30-001](tasks/B30-001-card-excerpts.md).
 
 ## Switches and boundaries
 - **Live AI is off** (`LIVE_AI_ENABLED=false`, a real switch since AI-007): no provider
@@ -38,8 +40,8 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   and a non-empty list never becomes worldwide (B27-001). The local catalog was
   re-mapped to both once (REMAP-001, 2026-10-06: 518 rows, with a backup without posting
   text and a rollback proven on the real rows). Card excerpts are decoded once at import
-  and an import no longer blanks the excerpts of records it did not fetch (B30-001; the
-  200 stored jobicy excerpts were decoded in place).
+  and an import no longer blanks the excerpts of records it did not fetch (B30-001,
+  owner-accepted 2026-10-06; the 200 stored jobicy excerpts were decoded in place).
 - **Auth and profiles:** manual private profile, explainable matching, saved jobs
   (S2-001, owner-accepted); hide with a reason and applied marks (S2-002).
 - **CV intake:** offline text/txt/md/docx intake and private storage (S3-001,
@@ -57,11 +59,12 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   leg, BM25 and RRF are implemented and measured but not switched on: BM25 alone beats
   fusion, and the ranker beats every leg (B1-001, B1-002, B2-001). The rerank input is
   measured (B3-001); its implementation waits on owner decisions. The index re-embeds a
-  posting only when its text changes (B28-001).
+  posting only when its text changes (B28-001) and never gives a tombstone a vector, even
+  one retention made while a run was embedding it (B29-001).
 - **LLM field extraction:** core, validator and immutable evidence rows (C1-001); wired
   into the worker and the import scripts (C1-002). Without the switch it touches nothing.
   A paid record is keyed by its input, so a re-map that leaves the text alone is never
-  paid again (B28-001).
+  paid again (B28-001, owner-accepted 2026-10-06).
 - **NLI pre-check:** evaluated with a negative result, not integrated (B4-001).
 - **Design:** the Nenaugad design system 1.3 with `--ng-*` tokens (DS-001,
   owner-accepted 2026-09-27); visual baselines are recorded on Windows.
@@ -74,9 +77,13 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-10-07 (B29-001): `npm run check` (unit 302/302), `npm run test:coverage` (unit
+  and DB 378/378; 82.71% lines, 86.30% branches, 91.62% functions), `npm run build` and
+  `npm run test:e2e` (99 passed), all exit 0. Not pushed.
 - 2026-10-06 (B30-001): `npm run check` (unit 302/302), `npm run test:coverage` (unit
   and DB 376/376; 82.67% lines, 86.33% branches, 91.60% functions), `npm run build` and
-  `npm run test:e2e` (99 passed), all exit 0. Not pushed.
+  `npm run test:e2e` (99 passed), all exit 0. CI on GitHub green on `936a8ba`, which
+  carries B28 and B30 (Code quality, Build, Tests).
 - 2026-10-06 (B28-001): the same checks, all exit 0 (unit and DB 371/371). The B27 commit
   had lost a space between two coverage flags, which silently disabled the 91% function
   threshold; fixed, and the ratchet 82/86/91 is enforced again.
@@ -108,11 +115,7 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   ([DEVX-003](tasks/DEVX-003-weekly-checks.md)).
 - Whether to normalize the himalayas "Current as of" date in the terms fingerprint
   (source-rights tooling). It is the precondition for a weekly `terms:check`.
-- **B28-001 acceptance** (money): paid extraction is now keyed by its input, and
-  migration 0020 is applied locally. The independent review found it ready for
-  acceptance; one decision is open: whether 0020's guard should also have refused
-  old-format extraction operations (none exist anywhere).
-- **B30-001 acceptance:** then delete `backups/excerpts-2026-10-06/backup.json`. It holds
+- **Delete `backups/excerpts-2026-10-06/backup.json`** (B30-001 is accepted). It holds
   the 200 old excerpts, which is posting text that must not outlive retention.
 - **Before live AI:** a stuck extraction operation stops the pass and can pause a
   healthy import (OPEN_GAPS B31), and the pass may never get past its first 25 rows
@@ -128,8 +131,6 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   is a 7-day window, and the himalayas pass resumes at its cursor, 25 pages a run. A
   later mapping change needs its own re-map (REMAP-001's script is guarded for the
   shapes of 2026-10-06).
-- The embedding index has no tombstone filter: once retention tombstones a posting, the
-  next index run would embed its blank text (OPEN_GAPS B29).
 
 ## Next
 The current task is in `tasks/current.json`.

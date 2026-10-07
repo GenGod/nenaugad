@@ -43,7 +43,11 @@ Notes:
   `tests/support/` and is deliberately unreachable from the CLI: a fake vector
   written to a real database would be indistinguishable from a real one later.
 * Indexing is resumable: a run embeds only postings with no vector for this
-  artifact or with a changed `content_hash`. `--limit=N` bounds one run.
+  artifact or whose embedded text (title and description) changed, compared by
+  `job_embeddings.text_hash` (B28). `--limit=N` bounds one run.
+* A tombstone is never embedded and never counted (B29): retention blanked its
+  text. A posting retention tombstones while a run is embedding it loses its
+  vector at the end of that chunk; the report counts these as `retired`.
 * `jobicy` is skipped with `no_permission` until the owner grants
   `process_with_ml` (decision §6.1). That is a policy outcome, not an error.
 * Indexing and evaluation touch the network **only** in `models:fetch`.
@@ -51,7 +55,7 @@ Notes:
   (i5-13450HX, int8, one document per forward pass): the golden set's short
   postings at ~28 ms each, the live catalog (≈500 postings, ~1–2k tokens each) at
   roughly half an hour for the whole set. `--limit=N` bounds a run and the work
-  list is derived from `content_hash`, so a stopped run continues where it left
+  list is derived from the text hash, so a stopped run continues where it left
   off instead of re-embedding everything.
 * **If the run reports unreachable postings** (`partial_store`), the database
   could not resolve a snapshot by its primary key while attaching the vector.

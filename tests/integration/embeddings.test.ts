@@ -8,11 +8,13 @@ import { createPostgresPersistence } from "../../src/server/storage/snapshots.ts
 import { mapHimalayasFixture } from "../../src/server/import/himalayas-fixture.ts";
 import { himalayasCandidatePolicy } from "../../src/server/source-policies.ts";
 import {
-  EmbeddingStoreError, countJobEmbeddings, countProfileEmbeddings, embeddingTextHash, embeddingWork,
-  indexSourceEmbeddings, loadJobEmbeddings, loadProfileEmbedding, saveProfileEmbedding, storeChunk,
+  EmbeddingStoreError, countJobEmbeddings, countPostings, countProfileEmbeddings, embeddingTextHash,
+  embeddingWork, indexSourceEmbeddings, loadJobEmbeddings, loadProfileEmbedding, saveProfileEmbedding, storeChunk,
 } from "../../src/server/embeddings/embedding-service.ts";
 import { denseSearchForProfile } from "../../src/server/embeddings/dense-search-service.ts";
-import { PROFILE_TEXT_VERSION, jobEmbeddingText, profileEmbeddingText } from "../../src/domain/embeddings.ts";
+import {
+  PROFILE_TEXT_VERSION, jobEmbeddingText, profileEmbeddingText, type Embedder,
+} from "../../src/domain/embeddings.ts";
 import type { ManualProfileInput } from "../../src/domain/profile.ts";
 import type { JobSnapshot } from "../../src/domain/source-contracts.ts";
 import { createFakeEmbedder, FAKE_MODEL_VERSION } from "../support/fake-embedder.ts";
@@ -192,6 +194,77 @@ test("embeddings: retention blanks the posting's text, and the vector dies with 
   const title = await pool.query<{ title: string }>(
     "SELECT snapshot->>'title' AS title FROM job_snapshots WHERE id = $1", ["himalayas:b1-welder"]);
   assert.equal(title.rows[0]?.title, "", "the prose is blanked, the row stays");
+});
+
+/** Moves a posting's last_seen past the policy window (720 h) and lets retention run. */
+async function tombstone(id: string): Promise<void> {
+  await pool.query("UPDATE job_snapshots SET snapshot = jsonb_set(snapshot, '{dates,last_seen_at}', '\"2020-01-01T00:00:00.000Z\"') WHERE id = $1",
+    [id]);
+  assert.equal(await createPostgresPersistence(pool, enabledPolicy).tombstoneExpired(NOW), 1);
+}
+
+test("embeddings: a tombstone is neither embedded nor counted, and comes back when its source lists it again (B29)", async () => {
+  await seedCatalog();
+  const embedder = createFakeEmbedder();
+  await tombstone("himalayas:b1-welder");
+
+  // RET-001 blanked its text: there is nothing to embed, whatever hash it carries.
+  assert.deepEqual((await embeddingWork(pool, "himalayas", FAKE_MODEL_VERSION)).map(entry => entry.snapshotId),
+    ["himalayas:b1-python"]);
+  const report = await indexSourceEmbeddings({ pool, sourceId: "himalayas", embedder, now: NOW });
+  assert.equal(report.embedded, 1);
+  assert.equal(report.current, 0);
+  const again = await indexSourceEmbeddings({ pool, sourceId: "himalayas", embedder, now: NOW });
+  assert.equal(again.outcome, "nothing_to_do");
+  assert.equal(again.current, 1, "a tombstone is neither work nor current");
+  assert.equal(await countPostings(pool, "himalayas"), 1);
+  assert.equal(await countJobEmbeddings(pool, FAKE_MODEL_VERSION), 1);
+
+  // Revived as pipeline.ts revives it: the source lists it again, the text is back.
+  const [template] = mapHimalayasFixture(NOW);
+  assert.ok(template);
+  await pool.query("UPDATE job_snapshots SET tombstoned_at = NULL, snapshot = $2::jsonb WHERE id = $1", [
+    "himalayas:b1-welder",
+    JSON.stringify(snapshotWith(template, "himalayas:b1-welder", "Welder for an offshore oil platform, on-site.")),
+  ]);
+  const revived = await indexSourceEmbeddings({ pool, sourceId: "himalayas", embedder, now: NOW });
+  assert.equal(revived.embedded, 1);
+  assert.equal(revived.current, 1);
+  assert.equal(await countJobEmbeddings(pool, FAKE_MODEL_VERSION), 2);
+});
+
+test("embeddings: a posting retention tombstones while a run embeds it ends the run without a vector (B29)", async () => {
+  await seedCatalog();
+  const fake = createFakeEmbedder();
+  await indexSourceEmbeddings({ pool, sourceId: "jobicy", embedder: fake, now: NOW });
+
+  // The run reads its work list, then embeds for minutes; the worker's import runs
+  // retention in between. Retention's delete finds no vector yet, and the run then
+  // stores the old text's vector.
+  let struck = false;
+  const embedder: Embedder = {
+    ...fake,
+    async embed(requests, task) {
+      if (!struck) {
+        struck = true;
+        await tombstone("himalayas:b1-welder");
+      }
+      return fake.embed(requests, task);
+    },
+  };
+  const report = await indexSourceEmbeddings({ pool, sourceId: "himalayas", embedder, now: NOW });
+  assert.ok(struck);
+  assert.equal(report.outcome, "indexed");
+  assert.equal(report.embedded, 2);
+  assert.equal(report.retired, 1);
+
+  // The live posting and the other source keep their vectors.
+  const stored = await loadJobEmbeddings({
+    pool, snapshotIds: ["himalayas:b1-python", "himalayas:b1-welder", "jobicy:b1-denied"],
+    modelVersion: FAKE_MODEL_VERSION, instructionVersion: fake.instructionVersion,
+  });
+  assert.deepEqual([...stored.keys()].sort(), ["himalayas:b1-python", "jobicy:b1-denied"]);
+  assert.deepEqual(await embeddingWork(pool, "himalayas", FAKE_MODEL_VERSION), []);
 });
 
 test("embeddings: the profile vector is personal data and dies with the profile", async () => {

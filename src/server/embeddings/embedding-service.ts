@@ -104,10 +104,16 @@ export function embeddingTextHash(text: string): string {
 export type EmbeddingIndexReport = Readonly<{
   sourceId: string;
   outcome: "indexed" | "partial_store" | "no_permission" | "unknown_source" | "nothing_to_do";
-  /** Postings embedded in this run (new or refreshed) and durably stored. */
+  /** Postings embedded in this run (new or refreshed) and stored. */
   embedded: number;
-  /** Postings whose vector is already current. */
+  /** Live postings whose vector is already current. A tombstone is never counted. */
   current: number;
+  /**
+   * Vectors of the source's tombstones this run deleted (B29): a posting that
+   * retention tombstoned while the run was embedding it. Absent when the run
+   * stored nothing.
+   */
+  retired?: number;
   /** Rows whose stored snapshot failed validation — a storage bug, reported not hidden. */
   invalid: number;
   modelVersion: string;
@@ -131,6 +137,8 @@ export type EmbeddingIndexReport = Readonly<{
  * A change elsewhere in the snapshot, such as a geography re-map, leaves the vector
  * alone (docs/OPEN_GAPS.md B28). The comparison runs here, on the text the indexer
  * would embed. Ordered by id so a limited run is deterministic and resumable.
+ * A tombstone is never work: retention blanked its text (RET-001), and a vector
+ * must not outlive the text it was made from (B29).
  */
 export async function embeddingWork(
   pool: Pool, sourceId: string, modelVersion: string, limit?: number,
@@ -138,7 +146,7 @@ export async function embeddingWork(
   const result = await pool.query(`
     SELECT j.id, j.content_hash, j.snapshot, e.text_hash FROM job_snapshots j
     LEFT JOIN job_embeddings e ON e.snapshot_id = j.id AND e.model_version = $2
-    WHERE j.source_id = $1
+    WHERE j.source_id = $1 AND j.tombstoned_at IS NULL
     ORDER BY j.id`, [sourceId, modelVersion]);
   const work: EmbeddingWork[] = [];
   for (const row of result.rows as { id: string; content_hash: string; snapshot: unknown; text_hash: string | null }[]) {
@@ -152,11 +160,29 @@ export async function embeddingWork(
   return work;
 }
 
+/** Live postings of a source: the ones that can have a vector. */
 export async function countPostings(pool: Pool, sourceId: string): Promise<number> {
   const result = await pool.query(
-    "SELECT COUNT(*) AS total FROM job_snapshots WHERE source_id = $1", [sourceId],
+    "SELECT COUNT(*) AS total FROM job_snapshots WHERE source_id = $1 AND tombstoned_at IS NULL", [sourceId],
   );
   return Number((result.rows[0] as { total: string }).total);
+}
+
+/**
+ * Deletes every vector of the source's tombstones (B29). The work list excludes
+ * tombstones, but a run reads it once and then embeds for minutes: a posting that
+ * retention tombstones meanwhile is stored after retention deleted its vectors.
+ * Retention commits the blanking, then deletes; the run commits a chunk, then
+ * calls this. If the run committed before retention's delete began, that delete
+ * finds the vector; if after, this delete begins after the blanking was committed
+ * and finds the tombstone.
+ */
+async function retireTombstoneVectors(pool: Pool, sourceId: string): Promise<number> {
+  const result = await pool.query(
+    "DELETE FROM job_embeddings WHERE snapshot_id IN (SELECT id FROM job_snapshots WHERE source_id = $1 AND tombstoned_at IS NOT NULL)",
+    [sourceId],
+  );
+  return result.rowCount ?? 0;
 }
 
 /**
@@ -198,6 +224,7 @@ export async function indexSourceEmbeddings(params: Readonly<{
   // work away. A stopped run is resumed by running it again — the work list is
   // derived from the text hash, so what was stored is not recomputed.
   let embedded = 0;
+  let retired = 0;
   const unreachable: string[] = [];
   for (let start = 0; start < work.length; start += PROGRESS_CHUNK) {
     const slice = work.slice(start, start + PROGRESS_CHUNK);
@@ -207,6 +234,8 @@ export async function indexSourceEmbeddings(params: Readonly<{
     const result = await storeChunk(pool, slice, vectors);
     embedded += result.stored;
     unreachable.push(...result.unreachable);
+    // After the chunk's commit, never before it: see retireTombstoneVectors.
+    retired += await retireTombstoneVectors(pool, sourceId);
     onProgress?.(embedded + unreachable.length, work.length);
   }
   if (unreachable.length > 0) {
@@ -214,9 +243,9 @@ export async function indexSourceEmbeddings(params: Readonly<{
     // Reported and stepped over rather than retried forever: the same row would
     // fail on every run, and stopping would leave the rest of the catalog
     // unindexed for one bad key.
-    return { sourceId, outcome: "partial_store", ...empty, embedded, current, unreachable };
+    return { sourceId, outcome: "partial_store", ...empty, embedded, current, retired, unreachable };
   }
-  return { sourceId, outcome: "indexed", ...empty, embedded, current };
+  return { sourceId, outcome: "indexed", ...empty, embedded, current, retired };
 }
 
 function isForeignKeyViolation(error: unknown): boolean {

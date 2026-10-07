@@ -1,10 +1,10 @@
 {
-  "task_id": "B30-001",
-  "file": "tasks/B30-001-card-excerpts.md",
+  "task_id": "B29-001",
+  "file": "tasks/B29-001-tombstone-vectors.md",
   "status": "implemented",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "OPEN_GAPS B30 closed: jobicy excerpts decoded once at import (html-entities.ts); PostgreSQL saveStore writes an excerpt only for the records a run fetched (imports had blanked every other card); himalayas maps every fetched record. Proven with the real persistence (failed on the old code). 200 stored jobicy excerpts decoded in place, no other column moved; backup to delete after acceptance. Mutation 9/9. check, test:coverage (82.67/86.33/91.60), build, e2e (99) exit 0."
+  "note": "OPEN_GAPS B29 closed: embeddingWork and countPostings skip tombstones; after each stored chunk the run deletes the vectors of the source's tombstones (retention racing a run), reported as retired. Both tests failed on the old code. Mutation 6/6. check, test:coverage (378/378; 82.71/86.30/91.62), build, e2e (99) exit 0. No tombstone on the local database."
 }
