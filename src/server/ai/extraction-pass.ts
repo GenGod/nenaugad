@@ -12,6 +12,9 @@
 //     dropping it — this loop only counts what happened, per posting;
 //   * tombstones are skipped: retention blanked their text, so there is nothing
 //     to extract and no reason to pay for an empty prompt;
+//   * postings are visited newest first, and `limit` counts provider calls, not
+//     rows (B32): an answered, tombstoned, empty or blocked posting does not use
+//     a slot, so each pass reaches postings that still need a record;
 //   * a missing or exhausted budget row is a refusal (`OWNER_BUDGET_MISSING`,
 //     `BUDGET_UNAVAILABLE`, `BUDGET_EXCEEDED`), not "no cap": the pass stops and
 //     names the code — continuing would fail identically for every remaining
@@ -161,7 +164,10 @@ export async function runExtractionPass(params: Readonly<{
   sourceId: string;
   transport: ModelTransport | null;
   now: string;
-  /** Cap per pass; the worker uses it to stay polite, the scripts stay unbounded. */
+  /**
+   * The most provider calls one pass makes (B32); the worker uses it to stay
+   * polite, the scripts stay unbounded.
+   */
   limit?: number;
 }>): Promise<ExtractionPassResult> {
   const base = { sourceId: params.sourceId, counts: emptyCounts(), settledMicroCents: 0n, results: [] as PassEntry[] };
@@ -174,12 +180,20 @@ export async function runExtractionPass(params: Readonly<{
   const hold = await openHold(params.pool, params.sourceId);
   if (hold) return { ...base, outcome: "held", held: hold };
 
-  const records = await readSnapshotCardsData(params.pool, params.sourceId);
-  const sliced = params.limit === undefined ? records : records.slice(0, params.limit);
+  // Newest first, whatever order the database returns (B32). The order decides
+  // what is extracted first, not how much is spent: under an inflow above the
+  // limit, the postings candidates see come before the ones about to expire.
+  const records = [...await readSnapshotCardsData(params.pool, params.sourceId)].sort((left, right) =>
+    Date.parse(right.stored.firstSeenAt) - Date.parse(left.stored.firstSeenAt)
+    || (left.stored.snapshot.id < right.stored.snapshot.id ? -1 : left.stored.snapshot.id > right.stored.snapshot.id ? 1 : 0));
   const counts = emptyCounts();
   const results: PassEntry[] = [];
   let settledMicroCents = 0n;
-  for (const record of sliced) {
+  let calls = 0;
+  for (const record of records) {
+    // The limit counts calls, not rows: slicing rows first let answered and
+    // blocked postings fill every slot, tick after tick (B32).
+    if (params.limit !== undefined && calls >= params.limit) break;
     const snapshot = record.stored.snapshot;
     // The lifecycle is the contract's own tombstone marker (RET-001); the card
     // reader does not carry `tombstoned_at`, and the snapshot is the authority
@@ -204,6 +218,7 @@ export async function runExtractionPass(params: Readonly<{
       // from the stored record whose provenance names an older payment, and
       // counting it again would inflate the run's cost.
       if (outcome.status === "extracted" || outcome.status === "rejected") {
+        calls += 1;
         settledMicroCents += outcome.provenance.settledMinor;
       }
       results.push({

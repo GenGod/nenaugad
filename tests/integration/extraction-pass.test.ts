@@ -67,10 +67,10 @@ async function provisionExtractorBudget(): Promise<void> {
     ownerId: EXTRACTOR_OWNER_ID, period: "monthly", approvedLimitMinor: GPT6_LUNA.ownerMonthlyQuotaMicroCents });
 }
 
-async function insertSnapshot(sourceId: string, snapshot: JobSnapshot): Promise<void> {
+async function insertSnapshot(sourceId: string, snapshot: JobSnapshot, firstSeenAt = NOW): Promise<void> {
   await pool.query(
     "INSERT INTO job_snapshots (id, source_id, content_hash, first_seen_at, snapshot) VALUES ($1, $2, $3, $4, $5::jsonb)",
-    [snapshot.id, sourceId, `hash-${snapshot.id}`, NOW, JSON.stringify(snapshot)]);
+    [snapshot.id, sourceId, `hash-${snapshot.id}`, firstSeenAt, JSON.stringify(snapshot)]);
 }
 
 async function cleanup(): Promise<void> {
@@ -141,14 +141,15 @@ test("the pass extracts only what is missing, skips tombstones, and honours the 
     assert.equal(again.counts.already_extracted, 2);
     assert.equal(again.settledMicroCents, 0n, "stored records must not cost anything");
 
-    // The limit caps one pass without caring which rows the database returns
-    // first: one row is processed, at most one call's worth is settled.
+    // The limit counts provider calls, not rows (B32): both postings are answered
+    // from their records, so a pass limited to one call visits both and pays nothing.
     const capped = await runExtractionPass({
-      pool, sourceId: "himalayas", transport: transportReturning(VALID_OUTPUT), now: NOW, limit: 1,
+      pool, sourceId: "himalayas", transport: exploding, now: NOW, limit: 1,
     });
     assert.equal(capped.outcome, "ran");
-    assert.equal(capped.results.length, 1);
-    assert.ok(capped.settledMicroCents <= 90n);
+    assert.equal(capped.results.length, 2);
+    assert.equal(capped.counts.already_extracted, 2);
+    assert.equal(capped.settledMicroCents, 0n);
 
     // Simulate retention's real path (RET-001): last_seen moves past the policy
     // window and the persistence tombstones the row — prose blanked, lifecycle
@@ -449,4 +450,115 @@ test("a failure is printed as a code, never as its message (B33)", () => {
   assert.equal(failureCode("Backend Engineer"), "EXTRACTION_FAILED");
   assert.equal(failureCode(null), "EXTRACTION_FAILED");
   assert.equal(failureCode(undefined), "EXTRACTION_FAILED");
+});
+
+test("the pass reaches the postings without a record, newest first, one call at a time (B32)", async () => {
+  await seedTwoSnapshots();
+  await pool.query("DELETE FROM job_snapshots WHERE source_id = 'himalayas'");
+  const [template] = mapHimalayasFixture(NOW);
+  assert.ok(template);
+  const newest = snapshotWith(template, "himalayas:extp-a");
+  const older = snapshotWith(template, "himalayas:extp-b");
+  // Two postings seen at the same moment: the id decides, whatever the insert order.
+  const tiedSecond = snapshotWith(template, "himalayas:extp-d");
+  const tiedFirst = snapshotWith(template, "himalayas:extp-c");
+  // Inserted against the expected order on both keys, so the pass's own ordering,
+  // not the order the database happens to return, decides what comes first.
+  await insertSnapshot("himalayas", tiedSecond, "2026-10-04T09:00:00.000Z");
+  await insertSnapshot("himalayas", tiedFirst, "2026-10-04T09:00:00.000Z");
+  await insertSnapshot("himalayas", older, "2026-10-04T10:00:00.000Z");
+  await insertSnapshot("himalayas", newest, "2026-10-04T11:00:00.000Z");
+  await provisionExtractorBudget();
+  const previous = process.env.LIVE_AI_ENABLED;
+  process.env.LIVE_AI_ENABLED = "true";
+  try {
+    // The two newest already have records: they come first and must not use the slot.
+    for (const snapshot of [newest, older]) {
+      const answered = await extractPostingFields({
+        pool, ownerId: EXTRACTOR_OWNER_ID, sourceId: "himalayas", snapshot,
+        transport: transportReturning(VALID_OUTPUT), now: NOW,
+      });
+      assert.equal(answered.status, "extracted");
+    }
+
+    const first = countingTransport(VALID_OUTPUT);
+    const tick1 = await runExtractionPass({ pool, sourceId: "himalayas", transport: first.transport, now: NOW, limit: 1 });
+    assert.equal(tick1.outcome, "ran");
+    assert.equal(first.calls(), 1);
+    assert.deepEqual(tick1.results.map(result => [result.snapshotId, result.status]), [
+      [newest.id, "already_extracted"], [older.id, "already_extracted"], [tiedFirst.id, "extracted"],
+    ], "newest first, and the pass stops once its one call is made");
+
+    const second = countingTransport(VALID_OUTPUT);
+    const tick2 = await runExtractionPass({ pool, sourceId: "himalayas", transport: second.transport, now: NOW, limit: 1 });
+    assert.equal(second.calls(), 1);
+    assert.deepEqual(tick2.results.map(result => result.status),
+      ["already_extracted", "already_extracted", "already_extracted", "extracted"]);
+    assert.equal(tick2.results[3]?.snapshotId, tiedSecond.id);
+
+    const done = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, now: NOW, limit: 1 });
+    assert.equal(done.counts.already_extracted, 4);
+    assert.equal(done.settledMicroCents, 0n);
+  } finally {
+    process.env.LIVE_AI_ENABLED = previous ?? "true";
+  }
+  await cleanup();
+});
+
+test("blocked postings do not use the pass's calls (B32)", async () => {
+  await seedTwoSnapshots();
+  await pool.query("DELETE FROM job_snapshots WHERE source_id = 'himalayas'");
+  const [template] = mapHimalayasFixture(NOW);
+  assert.ok(template);
+  const blocked = snapshotWith(template, "himalayas:extp-blocked");
+  const waiting = snapshotWith(template, "himalayas:extp-waiting");
+  await insertSnapshot("himalayas", blocked, "2026-10-04T11:00:00.000Z");
+  await insertSnapshot("himalayas", waiting, "2026-10-04T10:00:00.000Z");
+  await provisionExtractorBudget();
+  const previous = process.env.LIVE_AI_ENABLED;
+  process.env.LIVE_AI_ENABLED = "true";
+  try {
+    // The newest posting's call timed out and the owner cancelled the hold: it is
+    // blocked until its text changes, and it comes first in every pass.
+    const timingOut: ModelTransport = { async dispatchOnce() { return { kind: "uncertain" as const }; } };
+    await assert.rejects(extractPostingFields({
+      pool, ownerId: EXTRACTOR_OWNER_ID, sourceId: "himalayas", snapshot: blocked, transport: timingOut, now: NOW,
+    }), /BUDGET_UNAVAILABLE/u);
+    const held = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, now: LATER, limit: 1 });
+    assert.ok(held.held);
+    await cancelOperation({ pool, ownerId: EXTRACTOR_OWNER_ID, operationId: held.held.operationId, now: LATER });
+
+    const counting = countingTransport(VALID_OUTPUT);
+    const pass = await runExtractionPass({ pool, sourceId: "himalayas", transport: counting.transport, now: LATER, limit: 1 });
+    assert.equal(pass.outcome, "ran");
+    assert.equal(pass.counts.blocked, 1);
+    assert.equal(pass.counts.extracted, 1);
+    assert.equal(counting.calls(), 1);
+    assert.deepEqual(pass.results.map(result => [result.snapshotId, result.status]),
+      [[blocked.id, "blocked"], [waiting.id, "extracted"]]);
+  } finally {
+    process.env.LIVE_AI_ENABLED = previous ?? "true";
+  }
+  await cleanup();
+});
+
+test("a rejected output is a paid call and uses a slot of the limit (B32)", async () => {
+  await seedTwoSnapshots();
+  await provisionExtractorBudget();
+  const previous = process.env.LIVE_AI_ENABLED;
+  process.env.LIVE_AI_ENABLED = "true";
+  try {
+    // A model or prompt drift that makes every output unparseable must not lift the cap.
+    const counting = countingTransport("not json");
+    const pass = await runExtractionPass({ pool, sourceId: "himalayas", transport: counting.transport, now: NOW, limit: 1 });
+    assert.equal(pass.outcome, "ran");
+    assert.equal(counting.calls(), 1);
+    assert.equal(pass.counts.rejected, 1);
+    assert.equal(pass.results.length, 1);
+    assert.deepEqual(pass.results[0]?.codes, ["INVALID_JSON"]);
+    assert.equal(pass.settledMicroCents, 90n);
+  } finally {
+    process.env.LIVE_AI_ENABLED = previous ?? "true";
+  }
+  await cleanup();
 });

@@ -3,6 +3,9 @@
 //   npm run extract:fields -- --prompt-only --snapshot=himalayas:abc  — review tool
 //   npm run extract:fields -- --source=himalayas [--limit=10]         — live run
 //
+// `--limit` is the most provider calls per source (B32-001); without --source it
+// applies to each source in turn. A malformed limit is refused, not ignored.
+//
 // `--prompt-only` prints the exact prompt and the worst-case reservation for one
 // posting and calls nothing (no flag, no key, no money needed) — the review
 // surface for the prompt wording.
@@ -21,6 +24,7 @@
 // (src/domain/extraction.ts), so a failure is diagnosable without reading data.
 import { ConfigurationError, localDatabaseUrl, readConfig } from "../src/server/config.ts";
 import { localPool, migrate } from "./db.ts";
+import { limitArg } from "./cli-limit.ts";
 import { isJobSnapshot } from "../src/domain/source-contracts.ts";
 import { extractionInstruction, EXTRACTION_PROMPT_VERSION } from "../src/domain/extraction.ts";
 import { extractionKey } from "../src/server/ai/extraction-service.ts";
@@ -33,13 +37,6 @@ import { GPT6_LUNA, reservationFor, worstCaseCostMicroCents } from "../src/serve
 
 function argValue(name: string): string | undefined {
   return process.argv.find(argument => argument.startsWith(`--${name}=`))?.slice(name.length + 3);
-}
-
-function numericArg(name: string): number | undefined {
-  const raw = argValue(name);
-  if (raw === undefined) return undefined;
-  const parsed = Number(raw);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
 }
 
 try {
@@ -80,6 +77,17 @@ try {
     }
     await pool.end();
   } else {
+    // A malformed --limit used to run the whole catalog (B32-001): it is refused
+    // first, so the owner learns it before the switch is ever on.
+    const limitArgument = limitArg(process.argv);
+    if (!limitArgument.ok) {
+      console.error(JSON.stringify({
+        ok: false, code: "INVALID_LIMIT",
+        hint: "--limit=<positive integer>: the most provider calls per source",
+      }));
+      await pool.end();
+      process.exit(1);
+    }
     // The owner's switch first, then the key: the flag is the switch, a key in
     // the environment is not approval (AGENTS.md).
     const liveAi = readConfig(process.env).liveAi;
@@ -102,7 +110,7 @@ try {
       ? [requested]
       : (await pool.query("SELECT DISTINCT source_id FROM job_snapshots ORDER BY source_id"))
         .rows.map(entry => (entry as { source_id: string }).source_id);
-    const limit = numericArg("limit");
+    const limit = limitArgument.limit;
 
     const passes: Record<string, unknown>[] = [];
     let budgetRefused = false;
