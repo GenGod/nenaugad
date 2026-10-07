@@ -361,6 +361,60 @@ test("ownership: another owner cannot read, settle or cancel this operation", as
   assert.equal(settled.status, "settled");
 });
 
+test("a settlement above its reservation releases only its own hold (B36)", async () => {
+  await migrate(pool);
+  const owner = await registerUser(pool, email(), "long-enough-password");
+  await freshBudgets(owner.id, 10_000n, 10_000n);
+  const holds = async (): Promise<readonly [string, string][]> => {
+    const rows = await pool.query(
+      "SELECT settled_minor::text, held_minor::text FROM ai_budgets WHERE id = ANY($1::text[]) ORDER BY id",
+      [[GLOBAL_BUDGET_ID, ownerBudgetId(owner.id)]]);
+    return (rows.rows as { settled_minor: string; held_minor: string }[]).map(row => [row.settled_minor, row.held_minor]);
+  };
+
+  // A reserves 1,000 and is dispatched; B reserves 4,000 and is still open.
+  const first = await reserveBudget({
+    pool: pool, operationId: "", ownerId: owner.id, taskType: "cover_letter",
+    idempotencyKey: "surplus-a", worstCaseMinor: 1_000n, now: NOW,
+  });
+  await beginAttempt({ pool: pool, ownerId: owner.id, operationId: first.id, taskType: "cover_letter", now: NOW });
+  const second = await reserveBudget({
+    pool: pool, operationId: "", ownerId: owner.id, taskType: "cover_letter",
+    idempotencyKey: "surplus-b", worstCaseMinor: 4_000n, now: NOW,
+  });
+  assert.deepEqual(await holds(), [["0", "5000"], ["0", "5000"]]);
+
+  // A costs 1,100, more than it reserved: its own 1,000 is released, 1,100 is settled,
+  // and B's 4,000 stays held on both the global and the owner row.
+  await settleOperation({ pool: pool, ownerId: owner.id, operationId: first.id, actualMinor: 1_100n, now: NOW });
+  assert.deepEqual(await holds(), [["1100", "4000"], ["1100", "4000"]]);
+  const settled = await getOperation({ pool: pool, ownerId: owner.id, operationId: first.id });
+  assert.equal(settled?.reservedMinor, 1_000n);
+  assert.equal(settled?.settledMinor, 1_100n, "the surplus stays visible on the operation");
+
+  // 1,100 settled + 4,000 held + 4,950 > 10,000: refused. Freeing B's hold would admit it.
+  await assert.rejects(reserveBudget({
+    pool: pool, operationId: "", ownerId: owner.id, taskType: "cover_letter",
+    idempotencyKey: "surplus-c", worstCaseMinor: 4_950n, now: NOW,
+  }), (error: unknown) => error instanceof BudgetError && error.message === "BUDGET_EXCEEDED");
+
+  // B settles below its reservation: its whole hold goes, its actual is settled.
+  await beginAttempt({ pool: pool, ownerId: owner.id, operationId: second.id, taskType: "cover_letter", now: NOW });
+  await settleOperation({ pool: pool, ownerId: owner.id, operationId: second.id, actualMinor: 3_000n, now: NOW });
+  assert.deepEqual(await holds(), [["4100", "0"], ["4100", "0"]]);
+
+  // C's call came back uncertain and is settled later at exactly its reservation.
+  const third = await reserveBudget({
+    pool: pool, operationId: "", ownerId: owner.id, taskType: "cover_letter",
+    idempotencyKey: "surplus-d", worstCaseMinor: 500n, now: NOW,
+  });
+  await beginAttempt({ pool: pool, ownerId: owner.id, operationId: third.id, taskType: "cover_letter", now: NOW });
+  await markUncertain({ pool: pool, ownerId: owner.id, operationId: third.id, now: NOW });
+  assert.deepEqual(await holds(), [["4100", "500"], ["4100", "500"]]);
+  await settleOperation({ pool: pool, ownerId: owner.id, operationId: third.id, actualMinor: 500n, now: NOW });
+  assert.deepEqual(await holds(), [["4600", "0"], ["4600", "0"]]);
+});
+
 test("commit-time revalidation: cancelled refuses settlement, settled refuses cancellation", async () => {
   await migrate(pool);
   const owner = await registerUser(pool, email(), "long-enough-password");

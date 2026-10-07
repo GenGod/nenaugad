@@ -1,10 +1,10 @@
 {
-  "task_id": "B35-001",
-  "file": "tasks/B35-001-tariff-unit.md",
+  "task_id": "B36-001",
+  "file": "tasks/B36-001-settlement-releases-own-hold.md",
   "status": "accepted",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Owner accepted B35-001 on 2026-10-07 (money): micro-dollars defined once, the tariff matches the pricing page, the caps unchanged in dollars, the 14 settled rows kept as booked. Next: B36."
+  "note": "Owner accepted B36-001 on 2026-10-07 (money): a settlement releases its own reservation and settles the actual; smoke-ai reserves its real prompt. B37 recorded (a retry after an uncertain call books only the last call)."
 }

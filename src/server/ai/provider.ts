@@ -99,9 +99,12 @@ export function isPurposeApproved(purpose: string): purpose is ApprovedPurpose {
  * is what the provider comment above claims, and what the old fixed 1200/400
  * envelope broke — docs/OPEN_GAPS.md A4: the transport may ask for
  * `maxOutputTokens` on every call). Input is bounded by the prompt's character
- * count, which is a true upper bound for any tokenizer (no tokenizer emits more
- * tokens than characters, and this holds for Cyrillic too); output is the
- * transport's hard maximum, because that is what the request permits.
+ * count, which is far above the token count for ordinary text in any script
+ * (Cyrillic included); it is not a strict bound: a rare character (an emoji, some
+ * CJK) can be several byte-level tokens, and the transport's system message and
+ * chat framing add a few dozen tokens. Output is the transport's hard maximum,
+ * because that is what the request permits. A call that costs more than this is
+ * settled in full and frees no other operation's hold (B36).
  */
 export function reservationFor(prompt: string): Readonly<{ inputTokens: number; outputTokens: number }> {
   return { inputTokens: prompt.length, outputTokens: GPT6_LUNA.maxOutputTokens };

@@ -4,13 +4,18 @@
 // This is the reviewed way to prove the guarded path against the real provider.
 // It spends real money, so the gateway refuses it unless LIVE_AI_ENABLED=true
 // (docs/OPEN_GAPS.md A1 — the flag, not the key, is the switch). The probe sends
-// no candidate facts: the transport's generic JSON prompt is used, so the
-// personal-data boundary does not apply to this script.
+// no candidate facts: a fixed generic JSON prompt (PROBE_PROMPT below, the same
+// text as the transport's fallback), so the personal-data boundary does not apply.
 import { localPool, migrate } from "./db.ts";
 import { executeGuardedOperation } from "../src/server/ai/gateway.ts";
 import { openAiTransport } from "../src/server/ai/openai-transport.ts";
 import { ensureBudget, GLOBAL_BUDGET_ID } from "../src/server/ai/spending.ts";
-import { GPT6_LUNA, ownerBudgetId, worstCaseCostMicroUsd } from "../src/server/ai/provider.ts";
+import { GPT6_LUNA, ownerBudgetId, reservationFor, worstCaseCostMicroUsd } from "../src/server/ai/provider.ts";
+
+// The probe's prompt, sent explicitly so the reservation can bound it. A fixed
+// envelope (1,000 in, 2,000 out) under-reserved a call that may use 8,192 output
+// tokens, and the settlement then took the surplus from other holds (B36).
+const PROBE_PROMPT = "Generate a cover letter draft. Return the result as valid json.";
 
 // A dedicated owner for probes. Its budget row is provisioned here because a
 // missing owner row is a refusal, not "no cap" (docs/OPEN_GAPS.md A5).
@@ -27,7 +32,7 @@ await ensureBudget({
   period: "monthly", approvedLimitMinor: GPT6_LUNA.ownerMonthlyQuotaMicroUsd,
 });
 
-const worstCase = worstCaseCostMicroUsd({ inputTokens: 1000, outputTokens: 2000 });
+const worstCase = worstCaseCostMicroUsd(reservationFor(PROBE_PROMPT));
 console.log("worst-case:", worstCase.toString(), "μ$ (ceiling:",
   GPT6_LUNA.operationCeilingMicroUsd.toString() + ")");
 
@@ -41,6 +46,7 @@ try {
     idempotencyKey: "smoke-" + Date.now(),
     worstCaseMinor: worstCase,
     transport: openAiTransport,
+    prompt: PROBE_PROMPT,
     now: new Date().toISOString(),
   });
   console.log("=== RESULT ===");

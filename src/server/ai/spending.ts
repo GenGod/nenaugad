@@ -201,10 +201,11 @@ export async function markUncertain(params: Readonly<{
   );
 }
 
-// Commit-time revalidation: the conditional UPDATE re-checks owner, status
-// and deadline. On success, the hold converts to the actual settled amount;
-// a surplus over the reservation moves the budget into an incident state
-// (settled exceeds what was reserved — flagged, never hidden).
+// Commit-time revalidation: the locked read re-checks owner and status (a
+// dispatched call settles even past its deadline). On success, the operation's
+// own hold converts to the actual settled amount; a surplus over the reservation
+// is booked in full and visible on the operation row, never taken from another
+// operation's hold (B36).
 export async function settleOperation(params: Readonly<{
   pool: Pool; ownerId: string; operationId: string; actualMinor: bigint; now: string;
 }>): Promise<OperationRow> {
@@ -221,21 +222,24 @@ export async function settleOperation(params: Readonly<{
     // Deadline expiry stops new steps, not the settlement of a dispatched call.
     const reserved = BigInt(String(row.reserved_minor));
     const actual = params.actualMinor;
-    const globalDelta = actual > reserved ? actual : reserved;
 
     await client.query(
       "UPDATE ai_operations SET status = 'settled', settled_minor = $1, updated_at = $2 WHERE id = $3",
       [actual.toString(), params.now, params.operationId],
     );
-    // Convert the hold: release reserved, settle actual.
+    // Convert the hold: release this operation's own reservation, settle what the
+    // call cost. A cost above the reservation is settled in full and stays visible
+    // on the row (settled_minor > reserved_minor); the budget may then sit above its
+    // limit, which refuses every later reservation until the owner acts. Releasing
+    // more than the reservation would free other operations' holds (B36).
     await client.query(
       "UPDATE ai_budgets SET held_minor = GREATEST(held_minor - $1, 0), settled_minor = settled_minor + $2 WHERE id = $3",
-      [globalDelta.toString(), actual.toString(), GLOBAL_BUDGET_ID],
+      [reserved.toString(), actual.toString(), GLOBAL_BUDGET_ID],
     );
     const ownerBudgetId = `${OWNER_BUDGET_PREFIX}/${params.ownerId}`;
     await client.query(
       "UPDATE ai_budgets SET held_minor = GREATEST(held_minor - $1, 0), settled_minor = settled_minor + $2 WHERE id = $3",
-      [globalDelta.toString(), actual.toString(), ownerBudgetId],
+      [reserved.toString(), actual.toString(), ownerBudgetId],
     );
     await client.query("COMMIT");
     return { ...toOperationRow(row), status: "settled" as const,
