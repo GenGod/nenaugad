@@ -24,8 +24,6 @@ import { holdHint, runExtractionPassAfterImport } from "../src/server/ai/extract
 import { openAiTransport } from "../src/server/ai/openai-transport.ts";
 
 const SOURCES = ["himalayas", "jobicy"] as const;
-/** Postings extracted per source per tick (C1): polite and resumable; the pass skips records it already has. */
-const EXTRACTION_PER_TICK_LIMIT = 25;
 const args = process.argv.slice(2);
 const flag = (name: string) => args.includes(`--${name}`);
 const resumeSource = args[args.indexOf("--resume") + 1];
@@ -102,11 +100,11 @@ async function attempt(setup: Setup): Promise<void> {
   if (imported) {
     // C1: extract whatever this source has not been extracted for yet. The pass is
     // guarded (approved purpose, per-source send_to_ai_provider, the paid record
-    // answers repeats). It runs after the import's bookkeeping and never throws
-    // (B31): nothing it meets can record a failed attempt or pause a healthy source.
+    // answers repeats) and makes at most 25 provider calls (B34). It runs after the
+    // import's bookkeeping and never throws (B31): nothing it meets can record a
+    // failed attempt or pause a healthy source.
     const extraction = await runExtractionPassAfterImport({
-      pool: setup.pool, sourceId: setup.source, transport: openAiTransport,
-      now, limit: EXTRACTION_PER_TICK_LIMIT,
+      pool: setup.pool, sourceId: setup.source, transport: openAiTransport, now,
     });
     // The switched-off state is the normal one (LIVE_AI_ENABLED=false) and is
     // reported by --status, not logged every tick; anything that actually

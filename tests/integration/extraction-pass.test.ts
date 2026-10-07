@@ -7,7 +7,8 @@ import { himalayasCandidatePolicy } from "../../src/server/source-policies.ts";
 import { BudgetError, cancelOperation, ensureBudget, GLOBAL_BUDGET_ID } from "../../src/server/ai/spending.ts";
 import { GPT6_LUNA, ownerBudgetId } from "../../src/server/ai/provider.ts";
 import {
-  EXTRACTOR_OWNER_ID, failureCode, holdHint, runExtractionPass, runExtractionPassAfterImport,
+  EXTRACTION_CALLS_AFTER_IMPORT, EXTRACTOR_OWNER_ID, failureCode, holdHint, runExtractionPass,
+  runExtractionPassAfterImport,
 } from "../../src/server/ai/extraction-pass.ts";
 import { extractPostingFields, extractionKey } from "../../src/server/ai/extraction-service.ts";
 import { executeGuardedOperation, type ModelTransport } from "../../src/server/ai/gateway.ts";
@@ -557,6 +558,34 @@ test("a rejected output is a paid call and uses a slot of the limit (B32)", asyn
     assert.equal(pass.results.length, 1);
     assert.deepEqual(pass.results[0]?.codes, ["INVALID_JSON"]);
     assert.equal(pass.settledMicroCents, 90n);
+  } finally {
+    process.env.LIVE_AI_ENABLED = previous ?? "true";
+  }
+  await cleanup();
+});
+
+test("after an import, extraction makes at most 25 calls per source (B34)", async () => {
+  await seedTwoSnapshots();
+  await pool.query("DELETE FROM job_snapshots WHERE source_id = 'himalayas'");
+  const [template] = mapHimalayasFixture(NOW);
+  assert.ok(template);
+  // One more posting than the cap, none with a record: a manual import used to pay for all.
+  for (let index = 0; index <= 25; index += 1) {
+    await insertSnapshot("himalayas", snapshotWith(template, `himalayas:extp-n${String(index).padStart(2, "0")}`));
+  }
+  await provisionExtractorBudget();
+  const previous = process.env.LIVE_AI_ENABLED;
+  process.env.LIVE_AI_ENABLED = "true";
+  try {
+    assert.equal(EXTRACTION_CALLS_AFTER_IMPORT, 25, "the owner's number (2026-10-07)");
+    const counting = countingTransport(VALID_OUTPUT);
+    const pass = await runExtractionPassAfterImport({
+      pool, sourceId: "himalayas", transport: counting.transport, now: NOW,
+    });
+    assert.equal(counting.calls(), 25);
+    assert.equal(pass.outcome, "ran");
+    assert.ok("counts" in pass);
+    assert.equal(pass.counts.extracted, 25);
   } finally {
     process.env.LIVE_AI_ENABLED = previous ?? "true";
   }

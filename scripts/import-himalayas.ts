@@ -39,9 +39,9 @@ try {
     maxPages: pagesArg(),
   });
   // C1: after an applied pass, extract what this source has not been extracted
-  // for yet. Guarded, and it never throws, so it cannot fail the import or change
-  // its exit code (B31); with LIVE_AI_ENABLED off the pass reports
-  // live_ai_disabled and nothing is sent or spent.
+  // for yet. Guarded and capped at 25 provider calls (B34); it never throws, so it
+  // cannot fail the import or change its exit code (B31); with LIVE_AI_ENABLED off
+  // the pass reports live_ai_disabled and nothing is sent or spent.
   const extraction = report.result === "applied" || report.result === "partial"
     ? await runExtractionPassAfterImport({
         pool, sourceId: "himalayas", transport: openAiTransport, now: new Date().toISOString(),

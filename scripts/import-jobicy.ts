@@ -33,9 +33,10 @@ try {
   });
   // C1: after a successful pass, extract what this source has not been extracted
   // for yet (jobicy's success result is "partial" — a window feed is never a
-  // complete catalog). Guarded, and it never throws, so it cannot fail the import
-  // or change its exit code (B31); with LIVE_AI_ENABLED off the pass reports
-  // live_ai_disabled and nothing is sent or spent.
+  // complete catalog). Guarded and capped at 25 provider calls (B34); it never
+  // throws, so it cannot fail the import or change its exit code (B31); with
+  // LIVE_AI_ENABLED off the pass reports live_ai_disabled and nothing is sent or
+  // spent.
   const extraction = report.result === "partial"
     ? await runExtractionPassAfterImport({
         pool, sourceId: "jobicy", transport: openAiTransport, now: new Date().toISOString(),

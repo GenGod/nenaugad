@@ -281,16 +281,23 @@ export function failureCode(error: unknown): string {
 }
 
 /**
+ * The most provider calls extraction makes after an import, per source: a worker
+ * tick and a manual import alike (owner decision 2026-10-07, B34). A manual import
+ * used to run the pass with no limit and pay for every posting without a record.
+ */
+export const EXTRACTION_CALLS_AFTER_IMPORT = 25;
+
+/**
  * The pass as an import's follow-up (the worker and the import scripts). It never
  * throws: an exception becomes a code, never a message (a database error can quote
  * data), so extraction cannot fail an import, pause its source or change its exit
- * code (B31).
+ * code (B31). It takes no limit from its caller: the cap is the one above (B34).
  */
 export async function runExtractionPassAfterImport(
-  params: Parameters<typeof runExtractionPass>[0],
+  params: Omit<Parameters<typeof runExtractionPass>[0], "limit">,
 ): Promise<ExtractionAfterImport> {
   try {
-    return summarizeExtractionPass(await runExtractionPass(params));
+    return summarizeExtractionPass(await runExtractionPass({ ...params, limit: EXTRACTION_CALLS_AFTER_IMPORT }));
   } catch (error) {
     return { sourceId: params.sourceId, outcome: "error", code: failureCode(error) };
   }

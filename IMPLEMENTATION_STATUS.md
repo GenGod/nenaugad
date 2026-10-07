@@ -7,8 +7,9 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-10-07 by [B32-001](tasks/B32-001-extraction-pass-progress.md), after
-[B33-001](tasks/B33-001-extract-fields-error-codes.md), [B31-001](tasks/B31-001-stuck-extraction-operations.md) and
+**Updated:** 2026-10-07 by [B34-001](tasks/B34-001-import-extraction-cap.md), after
+[B32-001](tasks/B32-001-extraction-pass-progress.md), [B33-001](tasks/B33-001-extract-fields-error-codes.md),
+[B31-001](tasks/B31-001-stuck-extraction-operations.md) and
 [B29-001](tasks/B29-001-tombstone-vectors.md); on 2026-10-06 the owner accepted [B28-001](tasks/B28-001-input-keyed-derivatives.md) and
 [B30-001](tasks/B30-001-card-excerpts.md).
 
@@ -69,8 +70,9 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   stops the source's pass until the owner resolves it with `npm run ai:holds`; a closed
   one blocks only its own posting; extraction can no longer fail or pause an import
   (B31-001, owner-accepted 2026-10-07). Each pass visits postings newest first, and its
-  limit (25 per worker tick) counts provider calls, so it works through the whole catalog
-  (B32-001, owner-accepted 2026-10-07).
+  limit counts provider calls, so it works through the whole catalog (B32-001,
+  owner-accepted 2026-10-07). After an import, from the worker or a manual import alike,
+  it makes at most 25 calls per source (B34-001).
 - **NLI pre-check:** evaluated with a negative result, not integrated (B4-001).
 - **Design:** the Nenaugad design system 1.3 with `--ng-*` tokens (DS-001,
   owner-accepted 2026-09-27); visual baselines are recorded on Windows.
@@ -83,12 +85,13 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
-- 2026-10-07 (B32-001): `npm run check` (unit 304/304), `npm run test:coverage` (unit
-  and DB 390/390; 83.03% lines, 86.49% branches, 91.99% functions), `npm run build` and
+- 2026-10-07 (B34-001): `npm run check` (unit 304/304), `npm run test:coverage` (unit
+  and DB 391/391; 83.04% lines, 86.49% branches, 91.99% functions), `npm run build` and
   `npm run test:e2e` (99 passed), all exit 0. Not pushed. The lines threshold stays at
   82: coverage is too close to 83 to raise it.
-- 2026-10-07 (B33-001, B31-001): the same checks, all exit 0. CI on GitHub green on
-  `beff301` and `fc9d545`, as on `75e7484` (B29-001) and `936a8ba` (B28-001, B30-001).
+- 2026-10-07 (B32-001, B33-001, B31-001): the same checks, all exit 0. CI on GitHub
+  green on `48b325d`, `beff301` and `fc9d545`, as on `75e7484` (B29-001) and `936a8ba`
+  (B28-001, B30-001).
 - 2026-10-06 (B28-001): the same checks, all exit 0 (unit and DB 371/371). The B27 commit
   had lost a space between two coverage flags, which silently disabled the 91% function
   threshold; fixed, and the ratchet 82/86/91 is enforced again.
@@ -120,9 +123,6 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   ([DEVX-003](tasks/DEVX-003-weekly-checks.md)).
 - Whether to normalize the himalayas "Current as of" date in the terms fingerprint
   (source-rights tooling). It is the precondition for a weekly `terms:check`.
-- **Before live AI:** a manual `import:himalayas` or `import:jobicy` runs extraction with
-  no limit and would pay for the whole source (OPEN_GAPS B34). Owner decision
-  2026-10-07: cap it at 25 calls per source, like the worker.
 - **Himalayas text check** (B26): narrower than jobicy's; widening it changes that
   catalog, so it is a separate task.
 
