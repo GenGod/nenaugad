@@ -25,7 +25,7 @@ import { isJobSnapshot } from "../src/domain/source-contracts.ts";
 import { extractionInstruction, EXTRACTION_PROMPT_VERSION } from "../src/domain/extraction.ts";
 import { extractionKey } from "../src/server/ai/extraction-service.ts";
 import {
-  holdHint, runExtractionPass, summarizeExtractionPass,
+  failureCode, holdHint, runExtractionPass, summarizeExtractionPass,
 } from "../src/server/ai/extraction-pass.ts";
 import { openAiTransport } from "../src/server/ai/openai-transport.ts";
 import { buildJobOnlyPrompt } from "../src/server/ai/personal-data-boundary.ts";
@@ -128,11 +128,13 @@ try {
     await pool.end();
   }
 } catch (error) {
+  // A configuration error's message is its code. Any other message can quote the
+  // data the error met, posting text included, so only a code is printed (B33).
   const code = error instanceof ConfigurationError ? error.message : "EXTRACT_FIELDS_FAILED";
   console.error(JSON.stringify({
     ok: false,
     code,
-    detail: error instanceof Error && !(error instanceof ConfigurationError) ? error.message : null,
+    detail: error instanceof ConfigurationError ? null : failureCode(error),
   }));
   process.exitCode = 1;
 }

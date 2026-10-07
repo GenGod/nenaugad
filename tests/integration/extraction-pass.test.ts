@@ -4,10 +4,10 @@ import { localPool, migrate } from "../../scripts/db.ts";
 import { mapHimalayasFixture } from "../../src/server/import/himalayas-fixture.ts";
 import { createPostgresPersistence } from "../../src/server/storage/snapshots.ts";
 import { himalayasCandidatePolicy } from "../../src/server/source-policies.ts";
-import { cancelOperation, ensureBudget, GLOBAL_BUDGET_ID } from "../../src/server/ai/spending.ts";
+import { BudgetError, cancelOperation, ensureBudget, GLOBAL_BUDGET_ID } from "../../src/server/ai/spending.ts";
 import { GPT6_LUNA, ownerBudgetId } from "../../src/server/ai/provider.ts";
 import {
-  EXTRACTOR_OWNER_ID, holdHint, runExtractionPass, runExtractionPassAfterImport,
+  EXTRACTOR_OWNER_ID, failureCode, holdHint, runExtractionPass, runExtractionPassAfterImport,
 } from "../../src/server/ai/extraction-pass.ts";
 import { extractPostingFields, extractionKey } from "../../src/server/ai/extraction-service.ts";
 import { executeGuardedOperation, type ModelTransport } from "../../src/server/ai/gateway.ts";
@@ -433,4 +433,20 @@ test("after an import the pass never throws: a failure becomes a code (B31)", as
     process.env.LIVE_AI_ENABLED = previous ?? "true";
   }
   await cleanup();
+});
+
+test("a failure is printed as a code, never as its message (B33)", () => {
+  // What the worker logs and what extract:fields prints when the pass fails.
+  assert.equal(failureCode(new BudgetError("DEADLINE_EXPIRED")), "DEADLINE_EXPIRED");
+  // A database error: its SQLSTATE is a code; its message and detail quote the data.
+  const database = Object.assign(new Error("duplicate key value violates unique constraint"), {
+    code: "23505", detail: "Key (title)=(Backend Engineer (Remote) at Meridian Labs) already exists.",
+  });
+  assert.equal(failureCode(database), "23505");
+  assert.equal(failureCode(new Error("Backend Engineer (Remote) at Meridian Labs")), "EXTRACTION_FAILED");
+  // A code field that is itself text is not a code.
+  assert.equal(failureCode(Object.assign(new Error("x"), { code: "Meridian Labs" })), "EXTRACTION_FAILED");
+  assert.equal(failureCode("Backend Engineer"), "EXTRACTION_FAILED");
+  assert.equal(failureCode(null), "EXTRACTION_FAILED");
+  assert.equal(failureCode(undefined), "EXTRACTION_FAILED");
 });

@@ -254,8 +254,12 @@ export type ExtractionAfterImport =
   | ExtractionPassSummary
   | Readonly<{ sourceId: string; outcome: "error"; code: string }>;
 
-/** A code safe to log: the ledger's code, or an error's own code; never a message. */
-function failureCode(error: unknown): string {
+/**
+ * A code safe to log or print: the ledger's code, or an error's own code when it is
+ * a plain code (a PostgreSQL SQLSTATE, say); never a message, which can quote the
+ * data the error met. Used after an import and by `npm run extract:fields` (B33).
+ */
+export function failureCode(error: unknown): string {
   if (error instanceof BudgetError) return error.message;
   const code = (error as { code?: unknown } | null | undefined)?.code;
   return typeof code === "string" && /^[A-Z0-9_]{1,64}$/u.test(code) ? code : "EXTRACTION_FAILED";

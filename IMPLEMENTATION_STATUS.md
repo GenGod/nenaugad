@@ -7,7 +7,8 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-10-07 by [B31-001](tasks/B31-001-stuck-extraction-operations.md), after
+**Updated:** 2026-10-07 by [B33-001](tasks/B33-001-extract-fields-error-codes.md), after
+[B31-001](tasks/B31-001-stuck-extraction-operations.md) and
 [B29-001](tasks/B29-001-tombstone-vectors.md); on 2026-10-06 the owner accepted [B28-001](tasks/B28-001-input-keyed-derivatives.md) and
 [B30-001](tasks/B30-001-card-excerpts.md).
 
@@ -80,16 +81,12 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
-- 2026-10-07 (B31-001): `npm run check` (unit 302/302), `npm run test:coverage` (unit
-  and DB 384/384; 83.00% lines, 86.43% branches, 91.83% functions), `npm run build` and
-  `npm run test:e2e` (99 passed), all exit 0. Not pushed.
-- 2026-10-07 (B29-001): `npm run check` (unit 302/302), `npm run test:coverage` (unit
-  and DB 378/378; 82.71% lines, 86.30% branches, 91.62% functions), `npm run build` and
-  `npm run test:e2e` (99 passed), all exit 0. CI on GitHub green on `75e7484`.
-- 2026-10-06 (B30-001): `npm run check` (unit 302/302), `npm run test:coverage` (unit
-  and DB 376/376; 82.67% lines, 86.33% branches, 91.60% functions), `npm run build` and
-  `npm run test:e2e` (99 passed), all exit 0. CI on GitHub green on `936a8ba`, which
-  carries B28 and B30 (Code quality, Build, Tests).
+- 2026-10-07 (B33-001): `npm run check` (unit 302/302), `npm run test:coverage` (unit
+  and DB 385/385; 83.01% lines, 86.48% branches, 91.83% functions), `npm run build` and
+  `npm run test:e2e` (99 passed), all exit 0. Not pushed. The lines threshold stays at
+  82: coverage is too close to 83 to raise it.
+- 2026-10-07 (B31-001): the same checks, all exit 0 (unit and DB 384/384). CI on GitHub
+  green on `fc9d545`, as on `75e7484` (B29-001) and `936a8ba` (B28-001, B30-001).
 - 2026-10-06 (B28-001): the same checks, all exit 0 (unit and DB 371/371). The B27 commit
   had lost a space between two coverage flags, which silently disabled the 91% function
   threshold; fixed, and the ratchet 82/86/91 is enforced again.
@@ -121,8 +118,6 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
   ([DEVX-003](tasks/DEVX-003-weekly-checks.md)).
 - Whether to normalize the himalayas "Current as of" date in the terms fingerprint
   (source-rights tooling). It is the precondition for a weekly `terms:check`.
-- **Delete `backups/excerpts-2026-10-06/backup.json`** (B30-001 is accepted). It holds
-  the 200 old excerpts, which is posting text that must not outlive retention.
 - **Before live AI:** the extraction pass may never get past its first 25 rows (B32).
 - **Himalayas text check** (B26): narrower than jobicy's; widening it changes that
   catalog, so it is a separate task.

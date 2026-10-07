@@ -1,15 +1,10 @@
 {
-  "task_id": "B31-001",
-  "file": "tasks/B31-001-stuck-extraction-operations.md",
-  "status": "accepted",
-  "repair_cycles_used": 1,
+  "task_id": "B33-001",
+  "file": "tasks/B33-001-extract-fields-error-codes.md",
+  "status": "implemented",
+  "repair_cycles_used": 0,
   "max_repair_cycles": 2,
-  "hypotheses": [
-    {
-      "text": "feedback.test.ts fails with SNAPSHOT_NOT_FOUND because the new B31 hold test deletes every jobicy posting; closure.test.ts leaves jobicy import_state, so feedback's own import is refused by the poll interval and relied on closure's rows. Keeping other jobicy rows (assert on the test's own posting only) makes closure+extraction-pass+feedback and the full suite pass.",
-      "recorded_at": "2026-10-07T09:26:54.262Z"
-    }
-  ],
+  "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Owner accepted B31-001 on 2026-10-07 (money): a holding extraction operation stops the source's pass until resolved with ai:holds; closed operations and over-ceiling postings are blocked alone; extraction never fails an import. Next: B32, the last item before live AI."
+  "note": "OPEN_GAPS B33 closed: extract:fields prints failureCode (a ledger code, a plain error code or EXTRACTION_FAILED), never error.message. Mutation 2/2. check, test:coverage (385/385; 83.01/86.48/91.83), build, e2e (99) exit 0. Owner deleted backups/excerpts-2026-10-06."
 }
