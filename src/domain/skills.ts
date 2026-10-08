@@ -217,11 +217,81 @@ function isCapitalisedAt(text: string, index: number): boolean {
   return first !== undefined && /\p{Lu}/u.test(first);
 }
 
+// Aliases sorted by length descending, built once ("react native" matches before
+// "react"). The sort is stable, so equal-length aliases keep dictionary order.
+const SORTED_ALIASES: readonly (readonly [string, string])[] =
+  [...aliasMap.entries()].sort((a, b) => b[0].length - a[0].length);
+
+// Prefilter (B41): an alias of three or more characters can only occur in a text
+// that contains its first three characters, so a call marks the aliases whose
+// opening trigram occurs and tries only those, in the same order as the full scan.
+// The result is unchanged; a short sentence used to pay for every alias in the
+// dictionary. Aliases shorter than three characters are always tried. The trigram
+// is looked up by a 16-bit hash of its character codes, with no allocation per
+// position; a collision only adds a candidate, which the scan then rejects.
+const KEY_LENGTH = 3;
+const HASH_MASK = 0xffff;
+
+function trigramHash(first: number, second: number, third: number): number {
+  return (((first * 31) + second) * 31 + third) & HASH_MASK;
+}
+
+const ALIASES_BY_HASH: readonly (readonly number[] | undefined)[] = (() => {
+  const byHash: number[][] = [];
+  SORTED_ALIASES.forEach(([alias], index) => {
+    if (alias.length < KEY_LENGTH) return;
+    const hash = trigramHash(alias.charCodeAt(0), alias.charCodeAt(1), alias.charCodeAt(2));
+    const bucket = byHash[hash];
+    if (bucket) bucket.push(index);
+    else byHash[hash] = [index];
+  });
+  return byHash;
+})();
+const ALWAYS_TRIED: Uint8Array = Uint8Array.from(SORTED_ALIASES, ([alias]) => (alias.length < KEY_LENGTH ? 1 : 0));
+
+// Marks, one byte per alias in SORTED_ALIASES order, of the aliases worth scanning for.
+function candidateMarks(lower: string): Uint8Array {
+  const marks = ALWAYS_TRIED.slice();
+  const last = lower.length - KEY_LENGTH;
+  for (let start = 0; start <= last; start += 1) {
+    const bucket = ALIASES_BY_HASH[trigramHash(
+      lower.charCodeAt(start), lower.charCodeAt(start + 1), lower.charCodeAt(start + 2))];
+    if (bucket) for (const index of bucket) marks[index] = 1;
+  }
+  return marks;
+}
+
+// A text is scanned by several callers in one request (matching, ranking, the
+// negative-preference model, requirements, per sentence) and again by the next
+// request: the answer is remembered up to a character budget, oldest first out.
+// Results are frozen: the cache hands every caller the same array.
+const MEMO_CHAR_BUDGET = 48_000_000;
+const memo = new Map<string, readonly string[]>();
+let memoChars = 0;
+
+function remember(text: string, result: readonly string[]): void {
+  memo.set(text, result);
+  memoChars += text.length;
+  for (const [oldest] of memo) {
+    if (memoChars <= MEMO_CHAR_BUDGET) break;
+    memo.delete(oldest);
+    memoChars -= oldest.length;
+  }
+}
+
 // Deterministic skill extraction from free text (CV or job description).
 // Returns canonical skill names found in the text. Longer aliases are
 // matched first and their text ranges are consumed, preventing shorter
 // aliases from matching inside them ("Node.js" won't also match "js").
 export function extractSkills(text: string): readonly string[] {
+  const remembered = memo.get(text);
+  if (remembered) return remembered;
+  const result = Object.freeze(scanSkills(text));
+  remember(text, result);
+  return result;
+}
+
+function scanSkills(text: string): string[] {
   const lower = ` ${text.toLowerCase()} `;
   // Parallel copy of the original text: toLowerCase preserves length for the
   // scripts this dictionary covers, so match indices line up and the
@@ -233,9 +303,10 @@ export function extractSkills(text: string): readonly string[] {
   const delimiters = new Set([" ", "\t", "\n", "\r", ",", ";", ":", "(", ")", "[", "]", "{", "}", '"', "'", "/", ".", "!", "?", "-", "_", "+", "=", "|", "&", "@", "#", "$", "%", "^", "*", "~", "`", "<", ">"]);
   const isAvailable = (start: number, end: number) =>
     !consumed.some(([cs, ce]) => start < ce && end > cs);
-  // Sort aliases by length descending so "react native" matches before "react".
-  const sortedAliases = [...aliasMap.entries()].sort((a, b) => b[0].length - a[0].length);
-  for (const [alias, canonical] of sortedAliases) {
+  const marks = candidateMarks(lower);
+  for (let aliasIndex = 0; aliasIndex < marks.length; aliasIndex += 1) {
+    if (marks[aliasIndex] === 0) continue;
+    const [alias, canonical] = SORTED_ALIASES[aliasIndex] as readonly [string, string];
     if (seen.has(canonical)) continue;
     let index = lower.indexOf(alias);
     while (index !== -1) {

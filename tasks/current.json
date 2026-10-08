@@ -1,10 +1,10 @@
 {
-  "task_id": "B38-001",
-  "file": "tasks/B38-001-clean-text-and-prompt-p2.md",
+  "task_id": "B41-001",
+  "file": "tasks/B41-001-matched-page-latency.md",
   "status": "accepted",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Owner accepted B38-001 on 2026-10-08 with the operating rule: clean description text and prompt extraction-p2. Before the worker extracts the catalog, with live AI off: re-read the catalog (himalayas pass from page 1, jobicy once), then live AI on. Open: B37, B40."
+  "note": "Owner accepted B41-001 on 2026-10-08. It leaves open: a 4 s cold /matched and a 1.5 s floor (store extracted skills at import). Open: B37, B40."
 }
