@@ -5,6 +5,7 @@ import {
   validateCountry, validateRoles, validateSalaryAmount, validateTimeOrder, validateTimezone,
 } from "./form-validation.ts";
 import { COUNTRY_OPTIONS, timeZoneOptions } from "./autocomplete-data.ts";
+import { COUNTRY_FIELD_HINT } from "../domain/profile-gaps.ts";
 
 type ProfileState = {
   residenceCountry: string;
@@ -124,6 +125,7 @@ export function ProfileForm({ initial, version }: { initial: ProfileState | null
       <label htmlFor="country">Страна работы (ISO-код, например DE)</label>
       <input id="country" maxLength={2} value={state.residenceCountry} list="country-options"
         aria-invalid={touched.country === true && errors.country !== null}
+        aria-describedby="country-hint"
         onChange={event => update({ residenceCountry: event.target.value.toUpperCase() })}
         onBlur={() => markTouched("country")} placeholder="DE" />
       <datalist id="country-options">
@@ -131,6 +133,7 @@ export function ProfileForm({ initial, version }: { initial: ProfileState | null
           <option key={code} value={code}>{name}</option>)}
       </datalist>
       {fieldError("country", errors.country)}
+      <span id="country-hint" className="small secondary">{COUNTRY_FIELD_HINT}</span>
     </div>
     <div className="field">
       <label htmlFor="tz">Часовой пояс (IANA, например Europe/Berlin)</label>

@@ -7,8 +7,9 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-10-08: the owner accepted [B41-001](tasks/B41-001-matched-page-latency.md) (`/matched`
-18.9 s → 4.0 s cold, 1.5 s repeat, plus a loading state) and [B38-001](tasks/B38-001-clean-text-and-prompt-p2.md), after
+**Updated:** 2026-10-08: the owner accepted [B42-001](tasks/B42-001-missing-country-notice.md) (a notice
+when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latency.md) (`/matched`
+18.9 s → 4.0 s cold, 1.5 s repeat, plus a loading state), and [B38-001](tasks/B38-001-clean-text-and-prompt-p2.md), after
 [B36-001](tasks/B36-001-settlement-releases-own-hold.md),
 [B35-001](tasks/B35-001-tariff-unit.md),
 [B34-001](tasks/B34-001-import-extraction-cap.md),

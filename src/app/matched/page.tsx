@@ -16,6 +16,9 @@ import { SEEN_TTL_DAYS } from "../../domain/seen-set.ts";
 import { ImpressionReporter } from "../../components/impression-reporter.tsx";
 import { TrackedJobLink } from "../../components/tracked-job-link.tsx";
 import { resolveFeedTab, type FeedKey } from "../../domain/feed-order.ts";
+import {
+  COUNTRY_MISSING_NOTICE, EMPTY_MATCH_WITHOUT_COUNTRY, lacksCountry,
+} from "../../domain/profile-gaps.ts";
 import { latestProfile } from "../../server/profile-service.ts";
 import { snapshotPool } from "../../server/storage/snapshots.ts";
 import type { RelevanceScore } from "../../server/relevance-service.ts";
@@ -198,6 +201,7 @@ async function MatchedResults({ userId, result, tab }: {
   // closed by the personal-data boundary until a local model serves it (AI-007 +
   // MODEL-001 measured), so no button offers what the boundary refuses.
   const input = profile?.input;
+  const noCountry = lacksCountry(input);
   const hours = input?.availabilityWindows[0];
   const contract = (input?.employmentTypes ?? [])
     .map(type => EMPLOYMENT_LABELS[type] ?? type).join(", ");
@@ -225,6 +229,12 @@ async function MatchedResults({ userId, result, tab }: {
       <p>Правила v{result.rulesetVersion} по опубликованным условиям; порядок выдаёт
         детерминированный ранкер, AI-рейтинг релевантности показывается справочно.</p>
     </header>
+    {noCountry && <div className="banner review" style={{ marginBottom: 16 }}>
+      <div>
+        <p>{COUNTRY_MISSING_NOTICE}</p>
+        <Link className="text-link" href="/profile">Указать страну в профиле</Link>
+      </div>
+    </div>}
     <div className="mode-switch">
       <Link href="/matched" aria-current="page">Для вас</Link>
       <Link href="/jobs">Все вакансии</Link>
@@ -276,6 +286,13 @@ async function MatchedResults({ userId, result, tab }: {
                 <Link className="btn tertiary" href={activeTab === "match" ? "/matched?tab=review" : "/matched"}>
                   {activeTab === "match" ? "Нужно уточнить" : "Условия совпадают"}</Link>
               </>
+              : activeTab === "match" && noCountry
+                ? <>
+                  <h2>{EMPTY_MATCH_WITHOUT_COUNTRY.heading}</h2>
+                  <p>{EMPTY_MATCH_WITHOUT_COUNTRY.body}</p>
+                  <Link className="btn primary" href="/profile">Указать страну</Link>
+                  {showReviewTab && <Link className="btn tertiary" href="/matched?tab=review">Нужно уточнить</Link>}
+                </>
               : activeTab === "match"
                 ? <>
                   <h2>Совпадений пока нет</h2>
