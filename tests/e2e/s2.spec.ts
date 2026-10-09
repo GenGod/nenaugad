@@ -53,3 +53,21 @@ test("private APIs reject anonymous access", async ({ request }) => {
   expect((await request.get("/api/v1/saved")).status()).toBe(401);
   expect((await request.get("/api/v1/matched")).status()).toBe(401);
 });
+
+test("logout stays on this origin and ends the session", async ({ page, baseURL }) => {
+  // B43: next-auth resolves a callback against NEXTAUTH_URL, which defaults to
+  // http://localhost:3000, so the app on any other port (3100 here) was sent to
+  // whatever listens on 3000. The origin check is what catches it.
+  const email = `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.invalid`;
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Пароль (минимум 10 символов)").fill("e2e-long-password");
+  await page.getByRole("button", { name: "Создать аккаунт и войти" }).click();
+  await expect(page).toHaveURL(/\/profile$/u);
+
+  await page.getByRole("button", { name: "Выйти" }).last().click();
+  await expect(page).toHaveURL(`${baseURL}/`);
+
+  await page.goto("/profile");
+  await expect(page.getByRole("heading", { name: "Сначала вход" })).toBeVisible();
+});

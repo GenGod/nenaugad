@@ -1,10 +1,10 @@
 {
-  "task_id": "B42-001",
-  "file": "tasks/B42-001-missing-country-notice.md",
+  "task_id": "B43-001",
+  "file": "tasks/B43-001-logout-redirect.md",
   "status": "accepted",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Owner accepted B41-001 and B42-001 on 2026-10-08 (not committed yet). B41 leaves open: a 4 s cold /matched and a 1.5 s floor (store extracted skills at import). B42 leaves open: no notice for a missing timezone. Open: B37, B40."
+  "note": "Owner accepted B43-001 on 2026-10-09. Found B44: win32 visual baselines predate B42's country hint. Open: B37, B40, B44."
 }

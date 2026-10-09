@@ -87,6 +87,16 @@ export function LoginForm() {
 }
 
 export function LogoutButton() {
+  const router = useRouter();
+  // No server-computed redirect (B43): next-auth resolves a callback URL against
+  // NEXTAUTH_URL, which defaults to http://localhost:3000 and sent the app on any
+  // other port to whatever listens there. Like the login form, sign out in place
+  // and navigate with the router, which stays on the current origin.
+  async function logout() {
+    await signOut({ redirect: false });
+    router.push("/");
+    router.refresh();
+  }
   return <button type="button" className="btn secondary"
-    onClick={() => { void signOut({ callbackUrl: "/" }); }}>Выйти</button>;
+    onClick={() => { void logout(); }}>Выйти</button>;
 }
