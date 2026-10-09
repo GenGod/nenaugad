@@ -7,7 +7,8 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-10-09: the owner accepted [B43-001](tasks/B43-001-logout-redirect.md) (logout stays on this
+**Updated:** 2026-10-09: the owner accepted [B44-001](tasks/B44-001-visual-baselines.md) (9 visual baselines
+re-recorded for B42's hint) and [B43-001](tasks/B43-001-logout-redirect.md) (logout stays on this
 origin). 2026-10-08: the owner accepted [B42-001](tasks/B42-001-missing-country-notice.md) (a notice
 when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latency.md) (`/matched`
 18.9 s → 4.0 s cold, 1.5 s repeat, plus a loading state), and [B38-001](tasks/B38-001-clean-text-and-prompt-p2.md), after
