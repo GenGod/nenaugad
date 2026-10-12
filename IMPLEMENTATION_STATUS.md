@@ -142,6 +142,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
 - **The deadline refuses a late dispatch** ([B50-001](tasks/B50-001-time-checks-at-the-call.md),
   paid path and source rights, reviewed, owner-accepted 2026-10-12); a relevance run
   asks source rights before each chunk.
+- **A taken relevance chunk key is read by its operation** ([B45-001](tasks/B45-001-taken-chunk-key.md),
+  money-adjacent, reviewed, owner-accepted 2026-10-12): held money stops the run, a
+  closed chunk is counted and not paid for again under its key. New: B51.
 - The reranker (B3-001): purpose `rerank`, provider grants, profile privacy, and the
   quota and operation ceiling.
 - Profile privacy (§4.4), which also gates `matching-scoring`, `hyde` and `eval-judge`.

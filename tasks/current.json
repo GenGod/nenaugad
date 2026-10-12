@@ -1,10 +1,15 @@
 {
-  "task_id": "B50-001",
-  "file": "tasks/B50-001-time-checks-at-the-call.md",
+  "task_id": "B45-001",
+  "file": "tasks/B45-001-taken-chunk-key.md",
   "status": "accepted",
-  "repair_cycles_used": 0,
+  "repair_cycles_used": 1,
   "max_repair_cycles": 2,
-  "hypotheses": [],
+  "hypotheses": [
+    {
+      "text": "A replayed chunk past its deadline is refused DEADLINE_EXPIRED before WRONG_STATE, so chunkRefusal must look the operation up for DEADLINE_EXPIRED and ATTEMPTS_EXHAUSTED too. Testable: a settled chunk replayed 121 s after its reservation is closed, an in-flight one held, and the run is not stopped by a closed chunk.",
+      "recorded_at": "2026-10-12T11:48:15.349Z"
+    }
+  ],
   "coding_host_spend": "unknown",
-  "note": "Owner accepted B50-001 on 2026-10-12. Open: B40, B45, B46."
+  "note": "Owner accepted B45-001 on 2026-10-12. New from its review: B51. Open: B40, B46, B51."
 }

@@ -10,14 +10,14 @@ import {
 import {
   BATCH_DISABLED_REASON,
 } from "../../../../server/ai/openai-batch.ts";
-import { BudgetError } from "../../../../server/ai/spending.ts";
-import { isDuplicateChunk, isStopError } from "../../../../server/ai/ledger-refusals.ts";
+import { BudgetError, findOperationByKey, type OperationStatus } from "../../../../server/ai/spending.ts";
+import { chunkRefusal } from "../../../../server/ai/ledger-refusals.ts";
 import { assertNoCandidateFacts } from "../../../../server/ai/personal-data-boundary.ts";
 import { matchedForUser } from "../../../../server/matching-service.ts";
 import { latestProfile } from "../../../../server/profile-service.ts";
 import { readSnapshotCardsData, snapshotPool } from "../../../../server/storage/snapshots.ts";
 import { isJobSnapshot } from "../../../../domain/source-contracts.ts";
-import { executeGuardedOperation } from "../../../../server/ai/gateway.ts";
+import { executeGuardedOperation, PURPOSE_TASK_TYPE } from "../../../../server/ai/gateway.ts";
 import { openAiTransport } from "../../../../server/ai/openai-transport.ts";
 import { reservationFor, worstCaseCostMicroUsd } from "../../../../server/ai/provider.ts";
 import { maySendTextToProvider, partitionSourcesByProviderRights, sendableNow } from "../../../../server/source-policies.ts";
@@ -54,6 +54,22 @@ function chunkOperationKey(profileVersion: number, snapshotIds: readonly string[
 
 function unauthorized() {
   return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+}
+
+/** The operation a chunk's key names, for telling a taken key apart (B45). */
+function chunkOperation(userId: string, key: string) {
+  return () => findOperationByKey({
+    pool: snapshotPool(), ownerId: userId, taskType: PURPOSE_TASK_TYPE.job_matching, idempotencyKey: key,
+  });
+}
+
+/**
+ * A taken key whose operation still holds money: a call in flight (another run, or a
+ * crash mid-call), reserved or uncertain. The run stops; the scores come from that
+ * run, or the owner settles or cancels the hold (`npm run ai:holds`).
+ */
+function operationHeld(status: OperationStatus): NextResponse {
+  return NextResponse.json({ error: "OPERATION_HELD", operationStatus: status }, { status: 409 });
 }
 
 function relevanceFailure(error: unknown): NextResponse {
@@ -181,7 +197,7 @@ export async function POST(request: Request) {
       // Batch in chunks.
       const scores: RelevanceScore[] = [...cachedMap.values()];
       let totalCostMinor = 0n;
-      let duplicateChunks = 0;
+      const closedChunks: number[] = [];
       const failedChunks: number[] = [];
       const lapsed: string[] = [];
       for (let i = 0; i < jobs.length; i += RELEVANCE_BATCH_SIZE) {
@@ -210,16 +226,19 @@ export async function POST(request: Request) {
               score, modelId: "gpt-6-luna" });
           }
         } catch (error) {
-          if (isDuplicateChunk(error)) { duplicateChunks += 1; continue; }
-          if (isStopError(error)) throw error;
-          failedChunks.push(i);
+          // A taken key is not a cached score (B45): its operation says what it is.
+          const refusal = await chunkRefusal(error, chunkOperation(user.id, key));
+          if (refusal.kind === "stop") throw error;
+          if (refusal.kind === "held") return operationHeld(refusal.status);
+          // Closed (settled with no score stored, cancelled, failed): not paid for again.
+          (refusal.kind === "closed" ? closedChunks : failedChunks).push(i);
         }
       }
       return NextResponse.json({ analyzed: scores.length - cachedMap.size,
         cached: cachedMap.size, scores,
         // Honest cost: the sum of what the ledger actually settled, in micro-dollars (μ$).
         totalCostMicroUsd: totalCostMinor.toString(),
-        duplicateChunks, failedChunks, rightsSkipped: [...new Set([...rights.denied, ...lapsed])],
+        closedChunks, failedChunks, rightsSkipped: [...new Set([...rights.denied, ...lapsed])],
         ...(rights.denied.length + lapsed.length > 0 ? { rightsMessage: RIGHTS_NOTE } : {}) });
     }
 
@@ -251,8 +270,18 @@ export async function POST(request: Request) {
     );
     // The single-job idempotency key is content-addressed too: the same posting
     // and profile version asked twice is the same operation, not a new one.
-    const result = await dispatchWithPrompt(prompt, user.id,
-      chunkOperationKey(profile.version, [snapshotId]));
+    const key = chunkOperationKey(profile.version, [snapshotId]);
+    let result: Awaited<ReturnType<typeof dispatchWithPrompt>>;
+    try {
+      result = await dispatchWithPrompt(prompt, user.id, key);
+    } catch (error) {
+      // The same reading as a chunk's (B45): held money, or a closed operation that is
+      // not paid for again for this profile version.
+      const refusal = await chunkRefusal(error, chunkOperation(user.id, key));
+      if (refusal.kind === "held") return operationHeld(refusal.status);
+      if (refusal.kind === "closed") return NextResponse.json({ error: "OPERATION_CLOSED" }, { status: 409 });
+      throw error;
+    }
     const parsed = parseRelevanceResponse(result.output);
     if (!parsed) return NextResponse.json({ error: "ANALYSIS_FAILED" }, { status: 502 });
     const score: RelevanceScore = { ...parsed, snapshotId };

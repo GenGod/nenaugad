@@ -1,31 +1,68 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { isDuplicateChunk, isExpiredReservation, isStopError, isUncertainReplay } from "../../src/server/ai/ledger-refusals.ts";
-import { BudgetError } from "../../src/server/ai/spending.ts";
+import { chunkRefusal, isExpiredReservation, isStopError, isUncertainReplay } from "../../src/server/ai/ledger-refusals.ts";
+import { BudgetError, type OperationStatus } from "../../src/server/ai/spending.ts";
+
+/** A lookup that answers `status`, and counts how often it was asked. */
+function lookup(status: OperationStatus | null): { operationFor: () => Promise<{ status: OperationStatus } | null>; asked: () => number } {
+  let asked = 0;
+  return {
+    operationFor: async () => { asked += 1; return status === null ? null : { status }; },
+    asked: () => asked,
+  };
+}
 
 // B37: a chunk whose earlier call is still uncertain holds money and has no score.
 // Read as a duplicate it would be skipped as "scores are in the cache"; it must stop
 // the run, like the first uncertain result does.
-test("an uncertain chunk stops the relevance run and is not a duplicate", () => {
+test("an uncertain chunk stops the relevance run", async () => {
   const uncertain = new BudgetError("OPERATION_UNCERTAIN");
   assert.equal(isStopError(uncertain), true);
-  assert.equal(isDuplicateChunk(uncertain), false);
+  const asked = lookup("uncertain");
+  assert.deepEqual(await chunkRefusal(uncertain, asked.operationFor), { kind: "stop" });
+  assert.equal(asked.asked(), 0, "a stop needs no lookup");
   assert.equal(isStopError(new BudgetError("BUDGET_UNAVAILABLE")), true, "the first uncertain result");
 });
 
-test("the existing classification is unchanged", () => {
+test("the stop list is unchanged", () => {
   for (const code of ["WRONG_STATE", "IDEMPOTENCY_COLLISION"] as const) {
-    assert.equal(isDuplicateChunk(new BudgetError(code)), true, code);
     assert.equal(isStopError(new BudgetError(code)), false, code);
   }
   for (const code of ["BUDGET_EXCEEDED", "ATTEMPTS_EXHAUSTED", "DEADLINE_EXPIRED"] as const) {
     assert.equal(isStopError(new BudgetError(code)), true, code);
-    assert.equal(isDuplicateChunk(new BudgetError(code)), false, code);
   }
   assert.equal(isStopError(new Error("AI_PROVIDER_NOT_CONFIGURED")), true);
   assert.equal(isStopError(new Error("AI_PURPOSE_NOT_APPROVED")), true);
   assert.equal(isStopError(new Error("socket closed")), false);
-  assert.equal(isDuplicateChunk(new Error("WRONG_STATE")), false, "only the ledger's own refusal");
+});
+
+// B45: a taken key says only that the chunk's operation exists. Its status says
+// whether money is still held for it (stop: another run, or the owner) or it is
+// closed with no score stored (counted, not paid for again).
+test("a taken chunk key is told apart by its operation, not read as cached scores", async () => {
+  // Past its deadline a replay is refused DEADLINE_EXPIRED before the ledger looks at
+  // the state; ATTEMPTS_EXHAUSTED likewise. Both say only that the key is taken.
+  for (const code of ["WRONG_STATE", "IDEMPOTENCY_COLLISION", "DEADLINE_EXPIRED", "ATTEMPTS_EXHAUSTED"] as const) {
+    for (const status of ["in_flight", "reserved", "uncertain"] as const) {
+      assert.deepEqual(await chunkRefusal(new BudgetError(code), lookup(status).operationFor),
+        { kind: "held", status }, `${code} ${status}`);
+    }
+    for (const status of ["settled", "cancelled", "failed", null] as const) {
+      assert.deepEqual((await chunkRefusal(new BudgetError(code), lookup(status).operationFor)).kind,
+        "closed", `${code} ${status}`);
+    }
+  }
+  // Refusals that are not about this chunk's key stop the run without a lookup.
+  for (const code of ["BUDGET_EXCEEDED", "BUDGET_UNAVAILABLE", "OPERATION_UNCERTAIN"] as const) {
+    const asked = lookup("settled");
+    assert.deepEqual(await chunkRefusal(new BudgetError(code), asked.operationFor), { kind: "stop" }, code);
+    assert.equal(asked.asked(), 0, code);
+  }
+  for (const error of [new Error("socket closed"), new Error("WRONG_STATE"), new BudgetError("OPERATION_NOT_FOUND")]) {
+    const asked = lookup("in_flight");
+    assert.deepEqual(await chunkRefusal(error, asked.operationFor), { kind: "failed" }, error.message);
+    assert.equal(asked.asked(), 0, "only the ledger's own taken-key refusals are looked up");
+  }
 });
 
 test("the letter route names an uncertain replay, and only that", () => {

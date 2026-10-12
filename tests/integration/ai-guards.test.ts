@@ -14,6 +14,7 @@ import {
   executeGuardedOperation, LiveAiDisabledError, ProviderNotConfiguredError, PurposeNotApprovedError,
 } from "../../src/server/ai/gateway.ts";
 import { GPT6_LUNA, ownerBudgetId } from "../../src/server/ai/provider.ts";
+import { chunkRefusal } from "../../src/server/ai/ledger-refusals.ts";
 
 // Missing config fails loudly. Never report a skipped DB suite as passing.
 const pool = localPool(process.env.TEST_DATABASE_URL, true);
@@ -905,4 +906,66 @@ test("gateway: an attempt more than 120 s after its call began is refused, not s
   assert.equal(onTime.settledMinor, 300n);
   assert.equal(dispatched, 1);
   assert.deepEqual(await budgets(), [["300", "0"], ["300", "0"]]);
+});
+
+test("a replayed relevance chunk key is told apart by its operation, not read as scored (B45)", async () => {
+  await migrate(pool);
+  const owner = await registerUser(pool, email(), "long-enough-password");
+  await freshBudgets(owner.id, 10_000n, 10_000n);
+  let dispatched = 0;
+  const answering: Parameters<typeof executeGuardedOperation>[0]["transport"] = {
+    async dispatchOnce() { dispatched += 1; return { kind: "result", actualMinor: 100n, output: "{}" }; },
+  };
+  const timingOut: Parameters<typeof executeGuardedOperation>[0]["transport"] = {
+    async dispatchOnce() { return { kind: "uncertain" }; },
+  };
+  const call = (key: string, transport = answering, now = NOW) => executeGuardedOperation({
+    pool: pool, ownerId: owner.id, purpose: "job_matching", idempotencyKey: key,
+    worstCaseMinor: 500n, transport, now,
+  });
+  const operationFor = (key: string) => () => findOperationByKey({
+    pool: pool, ownerId: owner.id, taskType: "job_matching", idempotencyKey: key });
+  const budgets = async () => (await pool.query(
+    "SELECT settled_minor::text, held_minor::text FROM ai_budgets WHERE id = ANY($1::text[]) ORDER BY id",
+    [[GLOBAL_BUDGET_ID, ownerBudgetId(owner.id)]])).rows;
+
+  // Each state a chunk key can be in when a later run forms the same chunk.
+  await call("b45-settled");
+  const flying = await reserveBudget({
+    pool: pool, operationId: "", ownerId: owner.id, taskType: "job_matching",
+    idempotencyKey: "b45-flying", worstCaseMinor: 500n, now: NOW,
+  });
+  await beginAttempt({ pool: pool, ownerId: owner.id, operationId: flying.id, taskType: "job_matching", now: NOW });
+  // Reserved and never dispatched (a crash between the steps, or B50's late attempt).
+  await reserveBudget({
+    pool: pool, operationId: "", ownerId: owner.id, taskType: "job_matching",
+    idempotencyKey: "b45-stranded", worstCaseMinor: 500n, now: NOW,
+  });
+  await assert.rejects(call("b45-uncertain", timingOut), refusedWith("BUDGET_UNAVAILABLE"));
+  await assert.rejects(call("b45-cancelled", timingOut), refusedWith("BUDGET_UNAVAILABLE"));
+  const released = await findOperationByKey({
+    pool: pool, ownerId: owner.id, taskType: "job_matching", idempotencyKey: "b45-cancelled" });
+  await cancelOperation({ pool: pool, ownerId: owner.id, operationId: released?.id ?? "", now: NOW });
+  const sent = dispatched;
+  const before = await budgets();
+
+  const replay = async (key: string, now = NOW) => (await chunkRefusal(
+    await call(key, answering, now).then(() => null, (error: unknown) => error), operationFor(key))).kind;
+  assert.equal(await replay("b45-flying"), "held", "a call in flight is not done");
+  assert.equal(await replay("b45-settled"), "closed", "paid once, not paid again");
+  assert.equal(await replay("b45-cancelled"), "closed", "the owner's release is not a score");
+  assert.equal(await replay("b45-uncertain"), "stop", "money held for a call that may have been billed");
+  // A later run, past the 120 s deadline: the ledger answers DEADLINE_EXPIRED before it
+  // looks at the state, so the operation still decides (the review's blocking finding).
+  const later = new Date(Date.parse(NOW) + OPERATION_DEADLINE_MS + 1_000).toISOString();
+  assert.equal(await replay("b45-settled", later), "closed", "a settled chunk does not stop every later run");
+  assert.equal(await replay("b45-flying", later), "held");
+  assert.equal(await replay("b45-stranded", later), "held", "a stranded reservation still holds money");
+  assert.equal(await replay("b45-cancelled", later), "closed");
+  assert.equal(await replay("b45-uncertain", later), "stop");
+  // The run is told which state holds money.
+  assert.deepEqual(await chunkRefusal(new BudgetError("DEADLINE_EXPIRED"), operationFor("b45-flying")),
+    { kind: "held", status: "in_flight" });
+  assert.equal(dispatched, sent, "nothing is sent for a taken key");
+  assert.deepEqual(await budgets(), before, "nothing more is held or settled");
 });
