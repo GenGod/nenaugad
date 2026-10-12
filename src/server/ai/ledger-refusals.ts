@@ -36,3 +36,12 @@ export function isStopError(error: unknown): boolean {
 export function isUncertainReplay(error: unknown): boolean {
   return error instanceof BudgetError && error.message === "OPERATION_UNCERTAIN";
 }
+
+/**
+ * A reservation whose attempt came past its deadline (B50): nothing was sent, and
+ * its worst case stays held until the owner releases it (`npm run ai:holds --
+ * --cancel=`). A refusal the caller can name, not a failed generation.
+ */
+export function isExpiredReservation(error: unknown): boolean {
+  return error instanceof BudgetError && error.message === "DEADLINE_EXPIRED";
+}

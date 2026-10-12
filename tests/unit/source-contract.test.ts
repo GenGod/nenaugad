@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { isJobSnapshot, isSourcePolicy, type JobSnapshot, type SourcePolicy } from "../../src/domain/source-contracts.ts";
 import {
   atlasFixturesPolicy, himalayasCandidatePolicy, jobicyCandidatePolicy, getSourcePolicy, permissionFor,
-  maySendTextToProvider, partitionSourcesByProviderRights,
+  maySendTextToProvider, partitionSourcesByProviderRights, sendableNow,
 } from "../../src/server/source-policies.ts";
 import {
   AdapterInputError, himalayasContractFixture, mapHimalayasFixture, mapHimalayasRecord,
@@ -119,6 +119,23 @@ test("owner decision 2026-10-01: provider transfer is granted, and the gate that
     ["atlas-fixtures", "himalayas", "jobicy", "not-a-source"], NOW);
   assert.deepEqual(partition.allowed, ["atlas-fixtures", "himalayas", "jobicy"]);
   assert.deepEqual(partition.denied, ["not-a-source"]);
+});
+
+test("sendableNow: each provider call asks again, so a lapsed source stops at the next call (B50)", () => {
+  const items = [
+    { id: "himalayas:a" }, { id: "atlas-fixtures:b" }, { id: "himalayas:c" }, { id: "jobicy:d" },
+    { id: "not-a-source:e" },
+  ];
+  const before = sendableNow(items, NOW);
+  assert.deepEqual(before.sendable.map(item => item.id), ["himalayas:a", "atlas-fixtures:b", "himalayas:c", "jobicy:d"]);
+  assert.deepEqual(before.denied, ["not-a-source"]);
+  // At the moment the himalayas and jobicy policies lapse, their postings stop.
+  const validUntil = himalayasCandidatePolicy.valid_until;
+  assert.ok(validUntil);
+  assert.equal(jobicyCandidatePolicy.valid_until, validUntil);
+  const after = sendableNow(items, validUntil);
+  assert.deepEqual(after.sendable.map(item => item.id), ["atlas-fixtures:b"]);
+  assert.deepEqual(after.denied, ["himalayas", "jobicy", "not-a-source"]);
 });
 
 test("acceptance 2: real contract validated and fixture is explicitly labelled", () => {

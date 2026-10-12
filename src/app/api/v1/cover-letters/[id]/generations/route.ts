@@ -6,7 +6,7 @@ import {
 import {
   executeGuardedOperation,
 } from "../../../../../../server/ai/gateway.ts";
-import { isUncertainReplay } from "../../../../../../server/ai/ledger-refusals.ts";
+import { isExpiredReservation, isUncertainReplay } from "../../../../../../server/ai/ledger-refusals.ts";
 import { openAiTransport } from "../../../../../../server/ai/openai-transport.ts";
 import { GPT6_LUNA, reservationFor, worstCaseCostMicroUsd } from "../../../../../../server/ai/provider.ts";
 import { snapshotPool, readSnapshotCardsData } from "../../../../../../server/storage/snapshots.ts";
@@ -137,6 +137,11 @@ export async function POST(request: Request, { params }: Params) {
     // hold waits for reconciliation (B37). Not a server failure.
     if (isUncertainReplay(error)) {
       return NextResponse.json({ error: "OPERATION_UNCERTAIN" }, { status: 409 });
+    }
+    // The reservation came past its deadline (B50): nothing was sent, the hold waits
+    // for the owner, and a replay of this request meets the same refusal.
+    if (isExpiredReservation(error)) {
+      return NextResponse.json({ error: "DEADLINE_EXPIRED" }, { status: 409 });
     }
     if (error instanceof Error && error.message.includes("ATTEMPTS")) {
       return NextResponse.json({ error: "GENERATION_LIMIT" }, { status: 429 });

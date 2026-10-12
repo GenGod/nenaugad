@@ -138,8 +138,10 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   2026-10-12). Restart a running worker or `extract:fields` before live AI is switched on.
 - **Extraction reads the clock per posting** ([B49-001](tasks/B49-001-fresh-clock-per-posting.md),
   source rights and the paid path, reviewed, owner-accepted 2026-10-12): each call
-  meets the source's permission at the time it is made, and a lapse stops the pass. The
-  deadline still cannot refuse a new reservation (B50).
+  meets the source's permission at the time it is made, and a lapse stops the pass.
+- **The deadline refuses a late dispatch** ([B50-001](tasks/B50-001-time-checks-at-the-call.md),
+  paid path and source rights, reviewed, owner-accepted 2026-10-12); a relevance run
+  asks source rights before each chunk.
 - The reranker (B3-001): purpose `rerank`, provider grants, profile privacy, and the
   quota and operation ceiling.
 - Profile privacy (§4.4), which also gates `matching-scoring`, `hyde` and `eval-judge`.

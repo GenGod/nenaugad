@@ -20,7 +20,7 @@ import { isJobSnapshot } from "../../../../domain/source-contracts.ts";
 import { executeGuardedOperation } from "../../../../server/ai/gateway.ts";
 import { openAiTransport } from "../../../../server/ai/openai-transport.ts";
 import { reservationFor, worstCaseCostMicroUsd } from "../../../../server/ai/provider.ts";
-import { maySendTextToProvider, partitionSourcesByProviderRights } from "../../../../server/source-policies.ts";
+import { maySendTextToProvider, partitionSourcesByProviderRights, sendableNow } from "../../../../server/source-policies.ts";
 import type { RelevanceScore } from "../../../../server/relevance-service.ts";
 
 /**
@@ -183,8 +183,13 @@ export async function POST(request: Request) {
       let totalCostMinor = 0n;
       let duplicateChunks = 0;
       const failedChunks: number[] = [];
+      const lapsed: string[] = [];
       for (let i = 0; i < jobs.length; i += RELEVANCE_BATCH_SIZE) {
-        const chunk = jobs.slice(i, i + RELEVANCE_BATCH_SIZE);
+        // Rights again for each call: a policy that lapses during the run stops its
+        // postings at the next chunk, not at the end of the request (B50).
+        const { sendable: chunk, denied } = sendableNow(jobs.slice(i, i + RELEVANCE_BATCH_SIZE), new Date().toISOString());
+        for (const sourceId of denied) if (!lapsed.includes(sourceId)) lapsed.push(sourceId);
+        if (chunk.length === 0) continue;
         const prompt = buildBatchPrompt(chunk,
           { targetRoles: profile.input.targetRoles, country: profile.input.residenceCountry ?? "не указана", skills: profile.input.skills });
         const key = chunkOperationKey(profile.version, chunk.map(job => job.id));
@@ -214,8 +219,8 @@ export async function POST(request: Request) {
         cached: cachedMap.size, scores,
         // Honest cost: the sum of what the ledger actually settled, in micro-dollars (μ$).
         totalCostMicroUsd: totalCostMinor.toString(),
-        duplicateChunks, failedChunks, rightsSkipped: rights.denied,
-        ...(rights.denied.length > 0 ? { rightsMessage: RIGHTS_NOTE } : {}) });
+        duplicateChunks, failedChunks, rightsSkipped: [...new Set([...rights.denied, ...lapsed])],
+        ...(rights.denied.length + lapsed.length > 0 ? { rightsMessage: RIGHTS_NOTE } : {}) });
     }
 
     // Single job analysis.

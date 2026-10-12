@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { isDuplicateChunk, isStopError, isUncertainReplay } from "../../src/server/ai/ledger-refusals.ts";
+import { isDuplicateChunk, isExpiredReservation, isStopError, isUncertainReplay } from "../../src/server/ai/ledger-refusals.ts";
 import { BudgetError } from "../../src/server/ai/spending.ts";
 
 // B37: a chunk whose earlier call is still uncertain holds money and has no score.
@@ -33,4 +33,13 @@ test("the letter route names an uncertain replay, and only that", () => {
   assert.equal(isUncertainReplay(new BudgetError("BUDGET_UNAVAILABLE")), false);
   assert.equal(isUncertainReplay(new BudgetError("WRONG_STATE")), false);
   assert.equal(isUncertainReplay(new Error("OPERATION_UNCERTAIN")), false, "only the ledger's own refusal");
+});
+
+// B50: a reservation whose attempt came past its deadline holds its worst case and
+// sent nothing. The letter route names it instead of answering "generation failed".
+test("an expired reservation is named, not read as a failed generation", () => {
+  assert.equal(isExpiredReservation(new BudgetError("DEADLINE_EXPIRED")), true);
+  assert.equal(isExpiredReservation(new BudgetError("OPERATION_UNCERTAIN")), false);
+  assert.equal(isExpiredReservation(new BudgetError("WRONG_STATE")), false);
+  assert.equal(isExpiredReservation(new Error("DEADLINE_EXPIRED")), false, "only the ledger's own refusal");
 });

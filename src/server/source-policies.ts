@@ -231,3 +231,17 @@ export function partitionSourcesByProviderRights(
   for (const sourceId of sourceIds) (maySendTextToProvider(sourceId, now) ? allowed : denied).push(sourceId);
   return { allowed, denied };
 }
+
+/**
+ * The items (postings, by `source:record` id) whose source may send text to the
+ * provider at `now`, in their order, and the sources that may not. Asked again before
+ * each provider call of a run: a policy that lapses during the run stops its postings
+ * at the next call instead of at the end of the run (B50).
+ */
+export function sendableNow<T extends Readonly<{ id: string }>>(
+  items: readonly T[], now: string,
+): Readonly<{ sendable: T[]; denied: readonly string[] }> {
+  const sourceOf = (item: T) => item.id.split(":")[0] ?? "";
+  const { denied } = partitionSourcesByProviderRights([...new Set(items.map(sourceOf))], now);
+  return { sendable: items.filter(item => !denied.includes(sourceOf(item))), denied };
+}

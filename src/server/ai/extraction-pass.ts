@@ -88,12 +88,17 @@ export type ExtractionHold = Readonly<{
  * What to tell the owner about a hold. A call reserved before its deadline, or in
  * flight before its dispatch plus the ledger's grace, may still be running in another
  * process (the CLI beside the worker): cancelling it would understate a charge that is
- * about to settle. From that moment `ai:holds --settle` accepts it too (B48).
+ * about to settle. From that moment `ai:holds --settle` accepts it too (B48). A
+ * reservation past its deadline was never dispatched (an attempt moves it to
+ * `in_flight` first, and a late one is refused, B50): nothing to check, only to release.
  */
 export function holdHint(hold: ExtractionHold, now: string): string {
   const overAt = hold.status === "in_flight" ? inFlightOverAt(hold.updatedAt) : hold.deadlineAt;
-  return hold.status !== "uncertain" && Date.parse(overAt) > Date.parse(now)
-    ? `a call may still be in flight until ${overAt}: run again after that, do not cancel it`
+  if (hold.status !== "uncertain" && Date.parse(overAt) > Date.parse(now)) {
+    return `a call may still be in flight until ${overAt}: run again after that, do not cancel it`;
+  }
+  return hold.status === "reserved"
+    ? `nothing was sent for this hold (it was never dispatched): release it with npm run ai:holds -- --cancel=${hold.operationId}`
     : "an operation still holds money: check the provider's usage page, then npm run ai:holds";
 }
 

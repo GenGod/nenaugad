@@ -1,4 +1,4 @@
-import test from "node:test";
+import test, { mock } from "node:test";
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -863,4 +863,46 @@ test("a call dispatched under a stale `now` is not taken for a crash while it ru
   assert.ok(refusedWith("WRONG_STATE")(refusal), `a running call is not a crash: ${String(refusal)}`);
   assert.equal(result.settledMinor, 300n);
   assert.deepEqual((await ledger()).budgets, [["300", "0"], ["300", "0"]], "booked once, by the call itself");
+});
+
+test("gateway: an attempt more than 120 s after its call began is refused, not sent (B50)", async () => {
+  await migrate(pool);
+  const owner = await registerUser(pool, email(), "long-enough-password");
+  await freshBudgets(owner.id, 10_000n, null);
+  let dispatched = 0;
+  const answering: Parameters<typeof executeGuardedOperation>[0]["transport"] = {
+    async dispatchOnce() { dispatched += 1; return { kind: "result", actualMinor: 300n, output: "ok" }; },
+  };
+  const call = (key: string) => executeGuardedOperation({
+    pool: pool, ownerId: owner.id, purpose: "cover_letter", idempotencyKey: key,
+    worstCaseMinor: 1000n, transport: answering, now: NOW,
+  });
+  const budgets = async () => (await pool.query(
+    "SELECT settled_minor::text, held_minor::text FROM ai_budgets WHERE id = ANY($1::text[]) ORDER BY id",
+    [[GLOBAL_BUDGET_ID, ownerBudgetId(owner.id)]])).rows
+    .map(row => [(row as { settled_minor: string }).settled_minor, (row as { held_minor: string }).held_minor]);
+
+  // The reservation waits 121 s (a budget-row lock, a stalled event loop): the
+  // monotonic clock jumps between the call's start and its attempt.
+  let reads = 0;
+  const late = mock.method(performance, "now", () => (reads++ === 0 ? 0 : OPERATION_DEADLINE_MS + 1_000));
+  try {
+    await assert.rejects(call("b50-late"), refusedWith("DEADLINE_EXPIRED"));
+  } finally {
+    late.mock.restore();
+  }
+  assert.equal(dispatched, 0, "nothing is sent past the deadline");
+  const stranded = await findOperationByKey({
+    pool: pool, ownerId: owner.id, taskType: "cover_letter", idempotencyKey: "b50-late" });
+  assert.equal(stranded?.status, "reserved");
+  assert.equal(stranded?.attemptCount, 0);
+  assert.deepEqual(await budgets(), [["0", "1000"], ["0", "1000"]], "the hold stays until the owner releases it");
+  await cancelOperation({ pool: pool, ownerId: owner.id, operationId: stranded?.id ?? "", now: NOW });
+  assert.deepEqual(await budgets(), [["0", "0"], ["0", "0"]]);
+
+  // On time, the same path dispatches and settles as before.
+  const onTime = await call("b50-on-time");
+  assert.equal(onTime.settledMinor, 300n);
+  assert.equal(dispatched, 1);
+  assert.deepEqual(await budgets(), [["300", "0"], ["300", "0"]]);
 });

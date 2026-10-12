@@ -1,10 +1,12 @@
-import test from "node:test";
+import test, { mock } from "node:test";
 import assert from "node:assert/strict";
 import { localPool, migrate } from "../../scripts/db.ts";
 import { mapHimalayasFixture } from "../../src/server/import/himalayas-fixture.ts";
 import { createPostgresPersistence } from "../../src/server/storage/snapshots.ts";
 import { himalayasCandidatePolicy } from "../../src/server/source-policies.ts";
-import { BudgetError, cancelOperation, ensureBudget, GLOBAL_BUDGET_ID } from "../../src/server/ai/spending.ts";
+import {
+  BudgetError, cancelOperation, ensureBudget, GLOBAL_BUDGET_ID, OPERATION_DEADLINE_MS,
+} from "../../src/server/ai/spending.ts";
 import { GPT6_LUNA, ownerBudgetId } from "../../src/server/ai/provider.ts";
 import {
   EXTRACTION_CALLS_AFTER_IMPORT, EXTRACTOR_OWNER_ID, failureCode, holdHint, runExtractionPass,
@@ -665,6 +667,33 @@ test("a source permission that expires during a pass stops the postings after it
     assert.equal(calls, 1, "no posting text goes out after the permission lapsed");
     assert.equal(await extractionOperations(), 1, "and nothing is reserved for it");
   } finally {
+    if (previous === undefined) delete process.env.LIVE_AI_ENABLED;
+    else process.env.LIVE_AI_ENABLED = previous;
+  }
+  await cleanup();
+});
+
+test("a reservation whose attempt comes past its deadline stops the source as held, sent nothing (B50)", async () => {
+  await seedTwoSnapshots();
+  await provisionExtractorBudget();
+  const previous = process.env.LIVE_AI_ENABLED;
+  process.env.LIVE_AI_ENABLED = "true";
+  // Every read of the monotonic clock is 121 s after the one before: whatever else
+  // reads it, the gateway's attempt comes past its 120 s deadline.
+  let tick = 0;
+  const late = mock.method(performance, "now", () => (tick++) * (OPERATION_DEADLINE_MS + 1_000));
+  try {
+    const pass = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, clock: () => NOW });
+    assert.equal(pass.outcome, "held");
+    assert.equal(pass.code, "DEADLINE_EXPIRED");
+    assert.ok(pass.held);
+    assert.equal(pass.held.status, "reserved");
+    assert.equal(await extractionOperations(), 1, "the first posting's reservation, and nothing after it");
+    // Never dispatched: the hint says so and names the release.
+    assert.match(holdHint(pass.held, LATER),
+      new RegExp(`nothing was sent.*npm run ai:holds -- --cancel=${pass.held.operationId}`, "u"));
+  } finally {
+    late.mock.restore();
     if (previous === undefined) delete process.env.LIVE_AI_ENABLED;
     else process.env.LIVE_AI_ENABLED = previous;
   }

@@ -68,6 +68,7 @@ export async function executeGuardedOperation(params: Readonly<{
   prompt?: string; // the actual user message for the model
   now: string;
 }>): Promise<Readonly<{ output: string; settledMinor: bigint; operationId: string }>> {
+  const started = performance.now();
   // The switch the owner asked for: unless LIVE_AI_ENABLED is exactly "true", no
   // provider call may spend — an API key in the environment is not approval
   // (AGENTS.md). Checked here, in the single entry point, before any money moves.
@@ -100,9 +101,15 @@ export async function executeGuardedOperation(params: Readonly<{
     now: params.now,
   });
 
+  // The attempt's own time: the caller's `now` plus the real time since this call
+  // began, on a monotonic clock. Reservation and attempt used to share `params.now`,
+  // so `deadline_at > now` held for every new reservation and the deadline could never
+  // refuse a dispatch, however long the reservation waited on its budget-row lock
+  // (B50). The caller's `now` stays the origin, so a test's fixed time still works.
+  const attemptNow = new Date(Date.parse(params.now) + (performance.now() - started)).toISOString();
   const attempt = await beginAttempt({
     pool: params.pool, ownerId: params.ownerId, operationId: operation.id,
-    taskType, now: params.now,
+    taskType, now: attemptNow,
   });
 
   // Persist the dispatch before the transport call (SP 9). After this
