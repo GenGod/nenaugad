@@ -132,8 +132,10 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   dispatched again under it. Callers' misreadings left: B45, B46.
 - **Late receipts** ([B47-001](tasks/B47-001-settle-late-receipt.md), money, reviewed,
   owner-accepted 2026-10-12): `npm run ai:holds -- --settle=<op> --amount=<μ$>`
-  books an uncertain call's charge; `--cancel=` still releases a hold without booking. A
-  crashed `in_flight` operation can still only be cancelled (B48).
+  books an uncertain call's charge; `--cancel=` still releases a hold without booking. A call
+  that died in flight takes `--settle` 5 minutes after its dispatch
+  ([B48-001](tasks/B48-001-settle-crashed-in-flight.md), money, reviewed, owner-accepted
+  2026-10-12). Restart a running worker or `extract:fields` before live AI is switched on.
 - The reranker (B3-001): purpose `rerank`, provider grants, profile privacy, and the
   quota and operation ceiling.
 - Profile privacy (§4.4), which also gates `matching-scoring`, `hyde` and `eval-judge`.

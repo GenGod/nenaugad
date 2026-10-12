@@ -43,7 +43,7 @@ import { readConfig } from "../config.ts";
 import { getSourcePolicy, permissionFor } from "../source-policies.ts";
 import { readSnapshotCardsData } from "../storage/snapshots.ts";
 import {
-  BudgetError, HOLDING_STATUSES, findOperationByKey, type OperationStatus,
+  BudgetError, HOLDING_STATUSES, findOperationByKey, inFlightOverAt, type OperationStatus,
 } from "./spending.ts";
 import { PURPOSE_TASK_TYPE, type ModelTransport } from "./gateway.ts";
 import { extractPostingFields, extractionKey } from "./extraction-service.ts";
@@ -76,16 +76,20 @@ export type ExtractionHold = Readonly<{
   status: OperationStatus;
   /** The ledger's deadline for the operation's next step. */
   deadlineAt: string;
+  /** The operation's last transition; for `in_flight`, its dispatch on the database's clock (B48). */
+  updatedAt: string;
 }>;
 
 /**
- * What to tell the owner about a hold. A call reserved or in flight before its
- * deadline may still be running in another process (the CLI beside the worker):
- * cancelling it would understate a charge that is about to settle.
+ * What to tell the owner about a hold. A call reserved before its deadline, or in
+ * flight before its dispatch plus the ledger's grace, may still be running in another
+ * process (the CLI beside the worker): cancelling it would understate a charge that is
+ * about to settle. From that moment `ai:holds --settle` accepts it too (B48).
  */
 export function holdHint(hold: ExtractionHold, now: string): string {
-  return hold.status !== "uncertain" && Date.parse(hold.deadlineAt) > Date.parse(now)
-    ? `a call may still be in flight until ${hold.deadlineAt}: run again after that, do not cancel it`
+  const overAt = hold.status === "in_flight" ? inFlightOverAt(hold.updatedAt) : hold.deadlineAt;
+  return hold.status !== "uncertain" && Date.parse(overAt) > Date.parse(now)
+    ? `a call may still be in flight until ${overAt}: run again after that, do not cancel it`
     : "an operation still holds money: check the provider's usage page, then npm run ai:holds";
 }
 
@@ -145,17 +149,20 @@ export function summarizeExtractionPass(pass: ExtractionPassResult): ExtractionP
  */
 async function openHold(pool: Pool, sourceId: string): Promise<ExtractionHold | null> {
   const result = await pool.query(`
-    SELECT o.id, o.status, o.deadline_at, s.id AS snapshot_id FROM ai_operations o
+    SELECT o.id, o.status, o.deadline_at, o.updated_at, s.id AS snapshot_id FROM ai_operations o
     JOIN job_snapshots s ON s.source_id = $2 AND starts_with(o.idempotency_key, 'extraction:' || s.id || ':')
     WHERE o.owner_id = $1 AND o.task_type = $3 AND o.status = ANY($4::text[])
     ORDER BY o.updated_at, o.id
     LIMIT 1`,
   [EXTRACTOR_OWNER_ID, sourceId, PURPOSE_TASK_TYPE.extraction, [...HOLDING_STATUSES]]);
   const row = result.rows[0] as
-    | { id: string; status: OperationStatus; deadline_at: Date; snapshot_id: string }
+    | { id: string; status: OperationStatus; deadline_at: Date; updated_at: Date; snapshot_id: string }
     | undefined;
   return row
-    ? { snapshotId: row.snapshot_id, operationId: row.id, status: row.status, deadlineAt: new Date(row.deadline_at).toISOString() }
+    ? {
+      snapshotId: row.snapshot_id, operationId: row.id, status: row.status,
+      deadlineAt: new Date(row.deadline_at).toISOString(), updatedAt: new Date(row.updated_at).toISOString(),
+    }
     : null;
 }
 
@@ -240,7 +247,7 @@ export async function runExtractionPass(params: Readonly<{
           sourceId: params.sourceId, outcome: "held", code: error.message,
           held: {
             snapshotId: snapshot.id, operationId: operation.id, status: operation.status,
-            deadlineAt: operation.deadlineAt,
+            deadlineAt: operation.deadlineAt, updatedAt: operation.updatedAt,
           },
           counts, settledMicroUsd, results,
         };

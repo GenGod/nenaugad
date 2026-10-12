@@ -235,7 +235,7 @@ test("an open hold stops the source until the owner cancels it; then only its po
     assert.equal(later.outcome, "held");
     assert.deepEqual(later.held, {
       snapshotId: heldPosting, operationId: heldOperation, status: "uncertain",
-      deadlineAt: "2026-10-04T12:02:00.000Z",
+      deadlineAt: "2026-10-04T12:02:00.000Z", updatedAt: "2026-10-04T12:00:00.000Z",
     });
     assert.equal(later.results.length, 0);
     assert.equal(await extractionOperations(), 1);
@@ -243,17 +243,27 @@ test("an open hold stops the source until the owner cancels it; then only its po
     assert.match(holdHint(later.held, LATER), /npm run ai:holds/u);
     assert.match(holdHint(later.held, "2026-10-04T12:01:00.000Z"), /npm run ai:holds/u, "an uncertain call is over");
 
-    // A call that died in flight holds money too.
-    await pool.query("UPDATE ai_operations SET status = 'in_flight' WHERE id = $1", [heldOperation]);
+    // A call that died in flight holds money too. The ledger stamps a dispatch with
+    // the database's clock; here, 30 s after the pass's reservation.
+    await pool.query("UPDATE ai_operations SET status = 'in_flight', updated_at = $2 WHERE id = $1",
+      [heldOperation, "2026-10-04T12:00:30.000Z"]);
     const inFlight = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, now: LATER });
     assert.equal(inFlight.outcome, "held");
     assert.ok(inFlight.held);
     assert.equal(inFlight.held.status, "in_flight");
-    // Past its deadline the call is over; before it, another run may still be making
-    // it, and cancelling would understate a charge about to settle.
+    assert.equal(inFlight.held.updatedAt, "2026-10-04T12:00:30.000Z");
+    // Past the ledger's grace after its dispatch the call is over (the moment
+    // `ai:holds --settle` accepts it, B48), whatever the deadline; before that another
+    // run may still be making it, and cancelling would understate a charge about to settle.
     assert.match(holdHint(inFlight.held, LATER), /npm run ai:holds/u);
-    assert.match(holdHint(inFlight.held, "2026-10-04T12:01:00.000Z"),
-      /in flight until 2026-10-04T12:02:00\.000Z.*do not cancel/u);
+    for (const now of ["2026-10-04T12:01:00.000Z", "2026-10-04T12:02:00.000Z", "2026-10-04T12:05:29.999Z"]) {
+      assert.match(holdHint(inFlight.held, now), /in flight until 2026-10-04T12:05:30\.000Z.*do not cancel/u, now);
+    }
+    assert.match(holdHint(inFlight.held, "2026-10-04T12:05:30.000Z"), /npm run ai:holds/u);
+    // A reserved hold can no longer be dispatched once its deadline has passed.
+    const reservedHold = { ...inFlight.held, status: "reserved" as const };
+    assert.match(holdHint(reservedHold, "2026-10-04T12:01:59.999Z"), /in flight until 2026-10-04T12:02:00\.000Z/u);
+    assert.match(holdHint(reservedHold, "2026-10-04T12:02:00.000Z"), /npm run ai:holds/u);
 
     // The owner checks the provider's usage page and releases the hold (ai:holds --cancel).
     await cancelOperation({ pool, ownerId: EXTRACTOR_OWNER_ID, operationId: heldOperation, now: LATER });

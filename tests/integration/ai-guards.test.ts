@@ -7,8 +7,8 @@ import { localPool, migrate } from "../../scripts/db.ts";
 import { registerUser } from "../../src/server/users.ts";
 import {
   beginAttempt, cancelOperation, ensureBudget, getOperation, markUncertain,
-  reserveBudget, settleOperation, findOperationByKey, BudgetError,
-  GLOBAL_BUDGET_ID, MAX_ATTEMPTS, OPERATION_DEADLINE_MS,
+  reserveBudget, settleOperation, findOperationByKey, inFlightOverAt, BudgetError,
+  GLOBAL_BUDGET_ID, IN_FLIGHT_GRACE_MS, MAX_ATTEMPTS, OPERATION_DEADLINE_MS,
 } from "../../src/server/ai/spending.ts";
 import {
   executeGuardedOperation, LiveAiDisabledError, ProviderNotConfiguredError, PurposeNotApprovedError,
@@ -620,7 +620,7 @@ test("gateway: a repeated key after an uncertain result is refused without a dis
   assert.deepEqual(await budgets(), [["1100", "1000"], ["1100", "1000"]]);
 });
 
-// Late receipts (B47): an uncertain operation with three of its neighbours, and the
+// Late receipts (B47, B48): an uncertain operation with three of its neighbours, and the
 // ledger as both budget rows plus every operation of the owner.
 async function lateReceiptFixture() {
   await migrate(pool);
@@ -756,4 +756,111 @@ test("ai:holds --settle books a late receipt from the command line; a refusal ch
   const cancelled = aiHolds([`--cancel=${inFlight}`]);
   assert.equal(cancelled.exitCode, 0);
   assert.deepEqual((await ledger()).budgets, [["1900", "0"], ["1900", "0"]]);
+});
+
+// A crash is told from a running call by the dispatch the database stamped (B48):
+// move it back to make an old one; a fresh dispatch is a call that may still run.
+async function dispatchedAgo(operationId: string, milliseconds: number): Promise<void> {
+  await pool.query("UPDATE ai_operations SET updated_at = clock_timestamp() - make_interval(secs => $2) WHERE id = $1",
+    [operationId, milliseconds / 1000]);
+}
+
+test("late receipt: a call that died in flight settles once the grace after its dispatch is past, never before (B48)", async () => {
+  const { owner, open, ledger } = await lateReceiptFixture();
+  // The caller's clock is not what decides: a day after the deadline, to show it.
+  const nextDay = new Date(Date.parse(NOW) + 86_400_000).toISOString();
+  const lateReceipt = (operationId: string, actualMinor: bigint, allowAboveReservation = false) => settleOperation({
+    pool: pool, ownerId: owner.id, operationId, actualMinor, now: nextDay, lateReceipt: { allowAboveReservation },
+  });
+  const crashed = await open("b48-crashed", 1_000n, "in_flight");
+  const reserved = await open("b48-reserved", 500n, "reserved");
+  const before = await ledger();
+  assert.deepEqual(before.budgets, [["0", "1500"], ["0", "1500"]]);
+
+  // Until then the call may still be running, and it settles itself.
+  await assert.rejects(lateReceipt(crashed, 100n), refusedWith("WRONG_STATE"), "just dispatched");
+  await dispatchedAgo(crashed, IN_FLIGHT_GRACE_MS - 30_000);
+  await assert.rejects(lateReceipt(crashed, 100n), refusedWith("WRONG_STATE"), "inside the grace");
+  // A reserved operation was never sent, however old: it is cancelled, not settled.
+  await dispatchedAgo(reserved, 86_400_000);
+  await assert.rejects(lateReceipt(reserved, 100n), refusedWith("WRONG_STATE"));
+  // The amount guard holds for a crash too.
+  await dispatchedAgo(crashed, IN_FLIGHT_GRACE_MS + 30_000);
+  await assert.rejects(lateReceipt(crashed, 1_001n), refusedWith("AMOUNT_ABOVE_RESERVATION"));
+  const unchanged = await ledger();
+  assert.deepEqual(unchanged.budgets, before.budgets, "a refused late receipt changes nothing");
+  assert.deepEqual(unchanged.operations, before.operations);
+
+  const settled = await lateReceipt(crashed, 600n);
+  assert.equal(settled.status, "settled");
+  const after = await ledger();
+  assert.deepEqual(after.budgets, [["600", "500"], ["600", "500"]]);
+  assert.equal(after.operations[crashed], "settled/600");
+
+  // The call was alive after all and comes back: the charge is not booked twice.
+  await assert.rejects(settleOperation({
+    pool: pool, ownerId: owner.id, operationId: crashed, actualMinor: 900n, now: nextDay,
+  }), refusedWith("WRONG_STATE"));
+  await markUncertain({ pool: pool, ownerId: owner.id, operationId: crashed, now: nextDay });
+  assert.deepEqual(await ledger(), after);
+
+  // Above the reservation only when the owner says so.
+  const above = await open("b48-above", 300n, "in_flight");
+  await dispatchedAgo(above, 3_600_000);
+  await lateReceipt(above, 400n, true);
+  assert.deepEqual((await ledger()).budgets, [["1000", "500"], ["1000", "500"]]);
+});
+
+test("ai:holds --settle books a call that died in flight, not one still in flight (B48)", async () => {
+  const { owner, open, ledger } = await lateReceiptFixture();
+  // Both opened at NOW, long before the command's clock: only the dispatch differs.
+  const crashed = await open("b48-cli-crashed", 1_000n, "in_flight");
+  await dispatchedAgo(crashed, 3_600_000);
+  const flying = await open("b48-cli-flying", 500n, "in_flight");
+  const before = await ledger();
+
+  const refused = aiHolds([`--settle=${flying}`, "--amount=100"]);
+  assert.equal(refused.exitCode, 1);
+  assert.equal(refused.result.code, "WRONG_STATE");
+  assert.equal(refused.result.status, "in_flight");
+  const dispatched = (await getOperation({ pool: pool, ownerId: owner.id, operationId: flying }))?.updatedAt ?? "";
+  assert.equal(refused.result.lateReceiptFrom, inFlightOverAt(dispatched));
+  assert.deepEqual(await ledger(), before, "a refused command changes nothing");
+
+  // The list says when each call in flight takes a late receipt.
+  const listed = aiHolds([]).result.operations as { operationId: string; lateReceiptFrom?: string }[];
+  assert.equal(listed.find(row => row.operationId === flying)?.lateReceiptFrom, inFlightOverAt(dispatched));
+
+  const settled = aiHolds([`--settle=${crashed}`, "--amount=600"]);
+  assert.equal(settled.exitCode, 0);
+  assert.equal(settled.result.releasedMicroUsd, "1000");
+  assert.equal(settled.result.settledMicroUsd, "600");
+  const after = await ledger();
+  assert.deepEqual(after.budgets, [["600", "500"], ["600", "500"]]);
+  assert.equal(after.operations[crashed], "settled/600");
+});
+
+test("a call dispatched under a stale `now` is not taken for a crash while it runs (B48)", async () => {
+  const { owner, ledger } = await lateReceiptFixture();
+  // A long pass (the worker, extract:fields) hands every posting the time it started:
+  // here long before the owner's clock, so its deadline and grace are already behind.
+  const ownerClock = new Date().toISOString();
+  let refusal: unknown;
+  const running: Parameters<typeof executeGuardedOperation>[0]["transport"] = {
+    async dispatchOnce(operation) {
+      // Mid-call, the owner books a late receipt on the owner's own clock.
+      refusal = await settleOperation({
+        pool: pool, ownerId: owner.id, operationId: operation.id, actualMinor: 100n, now: ownerClock,
+        lateReceipt: { allowAboveReservation: false },
+      }).then(() => undefined, (error: unknown) => error);
+      return { kind: "result", actualMinor: 300n, output: "ok" };
+    },
+  };
+  const result = await executeGuardedOperation({
+    pool: pool, ownerId: owner.id, purpose: "cover_letter", idempotencyKey: "b48-stale",
+    worstCaseMinor: 1000n, transport: running, now: NOW,
+  });
+  assert.ok(refusedWith("WRONG_STATE")(refusal), `a running call is not a crash: ${String(refusal)}`);
+  assert.equal(result.settledMinor, 300n);
+  assert.deepEqual((await ledger()).budgets, [["300", "0"], ["300", "0"]], "booked once, by the call itself");
 });

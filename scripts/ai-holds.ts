@@ -1,9 +1,10 @@
-// Operator reconciliation of AI holds (task A6, owner decision 2026-10-01; settle: B47-001).
+// Operator reconciliation of AI holds (task A6, owner decision 2026-10-01; settle: B47-001, B48-001).
 //
 //   npm run ai:holds                                     — list the operations that hold money
 //   npm run ai:holds -- --cancel=op_...                  — release one hold, booking nothing
-//   npm run ai:holds -- --settle=op_... --amount=<μ$>    — book an uncertain call's charge
-//                       [--above-reservation]              (also above its reservation)
+//   npm run ai:holds -- --settle=op_... --amount=<μ$>    — book the charge of an uncertain call,
+//                       [--above-reservation]              or of one that died in flight (also
+//                                                          above its reservation)
 //
 // Why: a failed provider call leaves its operation `uncertain` — the money stays
 // reserved, because "the call may have gone out and been charged". Nobody released
@@ -23,11 +24,13 @@ import { localDatabaseUrl, readConfig, ConfigurationError } from "../src/server/
 import { localPool, migrate } from "./db.ts";
 import { holdsCommand } from "./ai-holds-args.ts";
 import {
-  BudgetError, HOLDING_STATUSES, cancelOperation, getOperation, settleOperation,
+  BudgetError, HOLDING_STATUSES, IN_FLIGHT_GRACE_MS, cancelOperation, getOperation, inFlightOverAt,
+  settleOperation,
 } from "../src/server/ai/spending.ts";
 import { MICRO_USD_PER_DOLLAR } from "../src/server/ai/provider.ts";
 
 const UNIT = "--amount is micro-dollars, the ledger's unit: $0.0123 = 12300";
+const SETTLES = `an uncertain call, or one still in flight ${IN_FLIGHT_GRACE_MS / 60_000} minutes after it was dispatched`;
 
 /** Ledger amounts are micro-dollars (μ$); shown here in cents. */
 function microUsdToCents(value: bigint): string {
@@ -68,7 +71,7 @@ if (!parsed.ok) {
             ok: true, operationId, releasedMicroUsd: row.reserved_minor,
             releasedCents: microUsdToCents(BigInt(row.reserved_minor)),
             note: "the hold is released; if the provider did charge, the ledger now understates the spend,"
-              + " and a cancelled operation cannot be settled later — book an uncertain call it charged with --settle",
+              + " and a cancelled operation cannot be settled later — book a call it charged with --settle",
           }));
         } catch (error) {
           const code = error instanceof BudgetError ? error.message : "CANCEL_FAILED";
@@ -99,9 +102,11 @@ if (!parsed.ok) {
             ok: false, code, operationId,
             ...(current ? {
               status: current.status,
-              hint: current.status === "in_flight"
-                ? "a late receipt is only for an uncertain call; an in-flight one may still be running (B48)"
-                : "a late receipt is only for an uncertain call",
+              ...(current.status === "in_flight" ? {
+                // Until then the call may still be running, and it settles itself.
+                lateReceiptFrom: inFlightOverAt(current.updatedAt),
+                hint: "the call may still be running; a late receipt is accepted from lateReceiptFrom",
+              } : { hint: `a late receipt is only for ${SETTLES}` }),
             } : {}),
             ...(code === "AMOUNT_ABOVE_RESERVATION" ? {
               reservedMicroUsd: row.reserved_minor,
@@ -129,6 +134,10 @@ if (!parsed.ok) {
           reservedMicroUsd: String(record.reserved_minor),
           heldCents: microUsdToCents(BigInt(String(record.reserved_minor)) - BigInt(String(record.settled_minor))),
           updatedAt: new Date(record.updated_at as Date).toISOString(),
+          // For a call in flight: when a late receipt is accepted, if it never comes back.
+          ...(record.status === "in_flight"
+            ? { lateReceiptFrom: inFlightOverAt(new Date(record.updated_at as Date).toISOString()) }
+            : {}),
         };
       });
       console.log(JSON.stringify({
@@ -143,7 +152,7 @@ if (!parsed.ok) {
         operations: rows,
         hint: rows.length === 0
           ? "nothing is holding money"
-          : "after checking the provider's usage page: an uncertain call it charged —"
+          : `after checking the provider's usage page: a call it charged (${SETTLES}) —`
             + " npm run ai:holds -- --settle=<operationId> --amount=<μ$>; a hold it did not charge —"
             + ` npm run ai:holds -- --cancel=<operationId> (${UNIT})`,
       }));

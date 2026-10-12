@@ -7,6 +7,7 @@ import {
   BatchDisabledError, isBatchEnabled, checkBatch, parseBatchOutput, retrieveBatchResults, submitBatch,
 } from "../../src/server/ai/openai-batch.ts";
 import { openAiTransport, usageCostMicroUsd } from "../../src/server/ai/openai-transport.ts";
+import { IN_FLIGHT_GRACE_MS } from "../../src/server/ai/spending.ts";
 import {
   PURPOSES_NEEDING_CANDIDATE_FACTS, PersonalDataBoundaryError, assertNoCandidateFacts, buildJobOnlyPrompt,
 } from "../../src/server/ai/personal-data-boundary.ts";
@@ -159,6 +160,18 @@ test("personal-data boundary: operations that need candidate facts are refused (
   }
 });
 
+test("transport: a call ends well inside the ledger's in-flight grace and is never retried (B48)", async () => {
+  // `ai:holds --settle` treats an operation still `in_flight` this long after its
+  // dispatch as a crash. That is sound only while the transport bounds a call far
+  // below the grace and never retries. Textual check: the client's options are private.
+  const fs = await import("node:fs/promises");
+  const text = await fs.readFile("src/server/ai/openai-transport.ts", "utf8");
+  const timeout = Number(/\btimeout:\s*([0-9_]+)/u.exec(text)?.[1]?.replaceAll("_", ""));
+  assert.ok(timeout > 0, "the transport sets a timeout");
+  assert.match(text, /\bmaxRetries:\s*0\b/u);
+  assert.ok(IN_FLIGHT_GRACE_MS >= 10 * timeout, `grace ${IN_FLIGHT_GRACE_MS} ms vs timeout ${timeout} ms`);
+});
+
 test("transport: unconfigured provider reports uncertain (fail-closed)", async () => {
   // No OPENAI_API_KEY in the test environment by design.
   delete process.env.OPENAI_API_KEY;
@@ -168,7 +181,7 @@ test("transport: unconfigured provider reports uncertain (fail-closed)", async (
     id: "op_test", ownerId: "u_test", taskType: "cover_letter",
     idempotencyKey: "k", status: "in_flight", attemptCount: 1,
     inputHash: "h", deadlineAt: new Date().toISOString(),
-    reservedMinor: 0n, settledMinor: 0n,
+    reservedMinor: 0n, settledMinor: 0n, updatedAt: new Date().toISOString(),
   }, 1);
   assert.equal(result.kind, "uncertain");
 });

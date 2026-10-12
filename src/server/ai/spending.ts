@@ -14,6 +14,19 @@ export const MAX_ATTEMPTS: Readonly<Record<string, number>> = {
   job_matching: 2,
 };
 export const OPERATION_DEADLINE_MS = 120_000;
+// beginAttempt records the dispatch on the database's clock, right before the
+// transport call, and the transport gives up after 30 s with no retry
+// (openai-transport.ts). An operation still `in_flight` this long after its dispatch
+// is a crash, not a running call, and takes a late receipt (B48). Ten times the
+// transport's timeout: room for the settle write, a slow pool or a stalled event loop.
+// Any transport the gateway dispatches through must end a call well inside it;
+// tests/unit/ai-provider.test.ts keeps the ratio for the one there is.
+export const IN_FLIGHT_GRACE_MS = 5 * 60_000;
+
+/** When an `in_flight` operation's call is over for certain: its dispatch plus the grace. */
+export function inFlightOverAt(dispatchedAt: string): string {
+  return new Date(Date.parse(dispatchedAt) + IN_FLIGHT_GRACE_MS).toISOString();
+}
 export const GLOBAL_BUDGET_ID = "budget/global/total";
 export const OWNER_BUDGET_PREFIX = "budget/owner";
 
@@ -42,6 +55,8 @@ export type OperationRow = Readonly<{
   deadlineAt: string;
   reservedMinor: bigint;
   settledMinor: bigint;
+  /** The last transition; for `in_flight`, the dispatch on the database's clock (B48). */
+  updatedAt: string;
 }>;
 
 function hashInput(input: unknown): string {
@@ -65,7 +80,7 @@ export async function reserveBudget(params: Readonly<{
     await client.query("BEGIN");
     // Idempotency: the same key must not create or re-reserve a different operation.
     const existing = await client.query(
-      "SELECT id, owner_id, task_type, idempotency_key, status, attempt_count, input_hash, deadline_at, reserved_minor, settled_minor FROM ai_operations WHERE owner_id = $1 AND task_type = $2 AND idempotency_key = $3 FOR UPDATE",
+      "SELECT id, owner_id, task_type, idempotency_key, status, attempt_count, input_hash, deadline_at, reserved_minor, settled_minor, updated_at FROM ai_operations WHERE owner_id = $1 AND task_type = $2 AND idempotency_key = $3 FOR UPDATE",
       [params.ownerId, params.taskType, params.idempotencyKey],
     );
     const existingRow = existing.rows[0] as Record<string, unknown> | undefined;
@@ -130,7 +145,7 @@ export async function reserveBudget(params: Readonly<{
     const id = `op_${randomBytes(12).toString("hex")}`;
     const deadline = new Date(Date.parse(params.now) + OPERATION_DEADLINE_MS).toISOString();
     const inserted = await client.query(
-      "INSERT INTO ai_operations (id, owner_id, task_type, idempotency_key, status, input_hash, deadline_at, reserved_minor) VALUES ($1, $2, $3, $4, 'reserved', $5, $6, $7) RETURNING id, owner_id, task_type, idempotency_key, status, attempt_count, input_hash, deadline_at, reserved_minor, settled_minor",
+      "INSERT INTO ai_operations (id, owner_id, task_type, idempotency_key, status, input_hash, deadline_at, reserved_minor) VALUES ($1, $2, $3, $4, 'reserved', $5, $6, $7) RETURNING id, owner_id, task_type, idempotency_key, status, attempt_count, input_hash, deadline_at, reserved_minor, settled_minor, updated_at",
       [id, params.ownerId, params.taskType, params.idempotencyKey,
         hashInput({ taskType: params.taskType }), deadline, params.worstCaseMinor.toString()],
     );
@@ -156,6 +171,7 @@ function toOperationRow(row: Record<string, unknown>): OperationRow {
     deadlineAt: new Date(row.deadline_at as Date).toISOString(),
     reservedMinor: BigInt(String(row.reserved_minor)),
     settledMinor: BigInt(String(row.settled_minor)),
+    updatedAt: new Date(row.updated_at as Date).toISOString(),
   };
 }
 
@@ -165,12 +181,15 @@ function toOperationRow(row: Record<string, unknown>): OperationRow {
 // have been billed: dispatching again under the same reservation would book only
 // the last call and understate spend (B37), so it waits for the owner to
 // reconcile it: `npm run ai:holds -- --cancel=` releases the hold, and
-// `--settle= --amount=` books a late receipt (B47).
+// `--settle= --amount=` books a late receipt (B47; also for a crashed call, B48).
+// The dispatch is stamped with the database's clock, not the caller's `now`: a long
+// pass (the worker, extract:fields) hands every posting the time it started, so only
+// the database knows when a call actually went out (B48).
 export async function beginAttempt(params: Readonly<{
   pool: Pool; ownerId: string; operationId: string; taskType: TaskType; now: string;
 }>): Promise<OperationRow> {
   const result = await params.pool.query(
-    "UPDATE ai_operations SET status = 'in_flight', attempt_count = attempt_count + 1, updated_at = $1 WHERE id = $2 AND owner_id = $3 AND status = 'reserved' AND attempt_count < $4 AND deadline_at > $1 RETURNING id, owner_id, task_type, idempotency_key, status, attempt_count, input_hash, deadline_at, reserved_minor, settled_minor",
+    "UPDATE ai_operations SET status = 'in_flight', attempt_count = attempt_count + 1, updated_at = clock_timestamp() WHERE id = $2 AND owner_id = $3 AND status = 'reserved' AND attempt_count < $4 AND deadline_at > $1 RETURNING id, owner_id, task_type, idempotency_key, status, attempt_count, input_hash, deadline_at, reserved_minor, settled_minor, updated_at",
     [params.now, params.operationId, params.ownerId, MAX_ATTEMPTS[params.taskType]],
   );
   const row = result.rows[0] as Record<string, unknown> | undefined;
@@ -223,7 +242,7 @@ export async function settleOperation(params: Readonly<{
   try {
     await client.query("BEGIN");
     const operation = await client.query(
-      "SELECT id, owner_id, task_type, idempotency_key, status, attempt_count, input_hash, deadline_at, reserved_minor, settled_minor FROM ai_operations WHERE id = $1 AND owner_id = $2 FOR UPDATE",
+      "SELECT id, owner_id, task_type, idempotency_key, status, attempt_count, input_hash, deadline_at, reserved_minor, settled_minor, updated_at FROM ai_operations WHERE id = $1 AND owner_id = $2 FOR UPDATE",
       [params.operationId, params.ownerId],
     );
     const row = operation.rows[0] as Record<string, unknown> | undefined;
@@ -233,9 +252,16 @@ export async function settleOperation(params: Readonly<{
     const reserved = BigInt(String(row.reserved_minor));
     const actual = params.actualMinor;
     if (params.lateReceipt) {
-      // Only an uncertain call: an in-flight one may still be running and settles
-      // itself — settled from outside, its own settle would fail and lose the cost.
-      if (row.status !== "uncertain") throw new BudgetError("WRONG_STATE");
+      // An uncertain call, or one that died in flight (B48). A call that may still be
+      // running settles itself — settled from outside, its own settle would fail and
+      // lose the cost. Judged on the database's clock against the dispatch it stamped:
+      // neither the caller's `now` nor the deadline says when the call went out.
+      if (row.status === "in_flight") {
+        const clock = await client.query("SELECT clock_timestamp() AS now");
+        const databaseNow = new Date((clock.rows[0] as { now: Date }).now).getTime();
+        const overAt = inFlightOverAt(new Date(row.updated_at as Date).toISOString());
+        if (databaseNow < Date.parse(overAt)) throw new BudgetError("WRONG_STATE");
+      }
       // The reservation is the worst case, so a larger typed amount is more likely a
       // unit slip than a charge; a real one is booked in full when the owner says so.
       if (actual > reserved && !params.lateReceipt.allowAboveReservation) {
@@ -263,7 +289,7 @@ export async function settleOperation(params: Readonly<{
     );
     await client.query("COMMIT");
     return { ...toOperationRow(row), status: "settled" as const,
-      settledMinor: params.actualMinor };
+      settledMinor: params.actualMinor, updatedAt: params.now };
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
     throw error;
@@ -313,7 +339,7 @@ export async function getOperation(params: Readonly<{
   pool: Pool; ownerId: string; operationId: string;
 }>): Promise<OperationRow | null> {
   const result = await params.pool.query(
-    "SELECT id, owner_id, task_type, idempotency_key, status, attempt_count, input_hash, deadline_at, reserved_minor, settled_minor FROM ai_operations WHERE id = $1 AND owner_id = $2",
+    "SELECT id, owner_id, task_type, idempotency_key, status, attempt_count, input_hash, deadline_at, reserved_minor, settled_minor, updated_at FROM ai_operations WHERE id = $1 AND owner_id = $2",
     [params.operationId, params.ownerId],
   );
   const row = result.rows[0] as Record<string, unknown> | undefined;
@@ -336,7 +362,7 @@ export async function findOperationByKey(params: Readonly<{
   pool: Pool; ownerId: string; taskType: TaskType; idempotencyKey: string;
 }>): Promise<OperationRow | null> {
   const result = await params.pool.query(
-    "SELECT id, owner_id, task_type, idempotency_key, status, attempt_count, input_hash, deadline_at, reserved_minor, settled_minor FROM ai_operations WHERE owner_id = $1 AND task_type = $2 AND idempotency_key = $3",
+    "SELECT id, owner_id, task_type, idempotency_key, status, attempt_count, input_hash, deadline_at, reserved_minor, settled_minor, updated_at FROM ai_operations WHERE owner_id = $1 AND task_type = $2 AND idempotency_key = $3",
     [params.ownerId, params.taskType, params.idempotencyKey],
   );
   const row = result.rows[0] as Record<string, unknown> | undefined;
