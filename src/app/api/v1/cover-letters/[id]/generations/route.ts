@@ -6,6 +6,7 @@ import {
 import {
   executeGuardedOperation,
 } from "../../../../../../server/ai/gateway.ts";
+import { isUncertainReplay } from "../../../../../../server/ai/ledger-refusals.ts";
 import { openAiTransport } from "../../../../../../server/ai/openai-transport.ts";
 import { GPT6_LUNA, reservationFor, worstCaseCostMicroUsd } from "../../../../../../server/ai/provider.ts";
 import { snapshotPool, readSnapshotCardsData } from "../../../../../../server/storage/snapshots.ts";
@@ -131,6 +132,11 @@ export async function POST(request: Request, { params }: Params) {
     if (error instanceof Error && (error.message === "PERSONAL_DATA_BOUNDARY"
       || error.message === "AI_LIVE_DISABLED" || error.message === "AI_PROVIDER_NOT_CONFIGURED")) {
       return NextResponse.json({ error: error.message }, { status: 503 });
+    }
+    // A replay of a request whose call is still uncertain: nothing was sent, the
+    // hold waits for reconciliation (B37). Not a server failure.
+    if (isUncertainReplay(error)) {
+      return NextResponse.json({ error: "OPERATION_UNCERTAIN" }, { status: 409 });
     }
     if (error instanceof Error && error.message.includes("ATTEMPTS")) {
       return NextResponse.json({ error: "GENERATION_LIMIT" }, { status: 429 });

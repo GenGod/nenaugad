@@ -26,7 +26,7 @@ review — an owner decision.
 |---|---|---|
 | Ownership | all spending queries are scoped by `owner_id` (reserve/begin/settle/cancel/get) | **new**: a foreign owner cannot read/settle/cancel (OPERATION_NOT_FOUND); one's own is untouched |
 | Atomic budget reservation | `FOR UPDATE` on `ai_budgets` + a conditional UPDATE of held | «concurrent callers cannot double-spend the remainder» |
-| Persistent attempt counters | `beginAttempt`: `attempt_count < MAX_ATTEMPTS` in SQL | «attempt counter is persistent…» (+ ATTEMPTS_EXHAUSTED) |
+| Persistent attempt counters | `beginAttempt`: `attempt_count < MAX_ATTEMPTS` in SQL | «attempt counter is persistent…» (+ ATTEMPTS_EXHAUSTED); since B37-001: «the attempt counter persists: a restored operation at its limit is refused» |
 | Deadline | `beginAttempt`: `deadline_at > now`; a separate test | «deadline expiry and uncertain hold semantics» (DEADLINE_EXPIRED) |
 | Uncertain billing | `markUncertain` (status-guarded), the hold is kept; release — `npm run ai:holds` | «…uncertain hold semantics» + «…the mock transport path settles honestly» |
 | Cancellation | `cancelOperation` (status-guarded, releases the hold) | «settlement converts the hold; cancel releases it; the kill switch…» |

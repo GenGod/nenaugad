@@ -7,7 +7,8 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-10-09: the owner accepted [B44-001](tasks/B44-001-visual-baselines.md) (9 visual baselines
+**Updated:** 2026-10-12: the owner accepted [B37-001](tasks/B37-001-no-retry-after-uncertain.md) (no retry after
+an uncertain call). 2026-10-09: the owner accepted [B44-001](tasks/B44-001-visual-baselines.md) (9 visual baselines
 re-recorded for B42's hint) and [B43-001](tasks/B43-001-logout-redirect.md) (logout stays on this
 origin). 2026-10-08: the owner accepted [B42-001](tasks/B42-001-missing-country-notice.md) (a notice
 when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latency.md) (`/matched`
@@ -126,9 +127,10 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   that started at page 1 has finished (one run per 24 hours; the current pass is midway),
   and `npm run import:jobicy` once; then live AI on. Otherwise a posting extracted on its
   old text is paid again when re-read (under $0.40 for today's catalog). Then B40.
-- **A retry after an uncertain call books only the last call** (OPEN_GAPS B37, money,
-  existed before): the ledger can undercount a letter or matching retry. The extraction
-  pass cannot reach it; the other two paths are closed by the personal-data boundary.
+- **No retry after an uncertain call** ([B37-001](tasks/B37-001-no-retry-after-uncertain.md),
+  money, reviewed, owner-accepted 2026-10-12): an uncertain operation keeps its hold and is never
+  dispatched again under it. Reconciliation is cancel-only (B47); callers' misreadings
+  left: B45, B46.
 - The reranker (B3-001): purpose `rerank`, provider grants, profile privacy, and the
   quota and operation ceiling.
 - Profile privacy (§4.4), which also gates `matching-scoring`, `hyde` and `eval-judge`.

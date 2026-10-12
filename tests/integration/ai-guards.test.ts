@@ -5,8 +5,8 @@ import { localPool, migrate } from "../../scripts/db.ts";
 import { registerUser } from "../../src/server/users.ts";
 import {
   beginAttempt, cancelOperation, ensureBudget, getOperation, markUncertain,
-  reserveBudget, settleOperation, BudgetError,
-  GLOBAL_BUDGET_ID, OPERATION_DEADLINE_MS,
+  reserveBudget, settleOperation, findOperationByKey, BudgetError,
+  GLOBAL_BUDGET_ID, MAX_ATTEMPTS, OPERATION_DEADLINE_MS,
 } from "../../src/server/ai/spending.ts";
 import {
   executeGuardedOperation, LiveAiDisabledError, ProviderNotConfiguredError, PurposeNotApprovedError,
@@ -86,7 +86,10 @@ test("idempotency: same key returns the existing operation; a different input is
   assert.equal(second.status, "reserved");
 });
 
-test("attempt counter is persistent and never reset by retries", async () => {
+// B37: an uncertain call keeps its hold until the owner reconciles it, and nothing
+// is dispatched again under that reservation (SP 9: "do not repeat an uncertain
+// paid call blindly"; SP-T13). This test used to assert the opposite.
+test("an uncertain attempt is never followed by another under the same reservation", async () => {
   await migrate(pool);
   const owner = await registerUser(pool, email(), "long-enough-password");
   await freshBudgets(owner.id, 10_000n, null);
@@ -99,19 +102,60 @@ test("attempt counter is persistent and never reset by retries", async () => {
     taskType: "job_extraction", now: NOW,
   });
   assert.equal(first.attemptCount, 1);
-  // Simulate uncertain → retry (uncertain allows one more attempt).
   await markUncertain({ pool: pool, ownerId: owner.id, operationId: operation.id, now: NOW });
-  const second = await beginAttempt({
-    pool: pool, ownerId: owner.id, operationId: operation.id,
-    taskType: "job_extraction", now: NOW,
-  });
-  assert.equal(second.attemptCount, 2);
-  // MAX_ATTEMPTS for job_extraction is 2: the third is refused.
-  await markUncertain({ pool: pool, ownerId: owner.id, operationId: operation.id, now: NOW });
+  const ledger = async () => {
+    const budgets = await pool.query(
+      "SELECT settled_minor, held_minor FROM ai_budgets WHERE id = ANY($1::text[]) ORDER BY id",
+      [[GLOBAL_BUDGET_ID, ownerBudgetId(owner.id)]]);
+    const op = await getOperation({ pool: pool, ownerId: owner.id, operationId: operation.id });
+    return { budgets: budgets.rows, status: op?.status, attempts: op?.attemptCount };
+  };
+  const before = await ledger();
+  assert.deepEqual(before.budgets.map(row => (row as { held_minor: string }).held_minor), ["300", "300"]);
+  const uncertainRefusal = (error: unknown) =>
+    error instanceof BudgetError && error.message === "OPERATION_UNCERTAIN";
   await assert.rejects(beginAttempt({
-    pool: pool, ownerId: owner.id, operationId: operation.id,
-    taskType: "job_extraction", now: NOW,
+    pool: pool, ownerId: owner.id, operationId: operation.id, taskType: "job_extraction", now: NOW,
+  }), uncertainRefusal);
+  // The open hold is what the caller needs to know, also past the deadline and
+  // with the attempts spent.
+  const afterDeadline = new Date(Date.parse(NOW) + OPERATION_DEADLINE_MS + 1000).toISOString();
+  await assert.rejects(beginAttempt({
+    pool: pool, ownerId: owner.id, operationId: operation.id, taskType: "job_extraction", now: afterDeadline,
+  }), uncertainRefusal);
+  assert.deepEqual(await ledger(), before, "a refused attempt changes nothing");
+  await pool.query("UPDATE ai_operations SET attempt_count = $1 WHERE id = $2",
+    [MAX_ATTEMPTS.job_extraction, operation.id]);
+  await assert.rejects(beginAttempt({
+    pool: pool, ownerId: owner.id, operationId: operation.id, taskType: "job_extraction", now: NOW,
+  }), uncertainRefusal);
+
+  // The owner's way out today: cancelling releases the hold on both rows.
+  await cancelOperation({ pool: pool, ownerId: owner.id, operationId: operation.id, now: NOW });
+  const cancelled = await ledger();
+  assert.equal(cancelled.status, "cancelled");
+  assert.deepEqual(cancelled.budgets.map(row => (row as { held_minor: string }).held_minor), ["0", "0"]);
+  assert.deepEqual(cancelled.budgets.map(row => (row as { settled_minor: string }).settled_minor), ["0", "0"]);
+});
+
+test("the attempt counter persists: a restored operation at its limit is refused", async () => {
+  await migrate(pool);
+  const owner = await registerUser(pool, email(), "long-enough-password");
+  await freshBudgets(owner.id, 10_000n, null);
+  const operation = await reserveBudget({
+    pool: pool, operationId: "", ownerId: owner.id, taskType: "job_extraction",
+    idempotencyKey: "att-2", worstCaseMinor: 300n, now: NOW,
+  });
+  // A restored worker finds an operation whose attempts were already spent: the count
+  // is the database's, not the process's, so a new process cannot reset it (SP-T14).
+  await pool.query("UPDATE ai_operations SET attempt_count = $1 WHERE id = $2",
+    [MAX_ATTEMPTS.job_extraction, operation.id]);
+  await assert.rejects(beginAttempt({
+    pool: pool, ownerId: owner.id, operationId: operation.id, taskType: "job_extraction", now: NOW,
   }), (error: unknown) => error instanceof BudgetError && error.message === "ATTEMPTS_EXHAUSTED");
+  const after = await getOperation({ pool: pool, ownerId: owner.id, operationId: operation.id });
+  assert.equal(after?.status, "reserved");
+  assert.equal(after?.attemptCount, MAX_ATTEMPTS.job_extraction);
 });
 
 test("deadline expiry and uncertain hold semantics", async () => {
@@ -506,4 +550,70 @@ test("the approved extraction purpose books into job_extraction (owner decision 
     pool: pool, ownerId: owner.id, purpose: "cv_extraction", idempotencyKey: "ext-2",
     worstCaseMinor: 500n, transport: mock, now: NOW,
   }), PurposeNotApprovedError);
+});
+
+// B37, end to end: a caller repeats a key after an uncertain result. Before the fix
+// the gateway dispatched again under the same reservation and booked only the last
+// call, so the ledger could understate spend by (attempts - 1) calls.
+test("gateway: a repeated key after an uncertain result is refused without a dispatch (B37)", async () => {
+  await migrate(pool);
+  const owner = await registerUser(pool, email(), "long-enough-password");
+  // The owner's quota fits one 1,000 reservation, not two.
+  await freshBudgets(owner.id, 10_000n, 1_500n);
+  const budgets = async () => (await pool.query(
+    "SELECT settled_minor, held_minor FROM ai_budgets WHERE id = ANY($1::text[]) ORDER BY id",
+    [[GLOBAL_BUDGET_ID, ownerBudgetId(owner.id)]])).rows
+    .map(row => [(row as { settled_minor: string }).settled_minor, (row as { held_minor: string }).held_minor]);
+
+  let timedOut = 0;
+  const timingOut: Parameters<typeof executeGuardedOperation>[0]["transport"] = {
+    async dispatchOnce() { timedOut += 1; return { kind: "uncertain" }; },
+  };
+  let answered = 0;
+  const answering: Parameters<typeof executeGuardedOperation>[0]["transport"] = {
+    async dispatchOnce() { answered += 1; return { kind: "result", actualMinor: 300n, output: "ok" }; },
+  };
+  const call = (key: string, transport: typeof answering) => executeGuardedOperation({
+    pool: pool, ownerId: owner.id, purpose: "cover_letter", idempotencyKey: key,
+    worstCaseMinor: 1000n, transport, now: NOW,
+  });
+
+  await assert.rejects(call("b37-k", timingOut),
+    (error: unknown) => error instanceof BudgetError && error.message === "BUDGET_UNAVAILABLE");
+  assert.equal(timedOut, 1);
+  assert.deepEqual(await budgets(), [["0", "1000"], ["0", "1000"]]);
+
+  // The replay: refused before the transport, and the hold is untouched.
+  await assert.rejects(call("b37-k", answering),
+    (error: unknown) => error instanceof BudgetError && error.message === "OPERATION_UNCERTAIN");
+  assert.equal(answered, 0, "nothing is dispatched under an uncertain reservation");
+  const held = await findOperationByKey({
+    pool: pool, ownerId: owner.id, taskType: "cover_letter", idempotencyKey: "b37-k" });
+  assert.equal(held?.status, "uncertain");
+  assert.equal(held?.attemptCount, 1);
+  assert.deepEqual(await budgets(), [["0", "1000"], ["0", "1000"]], "nothing settled, the full hold kept");
+
+  // A new key is a new operation with its own hold: the quota cannot fit both.
+  await assert.rejects(call("b37-new", answering),
+    (error: unknown) => error instanceof BudgetError && error.message === "BUDGET_EXCEEDED");
+  assert.equal(answered, 0);
+  // With room, it is reserved and settled on its own; the uncertain hold stays.
+  await pool.query("UPDATE ai_budgets SET approved_limit_minor = 10000 WHERE id = $1", [ownerBudgetId(owner.id)]);
+  const fresh = await call("b37-new", answering);
+  assert.equal(fresh.settledMinor, 300n);
+  assert.equal(answered, 1);
+  assert.deepEqual(await budgets(), [["300", "1000"], ["300", "1000"]]);
+
+  // A crash mid-call leaves the operation in flight: a repeat is refused too.
+  const crashing: Parameters<typeof executeGuardedOperation>[0]["transport"] = {
+    async dispatchOnce() { throw new Error("socket closed"); },
+  };
+  await assert.rejects(call("b37-crash", crashing), /socket closed/u);
+  await assert.rejects(call("b37-crash", answering),
+    (error: unknown) => error instanceof BudgetError && error.message === "WRONG_STATE");
+  assert.equal(answered, 1);
+
+  // Reconciliation is unchanged: a late receipt settles the uncertain operation.
+  await settleOperation({ pool: pool, ownerId: owner.id, operationId: held?.id ?? "", actualMinor: 800n, now: NOW });
+  assert.deepEqual(await budgets(), [["1100", "1000"], ["1100", "1000"]]);
 });

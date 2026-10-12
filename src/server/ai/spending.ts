@@ -26,7 +26,7 @@ export class BudgetError extends Error {
     | "BUDGET_EXCEEDED" | "BUDGET_UNAVAILABLE" | "ATTEMPTS_EXHAUSTED"
     | "DEADLINE_EXPIRED" | "OPERATION_NOT_FOUND" | "NOT_OWNER"
     | "WRONG_STATE" | "IDEMPOTENCY_COLLISION" | "OWNER_BUDGET_MISSING"
-    | "OPERATION_CEILING_EXCEEDED") {
+    | "OPERATION_CEILING_EXCEEDED" | "OPERATION_UNCERTAIN") {
     super(code);
   }
 }
@@ -70,8 +70,8 @@ export async function reserveBudget(params: Readonly<{
     );
     const existingRow = existing.rows[0] as Record<string, unknown> | undefined;
     if (existingRow) {
-      // Same key with the same input → return the existing operation; the
-      // caller still cannot exceed its attempt budget on retry.
+      // Same key with the same input → return the existing operation; whether it
+      // may be dispatched is beginAttempt's decision (never after uncertain, B37).
       if (existingRow.status !== "failed" && existingRow.status !== "cancelled") {
         await client.query("COMMIT");
         return toOperationRow(existingRow);
@@ -161,11 +161,16 @@ function toOperationRow(row: Record<string, unknown>): OperationRow {
 
 // Mark a dispatch BEFORE any transport call; the attempt counter is
 // persistent and never reset by a retry wrapper or a new idempotency key.
+// Only a `reserved` operation starts an attempt. An `uncertain` one may already
+// have been billed: dispatching again under the same reservation would book only
+// the last call and understate spend (B37), so it waits for the owner to
+// reconcile it: `npm run ai:holds -- --cancel=` releases the hold; settling a late
+// receipt is `settleOperation`, which no command calls yet (OPEN_GAPS B47).
 export async function beginAttempt(params: Readonly<{
   pool: Pool; ownerId: string; operationId: string; taskType: TaskType; now: string;
 }>): Promise<OperationRow> {
   const result = await params.pool.query(
-    "UPDATE ai_operations SET status = 'in_flight', attempt_count = attempt_count + 1, updated_at = $1 WHERE id = $2 AND owner_id = $3 AND status IN ('reserved', 'uncertain') AND attempt_count < $4 AND deadline_at > $1 RETURNING id, owner_id, task_type, idempotency_key, status, attempt_count, input_hash, deadline_at, reserved_minor, settled_minor",
+    "UPDATE ai_operations SET status = 'in_flight', attempt_count = attempt_count + 1, updated_at = $1 WHERE id = $2 AND owner_id = $3 AND status = 'reserved' AND attempt_count < $4 AND deadline_at > $1 RETURNING id, owner_id, task_type, idempotency_key, status, attempt_count, input_hash, deadline_at, reserved_minor, settled_minor",
     [params.now, params.operationId, params.ownerId, MAX_ATTEMPTS[params.taskType]],
   );
   const row = result.rows[0] as Record<string, unknown> | undefined;
@@ -179,6 +184,9 @@ export async function beginAttempt(params: Readonly<{
       | { status: string; attempt_count: string; deadline_at: Date }
       | undefined;
     if (!check) throw new BudgetError("OPERATION_NOT_FOUND");
+    // First, because it is the fact the caller must act on: money is held
+    // for a call that may have been billed, whatever the deadline or count.
+    if (check.status === "uncertain") throw new BudgetError("OPERATION_UNCERTAIN");
     if (new Date(check.deadline_at).getTime() <= Date.parse(params.now)) {
       throw new BudgetError("DEADLINE_EXPIRED");
     }

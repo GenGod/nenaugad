@@ -11,6 +11,7 @@ import {
   BATCH_DISABLED_REASON,
 } from "../../../../server/ai/openai-batch.ts";
 import { BudgetError } from "../../../../server/ai/spending.ts";
+import { isDuplicateChunk, isStopError } from "../../../../server/ai/ledger-refusals.ts";
 import { assertNoCandidateFacts } from "../../../../server/ai/personal-data-boundary.ts";
 import { matchedForUser } from "../../../../server/matching-service.ts";
 import { latestProfile } from "../../../../server/profile-service.ts";
@@ -49,26 +50,6 @@ function chunkOperationKey(profileVersion: number, snapshotIds: readonly string[
     .update([...snapshotIds].sort().join("\n"))
     .digest("hex").slice(0, 24);
   return `relevance-chunk-p${profileVersion}-${fingerprint}`;
-}
-
-/**
- * The ledger already holds a terminal answer for this key: the chunk was settled
- * (do not charge again — the scores are in the cache) or it failed terminally
- * (the spending layer refuses a retry by design). Both mean "skip", not "error".
- */
-function isDuplicateChunk(error: unknown): boolean {
-  return error instanceof BudgetError
-    && (error.message === "WRONG_STATE" || error.message === "IDEMPOTENCY_COLLISION");
-}
-
-/** Ledger refusals that must stop the whole run instead of being skipped. */
-function isStopError(error: unknown): boolean {
-  if (error instanceof BudgetError) {
-    return error.message === "BUDGET_EXCEEDED" || error.message === "BUDGET_UNAVAILABLE"
-      || error.message === "ATTEMPTS_EXHAUSTED" || error.message === "DEADLINE_EXPIRED";
-  }
-  return error instanceof Error
-    && (error.message === "AI_PROVIDER_NOT_CONFIGURED" || error.message === "AI_PURPOSE_NOT_APPROVED");
 }
 
 function unauthorized() {
