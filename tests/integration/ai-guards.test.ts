@@ -842,8 +842,8 @@ test("ai:holds --settle books a call that died in flight, not one still in fligh
 
 test("a call dispatched under a stale `now` is not taken for a crash while it runs (B48)", async () => {
   const { owner, ledger } = await lateReceiptFixture();
-  // A long pass (the worker, extract:fields) hands every posting the time it started:
-  // here long before the owner's clock, so its deadline and grace are already behind.
+  // A caller whose `now` is stale (a long pass before B49, a wait on a lock): here
+  // long before the owner's clock, so its deadline and grace are already behind.
   const ownerClock = new Date().toISOString();
   let refusal: unknown;
   const running: Parameters<typeof executeGuardedOperation>[0]["transport"] = {

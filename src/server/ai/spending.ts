@@ -182,9 +182,10 @@ function toOperationRow(row: Record<string, unknown>): OperationRow {
 // the last call and understate spend (B37), so it waits for the owner to
 // reconcile it: `npm run ai:holds -- --cancel=` releases the hold, and
 // `--settle= --amount=` books a late receipt (B47; also for a crashed call, B48).
-// The dispatch is stamped with the database's clock, not the caller's `now`: a long
-// pass (the worker, extract:fields) hands every posting the time it started, so only
-// the database knows when a call actually went out (B48).
+// The dispatch is stamped with the database's clock, not the caller's `now`: the
+// caller reads its time before the reservation (which can wait on a lock), it may be
+// stale (a pass before B49), and the worker, the CLI and `ai:holds` are separate
+// processes; only the database knows when a call actually went out (B48).
 export async function beginAttempt(params: Readonly<{
   pool: Pool; ownerId: string; operationId: string; taskType: TaskType; now: string;
 }>): Promise<OperationRow> {

@@ -20,7 +20,7 @@ import {
 import {
   processPendingBatches, checkForStaleAnalyses, submitRelevanceBatch,
 } from "../src/server/ai/batch-queue-service.ts";
-import { holdHint, runExtractionPassAfterImport } from "../src/server/ai/extraction-pass.ts";
+import { holdHint, runExtractionPassAfterImport, systemClock } from "../src/server/ai/extraction-pass.ts";
 import { openAiTransport } from "../src/server/ai/openai-transport.ts";
 
 const SOURCES = ["himalayas", "jobicy"] as const;
@@ -104,7 +104,7 @@ async function attempt(setup: Setup): Promise<void> {
     // import's bookkeeping and never throws (B31): nothing it meets can record a
     // failed attempt or pause a healthy source.
     const extraction = await runExtractionPassAfterImport({
-      pool: setup.pool, sourceId: setup.source, transport: openAiTransport, now,
+      pool: setup.pool, sourceId: setup.source, transport: openAiTransport, clock: systemClock,
     });
     // The switched-off state is the normal one (LIVE_AI_ENABLED=false) and is
     // reported by --status, not logged every tick; anything that actually
@@ -112,7 +112,7 @@ async function attempt(setup: Setup): Promise<void> {
     if (extraction.outcome !== "live_ai_disabled") {
       log({
         source: setup.source, event: "extraction", ...extraction,
-        ...("held" in extraction && extraction.held ? { hint: holdHint(extraction.held, now) } : {}),
+        ...("held" in extraction && extraction.held ? { hint: holdHint(extraction.held, systemClock()) } : {}),
       });
     }
   }

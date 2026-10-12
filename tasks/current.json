@@ -1,15 +1,10 @@
 {
-  "task_id": "B48-001",
-  "file": "tasks/B48-001-settle-crashed-in-flight.md",
+  "task_id": "B49-001",
+  "file": "tasks/B49-001-fresh-clock-per-posting.md",
   "status": "accepted",
-  "repair_cycles_used": 1,
+  "repair_cycles_used": 0,
   "max_repair_cycles": 2,
-  "hypotheses": [
-    {
-      "text": "The crash test must use the dispatch moment on the database clock: extraction passes reuse one stale now, so deadline + grace can pass while a call runs. Testable: beginAttempt writes clock_timestamp() to updated_at, and a late receipt for a call dispatched under a stale now is refused while its transport is still running.",
-      "recorded_at": "2026-10-12T09:25:12.181Z"
-    }
-  ],
+  "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Owner accepted B48-001 on 2026-10-12. New from its review: B49. Open: B40, B45, B46, B49."
+  "note": "Owner accepted B49-001 on 2026-10-12. New from its review: B50. Open: B40, B45, B46, B50."
 }

@@ -10,6 +10,10 @@
 //   * per posting the guarded service asks the source's `send_to_ai_provider`,
 //     answers repeats from the stored record, and stores a rejection instead of
 //     dropping it — this loop only counts what happened, per posting;
+//   * each posting meets the permission and the ledger at the time the pass's
+//     `clock` gives when it is reached, not when the pass began (B49). A permission
+//     that lapses during the pass stops it with `no_permission`: every later
+//     posting would be refused the same way, and the outcome must say so;
 //   * tombstones are skipped: retention blanked their text, so there is nothing
 //     to extract and no reason to pay for an empty prompt;
 //   * postings are visited newest first, and `limit` counts provider calls, not
@@ -166,11 +170,22 @@ async function openHold(pool: Pool, sourceId: string): Promise<ExtractionHold | 
     : null;
 }
 
+/** The wall clock, as the pass's callers hand it over (B49). */
+export function systemClock(): string {
+  return new Date().toISOString();
+}
+
 export async function runExtractionPass(params: Readonly<{
   pool: Pool;
   sourceId: string;
   transport: ModelTransport | null;
-  now: string;
+  /**
+   * The time of each step, read afresh for every posting: a pass can run for an hour,
+   * and each call must meet the source's permission and the ledger's deadline as they
+   * stand when it is made, not when the pass began (B49). Callers pass `systemClock`;
+   * tests pass a fixed or a stepping clock.
+   */
+  clock: () => string;
   /**
    * The most provider calls one pass makes (B32); the worker uses it to stay
    * polite, the scripts stay unbounded.
@@ -181,7 +196,7 @@ export async function runExtractionPass(params: Readonly<{
   const policy = getSourcePolicy(params.sourceId);
   if (!policy) return { ...base, outcome: "unknown_source" };
   if (!readConfig(process.env).liveAi) return { ...base, outcome: "live_ai_disabled" };
-  if (permissionFor(policy, "send_to_ai_provider", params.now) !== "allowed") {
+  if (permissionFor(policy, "send_to_ai_provider", params.clock()) !== "allowed") {
     return { ...base, outcome: "no_permission" };
   }
   const hold = await openHold(params.pool, params.sourceId);
@@ -216,11 +231,12 @@ export async function runExtractionPass(params: Readonly<{
         sourceId: params.sourceId,
         snapshot,
         transport: params.transport,
-        now: params.now,
+        now: params.clock(),
       });
-      if (outcome.status !== "unknown_source" && outcome.status !== "no_permission") {
-        counts[outcome.status] += 1;
+      if (outcome.status === "unknown_source" || outcome.status === "no_permission") {
+        return { sourceId: params.sourceId, outcome: outcome.status, counts, settledMicroUsd, results };
       }
+      counts[outcome.status] += 1;
       // Only a fresh call settles money in THIS pass: an already_* answer comes
       // from the stored record whose provenance names an older payment, and
       // counting it again would inflate the run's cost.

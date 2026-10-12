@@ -8,7 +8,7 @@ import { BudgetError, cancelOperation, ensureBudget, GLOBAL_BUDGET_ID } from "..
 import { GPT6_LUNA, ownerBudgetId } from "../../src/server/ai/provider.ts";
 import {
   EXTRACTION_CALLS_AFTER_IMPORT, EXTRACTOR_OWNER_ID, failureCode, holdHint, runExtractionPass,
-  runExtractionPassAfterImport,
+  runExtractionPassAfterImport, systemClock,
 } from "../../src/server/ai/extraction-pass.ts";
 import { extractPostingFields, extractionKey } from "../../src/server/ai/extraction-service.ts";
 import { executeGuardedOperation, type ModelTransport } from "../../src/server/ai/gateway.ts";
@@ -102,7 +102,7 @@ test("the pass with the owner's switch off touches nothing and says so", async (
   const previous = process.env.LIVE_AI_ENABLED;
   delete process.env.LIVE_AI_ENABLED;
   try {
-    const pass = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, now: NOW });
+    const pass = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, clock: () => NOW });
     assert.equal(pass.outcome, "live_ai_disabled");
     assert.equal(pass.results.length, 0);
     const ops = await pool.query("SELECT COUNT(*)::int AS n FROM ai_operations WHERE idempotency_key LIKE 'extraction:%'");
@@ -128,7 +128,7 @@ test("the pass extracts only what is missing, skips tombstones, and honours the 
     assert.equal(first.status, "extracted");
 
     const pass = await runExtractionPass({
-      pool, sourceId: "himalayas", transport: transportReturning(VALID_OUTPUT), now: NOW,
+      pool, sourceId: "himalayas", transport: transportReturning(VALID_OUTPUT), clock: () => NOW,
     });
     assert.equal(pass.outcome, "ran");
     assert.equal(pass.counts.already_extracted, 1);
@@ -137,7 +137,7 @@ test("the pass extracts only what is missing, skips tombstones, and honours the 
 
     // A second full pass pays nothing: both records are stored now.
     const again = await runExtractionPass({
-      pool, sourceId: "himalayas", transport: transportReturning(VALID_OUTPUT), now: NOW,
+      pool, sourceId: "himalayas", transport: transportReturning(VALID_OUTPUT), clock: () => NOW,
     });
     assert.equal(again.counts.already_extracted, 2);
     assert.equal(again.settledMicroUsd, 0n, "stored records must not cost anything");
@@ -145,7 +145,7 @@ test("the pass extracts only what is missing, skips tombstones, and honours the 
     // The limit counts provider calls, not rows (B32): both postings are answered
     // from their records, so a pass limited to one call visits both and pays nothing.
     const capped = await runExtractionPass({
-      pool, sourceId: "himalayas", transport: exploding, now: NOW, limit: 1,
+      pool, sourceId: "himalayas", transport: exploding, clock: () => NOW, limit: 1,
     });
     assert.equal(capped.outcome, "ran");
     assert.equal(capped.results.length, 2);
@@ -161,7 +161,7 @@ test("the pass extracts only what is missing, skips tombstones, and honours the 
     const persistence = createPostgresPersistence(pool, { ...himalayasCandidatePolicy, enabled: true });
     assert.equal(await persistence.tombstoneExpired(NOW), 1);
     const withTombstone = await runExtractionPass({
-      pool, sourceId: "himalayas", transport: transportReturning(VALID_OUTPUT), now: NOW,
+      pool, sourceId: "himalayas", transport: transportReturning(VALID_OUTPUT), clock: () => NOW,
     });
     assert.equal(withTombstone.counts.tombstoned_skipped, 1);
     assert.equal(withTombstone.settledMicroUsd, 0n);
@@ -180,13 +180,13 @@ test("the pass refuses on an expired source policy and on a missing extractor bu
   try {
     const expired = await runExtractionPass({
       pool, sourceId: "jobicy", transport: transportReturning(VALID_OUTPUT),
-      now: "2027-01-01T00:00:00.000Z",
+      clock: () => "2027-01-01T00:00:00.000Z",
     });
     assert.equal(expired.outcome, "no_permission");
     assert.equal(expired.results.length, 0);
 
     const unknown = await runExtractionPass({
-      pool, sourceId: "not-a-source", transport: transportReturning(VALID_OUTPUT), now: NOW,
+      pool, sourceId: "not-a-source", transport: transportReturning(VALID_OUTPUT), clock: () => NOW,
     });
     assert.equal(unknown.outcome, "unknown_source");
 
@@ -197,7 +197,7 @@ test("the pass refuses on an expired source policy and on a missing extractor bu
     await pool.query("DELETE FROM ai_budgets");
     await ensureBudget({ pool, budgetId: GLOBAL_BUDGET_ID, scope: "global", approvedLimitMinor: 10_000n });
     const refused = await runExtractionPass({
-      pool, sourceId: "himalayas", transport: transportReturning(VALID_OUTPUT), now: NOW,
+      pool, sourceId: "himalayas", transport: transportReturning(VALID_OUTPUT), clock: () => NOW,
     });
     assert.equal(refused.outcome, "budget_refused");
     assert.equal(refused.code, "OWNER_BUDGET_MISSING");
@@ -219,7 +219,7 @@ test("an open hold stops the source until the owner cancels it; then only its po
     const timingOut: ModelTransport = {
       async dispatchOnce() { uncertainCalls += 1; return { kind: "uncertain" as const }; },
     };
-    const first = await runExtractionPass({ pool, sourceId: "himalayas", transport: timingOut, now: NOW });
+    const first = await runExtractionPass({ pool, sourceId: "himalayas", transport: timingOut, clock: () => NOW });
     assert.equal(first.outcome, "held");
     assert.equal(first.code, "BUDGET_UNAVAILABLE", "the gateway's code, no longer read as a budget refusal");
     assert.equal(uncertainCalls, 1);
@@ -231,7 +231,7 @@ test("an open hold stops the source until the owner cancels it; then only its po
 
     // Every later tick: the hold is unresolved, so nothing is sent or reserved, whichever
     // posting the database returns first.
-    const later = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, now: LATER });
+    const later = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, clock: () => LATER });
     assert.equal(later.outcome, "held");
     assert.deepEqual(later.held, {
       snapshotId: heldPosting, operationId: heldOperation, status: "uncertain",
@@ -247,7 +247,7 @@ test("an open hold stops the source until the owner cancels it; then only its po
     // the database's clock; here, 30 s after the pass's reservation.
     await pool.query("UPDATE ai_operations SET status = 'in_flight', updated_at = $2 WHERE id = $1",
       [heldOperation, "2026-10-04T12:00:30.000Z"]);
-    const inFlight = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, now: LATER });
+    const inFlight = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, clock: () => LATER });
     assert.equal(inFlight.outcome, "held");
     assert.ok(inFlight.held);
     assert.equal(inFlight.held.status, "in_flight");
@@ -268,7 +268,7 @@ test("an open hold stops the source until the owner cancels it; then only its po
     // The owner checks the provider's usage page and releases the hold (ai:holds --cancel).
     await cancelOperation({ pool, ownerId: EXTRACTOR_OWNER_ID, operationId: heldOperation, now: LATER });
     const counting = countingTransport(VALID_OUTPUT);
-    const resolved = await runExtractionPass({ pool, sourceId: "himalayas", transport: counting.transport, now: LATER });
+    const resolved = await runExtractionPass({ pool, sourceId: "himalayas", transport: counting.transport, clock: () => LATER });
     assert.equal(resolved.outcome, "ran");
     assert.equal(resolved.counts.blocked, 1);
     assert.equal(resolved.counts.extracted, 1);
@@ -304,7 +304,7 @@ test("an open hold stops the source before any posting is read, even one the pas
     const persistence = createPostgresPersistence(pool, { ...himalayasCandidatePolicy, enabled: true });
     assert.equal(await persistence.tombstoneExpired(NOW), 1);
 
-    const pass = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, now: LATER });
+    const pass = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, clock: () => LATER });
     assert.equal(pass.outcome, "held");
     assert.equal(pass.held?.snapshotId, pre.id);
     assert.equal(pass.held?.status, "uncertain");
@@ -313,7 +313,7 @@ test("an open hold stops the source before any posting is read, even one the pas
     // Every status that holds money stops the source, as ai:holds lists them.
     for (const status of ["in_flight", "reserved"]) {
       await pool.query("UPDATE ai_operations SET status = $2 WHERE id = $1", [pass.held?.operationId, status]);
-      const again = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, now: LATER });
+      const again = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, clock: () => LATER });
       assert.equal(again.outcome, "held", status);
       assert.equal(again.held?.status, status);
     }
@@ -338,13 +338,13 @@ test("another source's hold does not stop this source (B31)", async () => {
       pool, ownerId: EXTRACTOR_OWNER_ID, sourceId: "jobicy", snapshot: other, transport: timingOut, now: NOW,
     }), /BUDGET_UNAVAILABLE/u);
 
-    const jobicy = await runExtractionPass({ pool, sourceId: "jobicy", transport: exploding, now: LATER });
+    const jobicy = await runExtractionPass({ pool, sourceId: "jobicy", transport: exploding, clock: () => LATER });
     assert.equal(jobicy.outcome, "held");
     assert.equal(jobicy.held?.snapshotId, other.id);
 
     // The himalayas rows are this file's own: both are extracted.
     const himalayas = await runExtractionPass({
-      pool, sourceId: "himalayas", transport: transportReturning(VALID_OUTPUT), now: LATER,
+      pool, sourceId: "himalayas", transport: transportReturning(VALID_OUTPUT), clock: () => LATER,
     });
     assert.equal(himalayas.outcome, "ran");
     assert.equal(himalayas.counts.extracted, 2);
@@ -366,7 +366,7 @@ test("a paid call whose result was lost blocks only its own posting and is not p
       worstCaseMinor: 1_000n, transport: transportReturning(VALID_OUTPUT), prompt: "lost", now: NOW,
     });
     const counting = countingTransport(VALID_OUTPUT);
-    const pass = await runExtractionPass({ pool, sourceId: "himalayas", transport: counting.transport, now: LATER });
+    const pass = await runExtractionPass({ pool, sourceId: "himalayas", transport: counting.transport, clock: () => LATER });
     assert.equal(pass.outcome, "ran");
     assert.equal(pass.counts.blocked, 1);
     assert.equal(pass.counts.extracted, 1);
@@ -379,7 +379,7 @@ test("a paid call whose result was lost blocks only its own posting and is not p
     // although its operation is closed: the other posting is answered from its record,
     // so only the order of the checks decides the outcome.
     await pool.query("UPDATE ai_budgets SET approved_limit_minor = 0 WHERE id = $1", [GLOBAL_BUDGET_ID]);
-    const killed = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, now: LATER });
+    const killed = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, clock: () => LATER });
     assert.equal(killed.outcome, "budget_refused");
     assert.equal(killed.code, "BUDGET_EXCEEDED");
   } finally {
@@ -400,7 +400,7 @@ test("a posting over the per-operation ceiling is blocked, and the pass goes on 
   process.env.LIVE_AI_ENABLED = "true";
   try {
     const counting = countingTransport(VALID_OUTPUT);
-    const pass = await runExtractionPass({ pool, sourceId: "himalayas", transport: counting.transport, now: NOW });
+    const pass = await runExtractionPass({ pool, sourceId: "himalayas", transport: counting.transport, clock: () => NOW });
     assert.equal(pass.outcome, "ran");
     assert.equal(pass.counts.blocked, 1);
     assert.equal(pass.counts.extracted, 2);
@@ -421,11 +421,11 @@ test("after an import the pass never throws: a failure becomes a code (B31)", as
   process.env.LIVE_AI_ENABLED = "true";
   try {
     // No transport: the gateway refuses at the first posting, which the pass rethrows.
-    const failed = await runExtractionPassAfterImport({ pool, sourceId: "himalayas", transport: null, now: NOW });
+    const failed = await runExtractionPassAfterImport({ pool, sourceId: "himalayas", transport: null, clock: () => NOW });
     assert.deepEqual(failed, { sourceId: "himalayas", outcome: "error", code: "AI_PROVIDER_NOT_CONFIGURED" });
 
     const ran = await runExtractionPassAfterImport({
-      pool, sourceId: "himalayas", transport: transportReturning(VALID_OUTPUT), now: NOW,
+      pool, sourceId: "himalayas", transport: transportReturning(VALID_OUTPUT), clock: () => NOW,
     });
     assert.equal(ran.outcome, "ran");
     assert.ok("counts" in ran);
@@ -439,7 +439,7 @@ test("after an import the pass never throws: a failure becomes a code (B31)", as
     const leaking: ModelTransport = {
       async dispatchOnce() { throw new Error("Backend Engineer (Remote) at Meridian Labs"); },
     };
-    const opaque = await runExtractionPassAfterImport({ pool, sourceId: "himalayas", transport: leaking, now: NOW });
+    const opaque = await runExtractionPassAfterImport({ pool, sourceId: "himalayas", transport: leaking, clock: () => NOW });
     assert.deepEqual(opaque, { sourceId: "himalayas", outcome: "error", code: "EXTRACTION_FAILED" });
   } finally {
     process.env.LIVE_AI_ENABLED = previous ?? "true";
@@ -493,7 +493,7 @@ test("the pass reaches the postings without a record, newest first, one call at 
     }
 
     const first = countingTransport(VALID_OUTPUT);
-    const tick1 = await runExtractionPass({ pool, sourceId: "himalayas", transport: first.transport, now: NOW, limit: 1 });
+    const tick1 = await runExtractionPass({ pool, sourceId: "himalayas", transport: first.transport, clock: () => NOW, limit: 1 });
     assert.equal(tick1.outcome, "ran");
     assert.equal(first.calls(), 1);
     assert.deepEqual(tick1.results.map(result => [result.snapshotId, result.status]), [
@@ -501,13 +501,13 @@ test("the pass reaches the postings without a record, newest first, one call at 
     ], "newest first, and the pass stops once its one call is made");
 
     const second = countingTransport(VALID_OUTPUT);
-    const tick2 = await runExtractionPass({ pool, sourceId: "himalayas", transport: second.transport, now: NOW, limit: 1 });
+    const tick2 = await runExtractionPass({ pool, sourceId: "himalayas", transport: second.transport, clock: () => NOW, limit: 1 });
     assert.equal(second.calls(), 1);
     assert.deepEqual(tick2.results.map(result => result.status),
       ["already_extracted", "already_extracted", "already_extracted", "extracted"]);
     assert.equal(tick2.results[3]?.snapshotId, tiedSecond.id);
 
-    const done = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, now: NOW, limit: 1 });
+    const done = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, clock: () => NOW, limit: 1 });
     assert.equal(done.counts.already_extracted, 4);
     assert.equal(done.settledMicroUsd, 0n);
   } finally {
@@ -535,12 +535,12 @@ test("blocked postings do not use the pass's calls (B32)", async () => {
     await assert.rejects(extractPostingFields({
       pool, ownerId: EXTRACTOR_OWNER_ID, sourceId: "himalayas", snapshot: blocked, transport: timingOut, now: NOW,
     }), /BUDGET_UNAVAILABLE/u);
-    const held = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, now: LATER, limit: 1 });
+    const held = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, clock: () => LATER, limit: 1 });
     assert.ok(held.held);
     await cancelOperation({ pool, ownerId: EXTRACTOR_OWNER_ID, operationId: held.held.operationId, now: LATER });
 
     const counting = countingTransport(VALID_OUTPUT);
-    const pass = await runExtractionPass({ pool, sourceId: "himalayas", transport: counting.transport, now: LATER, limit: 1 });
+    const pass = await runExtractionPass({ pool, sourceId: "himalayas", transport: counting.transport, clock: () => LATER, limit: 1 });
     assert.equal(pass.outcome, "ran");
     assert.equal(pass.counts.blocked, 1);
     assert.equal(pass.counts.extracted, 1);
@@ -561,7 +561,7 @@ test("a rejected output is a paid call and uses a slot of the limit (B32)", asyn
   try {
     // A model or prompt drift that makes every output unparseable must not lift the cap.
     const counting = countingTransport("not json");
-    const pass = await runExtractionPass({ pool, sourceId: "himalayas", transport: counting.transport, now: NOW, limit: 1 });
+    const pass = await runExtractionPass({ pool, sourceId: "himalayas", transport: counting.transport, clock: () => NOW, limit: 1 });
     assert.equal(pass.outcome, "ran");
     assert.equal(counting.calls(), 1);
     assert.equal(pass.counts.rejected, 1);
@@ -590,7 +590,7 @@ test("after an import, extraction makes at most 25 calls per source (B34)", asyn
     assert.equal(EXTRACTION_CALLS_AFTER_IMPORT, 25, "the owner's number (2026-10-07)");
     const counting = countingTransport(VALID_OUTPUT);
     const pass = await runExtractionPassAfterImport({
-      pool, sourceId: "himalayas", transport: counting.transport, now: NOW,
+      pool, sourceId: "himalayas", transport: counting.transport, clock: () => NOW,
     });
     assert.equal(counting.calls(), 25);
     assert.equal(pass.outcome, "ran");
@@ -598,6 +598,75 @@ test("after an import, extraction makes at most 25 calls per source (B34)", asyn
     assert.equal(pass.counts.extracted, 25);
   } finally {
     process.env.LIVE_AI_ENABLED = previous ?? "true";
+  }
+  await cleanup();
+});
+
+test("a long pass reads the clock for each posting: every reservation has its own deadline (B49)", async () => {
+  await seedTwoSnapshots();
+  await provisionExtractorBudget();
+  const previous = process.env.LIVE_AI_ENABLED;
+  process.env.LIVE_AI_ENABLED = "true";
+  try {
+    // Every call takes 8 minutes of the pass's clock.
+    let time = Date.parse(NOW);
+    const deadlines: string[] = [];
+    const slow: ModelTransport = {
+      async dispatchOnce(operation) {
+        deadlines.push(operation.deadlineAt);
+        time += 8 * 60_000;
+        return { kind: "result" as const, actualMinor: 90n, output: VALID_OUTPUT };
+      },
+    };
+    const pass = await runExtractionPass({
+      pool, sourceId: "himalayas", transport: slow, clock: () => new Date(time).toISOString(),
+    });
+    assert.equal(pass.outcome, "ran");
+    assert.equal(pass.counts.extracted, 2);
+    // Each reservation's deadline is 120 s after its own call, not after the pass start.
+    assert.deepEqual(deadlines, ["2026-10-04T12:02:00.000Z", "2026-10-04T12:10:00.000Z"]);
+    // What the worker and the scripts pass: the wall clock, as an ISO time.
+    const wall = systemClock();
+    assert.equal(new Date(wall).toISOString(), wall);
+    assert.ok(Math.abs(Date.parse(wall) - Date.now()) < 5_000);
+  } finally {
+    if (previous === undefined) delete process.env.LIVE_AI_ENABLED;
+    else process.env.LIVE_AI_ENABLED = previous;
+  }
+  await cleanup();
+});
+
+test("a source permission that expires during a pass stops the postings after it (B49)", async () => {
+  await seedTwoSnapshots();
+  await provisionExtractorBudget();
+  const previous = process.env.LIVE_AI_ENABLED;
+  process.env.LIVE_AI_ENABLED = "true";
+  try {
+    const validUntil = himalayasCandidatePolicy.valid_until;
+    assert.ok(validUntil);
+    // The pass starts five minutes before the policy lapses; every call takes ten.
+    let time = Date.parse(validUntil) - 5 * 60_000;
+    let calls = 0;
+    const slow: ModelTransport = {
+      async dispatchOnce() {
+        calls += 1;
+        time += 10 * 60_000;
+        return { kind: "result" as const, actualMinor: 90n, output: VALID_OUTPUT };
+      },
+    };
+    const pass = await runExtractionPass({
+      pool, sourceId: "himalayas", transport: slow,
+      clock: () => new Date(time).toISOString(),
+    });
+    // The lapse stops the pass and says so: every later posting would be refused alike.
+    assert.equal(pass.outcome, "no_permission");
+    assert.equal(pass.counts.extracted, 1);
+    assert.deepEqual(pass.results.map(entry => entry.status), ["extracted"]);
+    assert.equal(calls, 1, "no posting text goes out after the permission lapsed");
+    assert.equal(await extractionOperations(), 1, "and nothing is reserved for it");
+  } finally {
+    if (previous === undefined) delete process.env.LIVE_AI_ENABLED;
+    else process.env.LIVE_AI_ENABLED = previous;
   }
   await cleanup();
 });

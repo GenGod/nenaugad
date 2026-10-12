@@ -136,6 +136,10 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   that died in flight takes `--settle` 5 minutes after its dispatch
   ([B48-001](tasks/B48-001-settle-crashed-in-flight.md), money, reviewed, owner-accepted
   2026-10-12). Restart a running worker or `extract:fields` before live AI is switched on.
+- **Extraction reads the clock per posting** ([B49-001](tasks/B49-001-fresh-clock-per-posting.md),
+  source rights and the paid path, reviewed, owner-accepted 2026-10-12): each call
+  meets the source's permission at the time it is made, and a lapse stops the pass. The
+  deadline still cannot refuse a new reservation (B50).
 - The reranker (B3-001): purpose `rerank`, provider grants, profile privacy, and the
   quota and operation ceiling.
 - Profile privacy (§4.4), which also gates `matching-scoring`, `hyde` and `eval-judge`.

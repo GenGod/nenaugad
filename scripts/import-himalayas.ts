@@ -6,7 +6,7 @@ import { getSourcePolicy } from "../src/server/source-policies.ts";
 import { runHimalayasImport } from "../src/server/import/himalayas-adapter.ts";
 import { fetchHimalayasPage } from "../src/server/import/fetcher.ts";
 import { createPostgresPersistence } from "../src/server/storage/snapshots.ts";
-import { runExtractionPassAfterImport } from "../src/server/ai/extraction-pass.ts";
+import { runExtractionPassAfterImport, systemClock } from "../src/server/ai/extraction-pass.ts";
 import { openAiTransport } from "../src/server/ai/openai-transport.ts";
 import { localPool, migrate } from "./db.ts";
 
@@ -44,7 +44,7 @@ try {
   // the pass reports live_ai_disabled and nothing is sent or spent.
   const extraction = report.result === "applied" || report.result === "partial"
     ? await runExtractionPassAfterImport({
-        pool, sourceId: "himalayas", transport: openAiTransport, now: new Date().toISOString(),
+        pool, sourceId: "himalayas", transport: openAiTransport, clock: systemClock,
       })
     : null;
   await pool.end();

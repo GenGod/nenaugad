@@ -69,6 +69,34 @@ for (const filename of importCallers) {
   if (/\brunExtractionPass\s*\(/.test(await readFile(filename, "utf8")))
     violations.push(`${filename}: after an import, call runExtractionPassAfterImport (docs/OPEN_GAPS.md B31)`);
 }
+// A pass checks each posting's source permission at the time its clock gives; a
+// frozen time let a lapsed policy keep sending text until the pass ended
+// (docs/OPEN_GAPS.md B49). Every caller hands the wall clock over in a literal
+// argument, and a hold hint compares with a fresh time. A call this check cannot
+// read (a variable argument, nested braces, a computed time) is refused, not trusted.
+const withoutComments = text => text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+const clockCallers = [
+  ...(await readdir("scripts")).filter(name => name.endsWith(".ts")).map(name => `scripts/${name}`),
+  ...(await walk("src")).map(name => name.split(path.sep).join("/")).filter(name => name.endsWith(".ts")),
+].filter(name => name !== "src/server/ai/extraction-pass.ts");
+for (const filename of clockCallers) {
+  const text = withoutComments(await readFile(filename, "utf8"));
+  const count = pattern => (text.match(pattern) ?? []).length;
+  const passCalls = count(/\brunExtractionPass(?:AfterImport)?\s*\(/g);
+  const hints = count(/\bholdHint\s*\(/g);
+  if (passCalls + hints === 0) continue;
+  const clockedCalls = count(
+    /\brunExtractionPass(?:AfterImport)?\s*\(\s*\{[^{}]*\bclock:\s*systemClock\b(?=\s*[,}])[^{}]*\}\s*\)/g);
+  const freshHints = count(/\bholdHint\s*\(\s*[\w.]+\s*,\s*systemClock\(\)\s*,?\s*\)/g);
+  if (clockedCalls !== passCalls)
+    violations.push(`${filename}: the extraction pass takes clock: systemClock in a literal argument (docs/OPEN_GAPS.md B49)`);
+  if (freshHints !== hints)
+    violations.push(`${filename}: holdHint compares with systemClock() (docs/OPEN_GAPS.md B49)`);
+  const imported = /\bimport\s*\{[^}]*(?<!\bas\s+)\bsystemClock\b(?!\s+as\b)[^}]*\}\s*from\s*"[^"]*\/extraction-pass\.ts"/.test(text);
+  const shadowed = /\b(?:const|let|var|function|class)\s+systemClock\b|\bsystemClock\s*=(?![=>])/.test(text);
+  if (!imported || shadowed)
+    violations.push(`${filename}: systemClock comes from extraction-pass.ts and is not redefined (docs/OPEN_GAPS.md B49)`);
+}
 const env = await readFile(".env.example", "utf8");
 for (const flag of ["LIVE_AI_ENABLED","LIVE_SOURCES_ENABLED","UPLOADS_ENABLED"]) {
   if (!env.includes(`${flag}=false`)) violations.push(`${flag} must be false in template`);
