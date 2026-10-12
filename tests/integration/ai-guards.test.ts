@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { localPool, migrate } from "../../scripts/db.ts";
 import { registerUser } from "../../src/server/users.ts";
 import {
@@ -616,4 +618,142 @@ test("gateway: a repeated key after an uncertain result is refused without a dis
   // Reconciliation is unchanged: a late receipt settles the uncertain operation.
   await settleOperation({ pool: pool, ownerId: owner.id, operationId: held?.id ?? "", actualMinor: 800n, now: NOW });
   assert.deepEqual(await budgets(), [["1100", "1000"], ["1100", "1000"]]);
+});
+
+// Late receipts (B47): an uncertain operation with three of its neighbours, and the
+// ledger as both budget rows plus every operation of the owner.
+async function lateReceiptFixture() {
+  await migrate(pool);
+  const owner = await registerUser(pool, email(), "long-enough-password");
+  await freshBudgets(owner.id, 10_000n, 10_000n);
+  const open = async (key: string, reservedMinor: bigint, to: "reserved" | "in_flight" | "uncertain") => {
+    const operation = await reserveBudget({
+      pool: pool, operationId: "", ownerId: owner.id, taskType: "cover_letter",
+      idempotencyKey: key, worstCaseMinor: reservedMinor, now: NOW,
+    });
+    if (to !== "reserved") {
+      await beginAttempt({ pool: pool, ownerId: owner.id, operationId: operation.id, taskType: "cover_letter", now: NOW });
+    }
+    if (to === "uncertain") await markUncertain({ pool: pool, ownerId: owner.id, operationId: operation.id, now: NOW });
+    return operation.id;
+  };
+  const ledger = async () => ({
+    budgets: ((await pool.query(
+      "SELECT settled_minor::text, held_minor::text FROM ai_budgets WHERE id = ANY($1::text[]) ORDER BY id",
+      [[GLOBAL_BUDGET_ID, ownerBudgetId(owner.id)]])).rows as { settled_minor: string; held_minor: string }[])
+      .map(row => [row.settled_minor, row.held_minor]),
+    operations: Object.fromEntries(((await pool.query(
+      "SELECT id, status, settled_minor::text FROM ai_operations WHERE owner_id = $1",
+      [owner.id])).rows as { id: string; status: string; settled_minor: string }[])
+      .map(row => [row.id, `${row.status}/${row.settled_minor}`])),
+  });
+  return { owner, open, ledger };
+}
+
+const refusedWith = (code: string) => (error: unknown) => error instanceof BudgetError && error.message === code;
+
+test("late receipt: an uncertain call's charge is booked; any other state or amount is refused unchanged (B47)", async () => {
+  const { owner, open, ledger } = await lateReceiptFixture();
+  const lateReceipt = (operationId: string, actualMinor: bigint, allowAboveReservation = false) => settleOperation({
+    pool: pool, ownerId: owner.id, operationId, actualMinor, now: NOW, lateReceipt: { allowAboveReservation },
+  });
+  const inFlight = await open("b47-flight", 1_000n, "in_flight");
+  const reserved = await open("b47-reserved", 500n, "reserved");
+  const uncertain = await open("b47-uncertain", 2_000n, "uncertain");
+  const before = await ledger();
+  assert.deepEqual(before.budgets, [["0", "3500"], ["0", "3500"]]);
+
+  // An in-flight call may still be running and settles itself; a reserved one was
+  // never sent; an amount above the worst case is more likely a unit slip.
+  await assert.rejects(lateReceipt(inFlight, 100n), refusedWith("WRONG_STATE"));
+  await assert.rejects(lateReceipt(reserved, 100n), refusedWith("WRONG_STATE"));
+  await assert.rejects(lateReceipt(uncertain, 2_001n), refusedWith("AMOUNT_ABOVE_RESERVATION"));
+  assert.deepEqual(await ledger(), before, "a refused late receipt changes nothing");
+
+  // The charge: the whole reservation is released, the charge is settled, on both rows.
+  const settled = await lateReceipt(uncertain, 1_200n);
+  assert.equal(settled.status, "settled");
+  assert.equal(settled.settledMinor, 1_200n);
+  const afterSettle = await ledger();
+  assert.deepEqual(afterSettle.budgets, [["1200", "1500"], ["1200", "1500"]]);
+  assert.equal(afterSettle.operations[uncertain], "settled/1200");
+
+  // Closed is closed: a second receipt and a later cancel are refused.
+  await assert.rejects(lateReceipt(uncertain, 1n), refusedWith("WRONG_STATE"));
+  await assert.rejects(cancelOperation({ pool: pool, ownerId: owner.id, operationId: uncertain, now: NOW }),
+    refusedWith("WRONG_STATE"));
+  const cancelled = await open("b47-cancelled", 300n, "uncertain");
+  await cancelOperation({ pool: pool, ownerId: owner.id, operationId: cancelled, now: NOW });
+  const afterCancel = await ledger();
+  await assert.rejects(lateReceipt(cancelled, 100n), refusedWith("WRONG_STATE"));
+  assert.deepEqual(await ledger(), afterCancel);
+
+  // The reservation itself is a valid charge; above it only when the owner says so.
+  const exact = await open("b47-exact", 300n, "uncertain");
+  await lateReceipt(exact, 300n);
+  const above = await open("b47-above", 500n, "uncertain");
+  await lateReceipt(above, 700n, true);
+  assert.deepEqual((await ledger()).budgets, [["2200", "1500"], ["2200", "1500"]]);
+
+  // The gateway's own settle is unchanged: an in-flight call settles.
+  await settleOperation({ pool: pool, ownerId: owner.id, operationId: inFlight, actualMinor: 400n, now: NOW });
+  assert.deepEqual((await ledger()).budgets, [["2600", "500"], ["2600", "500"]]);
+});
+
+// The command as the owner runs it, against the isolated test database only — or,
+// with `database: false`, with no database configured at all.
+function aiHolds(args: readonly string[], database = true): Readonly<{ exitCode: number | null; result: Record<string, unknown> }> {
+  assert.ok(process.env.TEST_DATABASE_URL, "the command must never run against the working database");
+  const env: NodeJS.ProcessEnv = { ...process.env, DATABASE_URL: process.env.TEST_DATABASE_URL };
+  if (!database) delete env.DATABASE_URL;
+  const run = spawnSync(process.execPath, ["--experimental-strip-types", "scripts/ai-holds.ts", ...args], {
+    cwd: fileURLToPath(new URL("../..", import.meta.url)), env, encoding: "utf8", timeout: 60_000,
+  });
+  const line = `${run.stdout}\n${run.stderr}`.split("\n").filter(text => text.startsWith("{")).at(-1);
+  assert.ok(line, `no JSON from ai:holds: ${run.stderr}`);
+  return { exitCode: run.status, result: JSON.parse(line) as Record<string, unknown> };
+}
+
+test("ai:holds --settle books a late receipt from the command line; a refusal changes nothing (B47)", async () => {
+  const { open, ledger } = await lateReceiptFixture();
+  const uncertain = await open("b47-cli-uncertain", 2_000n, "uncertain");
+  const inFlight = await open("b47-cli-flight", 1_000n, "in_flight");
+  const before = await ledger();
+
+  const refusals: [string[], string][] = [
+    [[`--settle=${inFlight}`, "--amount=100"], "WRONG_STATE"],
+    [[`--settle=${uncertain}`, "--amount=2001"], "AMOUNT_ABOVE_RESERVATION"],
+    [[`--settle=${uncertain}`, "--amount=12.5"], "USAGE"],
+    [["--settle=op_000000000000000000000000", "--amount=5"], "OPERATION_NOT_FOUND"],
+  ];
+  for (const [args, code] of refusals) {
+    const { exitCode, result } = aiHolds(args);
+    assert.equal(exitCode, 1, args.join(" "));
+    assert.equal(result.ok, false);
+    assert.equal(result.code, code, args.join(" "));
+    if (code === "WRONG_STATE") assert.equal(result.status, "in_flight");
+  }
+  assert.deepEqual(await ledger(), before, "a refused command changes nothing");
+  // A malformed argument is refused before the database is touched: without one
+  // configured it is still USAGE, while a well-formed command needs the database.
+  assert.equal(aiHolds([`--settle=${uncertain}`, "--amount=12.5"], false).result.code, "USAGE");
+  assert.equal(aiHolds([`--settle=${uncertain}`, "--amount=12"], false).result.code, "DATABASE_URL_REQUIRED");
+
+  const settled = aiHolds([`--settle=${uncertain}`, "--amount=1200"]);
+  assert.equal(settled.exitCode, 0);
+  assert.equal(settled.result.ok, true);
+  assert.equal(settled.result.releasedMicroUsd, "2000");
+  assert.equal(settled.result.settledMicroUsd, "1200");
+  const after = await ledger();
+  assert.deepEqual(after.budgets, [["1200", "1000"], ["1200", "1000"]]);
+  assert.equal(after.operations[uncertain], "settled/1200");
+
+  const above = await open("b47-cli-above", 500n, "uncertain");
+  assert.equal(aiHolds(["--above-reservation", "--amount=700", `--settle=${above}`]).exitCode, 0);
+  assert.deepEqual((await ledger()).budgets, [["1900", "1000"], ["1900", "1000"]]);
+
+  // --cancel goes through the same parser and still releases a hold.
+  const cancelled = aiHolds([`--cancel=${inFlight}`]);
+  assert.equal(cancelled.exitCode, 0);
+  assert.deepEqual((await ledger()).budgets, [["1900", "0"], ["1900", "0"]]);
 });

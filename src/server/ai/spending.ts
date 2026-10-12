@@ -26,7 +26,7 @@ export class BudgetError extends Error {
     | "BUDGET_EXCEEDED" | "BUDGET_UNAVAILABLE" | "ATTEMPTS_EXHAUSTED"
     | "DEADLINE_EXPIRED" | "OPERATION_NOT_FOUND" | "NOT_OWNER"
     | "WRONG_STATE" | "IDEMPOTENCY_COLLISION" | "OWNER_BUDGET_MISSING"
-    | "OPERATION_CEILING_EXCEEDED" | "OPERATION_UNCERTAIN") {
+    | "OPERATION_CEILING_EXCEEDED" | "OPERATION_UNCERTAIN" | "AMOUNT_ABOVE_RESERVATION") {
     super(code);
   }
 }
@@ -164,8 +164,8 @@ function toOperationRow(row: Record<string, unknown>): OperationRow {
 // Only a `reserved` operation starts an attempt. An `uncertain` one may already
 // have been billed: dispatching again under the same reservation would book only
 // the last call and understate spend (B37), so it waits for the owner to
-// reconcile it: `npm run ai:holds -- --cancel=` releases the hold; settling a late
-// receipt is `settleOperation`, which no command calls yet (OPEN_GAPS B47).
+// reconcile it: `npm run ai:holds -- --cancel=` releases the hold, and
+// `--settle= --amount=` books a late receipt (B47).
 export async function beginAttempt(params: Readonly<{
   pool: Pool; ownerId: string; operationId: string; taskType: TaskType; now: string;
 }>): Promise<OperationRow> {
@@ -216,6 +216,8 @@ export async function markUncertain(params: Readonly<{
 // operation's hold (B36).
 export async function settleOperation(params: Readonly<{
   pool: Pool; ownerId: string; operationId: string; actualMinor: bigint; now: string;
+  /** The owner's receipt from the provider's usage page (`npm run ai:holds -- --settle=`, B47). */
+  lateReceipt?: Readonly<{ allowAboveReservation: boolean }>;
 }>): Promise<OperationRow> {
   const client = await params.pool.connect();
   try {
@@ -230,6 +232,16 @@ export async function settleOperation(params: Readonly<{
     // Deadline expiry stops new steps, not the settlement of a dispatched call.
     const reserved = BigInt(String(row.reserved_minor));
     const actual = params.actualMinor;
+    if (params.lateReceipt) {
+      // Only an uncertain call: an in-flight one may still be running and settles
+      // itself — settled from outside, its own settle would fail and lose the cost.
+      if (row.status !== "uncertain") throw new BudgetError("WRONG_STATE");
+      // The reservation is the worst case, so a larger typed amount is more likely a
+      // unit slip than a charge; a real one is booked in full when the owner says so.
+      if (actual > reserved && !params.lateReceipt.allowAboveReservation) {
+        throw new BudgetError("AMOUNT_ABOVE_RESERVATION");
+      }
+    }
 
     await client.query(
       "UPDATE ai_operations SET status = 'settled', settled_minor = $1, updated_at = $2 WHERE id = $3",
