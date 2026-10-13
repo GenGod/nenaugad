@@ -128,7 +128,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   and `npm run import:jobicy` once; then live AI on. Otherwise a posting extracted on its
   old text is paid again when re-read (under $0.40 for today's catalog). Talent-pool
   postings are hidden and not extracted ([B40-001](tasks/B40-001-hide-talent-pools.md), owner
-  decision and acceptance 2026-10-13).
+  decision and acceptance 2026-10-13). Himalayas geography reads the posting text with
+  the shared detector, only to test a worldwide claim ([B26-001](tasks/B26-001-himalayas-shared-text-geography.md),
+  owner decision and acceptance 2026-10-13).
 - **No retry after an uncertain call** ([B37-001](tasks/B37-001-no-retry-after-uncertain.md),
   money, reviewed, owner-accepted 2026-10-12): an uncertain operation keeps its hold and is never
   dispatched again under it. Callers' misreadings left: B45, B46.

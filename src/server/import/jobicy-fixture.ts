@@ -9,7 +9,7 @@ import type {
   Geography, JobSnapshot, Workplace, Evidence,
 } from "../../domain/source-contracts.ts";
 import { AdapterInputError, descriptionToText } from "./himalayas-fixture.ts";
-import { countryCodeOf, readTextGeography } from "./geography-text.ts";
+import { countryCodeOf, worldwideUnlessTextSays } from "./geography-text.ts";
 import { decodeHtmlEntities } from "./html-entities.ts";
 
 export type JobicyRawRecord = Readonly<{
@@ -101,46 +101,6 @@ const TEMPORARY_MARKERS = [
   /temporarily remote/iu,
 ] as const;
 
-// "Anywhere" is the source's claim, and the employer's own text can contradict it
-// (SP 1.0 §2; spec 11.1: an exclusion beats a broad permission; docs/OPEN_GAPS.md B24).
-// A residence rule in the description or excerpt narrows the scope, or leaves the
-// countries unknown when it names a region; an explicit exclusion keeps worldwide minus
-// those countries. The label and the text both stay as evidence and the contradiction is
-// recorded, as in the himalayas adapter.
-function worldwideUnlessTextSays(
-  raw: JobicyRawRecord, description: string, labelEvidence: Evidence,
-): { geography: Geography; conflict: string | null; evidence: readonly Evidence[] } {
-  const stated = readTextGeography(`${description} ${raw.jobExcerpt ?? ""}`);
-  const contradicted = stated.restriction !== null || stated.exclusion !== null;
-  const textEvidence = (kind: string, quote: string): Evidence => ({
-    id: `${labelEvidence.id}:${kind}`, origin_type: "job_source",
-    origin_id: labelEvidence.origin_id, origin_version: 1,
-    field_path: description.includes(quote) ? "jobDescription" : "jobExcerpt",
-    quote, method: "rule", confidence: 0.9,
-  });
-  const evidence = [
-    labelEvidence,
-    ...(stated.restriction ? [textEvidence("restriction", stated.restriction.quote)] : []),
-    ...(stated.exclusion ? [textEvidence("exclusion", stated.exclusion.quote)] : []),
-  ];
-  const excluded = stated.exclusion?.countries ?? [];
-  const evidenceIds = evidence.map(item => item.id);
-  const geography: Geography = stated.restriction === null
-    ? {
-        scope: "worldwide", allowed_countries: [], excluded_countries: excluded,
-        allowed_subdivisions: [], region_text: stated.exclusion?.quote ?? null,
-        exhaustive: true, evidence_ids: evidenceIds,
-      }
-    : {
-        scope: "restricted", allowed_countries: stated.restriction.countries,
-        excluded_countries: excluded, allowed_subdivisions: [],
-        region_text: stated.restriction.quote,
-        // No country set means the rule names a region: GEO-01 stays unknown.
-        exhaustive: stated.restriction.countries.length > 0, evidence_ids: evidenceIds,
-      };
-  return { geography, conflict: contradicted ? "geography-source-vs-text" : null, evidence };
-}
-
 // A jobGeo label names countries, regions or both, joined by commas ("Canada,  USA",
 // "EMEA,  LATAM,  Canada,  USA"). Countries come from the shared dictionary; a region or
 // an unknown name never becomes a country set (spec 11.1: "Europe", "EU" and "EMEA" are
@@ -169,7 +129,9 @@ function geographyFor(raw: JobicyRawRecord, description: string, evidenceId: str
     quote: label.length > 0 ? label : null, method: "source_field", confidence: 1,
   };
   if (GEO_WORLDWIDE_LABELS.has(label.toUpperCase())) {
-    return worldwideUnlessTextSays(raw, description, labelEvidence);
+    // "Anywhere" is the source's claim; the employer's own text can contradict it (B24).
+    return worldwideUnlessTextSays(`${description} ${raw.jobExcerpt ?? ""}`, labelEvidence,
+      quote => description.includes(quote) ? "jobDescription" : "jobExcerpt");
   }
   const geography: Geography = label.length === 0
     ? {

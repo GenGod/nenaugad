@@ -1,6 +1,7 @@
 // Hiring geography a posting states in its own text (spec 11.1: the employer's
-// exclusions take priority over a broad permission). The jobicy adapter reads it to test
-// a worldwide label (docs/OPEN_GAPS.md B24). Its country labels (B25) and the himalayas
+// exclusions take priority over a broad permission). Both adapters read it to test a
+// source's worldwide claim: the jobicy label (docs/OPEN_GAPS.md B24) and an empty
+// himalayas location list (B26); a source's own country list is not tested. Its country labels (B25) and the himalayas
 // location restrictions (B27) resolve through the same dictionary (`countryCodeOf`).
 //
 // Only phrasing about where the hire may live counts, anchored on a cue such as "must
@@ -19,6 +20,8 @@ export type StatedCountries = Readonly<{
   countries: readonly string[];
   quote: string;
 }>;
+
+import type { Evidence, Geography } from "../../domain/source-contracts.ts";
 
 export type TextGeography = Readonly<{
   /** Where the text limits hiring to; null when it states no such rule. */
@@ -242,4 +245,45 @@ export function readTextGeography(text: string): TextGeography {
   const exclusion = exclusions.length === 0 ? null
     : { countries: unionOf(exclusions), quote: exclusions[0]!.quote };
   return { restriction, exclusion };
+}
+
+/**
+ * A source's worldwide claim, tested against the employer's own text (SP 1.0 §2; spec
+ * 11.1: an exclusion beats a broad permission). A residence rule narrows the scope, or
+ * leaves the countries unknown when it names a region; an explicit exclusion keeps
+ * worldwide minus those countries. The source field and the text both stay as evidence
+ * (`fieldPathOf` names where a quote came from) and a contradiction is recorded. Without
+ * one, the geography and the evidence are the source's alone.
+ */
+export function worldwideUnlessTextSays(
+  text: string, sourceEvidence: Evidence, fieldPathOf: (quote: string) => string,
+): { geography: Geography; conflict: string | null; evidence: readonly Evidence[] } {
+  const stated = readTextGeography(text);
+  const contradicted = stated.restriction !== null || stated.exclusion !== null;
+  const textEvidence = (kind: string, quote: string): Evidence => ({
+    id: `${sourceEvidence.id}:${kind}`, origin_type: "job_source",
+    origin_id: sourceEvidence.origin_id, origin_version: 1,
+    field_path: fieldPathOf(quote), quote, method: "rule", confidence: 0.9,
+  });
+  const evidence = [
+    sourceEvidence,
+    ...(stated.restriction ? [textEvidence("restriction", stated.restriction.quote)] : []),
+    ...(stated.exclusion ? [textEvidence("exclusion", stated.exclusion.quote)] : []),
+  ];
+  const excluded = stated.exclusion?.countries ?? [];
+  const evidenceIds = evidence.map(item => item.id);
+  const geography: Geography = stated.restriction === null
+    ? {
+        scope: "worldwide", allowed_countries: [], excluded_countries: excluded,
+        allowed_subdivisions: [], region_text: stated.exclusion?.quote ?? null,
+        exhaustive: true, evidence_ids: evidenceIds,
+      }
+    : {
+        scope: "restricted", allowed_countries: stated.restriction.countries,
+        excluded_countries: excluded, allowed_subdivisions: [],
+        region_text: stated.restriction.quote,
+        // No country set means the rule names a region: GEO-01 stays unknown.
+        exhaustive: stated.restriction.countries.length > 0, evidence_ids: evidenceIds,
+      };
+  return { geography, conflict: contradicted ? "geography-source-vs-text" : null, evidence };
 }

@@ -408,3 +408,59 @@ test("acceptance 7: a disabled or unapproved source publishes nothing, no mocks"
     store: syntheticStore, getPolicy: getSourcePolicy, now: NOW,
   }), []);
 });
+
+// B26 (owner decision 2026-10-13): the text may change a himalayas posting's countries
+// only when the source claims worldwide (an empty list), the same rule as jobicy (B24),
+// read by the shared detector. A source's own country list stands.
+function himalayasWith(description: string, locationRestrictions: HimalayasRawRecord["locationRestrictions"] = []) {
+  const snapshot = mapHimalayasRecord({ ...himalayasContractFixture[0]!, description: `<p>${description}</p>`,
+    locationRestrictions }, NOW);
+  return { snapshot, geography: snapshot.hiring_options[0]!.geography };
+}
+
+test("himalayas: a worldwide claim the text contradicts is read by the shared detector (B26)", () => {
+  for (const text of ["Applicants must reside in the US.", "Candidates must be based in the United States."]) {
+    const { snapshot, geography } = himalayasWith(text);
+    assert.equal(geography.scope, "restricted", text);
+    assert.deepEqual(geography.allowed_countries, ["US"], text);
+    assert.equal(geography.exhaustive, true, text);
+    assert.deepEqual(snapshot.conflicts, ["geography-source-vs-text"], text);
+    const evidence = snapshot.evidence.filter(item => geography.evidence_ids.includes(item.id));
+    assert.deepEqual(evidence.map(item => [item.field_path, item.method, item.quote === null]),
+      [["locationRestrictions", "source_field", true], ["description", "rule", false]], text);
+    assert.deepEqual(snapshot.hiring_options[0]!.evidence_ids, geography.evidence_ids, text);
+  }
+  // A region is not a country set: the scope narrows, GEO-01 stays unknown.
+  const region = himalayasWith("Candidates must be based in Europe.").geography;
+  assert.equal(region.scope, "restricted");
+  assert.deepEqual(region.allowed_countries, []);
+  assert.equal(region.exhaustive, false);
+  // An exclusion keeps the worldwide claim minus the named country.
+  const { snapshot: excluding, geography: minusBrazil } = himalayasWith("We are unable to hire in Brazil.");
+  assert.equal(minusBrazil.scope, "worldwide");
+  assert.deepEqual(minusBrazil.excluded_countries, ["BR"]);
+  assert.deepEqual(excluding.conflicts, ["geography-source-vs-text"]);
+});
+
+test("himalayas: a source's own country list stands; text without a rule leaves worldwide as it was (B26)", () => {
+  // The owner's rule: the list is the source's restriction (before B26 the text made it DE).
+  const listed = himalayasWith("Applicants must be based in Germany.", [{ alpha2: "US", name: "United States" }]);
+  assert.equal(listed.geography.scope, "restricted");
+  assert.deepEqual(listed.geography.allowed_countries, ["US"]);
+  assert.deepEqual(listed.snapshot.conflicts, []);
+  // No rule in the text: the same geography and evidence as before, so no new version.
+  for (const text of ["We are based in San Francisco.", "Work from anywhere in the world."]) {
+    const { snapshot, geography } = himalayasWith(text);
+    const id = "ev:himalayas:jobs-fixture-h-001:geo";
+    assert.deepEqual(geography, {
+      scope: "worldwide", allowed_countries: [], excluded_countries: [], allowed_subdivisions: [],
+      region_text: null, exhaustive: true, evidence_ids: [id],
+    }, text);
+    assert.deepEqual(snapshot.conflicts, [], text);
+    assert.deepEqual(snapshot.evidence[0], {
+      id, origin_type: "job_source", origin_id: "himalayas:jobs-fixture-h-001", origin_version: 1,
+      field_path: "locationRestrictions", quote: null, method: "source_field", confidence: 1,
+    }, text);
+    assert.deepEqual(snapshot.hiring_options[0]!.evidence_ids, [id], text);
+  }
+});

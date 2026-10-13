@@ -8,7 +8,7 @@
 import type {
   Geography, JobSnapshot, Workplace, Evidence, Schedule,
 } from "../../domain/source-contracts.ts";
-import { countryCodeOf } from "./geography-text.ts";
+import { countryCodeOf, worldwideUnlessTextSays } from "./geography-text.ts";
 import { decodeHtmlEntities } from "./html-entities.ts";
 
 export class AdapterInputError extends Error {
@@ -87,12 +87,6 @@ export const himalayasContractFixture: readonly HimalayasRawRecord[] = [
   },
 ];
 
-const RESTRICTED_COUNTRY_PATTERN =
-  /must be based in ([A-Z][a-z]+)(?: or (?:the )?([A-Z][a-z]+))?/u;
-const COUNTRY_ISO: Readonly<Record<string, string>> = {
-  Germany: "DE", Netherlands: "NL", France: "FR",
-  "United States": "US", Japan: "JP", Poland: "PL", Spain: "ES",
-};
 const OFFICE_MARKERS = [
   /days? per week in (?:our |the )?[a-z]+\s+office/iu,
   /in[- ]person \d+ days?/iu,
@@ -178,16 +172,6 @@ function listingSlug(guid: string): { id: string; sourceUrl: string } {
   return { id: `himalayas:${slug}`, sourceUrl: guid };
 }
 
-function detectRestrictedCountries(text: string): { countries: string[]; quote: string } | null {
-  const match = text.match(RESTRICTED_COUNTRY_PATTERN);
-  if (!match) return null;
-  const countries: string[] = [];
-  for (const name of match.slice(1)) {
-    if (name && COUNTRY_ISO[name]) countries.push(COUNTRY_ISO[name]);
-  }
-  return countries.length > 0 ? { countries, quote: match[0] } : null;
-}
-
 const ISO_ALPHA2 = /^[A-Z]{2}$/u;
 
 // A location restriction names a country (spec 5.2: the source's own restriction). The
@@ -206,54 +190,39 @@ function normalizeLocations(
   });
 }
 
-function geographyFor(raw: HimalayasRawRecord, text: string, evidenceId: string, recordId: string): {
-  geography: Geography; conflict: string | null; evidence: Evidence;
+// Empty locations is the source's worldwide claim: it holds only when the employer's own
+// text does not contradict it, read by the detector jobicy uses (spec 5.2, SP 1.0 §2;
+// owner decision 2026-10-13, docs/OPEN_GAPS.md B26). A list is the source's own
+// restriction and stands; it is complete only when every location is a known country,
+// and an incomplete one fails no candidate (B25, B27).
+function geographyFor(raw: HimalayasRawRecord, description: string, evidenceId: string, recordId: string): {
+  geography: Geography; conflict: string | null; evidence: readonly Evidence[];
 } {
-  const restriction = detectRestrictedCountries(text);
   const locations = normalizeLocations(raw.locationRestrictions);
-  // Empty locations is a source-defined worldwide assertion — it survives only
-  // when the description text does not contradict it (spec 5.2, SP section 2).
-  // A list is complete only when every location is a known country; an incomplete
-  // one fails no candidate (docs/OPEN_GAPS.md B25, B27).
-  if (!restriction) {
-    const named = locations.map(location => location.name).filter(name => name.length > 0);
-    const names = named.length === 0 ? null : named.join(", ");
-    return {
-      geography: {
-        scope: locations.length === 0 ? "worldwide" : "restricted",
-        allowed_countries: [...new Set(locations.map(location => location.country).filter(country => country !== null))],
-        excluded_countries: [],
-        allowed_subdivisions: [],
-        region_text: names,
-        exhaustive: locations.every(location => location.country !== null),
-        evidence_ids: [evidenceId],
-      },
-      conflict: null,
-      evidence: {
-        id: evidenceId, origin_type: "job_source",
-        origin_id: recordId, origin_version: 1,
-        field_path: "locationRestrictions", quote: names,
-        method: "source_field", confidence: 1,
-      },
-    };
+  const named = locations.map(location => location.name).filter(name => name.length > 0);
+  const names = named.length === 0 ? null : named.join(", ");
+  const sourceEvidence: Evidence = {
+    id: evidenceId, origin_type: "job_source",
+    origin_id: recordId, origin_version: 1,
+    field_path: "locationRestrictions", quote: names,
+    method: "source_field", confidence: 1,
+  };
+  if (locations.length === 0) {
+    return worldwideUnlessTextSays(`${description} ${raw.excerpt ?? ""}`, sourceEvidence,
+      quote => description.includes(quote) ? "description" : "excerpt");
   }
   return {
     geography: {
       scope: "restricted",
-      allowed_countries: restriction.countries,
+      allowed_countries: [...new Set(locations.map(location => location.country).filter(country => country !== null))],
       excluded_countries: [],
       allowed_subdivisions: [],
-      region_text: restriction.quote,
-      exhaustive: true,
+      region_text: names,
+      exhaustive: locations.every(location => location.country !== null),
       evidence_ids: [evidenceId],
     },
-    conflict: "geography-source-vs-text",
-    evidence: {
-      id: evidenceId, origin_type: "job_source",
-      origin_id: recordId, origin_version: 1,
-      field_path: "locationRestrictions", quote: restriction.quote,
-      method: "rule", confidence: 0.9,
-    },
+    conflict: null,
+    evidence: [sourceEvidence],
   };
 }
 
@@ -342,7 +311,7 @@ export function mapHimalayasRecord(raw: HimalayasRawRecord, fetchedAt: string): 
     throw new AdapterInputError("EMPTY_TITLE");
   }
   const evidenceText = `${text} ${raw.excerpt ?? ""}`;
-  const geo = geographyFor(raw, evidenceText, `ev:${id}:geo`, id);
+  const geo = geographyFor(raw, text, `ev:${id}:geo`, id);
   const workplace = workplaceFor(raw, evidenceText, `ev:${id}:workplace`, id);
   const salaryKnown = raw.minSalary != null || raw.maxSalary != null;
   const period = raw.salaryPeriod ? SALARY_PERIOD_MAP[raw.salaryPeriod] : undefined;
@@ -374,7 +343,7 @@ export function mapHimalayasRecord(raw: HimalayasRawRecord, fetchedAt: string): 
         any_of_countries: [], original_text: null, evidence_ids: [],
       },
       schedule: scheduleFor(raw),
-      evidence_ids: [geo.evidence.id],
+      evidence_ids: geo.geography.evidence_ids,
     }],
     requirements: [],
     compensation: {
@@ -398,7 +367,7 @@ export function mapHimalayasRecord(raw: HimalayasRawRecord, fetchedAt: string): 
     },
     lifecycle: "active",
     conflicts,
-    evidence: [geo.evidence, workplace.evidence, ...(salaryKnown ? [{
+    evidence: [...geo.evidence, workplace.evidence, ...(salaryKnown ? [{
       id: `ev:${id}:comp`, origin_type: "job_source" as const,
       origin_id: id, origin_version: 1,
       field_path: "salary", quote: salaryOriginal, method: "source_field" as const,

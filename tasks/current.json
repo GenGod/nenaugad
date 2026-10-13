@@ -1,10 +1,10 @@
 {
-  "task_id": "B40-001",
-  "file": "tasks/B40-001-hide-talent-pools.md",
+  "task_id": "B26-001",
+  "file": "tasks/B26-001-himalayas-shared-text-geography.md",
   "status": "accepted",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Owner accepted B40-001 on 2026-10-13. No open gap in docs/OPEN_GAPS.md section B."
+  "note": "Owner accepted B26-001 on 2026-10-13. Section B of docs/OPEN_GAPS.md: only B9 and B11 remain, both deferred."
 }
