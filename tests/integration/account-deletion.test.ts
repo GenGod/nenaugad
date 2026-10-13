@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import { localPool, migrate } from "../../scripts/db.ts";
-import { accountExists, registerUser } from "../../src/server/users.ts";
+import { accountExists, checkLogin, registerUser } from "../../src/server/users.ts";
+import { loginAttemptKey } from "../../src/server/auth-attempts.ts";
 import { AccountDeletionError, deleteAccount } from "../../src/server/account-deletion.ts";
 import { saveJobForUser, saveProfileVersion } from "../../src/server/profile-service.ts";
 import { hideJobForUser } from "../../src/server/feedback-service.ts";
@@ -97,6 +98,24 @@ async function ledgerRows(userId: string): Promise<Record<string, number>> {
   };
 }
 
+/**
+ * Every column, in every table, that still holds one of `needles` as text: the catalog by
+ * value, so a table that keeps an account under a column name the pattern below cannot
+ * see (B53: `auth_attempts.key`) is found too.
+ */
+async function columnsHolding(needles: readonly string[]): Promise<string[]> {
+  const columns = await pool.query(
+    "SELECT c.table_name, c.column_name FROM information_schema.columns c JOIN information_schema.tables t USING (table_schema, table_name) WHERE c.table_schema = 'public' AND t.table_type = 'BASE TABLE' AND c.data_type IN ('text', 'character varying', 'json', 'jsonb') ORDER BY 1, 2");
+  const found: string[] = [];
+  for (const { table_name, column_name } of columns.rows as { table_name: string; column_name: string }[]) {
+    const hit = await pool.query(
+      `SELECT 1 FROM "${table_name}" WHERE EXISTS (SELECT 1 FROM unnest($1::text[]) AS n WHERE strpos("${column_name}"::text, n) > 0) LIMIT 1`,
+      [[...needles]]);
+    if ((hit.rowCount ?? 0) > 0) found.push(`${table_name}.${column_name}`);
+  }
+  return found;
+}
+
 const refusedWith = (code: string) => (error: unknown) => error instanceof AccountDeletionError && error.message === code;
 
 test("deleting an account removes everything personal at once, for that account only, and keeps the AI ledger (B11)", async () => {
@@ -105,6 +124,8 @@ test("deleting an account removes everything personal at once, for that account 
   const a = await registerUser(pool, email(), PASSWORD);
   const b = await registerUser(pool, email(), PASSWORD);
   const letterA = await seedEverything(a.id, snapshotId);
+  // A login attempt leaves a counter keyed by the email's hash (B53).
+  await checkLogin(pool, a.email, "not-the-password");
   const letterB = await seedEverything(b.id, snapshotId);
   const beforeA = await personalRows(a.id, letterA);
   const beforeB = await personalRows(b.id, letterB);
@@ -115,9 +136,20 @@ test("deleting an account removes everything personal at once, for that account 
   assert.deepEqual(await personalRows(a.id, letterA), beforeA);
   assert.equal(await accountExists(pool, a.id), true);
 
+  const traces = [a.id, a.email, loginAttemptKey(a.email)];
+  const before = await columnsHolding(traces);
+  for (const column of ["users.id", "users.email", "auth_attempts.key"]) {
+    assert.ok(before.includes(column), `the sweep finds ${column}`);
+  }
+
   await deleteAccount(pool, a.id, PASSWORD);
   const afterA = await personalRows(a.id, letterA);
   for (const [table, n] of Object.entries(afterA)) assert.equal(n, 0, `${table} still holds the deleted account's rows`);
+  // Nothing in the database holds the account's id, email or login key any more, but the
+  // ledger kept on purpose (owner decision 2026-10-13).
+  assert.deepEqual(await columnsHolding(traces), [
+    "account_deletions.user_id", "ai_budgets.id", "ai_budgets.owner_id", "ai_operations.idempotency_key", "ai_operations.owner_id",
+  ]);
   assert.equal(await accountExists(pool, a.id), false);
   // The other account is untouched.
   assert.deepEqual(await personalRows(b.id, letterB), beforeB);

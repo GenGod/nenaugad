@@ -1,7 +1,7 @@
 import type { DefaultSession, NextAuthOptions } from "next-auth";
 import { getServerSession } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { accountExists, findUserByEmail } from "./users.ts";
+import { accountExists, authorizeCredentials } from "./users.ts";
 import { snapshotPool } from "./storage/snapshots.ts";
 
 declare module "next-auth" {
@@ -20,17 +20,8 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
-        const email = typeof credentials?.email === "string"
-          ? credentials.email.trim().toLowerCase() : "";
-        const password = typeof credentials?.password === "string" ? credentials.password : "";
-        if (email.length === 0 || password.length === 0) return null;
-        const user = await findUserByEmail(snapshotPool(), email);
-        if (!user) return null;
-        const { verifyPassword } = await import("./password.ts");
-        if (!verifyPassword(password, user.passwordHash)) return null;
-        return { id: user.id, email: user.email };
-      },
+      // The attempt limit and the fixed error codes live in authorizeCredentials (B53).
+      authorize: credentials => authorizeCredentials(credentials, snapshotPool),
     }),
   ],
   callbacks: {

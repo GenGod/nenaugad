@@ -56,7 +56,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   and an import no longer blanks the excerpts of records it did not fetch (B30-001,
   owner-accepted 2026-10-06; the 200 stored jobicy excerpts were decoded in place).
 - **Auth and profiles:** manual private profile, explainable matching, saved jobs
-  (S2-001, owner-accepted); hide with a reason and applied marks (S2-002).
+  (S2-001, owner-accepted); hide with a reason and applied marks (S2-002). Login and
+  account deletion allow 5 password attempts per 15 minutes, per email and per account
+  ([B53-001](tasks/B53-001-password-attempt-limit.md), reviewed, owner-accepted 2026-10-13).
 - **CV intake:** offline text/txt/md/docx intake and private storage (S3-001,
   owner-accepted, activated locally); PDF text layer (S3-003).
 - **Letters:** private CRUD, versions and editor (S4-001); deterministic validator

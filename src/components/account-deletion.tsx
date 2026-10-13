@@ -23,6 +23,7 @@ export function AccountDeletion() {
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as { error?: string };
         setError(body.error === "PASSWORD_MISMATCH" ? "Пароль не подошёл — аккаунт не удалён."
+          : body.error === "TOO_MANY_ATTEMPTS" ? "Слишком много попыток. Попробуйте через 15 минут."
           : response.status === 401 ? "Сессия закончилась или аккаунт уже удалён — войдите снова."
           : "Не удалось удалить аккаунт. Попробуйте позже.");
         return;

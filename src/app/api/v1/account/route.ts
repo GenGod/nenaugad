@@ -30,6 +30,12 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error) {
     if (error instanceof AccountDeletionError) {
+      if (error.message === "TOO_MANY_ATTEMPTS") {
+        // B53: 5 attempts per 15 minutes per account (owner decision 2026-10-13).
+        const retryAfterSeconds = error.retryAfterSeconds ?? 900;
+        return NextResponse.json({ error: "TOO_MANY_ATTEMPTS", retryAfterSeconds },
+          { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } });
+      }
       return error.message === "PASSWORD_MISMATCH"
         ? NextResponse.json({ error: "PASSWORD_MISMATCH" }, { status: 403 })
         : unauthorized();

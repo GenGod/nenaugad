@@ -63,3 +63,101 @@ test("a deleted account's session still in the browser is refused (B11)", async 
   expect((await page.request.get("/api/v1/profile")).status()).toBe(401);
   expect((await page.request.delete("/api/v1/account", { data: { password } })).status()).toBe(401);
 });
+
+// B53 (owner decisions 2026-10-13): 5 password attempts per 15 minutes, counted before the
+// password is checked; the 6th is refused even with the right password.
+const TOO_MANY = "Слишком много попыток. Попробуйте через 15 минут.";
+
+test("login refuses even the right password after five wrong ones (B53)", async ({ page }) => {
+  const email = `e2e-lim-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.invalid`;
+  const password = "e2e-long-password";
+  expect((await page.request.post("/api/v1/auth/register", { data: { email, password } })).status()).toBe(201);
+
+  await page.goto("/login");
+  await page.getByRole("button", { name: "У меня есть аккаунт" }).click();
+  await page.getByLabel("Email").fill(email);
+  const field = page.getByLabel("Пароль (минимум 10 символов)");
+  const submit = page.getByRole("button", { name: "Войти", exact: true });
+  const callback = () => page.waitForResponse(response => response.url().includes("/api/auth/callback/credentials"));
+  for (let i = 0; i < 5; i += 1) {
+    await field.fill(`wrong-password-${i}`);
+    await Promise.all([callback(), submit.click()]);
+    await expect(page.getByText("Неверный email или пароль.")).toBeVisible();
+  }
+  await field.fill(password);
+  await Promise.all([callback(), submit.click()]);
+  await expect(page.getByText(TOO_MANY)).toBeVisible();
+  await expect(page).toHaveURL(/\/login$/u);
+  expect((await page.request.get("/api/v1/profile")).status()).toBe(401);
+});
+
+test("account deletion refuses even the right password after five wrong ones (B53)", async ({ page }) => {
+  const email = `e2e-lim-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.invalid`;
+  const password = "e2e-long-password";
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Пароль (минимум 10 символов)").fill(password);
+  await page.getByRole("button", { name: "Создать аккаунт и войти" }).click();
+  await expect(page).toHaveURL(/\/profile$/u);
+
+  const confirm = page.getByLabel("Пароль для удаления");
+  const remove = page.getByRole("button", { name: "Удалить аккаунт" });
+  const deletion = () => page.waitForResponse(response =>
+    response.url().endsWith("/api/v1/account") && response.request().method() === "DELETE");
+  for (let i = 0; i < 5; i += 1) {
+    await confirm.fill(`wrong-password-${i}`);
+    await Promise.all([deletion(), remove.click()]);
+    await expect(page.getByText("Пароль не подошёл — аккаунт не удалён.")).toBeVisible();
+  }
+  await confirm.fill(password);
+  await Promise.all([deletion(), remove.click()]);
+  await expect(page.getByText(TOO_MANY)).toBeVisible();
+  await expect(page).toHaveURL(/\/profile$/u);
+
+  const refused = await page.request.delete("/api/v1/account", { data: { password } });
+  expect(refused.status()).toBe(429);
+  const retryAfter = Number(refused.headers()["retry-after"]);
+  expect(retryAfter).toBeGreaterThan(0);
+  expect(retryAfter).toBeLessThanOrEqual(900);
+  expect(await refused.json()).toEqual({ error: "TOO_MANY_ATTEMPTS", retryAfterSeconds: retryAfter });
+  // The account is still there and still works.
+  expect((await page.request.get("/api/v1/profile")).status()).toBe(200);
+});
+
+test("registration on an email whose logins are refused says the account was created (B53)", async ({ page }) => {
+  const email = `e2e-lim-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.invalid`;
+  const password = "e2e-long-password";
+  await page.goto("/login");
+  await page.getByRole("button", { name: "У меня есть аккаунт" }).click();
+  await page.getByLabel("Email").fill(email);
+  const field = page.getByLabel("Пароль (минимум 10 символов)");
+  const callback = () => page.waitForResponse(response => response.url().includes("/api/auth/callback/credentials"));
+  // Five attempts on an email that has no account yet.
+  for (let i = 0; i < 5; i += 1) {
+    await field.fill(`wrong-password-${i}`);
+    await Promise.all([callback(), page.getByRole("button", { name: "Войти", exact: true }).click()]);
+  }
+  await page.getByRole("button", { name: "Создать аккаунт", exact: true }).click();
+  await field.fill(password);
+  await Promise.all([callback(), page.getByRole("button", { name: "Создать аккаунт и войти" }).click()]);
+  await expect(page.getByText("Регистрация прошла, но вход закрыт: слишком много попыток. Попробуйте войти через 15 минут.")).toBeVisible();
+  // The account exists: registering it again is refused as taken.
+  expect((await page.request.post("/api/v1/auth/register", { data: { email, password } })).status()).toBe(409);
+});
+
+// MOCK, labelled: the server's answer is replaced so the form's reading of
+// LOGIN_UNAVAILABLE can be seen without stopping the database; the server side of it is
+// tested in tests/integration/auth-attempts.test.ts.
+test("login says it could not check, not that the password is wrong, when the check fails (B53, mocked answer)", async ({ page }) => {
+  await page.goto("/login");
+  await page.route("**/api/auth/callback/credentials", route => route.fulfill({
+    status: 401, contentType: "application/json",
+    body: JSON.stringify({ url: new URL("/api/auth/error?error=LOGIN_UNAVAILABLE", page.url()).toString() }),
+  }));
+  await page.getByRole("button", { name: "У меня есть аккаунт" }).click();
+  await page.getByLabel("Email").fill("nobody@example.invalid");
+  await page.getByLabel("Пароль (минимум 10 символов)").fill("e2e-long-password");
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
+  await expect(page.getByText("Не удалось войти. Попробуйте позже.")).toBeVisible();
+  await expect(page.getByText("Неверный email или пароль.")).toHaveCount(0);
+});

@@ -40,7 +40,14 @@ export function LoginForm() {
       }
       const result = await signIn("credentials", { email: email.trim(), password, redirect: false });
       if (result?.error) {
-        setError(mode === "register" ? "Регистрация прошла, но вход не удался." : "Неверный email или пароль.");
+        // B53: the server names a refusal by the attempt limit or an unavailable check.
+        setError(mode === "register"
+          ? result.error === "TOO_MANY_ATTEMPTS"
+            ? "Регистрация прошла, но вход закрыт: слишком много попыток. Попробуйте войти через 15 минут."
+            : "Регистрация прошла, но вход не удался."
+          : result.error === "TOO_MANY_ATTEMPTS" ? "Слишком много попыток. Попробуйте через 15 минут."
+          : result.error === "LOGIN_UNAVAILABLE" ? "Не удалось войти. Попробуйте позже."
+          : "Неверный email или пароль.");
         return;
       }
       router.push("/profile");

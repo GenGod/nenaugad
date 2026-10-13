@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { Pool } from "pg";
+import { clearAttempts, loginAttemptKey, pruneAttempts, takeAttempt } from "./auth-attempts.ts";
 
 export type UserRecord = Readonly<{ id: string; email: string; passwordHash: string }>;
 
@@ -64,6 +65,53 @@ export async function findUserByEmail(pool: Pool, email: string): Promise<UserRe
     | { id: string; email: string; password_hash: string }
     | undefined;
   return row ? { id: row.id, email: row.email, passwordHash: row.password_hash } : null;
+}
+
+export type LoginResult =
+  | Readonly<{ ok: true; user: UserRecord }>
+  | Readonly<{ ok: false; reason: "INVALID_CREDENTIALS" | "TOO_MANY_ATTEMPTS" }>;
+
+/**
+ * Checks a login under the attempt limit (B53, owner decisions 2026-10-13). The attempt is
+ * counted per email before anything is looked up, so an email with no account is limited
+ * the same way and the limit does not reveal whether one exists. A success clears the count.
+ */
+export async function checkLogin(pool: Pool, email: string, password: string, now = new Date()): Promise<LoginResult> {
+  await pruneAttempts(pool, now);
+  const key = loginAttemptKey(email);
+  const attempt = await takeAttempt(pool, key, now);
+  if (!attempt.admitted) return { ok: false, reason: "TOO_MANY_ATTEMPTS" };
+  const user = await findUserByEmail(pool, email);
+  if (!user) return { ok: false, reason: "INVALID_CREDENTIALS" };
+  const { verifyPassword } = await import("./password.ts");
+  if (!verifyPassword(password, user.passwordHash)) return { ok: false, reason: "INVALID_CREDENTIALS" };
+  await clearAttempts(pool, [key]);
+  return { ok: true, user };
+}
+
+/**
+ * The credentials provider's check (B53). next-auth sends a thrown error's message to the
+ * client, so only fixed codes are thrown: `TOO_MANY_ATTEMPTS`, or `LOGIN_UNAVAILABLE` when
+ * the check itself fails, never a database message.
+ */
+export async function authorizeCredentials(
+  credentials: Readonly<Record<string, unknown>> | undefined, pool: () => Pool, now = new Date(),
+): Promise<{ id: string; email: string } | null> {
+  const email = typeof credentials?.email === "string" ? credentials.email.trim().toLowerCase() : "";
+  const password = typeof credentials?.password === "string" ? credentials.password : "";
+  if (email.length === 0 || password.length === 0) return null;
+  let result: LoginResult;
+  try {
+    result = await checkLogin(pool(), email, password, now);
+  } catch {
+    console.error(JSON.stringify({ code: "LOGIN_CHECK_FAILED" }));
+    throw new Error("LOGIN_UNAVAILABLE");
+  }
+  if (!result.ok) {
+    if (result.reason === "TOO_MANY_ATTEMPTS") throw new Error("TOO_MANY_ATTEMPTS");
+    return null;
+  }
+  return { id: result.user.id, email: result.user.email };
 }
 
 /**
