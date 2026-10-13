@@ -26,7 +26,9 @@ export async function POST(request: Request, { params }: Params) {
   if (!user) return unauthorized();
   const { id } = await params;
   const idempotencyKey = request.headers.get("idempotency-key") ?? "";
-  if (idempotencyKey.length < 8) {
+  // A token, not free text: it becomes part of an AI ledger key, which is kept,
+  // pseudonymous, when the account is deleted (B11).
+  if (!/^[A-Za-z0-9-]{8,64}$/u.test(idempotencyKey)) {
     return NextResponse.json({ error: "IDEMPOTENCY_KEY_REQUIRED" }, { status: 400 });
   }
   const pool = snapshotPool();

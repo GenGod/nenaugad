@@ -1,7 +1,7 @@
 import type { DefaultSession, NextAuthOptions } from "next-auth";
 import { getServerSession } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { findUserByEmail } from "./users.ts";
+import { accountExists, findUserByEmail } from "./users.ts";
 import { snapshotPool } from "./storage/snapshots.ts";
 
 declare module "next-auth" {
@@ -53,5 +53,15 @@ export type SessionUser = Readonly<{ id: string; email?: string | null }>;
 export async function currentUser(): Promise<SessionUser | null> {
   const session = await getServerSession(authOptions);
   const id = session?.user?.id;
-  return typeof id === "string" && id.length > 0 ? { id, email: session?.user?.email } : null;
+  if (typeof id !== "string" || id.length === 0) return null;
+  // A session is a stateless token that outlives a deleted account: the account is
+  // checked on every request, and a lookup that fails counts as no account (B11, owner
+  // decision 2026-10-13).
+  try {
+    if (!await accountExists(snapshotPool(), id)) return null;
+  } catch {
+    console.error(JSON.stringify({ code: "SESSION_ACCOUNT_CHECK_FAILED" }));
+    return null;
+  }
+  return { id, email: session?.user?.email };
 }

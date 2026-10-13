@@ -1,10 +1,10 @@
 {
-  "task_id": "B26-001",
-  "file": "tasks/B26-001-himalayas-shared-text-geography.md",
+  "task_id": "B11-001",
+  "file": "tasks/B11-001-account-deletion.md",
   "status": "accepted",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Owner accepted B26-001 on 2026-10-13. Section B of docs/OPEN_GAPS.md: only B9 and B11 remain, both deferred."
+  "note": "Owner accepted B11-001 on 2026-10-13. Section B of docs/OPEN_GAPS.md: only B9 remains, deferred."
 }

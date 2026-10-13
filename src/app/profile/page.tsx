@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { currentUser } from "../../server/auth.ts";
 import { LogoutButton } from "../../components/auth-forms.tsx";
+import { AccountDeletion } from "../../components/account-deletion.tsx";
 import { ProfileForm, type ProfileState } from "../../components/profile-form.tsx";
 import { countProfileVersions, latestProfile } from "../../server/profile-service.ts";
 import { snapshotPool } from "../../server/storage/snapshots.ts";
@@ -60,5 +61,11 @@ export default async function Profile() {
     </div>
     <p className="small secondary" style={{ marginTop: 12 }}>Права на работу и гражданство
       не запрашиваются: профиль оценивает только опубликованные условия.</p>
+    <section className="profile-section" aria-label="Удаление аккаунта" style={{ marginTop: 40 }}>
+      <h2 style={{ fontSize: "1.25rem", marginBottom: 20 }}>Удаление аккаунта</h2>
+      <div className="panel">
+        <AccountDeletion />
+      </div>
+    </section>
   </>;
 }

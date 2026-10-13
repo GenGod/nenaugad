@@ -65,3 +65,13 @@ export async function findUserByEmail(pool: Pool, email: string): Promise<UserRe
     | undefined;
   return row ? { id: row.id, email: row.email, passwordHash: row.password_hash } : null;
 }
+
+/**
+ * Whether the account a session names still exists (B11): a session is a stateless token
+ * that outlives a deleted account, so the account is checked on every request (owner
+ * decision 2026-10-13).
+ */
+export async function accountExists(pool: Pool, id: string): Promise<boolean> {
+  const result = await pool.query("SELECT 1 FROM users WHERE id = $1", [id]);
+  return (result.rowCount ?? 0) > 0;
+}

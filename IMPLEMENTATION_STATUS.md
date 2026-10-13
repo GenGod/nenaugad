@@ -161,7 +161,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   quota and operation ceiling.
 - Profile privacy (§4.4), which also gates `matching-scoring`, `hyde` and `eval-judge`.
 - The local generative model path (MODEL-002).
-- Account deletion (B11, a high-risk review) and restore (SP-T22, a beta prerequisite).
+- Restore (SP-T22, a beta prerequisite): it must re-apply `account_deletions`. Account deletion
+  itself is done ([B11-001](tasks/B11-001-account-deletion.md), reviewed, owner-accepted
+  2026-10-13).
 - Which design document is authoritative: AGENTS.md and README still name Atlas 1.1,
   while the tokens come from the design system 1.3 (flagged by DEVX-001).
 - **Jobicy changed its API page (`terms:check`, 2026-10-05):** the fair-use rules are

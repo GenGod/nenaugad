@@ -208,8 +208,7 @@ to a fictional company. The whole feed is explicitly labelled as a demo.
 S0–S4 and the AI batches are done; the current work front is [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md)
 (section E — owner decisions) and «Следующий шаг» [Next step] in `IMPLEMENTATION_STATUS.md`.
 The nearest candidates: bringing the batch path back per the AI-006 plan, switching the feed to
-the ranker (the A9 gates are ready), cross-language extension of the golden set, a separate
-review of account deletion.
+the ranker (the A9 gates are ready), cross-language extension of the golden set.
 
 Do not enable production by replacing a flag. First complete
 [SAFETY_GATES](docs/SAFETY_GATES.md) for the specific feature.
