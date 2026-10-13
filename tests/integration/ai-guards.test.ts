@@ -15,6 +15,7 @@ import {
 } from "../../src/server/ai/gateway.ts";
 import { GPT6_LUNA, ownerBudgetId } from "../../src/server/ai/provider.ts";
 import { chunkRefusal } from "../../src/server/ai/ledger-refusals.ts";
+import { letterGenerationFailure } from "../../src/server/letters/generation-failure.ts";
 
 // Missing config fails loudly. Never report a skipped DB suite as passing.
 const pool = localPool(process.env.TEST_DATABASE_URL, true);
@@ -582,7 +583,7 @@ test("gateway: a repeated key after an uncertain result is refused without a dis
   });
 
   await assert.rejects(call("b37-k", timingOut),
-    (error: unknown) => error instanceof BudgetError && error.message === "BUDGET_UNAVAILABLE");
+    (error: unknown) => error instanceof BudgetError && error.message === "OPERATION_UNCERTAIN");
   assert.equal(timedOut, 1);
   assert.deepEqual(await budgets(), [["0", "1000"], ["0", "1000"]]);
 
@@ -951,8 +952,8 @@ test("a replayed relevance chunk key is told apart by its operation, not read as
     pool: pool, operationId: "", ownerId: owner.id, taskType: "job_matching",
     idempotencyKey: "b45-stranded", worstCaseMinor: 500n, now: NOW,
   });
-  await assert.rejects(call("b45-uncertain", timingOut), refusedWith("BUDGET_UNAVAILABLE"));
-  await assert.rejects(call("b45-cancelled", timingOut), refusedWith("BUDGET_UNAVAILABLE"));
+  await assert.rejects(call("b45-uncertain", timingOut), refusedWith("OPERATION_UNCERTAIN"));
+  await assert.rejects(call("b45-cancelled", timingOut), refusedWith("OPERATION_UNCERTAIN"));
   const released = await findOperationByKey({
     pool: pool, ownerId: owner.id, taskType: "job_matching", idempotencyKey: "b45-cancelled" });
   await cancelOperation({ pool: pool, ownerId: owner.id, operationId: released?.id ?? "", now: NOW });
@@ -1038,4 +1039,36 @@ test("gateway: the owner's cancel during a running call is refused, and the char
     [[GLOBAL_BUDGET_ID, ownerBudgetId(owner.id)]])).rows
     .map(row => [(row as { settled_minor: string }).settled_minor, (row as { held_minor: string }).held_minor]);
   assert.deepEqual(budgets, [["300", "0"], ["300", "0"]], "the charge is booked, once");
+});
+
+test("a letter whose call comes back uncertain is not told the budget is spent (B46)", async () => {
+  await migrate(pool);
+  const owner = await registerUser(pool, email(), "long-enough-password");
+  await freshBudgets(owner.id, 10_000n, null);
+  const timingOut: Parameters<typeof executeGuardedOperation>[0]["transport"] = {
+    async dispatchOnce() { return { kind: "uncertain" }; },
+  };
+  const call = () => executeGuardedOperation({
+    pool: pool, ownerId: owner.id, purpose: "cover_letter", idempotencyKey: "b46-letter",
+    worstCaseMinor: 1000n, transport: timingOut, now: NOW,
+  });
+  const first = await call().then(() => null, (error: unknown) => error);
+  assert.ok(refusedWith("OPERATION_UNCERTAIN")(first), `the first uncertain result: ${String(first)}`);
+  assert.deepEqual(letterGenerationFailure(first), { status: 409, error: "OPERATION_UNCERTAIN" },
+    "not 402 BUDGET_EXCEEDED: the billing is unknown, the budget is not the problem");
+  // The hold is kept, and a replay of the key meets the same code (B37).
+  const held = (await pool.query("SELECT held_minor::text FROM ai_budgets WHERE id = $1", [GLOBAL_BUDGET_ID])).rows;
+  assert.deepEqual(held, [{ held_minor: "1000" }]);
+  await assert.rejects(call(), refusedWith("OPERATION_UNCERTAIN"));
+
+  // BUDGET_UNAVAILABLE keeps its one meaning: the global budget row is missing.
+  await pool.query("DELETE FROM ai_budgets WHERE id = $1", [GLOBAL_BUDGET_ID]);
+  const missing = await executeGuardedOperation({
+    pool: pool, ownerId: owner.id, purpose: "cover_letter", idempotencyKey: "b46-no-budget",
+    worstCaseMinor: 1000n, transport: timingOut, now: NOW,
+  }).then(() => null, (error: unknown) => error);
+  assert.ok(refusedWith("BUDGET_UNAVAILABLE")(missing));
+  assert.deepEqual(letterGenerationFailure(missing), { status: 402, error: "BUDGET_EXCEEDED" });
+  // Leave the global row as the other tests expect to find it.
+  await ensureBudget({ pool, budgetId: GLOBAL_BUDGET_ID, scope: "global", approvedLimitMinor: 10_000n });
 });

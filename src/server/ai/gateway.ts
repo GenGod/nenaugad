@@ -118,7 +118,10 @@ export async function executeGuardedOperation(params: Readonly<{
   if (outcome.kind === "uncertain") {
     await markUncertain({ pool: params.pool, ownerId: params.ownerId,
       operationId: operation.id, now: params.now });
-    throw new BudgetError("BUDGET_UNAVAILABLE"); // hold retained; never blind retry
+    // Hold retained; never a blind retry. The code a replay of this key meets too (B37):
+    // the billing is unknown, the budget is not the problem (BUDGET_UNAVAILABLE means a
+    // missing budget row, B46).
+    throw new BudgetError("OPERATION_UNCERTAIN");
   }
   const settled = await settleOperation({
     pool: params.pool, ownerId: params.ownerId, operationId: operation.id,

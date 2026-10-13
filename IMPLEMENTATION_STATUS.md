@@ -148,6 +148,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
 - **A running call cannot be cancelled** ([B51-001](tasks/B51-001-no-cancel-of-a-running-call.md),
   money, reviewed, owner-accepted 2026-10-13): `ai:holds --cancel` waits, like
   `--settle`, until 5 minutes after the dispatch.
+- **An uncertain call is not a spent budget** ([B46-001](tasks/B46-001-uncertain-is-not-budget.md),
+  reviewed, owner-accepted 2026-10-13): the gateway answers `OPERATION_UNCERTAIN`;
+  letters and relevance say 409, not 402 «Бюджет исчерпан».
 - The reranker (B3-001): purpose `rerank`, provider grants, profile privacy, and the
   quota and operation ceiling.
 - Profile privacy (§4.4), which also gates `matching-scoring`, `hyde` and `eval-judge`.

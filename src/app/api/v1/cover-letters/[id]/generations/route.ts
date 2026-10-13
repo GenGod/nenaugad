@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "../../../../../../server/auth.ts";
 import {
-  getLetterDetail, saveGeneratedRevision, LetterError,
+  getLetterDetail, saveGeneratedRevision,
 } from "../../../../../../server/letters/service.ts";
 import {
   executeGuardedOperation,
 } from "../../../../../../server/ai/gateway.ts";
-import { isExpiredReservation, isUncertainReplay } from "../../../../../../server/ai/ledger-refusals.ts";
+import { letterGenerationFailure } from "../../../../../../server/letters/generation-failure.ts";
 import { openAiTransport } from "../../../../../../server/ai/openai-transport.ts";
 import { GPT6_LUNA, reservationFor, worstCaseCostMicroUsd } from "../../../../../../server/ai/provider.ts";
 import { snapshotPool, readSnapshotCardsData } from "../../../../../../server/storage/snapshots.ts";
@@ -123,29 +123,8 @@ export async function POST(request: Request, { params }: Params) {
       },
     }, { status: 201 });
   } catch (error) {
-    if (error instanceof LetterError) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-    if (error instanceof Error && error.message.includes("BUDGET")) {
-      return NextResponse.json({ error: "BUDGET_EXCEEDED" }, { status: 402 });
-    }
-    if (error instanceof Error && (error.message === "PERSONAL_DATA_BOUNDARY"
-      || error.message === "AI_LIVE_DISABLED" || error.message === "AI_PROVIDER_NOT_CONFIGURED")) {
-      return NextResponse.json({ error: error.message }, { status: 503 });
-    }
-    // A replay of a request whose call is still uncertain: nothing was sent, the
-    // hold waits for reconciliation (B37). Not a server failure.
-    if (isUncertainReplay(error)) {
-      return NextResponse.json({ error: "OPERATION_UNCERTAIN" }, { status: 409 });
-    }
-    // The reservation came past its deadline (B50): nothing was sent, the hold waits
-    // for the owner, and a replay of this request meets the same refusal.
-    if (isExpiredReservation(error)) {
-      return NextResponse.json({ error: "DEADLINE_EXPIRED" }, { status: 409 });
-    }
-    if (error instanceof Error && error.message.includes("ATTEMPTS")) {
-      return NextResponse.json({ error: "GENERATION_LIMIT" }, { status: 429 });
-    }
+    const failure = letterGenerationFailure(error);
+    if (failure) return NextResponse.json({ error: failure.error }, { status: failure.status });
     console.error(JSON.stringify({ code: "GENERATION_DEBUG",
       name: error instanceof Error ? error.constructor.name : typeof error,
       message: error instanceof Error ? error.message.slice(0, 300) : String(error).slice(0, 300) }));

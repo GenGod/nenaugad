@@ -6,8 +6,9 @@ import { BudgetError, HOLDING_STATUSES, type OperationStatus } from "./spending.
 
 /**
  * Ledger refusals that must stop the whole run instead of being skipped. A chunk
- * whose earlier call is still uncertain stops it like the first uncertain result
- * (BUDGET_UNAVAILABLE) does: money is held for it, and it is not a duplicate (B37).
+ * whose call is uncertain (its own result, or an earlier one) stops it: money is held
+ * for it, and it is not a duplicate (B37, B46). BUDGET_UNAVAILABLE is a missing budget
+ * row.
  * For a relevance chunk, `chunkRefusal` looks ATTEMPTS_EXHAUSTED and DEADLINE_EXPIRED up
  * before it asks this: past its deadline they name a taken key, not a run's end (B45).
  */
@@ -22,11 +23,12 @@ export function isStopError(error: unknown): boolean {
 }
 
 /**
- * A replay of a request whose call is still uncertain: nothing was sent and the
- * hold waits for reconciliation (B37). A refusal the caller can act on, not a
- * server failure.
+ * A call whose billing is uncertain: its own result timed out or failed after the
+ * dispatch (B46), or a replay of such a request, which sends nothing (B37). The hold
+ * waits for reconciliation. A refusal the caller can act on, not a server failure, and
+ * not a spent budget.
  */
-export function isUncertainReplay(error: unknown): boolean {
+export function isUncertainCall(error: unknown): boolean {
   return error instanceof BudgetError && error.message === "OPERATION_UNCERTAIN";
 }
 

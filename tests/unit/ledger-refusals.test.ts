@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { chunkRefusal, isExpiredReservation, isStopError, isUncertainReplay } from "../../src/server/ai/ledger-refusals.ts";
+import { chunkRefusal, isExpiredReservation, isStopError, isUncertainCall } from "../../src/server/ai/ledger-refusals.ts";
 import { BudgetError, type OperationStatus } from "../../src/server/ai/spending.ts";
 
 /** A lookup that answers `status`, and counts how often it was asked. */
@@ -21,7 +21,7 @@ test("an uncertain chunk stops the relevance run", async () => {
   const asked = lookup("uncertain");
   assert.deepEqual(await chunkRefusal(uncertain, asked.operationFor), { kind: "stop" });
   assert.equal(asked.asked(), 0, "a stop needs no lookup");
-  assert.equal(isStopError(new BudgetError("BUDGET_UNAVAILABLE")), true, "the first uncertain result");
+  assert.equal(isStopError(new BudgetError("BUDGET_UNAVAILABLE")), true, "a missing global budget row");
 });
 
 test("the stop list is unchanged", () => {
@@ -65,11 +65,11 @@ test("a taken chunk key is told apart by its operation, not read as cached score
   }
 });
 
-test("the letter route names an uncertain replay, and only that", () => {
-  assert.equal(isUncertainReplay(new BudgetError("OPERATION_UNCERTAIN")), true);
-  assert.equal(isUncertainReplay(new BudgetError("BUDGET_UNAVAILABLE")), false);
-  assert.equal(isUncertainReplay(new BudgetError("WRONG_STATE")), false);
-  assert.equal(isUncertainReplay(new Error("OPERATION_UNCERTAIN")), false, "only the ledger's own refusal");
+test("an uncertain call is named, the first result or a replay, and only that", () => {
+  assert.equal(isUncertainCall(new BudgetError("OPERATION_UNCERTAIN")), true);
+  assert.equal(isUncertainCall(new BudgetError("BUDGET_UNAVAILABLE")), false, "a missing budget row is not");
+  assert.equal(isUncertainCall(new BudgetError("WRONG_STATE")), false);
+  assert.equal(isUncertainCall(new Error("OPERATION_UNCERTAIN")), false, "only the ledger's own refusal");
 });
 
 // B50: a reservation whose attempt came past its deadline holds its worst case and

@@ -257,7 +257,7 @@ export async function runExtractionPass(params: Readonly<{
     } catch (error) {
       if (!(error instanceof BudgetError)) throw error;
       // The ledger's code alone does not say whether money is still held: an
-      // uncertain dispatch surfaces as BUDGET_UNAVAILABLE, and DEADLINE_EXPIRED
+      // uncertain dispatch surfaces as OPERATION_UNCERTAIN, and DEADLINE_EXPIRED
       // covers a hold and a settled call alike. The posting's own operation does.
       const operation = await findOperationByKey({
         pool: params.pool, ownerId: EXTRACTOR_OWNER_ID,

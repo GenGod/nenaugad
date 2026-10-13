@@ -223,7 +223,7 @@ test("an open hold stops the source until the owner cancels it; then only its po
     };
     const first = await runExtractionPass({ pool, sourceId: "himalayas", transport: timingOut, clock: () => NOW });
     assert.equal(first.outcome, "held");
-    assert.equal(first.code, "BUDGET_UNAVAILABLE", "the gateway's code, no longer read as a budget refusal");
+    assert.equal(first.code, "OPERATION_UNCERTAIN", "the gateway's code for an uncertain result (B46)");
     assert.equal(uncertainCalls, 1);
     assert.ok(first.held);
     assert.equal(first.held.status, "uncertain");
@@ -299,7 +299,7 @@ test("an open hold stops the source before any posting is read, even one the pas
     const timingOut: ModelTransport = { async dispatchOnce() { return { kind: "uncertain" as const }; } };
     await assert.rejects(extractPostingFields({
       pool, ownerId: EXTRACTOR_OWNER_ID, sourceId: "himalayas", snapshot: pre, transport: timingOut, now: NOW,
-    }), /BUDGET_UNAVAILABLE/u);
+    }), /OPERATION_UNCERTAIN/u);
     await pool.query(
       "UPDATE job_snapshots SET snapshot = jsonb_set(snapshot, '{dates,last_seen_at}', '\"2020-01-01T00:00:00.000Z\"') WHERE id = $1",
       [pre.id]);
@@ -338,7 +338,7 @@ test("another source's hold does not stop this source (B31)", async () => {
     const timingOut: ModelTransport = { async dispatchOnce() { return { kind: "uncertain" as const }; } };
     await assert.rejects(extractPostingFields({
       pool, ownerId: EXTRACTOR_OWNER_ID, sourceId: "jobicy", snapshot: other, transport: timingOut, now: NOW,
-    }), /BUDGET_UNAVAILABLE/u);
+    }), /OPERATION_UNCERTAIN/u);
 
     const jobicy = await runExtractionPass({ pool, sourceId: "jobicy", transport: exploding, clock: () => LATER });
     assert.equal(jobicy.outcome, "held");
@@ -536,7 +536,7 @@ test("blocked postings do not use the pass's calls (B32)", async () => {
     const timingOut: ModelTransport = { async dispatchOnce() { return { kind: "uncertain" as const }; } };
     await assert.rejects(extractPostingFields({
       pool, ownerId: EXTRACTOR_OWNER_ID, sourceId: "himalayas", snapshot: blocked, transport: timingOut, now: NOW,
-    }), /BUDGET_UNAVAILABLE/u);
+    }), /OPERATION_UNCERTAIN/u);
     const held = await runExtractionPass({ pool, sourceId: "himalayas", transport: exploding, clock: () => LATER, limit: 1 });
     assert.ok(held.held);
     await cancelOperation({ pool, ownerId: EXTRACTOR_OWNER_ID, operationId: held.held.operationId, now: LATER });
