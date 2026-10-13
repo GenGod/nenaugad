@@ -2,6 +2,7 @@
 //
 //   npm run ai:holds                                     — list the operations that hold money
 //   npm run ai:holds -- --cancel=op_...                  — release one hold, booking nothing
+//                                                          (a call in flight: from cancelFrom)
 //   npm run ai:holds -- --settle=op_... --amount=<μ$>    — book the charge of an uncertain call,
 //                       [--above-reservation]              or of one that died in flight (also
 //                                                          above its reservation)
@@ -75,7 +76,20 @@ if (!parsed.ok) {
           }));
         } catch (error) {
           const code = error instanceof BudgetError ? error.message : "CANCEL_FAILED";
-          console.error(JSON.stringify({ ok: false, code, operationId }));
+          // Read after the refusal: the status the owner has to act on now.
+          const current = code === "WRONG_STATE"
+            ? await getOperation({ pool, ownerId: row.owner_id, operationId })
+            : null;
+          console.error(JSON.stringify({
+            ok: false, code, operationId,
+            ...(current ? { status: current.status } : {}),
+            ...(current?.status === "in_flight" ? {
+              // The call may still be running and settles itself; cancelled now, its
+              // charge would be lost when the provider answers (B51).
+              cancelFrom: inFlightOverAt(current.updatedAt),
+              hint: "the call may still be running; it can be cancelled or settled from cancelFrom",
+            } : {}),
+          }));
           process.exitCode = 1;
         }
       } else {
@@ -134,7 +148,7 @@ if (!parsed.ok) {
           reservedMicroUsd: String(record.reserved_minor),
           heldCents: microUsdToCents(BigInt(String(record.reserved_minor)) - BigInt(String(record.settled_minor))),
           updatedAt: new Date(record.updated_at as Date).toISOString(),
-          // For a call in flight: when a late receipt is accepted, if it never comes back.
+          // For a call in flight: when a late receipt or a cancel is accepted (B48, B51).
           ...(record.status === "in_flight"
             ? { lateReceiptFrom: inFlightOverAt(new Date(record.updated_at as Date).toISOString()) }
             : {}),
@@ -154,7 +168,8 @@ if (!parsed.ok) {
           ? "nothing is holding money"
           : `after checking the provider's usage page: a call it charged (${SETTLES}) —`
             + " npm run ai:holds -- --settle=<operationId> --amount=<μ$>; a hold it did not charge —"
-            + ` npm run ai:holds -- --cancel=<operationId> (${UNIT})`,
+            + " npm run ai:holds -- --cancel=<operationId> (a call in flight: from its lateReceiptFrom)"
+            + ` (${UNIT})`,
       }));
     }
   } catch (error) {

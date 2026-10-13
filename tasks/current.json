@@ -1,15 +1,10 @@
 {
-  "task_id": "B45-001",
-  "file": "tasks/B45-001-taken-chunk-key.md",
+  "task_id": "B51-001",
+  "file": "tasks/B51-001-no-cancel-of-a-running-call.md",
   "status": "accepted",
-  "repair_cycles_used": 1,
+  "repair_cycles_used": 0,
   "max_repair_cycles": 2,
-  "hypotheses": [
-    {
-      "text": "A replayed chunk past its deadline is refused DEADLINE_EXPIRED before WRONG_STATE, so chunkRefusal must look the operation up for DEADLINE_EXPIRED and ATTEMPTS_EXHAUSTED too. Testable: a settled chunk replayed 121 s after its reservation is closed, an in-flight one held, and the run is not stopped by a closed chunk.",
-      "recorded_at": "2026-10-12T11:48:15.349Z"
-    }
-  ],
+  "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Owner accepted B45-001 on 2026-10-12. New from its review: B51. Open: B40, B46, B51."
+  "note": "Owner accepted B51-001 on 2026-10-13. Open: B40, B46."
 }

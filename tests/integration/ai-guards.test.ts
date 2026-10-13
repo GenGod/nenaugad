@@ -716,7 +716,7 @@ function aiHolds(args: readonly string[], database = true): Readonly<{ exitCode:
 }
 
 test("ai:holds --settle books a late receipt from the command line; a refusal changes nothing (B47)", async () => {
-  const { open, ledger } = await lateReceiptFixture();
+  const { owner, open, ledger } = await lateReceiptFixture();
   const uncertain = await open("b47-cli-uncertain", 2_000n, "uncertain");
   const inFlight = await open("b47-cli-flight", 1_000n, "in_flight");
   const before = await ledger();
@@ -753,7 +753,17 @@ test("ai:holds --settle books a late receipt from the command line; a refusal ch
   assert.equal(aiHolds(["--above-reservation", "--amount=700", `--settle=${above}`]).exitCode, 0);
   assert.deepEqual((await ledger()).budgets, [["1900", "1000"], ["1900", "1000"]]);
 
-  // --cancel goes through the same parser and still releases a hold.
+  // --cancel goes through the same parser. A call still in flight is refused, with the
+  // moment it is accepted (B51); past the grace after its dispatch it is released.
+  const beforeCancel = await ledger();
+  const early = aiHolds([`--cancel=${inFlight}`]);
+  assert.equal(early.exitCode, 1);
+  assert.equal(early.result.code, "WRONG_STATE");
+  assert.equal(early.result.status, "in_flight");
+  const dispatched = (await getOperation({ pool: pool, ownerId: owner.id, operationId: inFlight }))?.updatedAt ?? "";
+  assert.equal(early.result.cancelFrom, inFlightOverAt(dispatched));
+  assert.deepEqual(await ledger(), beforeCancel, "a refused cancel changes nothing");
+  await dispatchedAgo(inFlight, IN_FLIGHT_GRACE_MS + 30_000);
   const cancelled = aiHolds([`--cancel=${inFlight}`]);
   assert.equal(cancelled.exitCode, 0);
   assert.deepEqual((await ledger()).budgets, [["1900", "0"], ["1900", "0"]]);
@@ -768,8 +778,8 @@ async function dispatchedAgo(operationId: string, milliseconds: number): Promise
 
 test("late receipt: a call that died in flight settles once the grace after its dispatch is past, never before (B48)", async () => {
   const { owner, open, ledger } = await lateReceiptFixture();
-  // The caller's clock is not what decides: a day after the deadline, to show it.
-  const nextDay = new Date(Date.parse(NOW) + 86_400_000).toISOString();
+  // The caller's clock is not what decides: a day ahead of the database's, to show it.
+  const nextDay = new Date(Date.now() + 86_400_000).toISOString();
   const lateReceipt = (operationId: string, actualMinor: bigint, allowAboveReservation = false) => settleOperation({
     pool: pool, ownerId: owner.id, operationId, actualMinor, now: nextDay, lateReceipt: { allowAboveReservation },
   });
@@ -968,4 +978,64 @@ test("a replayed relevance chunk key is told apart by its operation, not read as
     { kind: "held", status: "in_flight" });
   assert.equal(dispatched, sent, "nothing is sent for a taken key");
   assert.deepEqual(await budgets(), before, "nothing more is held or settled");
+});
+
+test("cancel refuses a call still in flight until the grace after its dispatch (B51)", async () => {
+  const { owner, open, ledger } = await lateReceiptFixture();
+  const cancel = (operationId: string, now = NOW) => cancelOperation({ pool: pool, ownerId: owner.id, operationId, now });
+  const flying = await open("b51-flying", 1_000n, "in_flight");
+  const reserved = await open("b51-reserved", 300n, "reserved");
+  const uncertain = await open("b51-uncertain", 200n, "uncertain");
+  const before = await ledger();
+  assert.deepEqual(before.budgets, [["0", "1500"], ["0", "1500"]]);
+
+  // The caller's clock does not decide: a day ahead of the database's, the call is
+  // still running (a caller clock behind it would prove nothing).
+  const dayAhead = new Date(Date.now() + 86_400_000).toISOString();
+  await assert.rejects(cancel(flying, dayAhead), refusedWith("WRONG_STATE"), "just dispatched");
+  await dispatchedAgo(flying, IN_FLIGHT_GRACE_MS - 30_000);
+  await assert.rejects(cancel(flying), refusedWith("WRONG_STATE"), "inside the grace");
+  assert.deepEqual(await ledger(), before, "a refused cancel changes nothing");
+
+  // Never sent, or returned without a known charge: cancelled at once, as before. A
+  // cancelled reservation cannot be dispatched afterwards: beginAttempt starts only
+  // from `reserved`, re-checked after the cancel's row lock.
+  await cancel(reserved);
+  await assert.rejects(beginAttempt({
+    pool: pool, ownerId: owner.id, operationId: reserved, taskType: "cover_letter", now: NOW,
+  }), refusedWith("WRONG_STATE"));
+  await cancel(uncertain);
+  assert.deepEqual((await ledger()).budgets, [["0", "1000"], ["0", "1000"]]);
+  // Past the grace the call is a crash, and the owner may release it.
+  await dispatchedAgo(flying, IN_FLIGHT_GRACE_MS + 30_000);
+  await cancel(flying);
+  const after = await ledger();
+  assert.deepEqual(after.budgets, [["0", "0"], ["0", "0"]]);
+  assert.equal(after.operations[flying], "cancelled/0");
+});
+
+test("gateway: the owner's cancel during a running call is refused, and the charge is booked once (B51)", async () => {
+  await migrate(pool);
+  const owner = await registerUser(pool, email(), "long-enough-password");
+  await freshBudgets(owner.id, 10_000n, null);
+  let refusal: unknown;
+  const answering: Parameters<typeof executeGuardedOperation>[0]["transport"] = {
+    async dispatchOnce(operation) {
+      // Mid-call, the owner cancels the hold (ai:holds --cancel).
+      refusal = await cancelOperation({ pool: pool, ownerId: owner.id, operationId: operation.id, now: NOW })
+        .then(() => undefined, (error: unknown) => error);
+      return { kind: "result", actualMinor: 300n, output: "ok" };
+    },
+  };
+  const result = await executeGuardedOperation({
+    pool: pool, ownerId: owner.id, purpose: "cover_letter", idempotencyKey: "b51-live",
+    worstCaseMinor: 1000n, transport: answering, now: NOW,
+  });
+  assert.ok(refusedWith("WRONG_STATE")(refusal), `a running call is not cancelled: ${String(refusal)}`);
+  assert.equal(result.settledMinor, 300n);
+  const budgets = (await pool.query(
+    "SELECT settled_minor::text, held_minor::text FROM ai_budgets WHERE id = ANY($1::text[]) ORDER BY id",
+    [[GLOBAL_BUDGET_ID, ownerBudgetId(owner.id)]])).rows
+    .map(row => [(row as { settled_minor: string }).settled_minor, (row as { held_minor: string }).held_minor]);
+  assert.deepEqual(budgets, [["300", "0"], ["300", "0"]], "the charge is booked, once");
 });

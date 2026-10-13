@@ -48,9 +48,9 @@ server-side mapping) is recorded in the module; enabling it is an owner decision
   for new users the row is created at registration).
 - `npm run ai:holds` — the list of operations holding money; `--cancel=<id>` releases a
   hold the provider did not charge, and `--settle=<id> --amount=<μ$>` books the charge of
-  an uncertain call, or of one still in flight 5 minutes after its dispatch (a crash), from
-  the provider's usage page (`--above-reservation` for one above its worst case). Both
-  are a human decision, not a reaper's.
+  an uncertain call from the provider's usage page (`--above-reservation` for one above
+  its worst case). A call still in flight takes either only 5 minutes after its dispatch
+  (a crash by then). Both are a human decision, not a reaper's.
 - `npm run smoke:ai` — one guarded live call to the provider. It spends real
   money; it refuses while `LIVE_AI_ENABLED != true`; it creates its own budget
   rows, so it works on a fresh DB.

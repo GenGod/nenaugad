@@ -145,6 +145,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
 - **A taken relevance chunk key is read by its operation** ([B45-001](tasks/B45-001-taken-chunk-key.md),
   money-adjacent, reviewed, owner-accepted 2026-10-12): held money stops the run, a
   closed chunk is counted and not paid for again under its key. New: B51.
+- **A running call cannot be cancelled** ([B51-001](tasks/B51-001-no-cancel-of-a-running-call.md),
+  money, reviewed, owner-accepted 2026-10-13): `ai:holds --cancel` waits, like
+  `--settle`, until 5 minutes after the dispatch.
 - The reranker (B3-001): purpose `rerank`, provider grants, profile privacy, and the
   quota and operation ceiling.
 - Profile privacy (§4.4), which also gates `matching-scoring`, `hyde` and `eval-judge`.

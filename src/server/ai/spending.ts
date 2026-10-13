@@ -17,8 +17,9 @@ export const OPERATION_DEADLINE_MS = 120_000;
 // beginAttempt records the dispatch on the database's clock, right before the
 // transport call, and the transport gives up after 30 s with no retry
 // (openai-transport.ts). An operation still `in_flight` this long after its dispatch
-// is a crash, not a running call, and takes a late receipt (B48). Ten times the
-// transport's timeout: room for the settle write, a slow pool or a stalled event loop.
+// is a crash, not a running call, and takes a late receipt (B48) or a cancel (B51).
+// Ten times the transport's timeout: room for the settle write, a slow pool or a
+// stalled event loop.
 // Any transport the gateway dispatches through must end a call well inside it;
 // tests/unit/ai-provider.test.ts keeps the ratio for the one there is.
 export const IN_FLIGHT_GRACE_MS = 5 * 60_000;
@@ -257,12 +258,7 @@ export async function settleOperation(params: Readonly<{
       // running settles itself — settled from outside, its own settle would fail and
       // lose the cost. Judged on the database's clock against the dispatch it stamped:
       // neither the caller's `now` nor the deadline says when the call went out.
-      if (row.status === "in_flight") {
-        const clock = await client.query("SELECT clock_timestamp() AS now");
-        const databaseNow = new Date((clock.rows[0] as { now: Date }).now).getTime();
-        const overAt = inFlightOverAt(new Date(row.updated_at as Date).toISOString());
-        if (databaseNow < Date.parse(overAt)) throw new BudgetError("WRONG_STATE");
-      }
+      if (row.status === "in_flight" && !await inFlightCallOver(client, row)) throw new BudgetError("WRONG_STATE");
       // The reservation is the worst case, so a larger typed amount is more likely a
       // unit slip than a charge; a real one is booked in full when the owner says so.
       if (actual > reserved && !params.lateReceipt.allowAboveReservation) {
@@ -299,8 +295,22 @@ export async function settleOperation(params: Readonly<{
   }
 }
 
-// Cancel: stops new steps; the hold is released, but an in-flight call may
-// still have cost money — that stays honest (spec: "not guaranteed refund").
+/**
+ * Whether an `in_flight` operation's call is over for certain: the database's clock is
+ * past its dispatch (stamped on the same clock by beginAttempt) plus the grace (B48).
+ * Read inside the caller's transaction, after the row lock.
+ */
+async function inFlightCallOver(client: PoolClient, row: Record<string, unknown>): Promise<boolean> {
+  const clock = await client.query("SELECT clock_timestamp() AS now");
+  const databaseNow = new Date((clock.rows[0] as { now: Date }).now).getTime();
+  return databaseNow >= Date.parse(inFlightOverAt(new Date(row.updated_at as Date).toISOString()));
+}
+
+// Cancel: stops new steps; the hold is released, but a call that went out may still
+// have cost money — that stays honest (spec: "not guaranteed refund"). A call still in
+// flight is refused until the grace after its dispatch: cancelled from outside, its own
+// settle would be refused when the provider answers and its charge lost (B51). After
+// that it is a crash, and the owner judges it as for an uncertain call.
 export async function cancelOperation(params: Readonly<{
   pool: Pool; ownerId: string; operationId: string; now: string;
 }>): Promise<void> {
@@ -308,12 +318,13 @@ export async function cancelOperation(params: Readonly<{
   try {
     await client.query("BEGIN");
     const operation = await client.query(
-      "SELECT id, status, reserved_minor FROM ai_operations WHERE id = $1 AND owner_id = $2 FOR UPDATE",
+      "SELECT id, status, reserved_minor, updated_at FROM ai_operations WHERE id = $1 AND owner_id = $2 FOR UPDATE",
       [params.operationId, params.ownerId],
     );
-    const row = operation.rows[0] as { status: string; reserved_minor: string } | undefined;
+    const row = operation.rows[0] as { status: string; reserved_minor: string; updated_at: Date } | undefined;
     if (!row) throw new BudgetError("OPERATION_NOT_FOUND");
     if (row.status === "settled" || row.status === "cancelled") throw new BudgetError("WRONG_STATE");
+    if (row.status === "in_flight" && !await inFlightCallOver(client, row)) throw new BudgetError("WRONG_STATE");
     const reserved = BigInt(String(row.reserved_minor));
     await client.query(
       "UPDATE ai_operations SET status = 'cancelled', updated_at = $1 WHERE id = $2",
