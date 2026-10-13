@@ -1,4 +1,11 @@
+import { existsSync, readFileSync } from "node:fs";
+import { parseEnv } from "node:util";
 import { defineConfig } from "@playwright/test";
+
+// Playwright does not load .env, and Next never overrides a variable it is given: read the
+// secret from .env here so the e2e server keeps a developer's own (B54 review 3). Only
+// that one value is read; nothing is printed.
+const localSecret = existsSync(".env") ? parseEnv(readFileSync(".env", "utf8")).AUTH_SECRET : undefined;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -20,7 +27,10 @@ export default defineConfig({
     env: {
       ATLAS_ENV: "test", DATA_BACKEND: "fixture",
       LIVE_AI_ENABLED: "false", LIVE_SOURCES_ENABLED: "false",
-      UPLOADS_ENABLED: "true", NEXT_TELEMETRY_DISABLED: "1"
+      UPLOADS_ENABLED: "true", NEXT_TELEMETRY_DISABLED: "1",
+      // Login needs a server secret (B54): the environment's, else .env's, else a fixed
+      // test-only one (a fresh checkout or CI without one).
+      AUTH_SECRET: process.env.AUTH_SECRET || localSecret || "e2e-only-ephemeral-session-secret-not-production"
     }
   },
   projects: [

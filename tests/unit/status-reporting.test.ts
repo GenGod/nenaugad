@@ -19,4 +19,14 @@ test("health and doctor report the actual state of auth and uploads", async () =
 
   // Neither report may echo configuration values (secrets rule for doctor).
   assert.ok(!JSON.stringify(report).includes("postgres"));
+
+  // B54: login needs the server secret; doctor says whether it is set, never its value,
+  // reading it as next-auth does (NEXTAUTH_SECRET first, empty is missing).
+  assert.equal(report.authSecret, "missing");
+  const withSecret = doctorReport({ AUTH_SECRET: "doctor-test-secret-value" });
+  assert.equal(withSecret.authSecret, "set");
+  assert.ok(!JSON.stringify(withSecret).includes("doctor-test-secret-value"));
+  assert.equal(doctorReport({ AUTH_SECRET: "" }).authSecret, "missing");
+  assert.equal(doctorReport({ NEXTAUTH_SECRET: "", AUTH_SECRET: "doctor-test-secret-value" }).authSecret, "missing");
+  assert.equal(doctorReport({ NEXTAUTH_SECRET: "doctor-test-secret-value" }).authSecret, "set");
 });

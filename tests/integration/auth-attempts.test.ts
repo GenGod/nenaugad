@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
+import { createHash, createHmac, hkdfSync, randomBytes } from "node:crypto";
 import { Pool } from "pg";
 import { localPool, migrate } from "../../scripts/db.ts";
 import {
@@ -8,12 +8,33 @@ import {
 } from "../../src/server/auth-attempts.ts";
 import { accountExists, authorizeCredentials, checkLogin, registerUser } from "../../src/server/users.ts";
 import { AccountDeletionError, deleteAccount } from "../../src/server/account-deletion.ts";
+import { ConfigurationError } from "../../src/server/config.ts";
 
 // B53 (owner decisions 2026-10-13): a password attempt is counted before the password is
 // checked; 5 attempts in 15 minutes, then refused even with the right password until the
 // window ends. Login counts per email, deletion per account.
 const pool = localPool(process.env.TEST_DATABASE_URL, true);
 test.after(async () => { await pool.end(); });
+
+// B54: the login key is derived from the server secret, read as next-auth reads it
+// (NEXTAUTH_SECRET, else AUTH_SECRET). These tests bring their own.
+const TEST_SECRET = "b54-test-only-secret-not-a-real-one";
+delete process.env.NEXTAUTH_SECRET;
+process.env.AUTH_SECRET = TEST_SECRET;
+
+/** Runs `run` with exactly these secrets set, then restores the test secret. */
+async function withSecrets<T>(secrets: Readonly<{ NEXTAUTH_SECRET?: string; AUTH_SECRET?: string }>, run: () => T | Promise<T>): Promise<T> {
+  delete process.env.NEXTAUTH_SECRET;
+  delete process.env.AUTH_SECRET;
+  Object.assign(process.env, secrets);
+  try {
+    return await run();
+  } finally {
+    delete process.env.NEXTAUTH_SECRET;
+    process.env.AUTH_SECRET = TEST_SECRET;
+  }
+}
+const noSecret = (error: unknown) => error instanceof ConfigurationError && error.message === "AUTH_SECRET_REQUIRED";
 
 const PASSWORD = "long-enough-password";
 const MINUTE = 60_000;
@@ -186,11 +207,12 @@ test("the credentials provider throws only fixed codes: never a database message
   await clearAttempts(pool, [loginAttemptKey(address)]);
 
   // A database that cannot be reached, and a configuration that refuses, both answer
-  // LOGIN_UNAVAILABLE; the log holds the code alone.
+  // LOGIN_UNAVAILABLE; the log holds the code, and a configuration error's own fixed code
+  // as the reason (B54), never a database message.
   const logged = t.mock.method(console, "error", () => undefined);
   const unreachable = new Pool({ connectionString: "postgres://nobody:nobody@127.0.0.1:1/atlas_starter_test", connectionTimeoutMillis: 2000 });
   try {
-    for (const poolOf of [() => unreachable, () => { throw new Error("DATABASE_URL_REQUIRED"); }]) {
+    for (const poolOf of [() => unreachable, () => { throw new ConfigurationError("DATABASE_URL_REQUIRED"); }]) {
       await assert.rejects(authorizeCredentials({ email: address, password: PASSWORD }, poolOf, T0),
         (error: unknown) => error instanceof Error && error.message === "LOGIN_UNAVAILABLE");
     }
@@ -198,6 +220,60 @@ test("the credentials provider throws only fixed codes: never a database message
     await unreachable.end();
   }
   assert.deepEqual(logged.mock.calls.map(call => call.arguments), [
-    [JSON.stringify({ code: "LOGIN_CHECK_FAILED" })], [JSON.stringify({ code: "LOGIN_CHECK_FAILED" })],
+    [JSON.stringify({ code: "LOGIN_CHECK_FAILED" })],
+    [JSON.stringify({ code: "LOGIN_CHECK_FAILED", reason: "DATABASE_URL_REQUIRED" })],
   ]);
+});
+
+test("the login key is an HMAC of the email under a key derived from the server secret (B54)", async () => {
+  const address = "Someone@Example.invalid";
+  const k = loginAttemptKey(address);
+  assert.match(k, /^login:[0-9a-f]{64}$/u);
+  assert.equal(loginAttemptKey(` ${address.toLowerCase()} `), k);
+  // Not the plain hash: a database reader without the secret cannot test a guessed email.
+  assert.notEqual(k, `login:${createHash("sha256").update("someone@example.invalid").digest("hex")}`);
+  // The construction, pinned: HMAC-SHA256 under HKDF-SHA256(secret, no salt, the label).
+  // Changing it starts every login count over, so it changes only on purpose.
+  const derived = Buffer.from(hkdfSync("sha256", TEST_SECRET, "", "nenaugad auth-attempts login v1", 32));
+  assert.equal(k, `login:${createHmac("sha256", derived).update("someone@example.invalid").digest("hex")}`);
+  const other = await withSecrets({ AUTH_SECRET: "another-secret" }, () => loginAttemptKey(address));
+  assert.notEqual(other, k);
+  // NEXTAUTH_SECRET comes first, as in next-auth.
+  assert.equal(await withSecrets({ NEXTAUTH_SECRET: "another-secret", AUTH_SECRET: TEST_SECRET }, () => loginAttemptKey(address)), other);
+  // Unset or empty is no secret: refused, never a fallback.
+  for (const secrets of [{}, { AUTH_SECRET: "" }, { NEXTAUTH_SECRET: "", AUTH_SECRET: TEST_SECRET }]) {
+    await withSecrets(secrets, () => assert.throws(() => loginAttemptKey(address), noSecret));
+  }
+});
+
+test("without the server secret, login and deletion refuse and count nothing (B54)", async t => {
+  await migrate(pool);
+  const address = email();
+  const user = await registerUser(pool, address, PASSWORD);
+  // A window start no other test uses, so "nothing was counted" can be read off the table.
+  const now = new Date("2026-01-07T09:00:00.000Z");
+  // An expired counter: a login without the secret must not prune it either.
+  const expired = key();
+  await takeAttempt(pool, expired, new Date(now.getTime() - 20 * MINUTE));
+  const logged = t.mock.method(console, "error", () => undefined);
+  await withSecrets({}, async () => {
+    await assert.rejects(authorizeCredentials({ email: address, password: PASSWORD }, () => pool, now),
+      (error: unknown) => error instanceof Error && error.message === "LOGIN_UNAVAILABLE");
+    await assert.rejects(checkLogin(pool, address, PASSWORD, now), noSecret);
+    // Refused before the attempt is counted, whatever the password (review 1).
+    await assert.rejects(deleteAccount(pool, user.id, "wrong-password", now), noSecret);
+    await assert.rejects(deleteAccount(pool, user.id, PASSWORD, now), noSecret);
+  });
+  assert.equal(await counter(expired), 1);
+  await clearAttempts(pool, [expired]);
+  assert.deepEqual(logged.mock.calls.map(call => call.arguments), [
+    [JSON.stringify({ code: "LOGIN_CHECK_FAILED", reason: "AUTH_SECRET_REQUIRED" })],
+  ]);
+  const counted = await pool.query("SELECT COUNT(*)::int AS n FROM auth_attempts WHERE window_started_at = $1", [now]);
+  assert.equal((counted.rows[0] as { n: number }).n, 0);
+  assert.equal(await counter(deletionAttemptKey(user.id)), null);
+  assert.equal(await accountExists(pool, user.id), true);
+  // With the secret back, the same account deletes normally.
+  await deleteAccount(pool, user.id, PASSWORD, now);
+  assert.equal(await accountExists(pool, user.id), false);
 });

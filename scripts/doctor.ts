@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { readConfig } from "../src/server/config.ts";
+import { authSecret, readConfig } from "../src/server/config.ts";
 
 /**
  * What `npm run doctor` prints: facts about this local setup, never values from
@@ -14,6 +14,8 @@ export function doctorReport(env: Record<string, string | undefined>): Record<st
     dependenciesInstalled: existsSync("node_modules/next/package.json"),
     backend: config.backend, environment: config.environment,
     realAi: config.liveAi, liveSources: config.liveSources, auth: "implemented",
+    // Login needs it (B54); whether it is set, never its value.
+    authSecret: authSecret(env) === null ? "missing" : "set",
     uploads: config.uploads, realSources: "implemented",
     databaseConnection: "not_probed",
     production: "blocked"

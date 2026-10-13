@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { Pool } from "pg";
 import { clearAttempts, loginAttemptKey, pruneAttempts, takeAttempt } from "./auth-attempts.ts";
+import { ConfigurationError } from "./config.ts";
 
 export type UserRecord = Readonly<{ id: string; email: string; passwordHash: string }>;
 
@@ -77,8 +78,9 @@ export type LoginResult =
  * the same way and the limit does not reveal whether one exists. A success clears the count.
  */
 export async function checkLogin(pool: Pool, email: string, password: string, now = new Date()): Promise<LoginResult> {
-  await pruneAttempts(pool, now);
+  // Derived first: without the server secret nothing is counted or pruned (B54).
   const key = loginAttemptKey(email);
+  await pruneAttempts(pool, now);
   const attempt = await takeAttempt(pool, key, now);
   if (!attempt.admitted) return { ok: false, reason: "TOO_MANY_ATTEMPTS" };
   const user = await findUserByEmail(pool, email);
@@ -92,7 +94,8 @@ export async function checkLogin(pool: Pool, email: string, password: string, no
 /**
  * The credentials provider's check (B53). next-auth sends a thrown error's message to the
  * client, so only fixed codes are thrown: `TOO_MANY_ATTEMPTS`, or `LOGIN_UNAVAILABLE` when
- * the check itself fails, never a database message.
+ * the check itself fails, never a database message. The log names a configuration error's
+ * own fixed code (such as `AUTH_SECRET_REQUIRED`, B54) and nothing of any other error.
  */
 export async function authorizeCredentials(
   credentials: Readonly<Record<string, unknown>> | undefined, pool: () => Pool, now = new Date(),
@@ -103,8 +106,9 @@ export async function authorizeCredentials(
   let result: LoginResult;
   try {
     result = await checkLogin(pool(), email, password, now);
-  } catch {
-    console.error(JSON.stringify({ code: "LOGIN_CHECK_FAILED" }));
+  } catch (error) {
+    const reason = error instanceof ConfigurationError ? error.message : undefined;
+    console.error(JSON.stringify({ code: "LOGIN_CHECK_FAILED", reason }));
     throw new Error("LOGIN_UNAVAILABLE");
   }
   if (!result.ok) {

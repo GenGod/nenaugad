@@ -20,6 +20,9 @@ import { mapHimalayasFixture } from "../../src/server/import/himalayas-fixture.t
 // deletion for a future restore; the foreign keys refuse any late write.
 const pool = localPool(process.env.TEST_DATABASE_URL, true);
 test.after(async () => { await pool.end(); });
+// B54: a deletion clears the login counter, whose key is derived from the server secret.
+delete process.env.NEXTAUTH_SECRET;
+process.env.AUTH_SECRET = "b11-test-only-secret-not-a-real-one";
 
 const NOW = "2026-10-13T12:00:00.000Z";
 const PASSWORD = "long-enough-password";

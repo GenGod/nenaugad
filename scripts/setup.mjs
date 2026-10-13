@@ -12,7 +12,9 @@ try {
   const value = template
     .replace("POSTGRES_PASSWORD=GENERATE_WITH_SETUP", `POSTGRES_PASSWORD=${password}`)
     .replace("DATABASE_URL=GENERATE_WITH_SETUP",
-      `DATABASE_URL=postgresql://atlas:${password}@127.0.0.1:54329/atlas_starter`);
+      `DATABASE_URL=postgresql://atlas:${password}@127.0.0.1:54329/atlas_starter`)
+    // The session secret, which also keys the login counters: login refuses without it (B54).
+    .replace(/^AUTH_SECRET=(?=\r?$)/mu, `AUTH_SECRET=${randomBytes(32).toString("hex")}`);
   await writeFile(".env", value, { flag: "wx", mode: 0o600 });
   console.log("Created local .env (fixture mode). No AI, uploads or live sources. No secrets printed.");
 }

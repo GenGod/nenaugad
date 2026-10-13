@@ -3,8 +3,9 @@
 // password, until the window ends. An attempt is counted before its password is checked,
 // in one atomic upsert, so parallel guesses cannot pass the limit. Login counts per email,
 // whether or not an account has it; deletion counts per account.
-import { createHash } from "node:crypto";
+import { createHmac, hkdfSync } from "node:crypto";
 import type { Pool } from "pg";
+import { authSecret, ConfigurationError } from "./config.ts";
 
 export const ATTEMPT_LIMIT = 5;
 export const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
@@ -15,9 +16,18 @@ export type AttemptDecision =
 
 type Queryable = Pick<Pool, "query">;
 
-/** The login counter's key: a hash of the normalized email, so the table never holds it. */
+/**
+ * The login counter's key: an HMAC of the normalized email under a key derived from the
+ * server secret (B54, owner decisions 2026-10-13), so the table never holds the email and
+ * a database reader without the secret cannot test a guessed one. The HKDF label keeps
+ * this key apart from anything next-auth derives from the same secret. Without the secret
+ * it refuses: there is no unkeyed fallback.
+ */
 export function loginAttemptKey(email: string): string {
-  return `login:${createHash("sha256").update(email.trim().toLowerCase()).digest("hex")}`;
+  const secret = authSecret(process.env);
+  if (secret === null) throw new ConfigurationError("AUTH_SECRET_REQUIRED");
+  const key = Buffer.from(hkdfSync("sha256", secret, "", "nenaugad auth-attempts login v1", 32));
+  return `login:${createHmac("sha256", key).update(email.trim().toLowerCase()).digest("hex")}`;
 }
 
 export function deletionAttemptKey(userId: string): string {

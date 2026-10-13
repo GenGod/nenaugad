@@ -15,6 +15,16 @@ export class ConfigurationError extends Error {
   }
 }
 
+/**
+ * The server secret, read as next-auth reads it: `NEXTAUTH_SECRET`, else `AUTH_SECRET`
+ * (`src/server/auth.ts` leaves the choice to next-auth). Empty is no secret. It signs
+ * sessions and keys the login counters (B54); callers never log or return it.
+ */
+export function authSecret(env: Record<string, string | undefined>): string | null {
+  const secret = env.NEXTAUTH_SECRET ?? env.AUTH_SECRET;
+  return secret ? secret : null;
+}
+
 export function readConfig(env: Record<string, string | undefined>): Config {
   const environment = env.ATLAS_ENV ?? "local";
   if (environment !== "local" && environment !== "test") {

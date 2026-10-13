@@ -58,7 +58,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
 - **Auth and profiles:** manual private profile, explainable matching, saved jobs
   (S2-001, owner-accepted); hide with a reason and applied marks (S2-002). Login and
   account deletion allow 5 password attempts per 15 minutes, per email and per account
-  ([B53-001](tasks/B53-001-password-attempt-limit.md), reviewed, owner-accepted 2026-10-13).
+  ([B53-001](tasks/B53-001-password-attempt-limit.md), reviewed, owner-accepted 2026-10-13). The
+  email is keyed by `AUTH_SECRET`, and login refuses without it; `npm run doctor` says whether it
+  is set ([B54-001](tasks/B54-001-keyed-login-attempt-hash.md), reviewed, owner-accepted 2026-10-13).
 - **CV intake:** offline text/txt/md/docx intake and private storage (S3-001,
   owner-accepted, activated locally); PDF text layer (S3-003).
 - **Letters:** private CRUD, versions and editor (S4-001); deterministic validator

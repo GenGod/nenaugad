@@ -32,6 +32,8 @@ export async function deleteAccount(pool: Pool, userId: string, password: string
     const found = await client.query("SELECT email, password_hash FROM users WHERE id = $1 FOR UPDATE", [userId]);
     const row = found.rows[0] as { email: string; password_hash: string } | undefined;
     if (!row) throw new AccountDeletionError("ACCOUNT_NOT_FOUND");
+    // Derived before counting: without the server secret nothing changes (B54).
+    const loginKey = loginAttemptKey(row.email);
     // Counted under the account row's lock, before the password is checked; a refusal
     // commits the count and nothing else.
     const attempt = await takeAttempt(client, deletionAttemptKey(userId), now);
@@ -42,7 +44,7 @@ export async function deleteAccount(pool: Pool, userId: string, password: string
     } else {
       await client.query("INSERT INTO account_deletions (user_id) VALUES ($1)", [userId]);
       await client.query("DELETE FROM users WHERE id = $1", [userId]);
-      await clearAttempts(client, [deletionAttemptKey(userId), loginAttemptKey(row.email)]);
+      await clearAttempts(client, [deletionAttemptKey(userId), loginKey]);
     }
     await client.query("COMMIT");
   } catch (error) {

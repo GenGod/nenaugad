@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { currentUser } from "../../../../server/auth.ts";
 import { AccountDeletionError, deleteAccount } from "../../../../server/account-deletion.ts";
 import { snapshotPool } from "../../../../server/storage/snapshots.ts";
+import { ConfigurationError } from "../../../../server/config.ts";
 
 function unauthorized() {
   return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
@@ -40,7 +41,10 @@ export async function DELETE(request: Request) {
         ? NextResponse.json({ error: "PASSWORD_MISMATCH" }, { status: 403 })
         : unauthorized();
     }
-    console.error(JSON.stringify({ code: "ACCOUNT_DELETION_FAILED" }));
+    // A configuration error's own fixed code (such as AUTH_SECRET_REQUIRED, B54); nothing
+    // of any other error.
+    const reason = error instanceof ConfigurationError ? error.message : undefined;
+    console.error(JSON.stringify({ code: "ACCOUNT_DELETION_FAILED", reason }));
     return NextResponse.json({ error: "ACCOUNT_DELETION_FAILED" }, { status: 500 });
   }
 }
