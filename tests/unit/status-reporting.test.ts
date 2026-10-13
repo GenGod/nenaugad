@@ -29,4 +29,9 @@ test("health and doctor report the actual state of auth and uploads", async () =
   assert.equal(doctorReport({ AUTH_SECRET: "" }).authSecret, "missing");
   assert.equal(doctorReport({ NEXTAUTH_SECRET: "", AUTH_SECRET: "doctor-test-secret-value" }).authSecret, "missing");
   assert.equal(doctorReport({ NEXTAUTH_SECRET: "doctor-test-secret-value" }).authSecret, "set");
+
+  // B55: the service-wide registration limit, or "invalid" (registration then refuses).
+  assert.equal(report.registrationLimit, 10);
+  assert.equal(doctorReport({ REGISTRATION_LIMIT: "25" }).registrationLimit, 25);
+  assert.equal(doctorReport({ REGISTRATION_LIMIT: "abc" }).registrationLimit, "invalid");
 });

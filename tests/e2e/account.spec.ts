@@ -161,3 +161,20 @@ test("login says it could not check, not that the password is wrong, when the ch
   await expect(page.getByText("Не удалось войти. Попробуйте позже.")).toBeVisible();
   await expect(page.getByText("Неверный email или пароль.")).toHaveCount(0);
 });
+
+// MOCK, labelled: the e2e server's registration limit is raised (REGISTRATION_LIMIT in
+// playwright.config.ts, owner decision 2026-10-13), so the server's answer is replaced to
+// show the form's reading of it; the server side is tested in
+// tests/integration/registration-limit.test.ts.
+test("registration says to wait when the service-wide limit is reached (B55, mocked answer)", async ({ page }) => {
+  await page.goto("/login");
+  await page.route("**/api/v1/auth/register", route => route.fulfill({
+    status: 429, contentType: "application/json", headers: { "retry-after": "600" },
+    body: JSON.stringify({ error: "TOO_MANY_ATTEMPTS", retryAfterSeconds: 600 }),
+  }));
+  await page.getByLabel("Email").fill("nobody@example.invalid");
+  await page.getByLabel("Пароль (минимум 10 символов)").fill("e2e-long-password");
+  await page.getByRole("button", { name: "Создать аккаунт и войти" }).click();
+  await expect(page.getByText("Слишком много регистраций. Попробуйте через 15 минут.")).toBeVisible();
+  await expect(page).toHaveURL(/\/login$/u);
+});

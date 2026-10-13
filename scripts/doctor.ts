@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { authSecret, readConfig } from "../src/server/config.ts";
+import { authSecret, readConfig, registrationLimit } from "../src/server/config.ts";
 
 /**
  * What `npm run doctor` prints: facts about this local setup, never values from
@@ -16,10 +16,20 @@ export function doctorReport(env: Record<string, string | undefined>): Record<st
     realAi: config.liveAi, liveSources: config.liveSources, auth: "implemented",
     // Login needs it (B54); whether it is set, never its value.
     authSecret: authSecret(env) === null ? "missing" : "set",
+    // The service-wide registration limit (B55); "invalid" refuses registration.
+    registrationLimit: registrationLimitOrInvalid(env),
     uploads: config.uploads, realSources: "implemented",
     databaseConnection: "not_probed",
     production: "blocked"
   };
+}
+
+function registrationLimitOrInvalid(env: Record<string, string | undefined>): number | "invalid" {
+  try {
+    return registrationLimit(env);
+  } catch {
+    return "invalid";
+  }
 }
 
 // Node exposes import.meta.main, but the pinned @types/node (22.x) does not type

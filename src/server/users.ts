@@ -1,12 +1,16 @@
 import { randomBytes } from "node:crypto";
 import type { Pool } from "pg";
-import { clearAttempts, loginAttemptKey, pruneAttempts, takeAttempt } from "./auth-attempts.ts";
+import { clearAttempts, loginAttemptKey, pruneAttempts, REGISTRATION_KEY, takeAttempt } from "./auth-attempts.ts";
 import { ConfigurationError } from "./config.ts";
 
 export type UserRecord = Readonly<{ id: string; email: string; passwordHash: string }>;
 
 export class RegistrationError extends Error {
-  constructor(code: "INVALID_EMAIL" | "WEAK_PASSWORD" | "EMAIL_TAKEN") { super(code); }
+  readonly retryAfterSeconds: number | null;
+  constructor(code: "INVALID_EMAIL" | "WEAK_PASSWORD" | "EMAIL_TAKEN" | "TOO_MANY_ATTEMPTS", retryAfterSeconds: number | null = null) {
+    super(code);
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
 }
 
 const EMAIL_PATTERN = /^[^\s@]{1,64}@[^\s@.]{1,63}(\.[^\s@.]{1,63})+$/u;
@@ -55,6 +59,24 @@ export async function registerUser(pool: Pool, email: string, password: string):
   } finally {
     client.release();
   }
+}
+
+/**
+ * Registration under the service-wide limit (B55, owner decisions 2026-10-13): the form
+ * checks first (a malformed email or a short password is not counted), then the count,
+ * before the password is hashed or the email looked up, so a created account and an
+ * `EMAIL_TAKEN` answer count alike. The route is the only caller; tests and seeds call
+ * `registerUser` directly.
+ */
+export async function registerWithinLimit(
+  pool: Pool, email: string, password: string, limit: number, now = new Date(),
+): Promise<UserRecord> {
+  // The setting's own bounds, again here: a caller cannot pass a limit that admits all.
+  if (!Number.isInteger(limit) || limit < 1 || limit > 10_000) throw new ConfigurationError("REGISTRATION_LIMIT_INVALID");
+  validateRegistration(email.trim().toLowerCase(), password);
+  const attempt = await takeAttempt(pool, REGISTRATION_KEY, now, limit);
+  if (!attempt.admitted) throw new RegistrationError("TOO_MANY_ATTEMPTS", attempt.retryAfterSeconds);
+  return registerUser(pool, email, password);
 }
 
 export async function findUserByEmail(pool: Pool, email: string): Promise<UserRecord | null> {

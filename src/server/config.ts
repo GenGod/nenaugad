@@ -25,6 +25,20 @@ export function authSecret(env: Record<string, string | undefined>): string | nu
   return secret ? secret : null;
 }
 
+/**
+ * The service-wide registration limit per 15-minute window (B55, owner decisions
+ * 2026-10-13): `REGISTRATION_LIMIT`, a whole number from 1 to 10 000, or 10 when unset or
+ * empty. Any other value refuses registration rather than guessing.
+ */
+export function registrationLimit(env: Record<string, string | undefined>): number {
+  const raw = env.REGISTRATION_LIMIT;
+  if (raw === undefined || raw === "") return 10;
+  if (!/^[1-9][0-9]{0,4}$/u.test(raw) || Number(raw) > 10_000) {
+    throw new ConfigurationError("REGISTRATION_LIMIT_INVALID");
+  }
+  return Number(raw);
+}
+
 export function readConfig(env: Record<string, string | undefined>): Config {
   const environment = env.ATLAS_ENV ?? "local";
   if (environment !== "local" && environment !== "test") {

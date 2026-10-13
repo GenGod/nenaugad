@@ -33,6 +33,7 @@ export function LoginForm() {
         if (!response.ok) {
           const body = (await response.json().catch(() => ({}))) as { error?: string };
           setError(body.error === "EMAIL_TAKEN" ? "Такой email уже зарегистрирован."
+            : body.error === "TOO_MANY_ATTEMPTS" ? "Слишком много регистраций. Попробуйте через 15 минут."
             : body.error === "WEAK_PASSWORD" ? "Пароль — минимум 10 символов."
             : "Проверьте email и пароль.");
           return;

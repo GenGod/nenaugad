@@ -34,12 +34,18 @@ export function deletionAttemptKey(userId: string): string {
   return `delete:${userId}`;
 }
 
+/** The one service-wide registration counter (B55, owner decision 2026-10-13). */
+export const REGISTRATION_KEY = "register:all";
+
 /**
- * Counts one attempt for `key` and says whether it may go on to the password check. The
- * window starts at a key's first attempt and lasts 15 minutes; a refused attempt is
- * counted too but does not extend it. Runs inside a caller's transaction as well.
+ * Counts one attempt for `key` and says whether it may go on: at most `limit` per window
+ * (5 for a password, B53; registration passes its own, B55). The window starts at a key's
+ * first attempt and lasts 15 minutes; a refused attempt is counted too but does not extend
+ * it. Runs inside a caller's transaction as well.
  */
-export async function takeAttempt(db: Queryable, key: string, now = new Date()): Promise<AttemptDecision> {
+export async function takeAttempt(
+  db: Queryable, key: string, now = new Date(), limit = ATTEMPT_LIMIT,
+): Promise<AttemptDecision> {
   const expired = new Date(now.getTime() - ATTEMPT_WINDOW_MS);
   const result = await db.query(
     `INSERT INTO auth_attempts AS a (key, attempts, window_started_at) VALUES ($1, 1, $2)
@@ -51,7 +57,7 @@ export async function takeAttempt(db: Queryable, key: string, now = new Date()):
   );
   const row = result.rows[0] as { attempts: number; window_started_at: Date } | undefined;
   if (!row) throw new Error("ATTEMPT_NOT_RECORDED");
-  if (row.attempts <= ATTEMPT_LIMIT) return { admitted: true };
+  if (row.attempts <= limit) return { admitted: true };
   const left = row.window_started_at.getTime() + ATTEMPT_WINDOW_MS - now.getTime();
   // A window that starts after `now` (a clock moved back) still ends within one window.
   const retryAfterSeconds = Math.min(Math.max(Math.ceil(left / 1000), 1), ATTEMPT_WINDOW_MS / 1000);

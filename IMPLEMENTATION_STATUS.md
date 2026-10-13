@@ -61,6 +61,8 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   ([B53-001](tasks/B53-001-password-attempt-limit.md), reviewed, owner-accepted 2026-10-13). The
   email is keyed by `AUTH_SECRET`, and login refuses without it; `npm run doctor` says whether it
   is set ([B54-001](tasks/B54-001-keyed-login-attempt-hash.md), reviewed, owner-accepted 2026-10-13).
+  Registration allows 10 per 15 minutes service-wide (`REGISTRATION_LIMIT`;
+  [B55-001](tasks/B55-001-registration-limit.md), reviewed, owner-accepted 2026-10-13).
 - **CV intake:** offline text/txt/md/docx intake and private storage (S3-001,
   owner-accepted, activated locally); PDF text layer (S3-003).
 - **Letters:** private CRUD, versions and editor (S4-001); deterministic validator

@@ -30,7 +30,11 @@ export default defineConfig({
       UPLOADS_ENABLED: "true", NEXT_TELEMETRY_DISABLED: "1",
       // Login needs a server secret (B54): the environment's, else .env's, else a fixed
       // test-only one (a fresh checkout or CI without one).
-      AUTH_SECRET: process.env.AUTH_SECRET || localSecret || "e2e-only-ephemeral-session-secret-not-production"
+      AUTH_SECRET: process.env.AUTH_SECRET || localSecret || "e2e-only-ephemeral-session-secret-not-production",
+      // The suite registers about 33 accounts per run, above the service-wide default of 10
+      // per 15 minutes (B55, owner decision 2026-10-13); the limit itself is tested in
+      // tests/integration/registration-limit.test.ts.
+      REGISTRATION_LIMIT: "1000"
     }
   },
   projects: [
