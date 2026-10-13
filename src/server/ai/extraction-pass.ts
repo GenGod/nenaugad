@@ -15,7 +15,8 @@
 //     that lapses during the pass stops it with `no_permission`: every later
 //     posting would be refused the same way, and the outcome must say so;
 //   * tombstones are skipped: retention blanked their text, so there is nothing
-//     to extract and no reason to pay for an empty prompt;
+//     to extract and no reason to pay for an empty prompt; so is an invitation to a
+//     candidate pool, which is not a vacancy (B40, owner decision 2026-10-13);
 //   * postings are visited newest first, and `limit` counts provider calls, not
 //     rows (B32): an answered, tombstoned, empty or blocked posting does not use
 //     a slot, so each pass reaches postings that still need a record;
@@ -51,6 +52,7 @@ import {
 } from "./spending.ts";
 import { PURPOSE_TASK_TYPE, type ModelTransport } from "./gateway.ts";
 import { extractPostingFields, extractionKey } from "./extraction-service.ts";
+import { isTalentPoolTitle } from "../../domain/vacancy.ts";
 
 /** The budget row the extraction run books into; provisioned by `npm run seed:budgets`. */
 export const EXTRACTOR_OWNER_ID = "u_extraction_001";
@@ -69,6 +71,8 @@ export type ExtractionPassCounts = Readonly<{
   already_rejected: number;
   empty_text: number;
   tombstoned_skipped: number;
+  /** Invitations to a candidate pool, not vacancies (B40): never sent, never paid for. */
+  not_a_vacancy: number;
   /** Postings whose operation is closed without a stored record, or over the ceiling (B31). */
   blocked: number;
 }>;
@@ -126,7 +130,7 @@ export type ExtractionPassResult = Readonly<{
 function emptyCounts(): { -readonly [K in keyof ExtractionPassCounts]: number } {
   return {
     extracted: 0, rejected: 0, already_extracted: 0, already_rejected: 0,
-    empty_text: 0, tombstoned_skipped: 0, blocked: 0,
+    empty_text: 0, tombstoned_skipped: 0, not_a_vacancy: 0, blocked: 0,
   };
 }
 
@@ -227,6 +231,10 @@ export async function runExtractionPass(params: Readonly<{
     // on its own state.
     if (snapshot.lifecycle === "tombstoned") {
       counts.tombstoned_skipped += 1;
+      continue;
+    }
+    if (isTalentPoolTitle(snapshot.title)) {
+      counts.not_a_vacancy += 1;
       continue;
     }
     try {

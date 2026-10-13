@@ -1,10 +1,10 @@
 {
-  "task_id": "B52-001",
-  "file": "tasks/B52-001-uncertain-letter-copy.md",
+  "task_id": "B40-001",
+  "file": "tasks/B40-001-hide-talent-pools.md",
   "status": "accepted",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Owner accepted B52-001 on 2026-10-13. Open: B40."
+  "note": "Owner accepted B40-001 on 2026-10-13. No open gap in docs/OPEN_GAPS.md section B."
 }

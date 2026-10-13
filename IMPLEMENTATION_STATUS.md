@@ -126,7 +126,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   **Before the worker extracts the catalog**, with live AI off: `npm run import:himalayas` until a pass
   that started at page 1 has finished (one run per 24 hours; the current pass is midway),
   and `npm run import:jobicy` once; then live AI on. Otherwise a posting extracted on its
-  old text is paid again when re-read (under $0.40 for today's catalog). Then B40.
+  old text is paid again when re-read (under $0.40 for today's catalog). Talent-pool
+  postings are hidden and not extracted ([B40-001](tasks/B40-001-hide-talent-pools.md), owner
+  decision and acceptance 2026-10-13).
 - **No retry after an uncertain call** ([B37-001](tasks/B37-001-no-retry-after-uncertain.md),
   money, reviewed, owner-accepted 2026-10-12): an uncertain operation keeps its hold and is never
   dispatched again under it. Callers' misreadings left: B45, B46.

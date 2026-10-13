@@ -699,3 +699,28 @@ test("a reservation whose attempt comes past its deadline stops the source as he
   }
   await cleanup();
 });
+
+test("a talent-pool posting is not extracted: no call, no reservation (B40)", async () => {
+  const { pre } = await seedTwoSnapshots();
+  // The owner decided (2026-10-13) that an invitation to a candidate pool is not a vacancy.
+  await pool.query("UPDATE job_snapshots SET snapshot = jsonb_set(snapshot, '{title}', to_jsonb($2::text)) WHERE id = $1",
+    [pre.id, "Join Our Talent Community"]);
+  await provisionExtractorBudget();
+  const previous = process.env.LIVE_AI_ENABLED;
+  process.env.LIVE_AI_ENABLED = "true";
+  try {
+    const counting = countingTransport(VALID_OUTPUT);
+    const pass = await runExtractionPass({ pool, sourceId: "himalayas", transport: counting.transport, clock: () => NOW });
+    assert.equal(pass.outcome, "ran");
+    assert.equal(pass.counts.not_a_vacancy, 1);
+    assert.equal(pass.counts.extracted, 1, "the ordinary posting is extracted as before");
+    assert.equal(counting.calls(), 1, "nothing is sent for the talent pool");
+    const reserved = await pool.query("SELECT COUNT(*)::int AS n FROM ai_operations WHERE idempotency_key LIKE $1",
+      [`extraction:${pre.id}:%`]);
+    assert.equal((reserved.rows[0] as { n: number }).n, 0, "and nothing is reserved for it");
+  } finally {
+    if (previous === undefined) delete process.env.LIVE_AI_ENABLED;
+    else process.env.LIVE_AI_ENABLED = previous;
+  }
+  await cleanup();
+});

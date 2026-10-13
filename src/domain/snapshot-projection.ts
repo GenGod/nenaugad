@@ -2,6 +2,7 @@
 // Remote, geography and freshness stay separate axes; unknown is never
 // upgraded to a verified status (I-01, I-02, spec sections 10-11, 14.3).
 import { choosePrimary, groupDuplicates, type DuplicateGroup } from "./dedup.ts";
+import { isTalentPoolTitle } from "./vacancy.ts";
 import type { JobSnapshot, SourcePolicy } from "./source-contracts.ts";
 
 export type StoredSnapshot = Readonly<{
@@ -43,6 +44,8 @@ export type SnapshotVisibility = "main_catalog" | "needs_review" | "excluded";
 
 export function classifySnapshot(snapshot: JobSnapshot): SnapshotVisibility {
   if (snapshot.lifecycle !== "active") return "excluded";
+  // An invitation to a candidate pool is not a vacancy (B40, owner decision 2026-10-13).
+  if (isTalentPoolTitle(snapshot.title)) return "excluded";
   // Unresolved remote-format contradictions are quarantined out of the main
   // catalog (spec 10.3). Recorded provenance conflicts that were resolved in
   // the safe direction (e.g. narrowed geography) stay visible on the card.
