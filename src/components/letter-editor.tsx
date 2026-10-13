@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { letterErrorMessage } from "./letter-errors.ts";
 
 type Revision = {
   id: string; version: number; body: string;
@@ -60,11 +61,7 @@ export function LetterEditor({ letterId, initialRevision, initialVersions, evide
           setStatus("Письмо требует доработки — вопросы ниже.");
           return;
         }
-        setError(body.error === "BUDGET_EXCEEDED"
-          ? "Бюджет исчерпан — обратитесь к владельцу."
-          : body.error === "PROFILE_REQUIRED"
-          ? "Сначала заполните профиль."
-          : "Не удалось сгенерировать. Попробуйте позже.");
+        setError(letterErrorMessage(body.error));
         return;
       }
       if (body.revision) {

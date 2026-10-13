@@ -150,7 +150,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   `--settle`, until 5 minutes after the dispatch.
 - **An uncertain call is not a spent budget** ([B46-001](tasks/B46-001-uncertain-is-not-budget.md),
   reviewed, owner-accepted 2026-10-13): the gateway answers `OPERATION_UNCERTAIN`;
-  letters and relevance say 409, not 402 «Бюджет исчерпан».
+  letters and relevance say 409, not 402 «Бюджет исчерпан». The editor says the result is
+  unconfirmed and a new generation is a new charge ([B52-001](tasks/B52-001-uncertain-letter-copy.md),
+  owner-accepted 2026-10-13).
 - The reranker (B3-001): purpose `rerank`, provider grants, profile privacy, and the
   quota and operation ceiling.
 - Profile privacy (§4.4), which also gates `matching-scoring`, `hyde` and `eval-judge`.
