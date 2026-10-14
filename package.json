@@ -42,6 +42,7 @@
     "models:fetch": "node --experimental-strip-types scripts/models-fetch.ts",
     "esco:fetch": "node --experimental-strip-types scripts/esco-fetch.ts",
     "models:fetch-llm": "node --experimental-strip-types scripts/models-fetch-llm.ts",
+    "models:fetch-gpu": "node --experimental-strip-types scripts/models-fetch-gpu.ts",
     "eval:local-llm": "node --experimental-strip-types scripts/eval-local-llm.ts",
     "embeddings:index": "node --experimental-strip-types --env-file-if-exists=.env scripts/embeddings-index.ts",
     "extract:fields": "node --experimental-strip-types --env-file-if-exists=.env scripts/extract-fields.ts",

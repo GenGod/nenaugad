@@ -1,10 +1,10 @@
 {
-  "task_id": "B55-001",
-  "file": "tasks/B55-001-registration-limit.md",
-  "status": "accepted",
+  "task_id": "MODEL-003",
+  "file": "tasks/MODEL-003-role-aware-rubric.md",
+  "status": "measured",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Owner accepted B55-001 on 2026-10-13. Section B of docs/OPEN_GAPS.md: only B9 remains, deferred."
+  "note": "MODEL-003 measured 2026-10-14: role-first fixes the keyword traps but is a no-go (p-backend-eu regression, j24 contract miss); a next variant needs fresh owner-graded data. MODEL-002: owner marked all six letters usable (letter leg passes). Both uncommitted."
 }

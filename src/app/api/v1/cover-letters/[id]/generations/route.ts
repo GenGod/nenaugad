@@ -14,6 +14,7 @@ import { isJobSnapshot } from "../../../../../../domain/source-contracts.ts";
 import { latestProfile } from "../../../../../../server/profile-service.ts";
 import { maySendTextToProvider } from "../../../../../../server/source-policies.ts";
 import { assertNoCandidateFacts } from "../../../../../../server/ai/personal-data-boundary.ts";
+import { buildLetterPrompt, letterJobExcerpt } from "../../../../../../server/letters/prompt.ts";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -39,8 +40,6 @@ export async function POST(request: Request, { params }: Params) {
   const profile = await latestProfile(pool, user.id);
   if (!profile) return NextResponse.json({ error: "PROFILE_REQUIRED" }, { status: 409 });
   const isGeneral = detail.summary.jobSnapshotId === null;
-  const roles = profile.input.targetRoles.join(", ");
-  const country = profile.input.residenceCountry ?? "не указана";
   let prompt: string;
   let jobTitle = "";
   let jobCompany = "";
@@ -59,10 +58,13 @@ export async function POST(request: Request, { params }: Params) {
     }
     jobTitle = job.title;
     jobCompany = job.company_name;
-    const jobExcerpt = (snapshot.excerpt || job.description_text.slice(0, 500)).slice(0, 500);
-    prompt = `Write a professional cover letter for the position "${jobTitle}" at "${jobCompany}". Candidate target roles: ${roles}. Country: ${country}. Job excerpt: ${jobExcerpt}. Write in a neutral professional tone, 150-250 words. Do NOT invent achievements, metrics, or skills not mentioned. Output JSON: {"cover_letter": "..."}`;
+    // The prompt lives in one place, shared with the local-model measurement (MODEL-002).
+    prompt = buildLetterPrompt({
+      targetRoles: profile.input.targetRoles, country: profile.input.residenceCountry,
+      job: { title: jobTitle, company: jobCompany, excerpt: letterJobExcerpt(snapshot.excerpt, job.description_text) },
+    });
   } else {
-    prompt = `Write a general cover letter draft (no specific employer). Candidate target roles: ${roles}. Country: ${country}. Highlight transferable skills and professional interests. Do NOT mention any specific employer, company, product, mission, or position. Write in a neutral professional tone, 150-250 words. Add at the end: "Адаптируйте под конкретную вакансию." Do NOT invent achievements, metrics, or skills not mentioned. Output JSON: {"cover_letter": "..."}`;
+    prompt = buildLetterPrompt({ targetRoles: profile.input.targetRoles, country: profile.input.residenceCountry, job: null });
   }
 
   try {

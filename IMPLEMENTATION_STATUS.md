@@ -166,7 +166,12 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
 - The reranker (B3-001): purpose `rerank`, provider grants, profile privacy, and the
   quota and operation ceiling.
 - Profile privacy (§4.4), which also gates `matching-scoring`, `hyde` and `eval-judge`.
-- The local generative model path (MODEL-002).
+- The local generative model path ([MODEL-002](tasks/MODEL-002-gpu-spike.md), measured 2026-10-14):
+  on the RTX 5060 an 8B model answers the rubric 39/39 in about 3.5 s, but scores two keyword-trap
+  jobs 75–85 (no-go); the owner marked its six letters usable as drafts (they still describe
+  unconfirmed experience). Scoring and letters stay closed. A role check in the rubric fixes the keyword traps but rejects
+  neighbouring and same roles on held-out profiles: no-go ([MODEL-003](tasks/MODEL-003-role-aware-rubric.md));
+  a next variant needs fresh owner-graded jobs.
 - Restore (SP-T22, a beta prerequisite): it must re-apply `account_deletions`. Account deletion
   itself is done ([B11-001](tasks/B11-001-account-deletion.md), reviewed, owner-accepted
   2026-10-13).

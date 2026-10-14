@@ -6,6 +6,9 @@ dist/
 # `npm run models:fetch`, never committed. The pins live in
 # src/domain/embeddings.ts and scripts/models-fetch.ts.
 models/
+# GPU runtime for the MODEL-002 spike: llama.cpp release zips and their unpacked
+# binaries, fetched and hash-verified by `npm run models:fetch-gpu`, never committed.
+tools/
 # ESCO skills artifact (ESCO-001): dataset v1.2.1 pages + concept documents,
 # fetched and hash-verified by `npm run esco:fetch`, never committed. The pins
 # live in data/esco-manifest.json (committed).
