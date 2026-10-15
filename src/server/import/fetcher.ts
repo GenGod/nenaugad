@@ -56,11 +56,17 @@ async function pinnedJsonFetch(url: URL, timeoutMs: number): Promise<FetchPageRe
   if (!parsed || typeof parsed !== "object" || !Array.isArray((parsed as { jobs?: unknown }).jobs)) {
     return { status: "server_error" };
   }
+  // Absent, null or empty is the last page. A cursor we cannot pass back is a
+  // failed page, never the end of the feed: read as the end, it made a partial
+  // himalayas run look like a complete pass (B58-001).
   const rawCursor = (parsed as { nextCursor?: unknown }).nextCursor;
-  const nextCursor = typeof rawCursor === "string" && rawCursor.length > 0
-    ? (CURSOR_PATTERN.test(rawCursor) ? rawCursor : null)
-    : null;
-  return { status: "ok", jobs: (parsed as { jobs: unknown[] }).jobs, nextCursor };
+  if (rawCursor === undefined || rawCursor === null || rawCursor === "") {
+    return { status: "ok", jobs: (parsed as { jobs: unknown[] }).jobs, nextCursor: null };
+  }
+  if (typeof rawCursor !== "string" || !CURSOR_PATTERN.test(rawCursor)) {
+    return { status: "server_error" };
+  }
+  return { status: "ok", jobs: (parsed as { jobs: unknown[] }).jobs, nextCursor: rawCursor };
 }
 
 export async function fetchHimalayasPage(request: PageRequest = {}): Promise<FetchPageResult> {

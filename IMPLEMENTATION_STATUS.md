@@ -48,7 +48,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
 - **Import and catalog:** worker with schedules, backoff and a per-source circuit
   breaker (S1-004); jobicy closure checks (S1-005, the batch status endpoint since B56-001);
   the jobicy import follows the feed cursor through the 7-day window, up to 10 pages a run
-  ([B57-001](tasks/B57-001-jobicy-feed-paging.md)); cross-source dedup with provenance
+  ([B57-001](tasks/B57-001-jobicy-feed-paging.md)); a page cursor in an unexpected format
+  fails the run instead of ending it as a complete pass ([B58-001](tasks/B58-001-rejected-cursor-is-a-failure.md));
+  cross-source dedup with provenance
   (A4); a cross-language near-dup queue for a human, nothing merged automatically
   (B5-001); expired records become tombstones, and the journal keeps 12 months (RET-001).
   A worldwide jobicy label is checked against the posting text: a stated residence
@@ -108,6 +110,8 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-10-15 (B58-001): `npm run check` (unit 361/361) and `npm run test:coverage` (483/483;
+  84.41 / 87.70 / 93.10), exit 0. Not run: `build`, `test:e2e`.
 - 2026-10-15 (B57-001): `npm run check` (unit 358/358) and `npm run test:coverage` (480/480;
   84.41 / 87.68 / 93.10), exit 0. Not run: `build`, `test:e2e`.
 - 2026-10-15 (B56-001, after the review fix): `npm run check` (unit 353/353),

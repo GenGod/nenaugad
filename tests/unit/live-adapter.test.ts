@@ -183,3 +183,58 @@ test("RET-001: a re-listed posting revives its tombstone and keeps its provenanc
   assert.equal(revived.firstSeenAt, original.firstSeenAt, "provenance survives the tombstone");
   assert.ok(revived.snapshot.title.length > 0, "the text is back");
 });
+
+// B58-001: a cursor the fetcher rejects used to read as the last page, so a
+// partial himalayas run was imported as a complete pass.
+test("fetcher: a rejected nextCursor is a failure; absent, null or empty is the last page", async () => {
+  const originalFetch = globalThis.fetch;
+  test.after(() => { globalThis.fetch = originalFetch; });
+  const answer = (nextCursor: unknown) => {
+    globalThis.fetch = (async () => jsonResponse({ jobs: [], nextCursor })) as typeof fetch;
+  };
+  for (const rejected of ["a/b+c", "x".repeat(513), 12345, { next: "p2" }, true]) {
+    answer(rejected);
+    assert.equal((await fetchHimalayasPage()).status, "server_error", JSON.stringify(rejected).slice(0, 20));
+  }
+  for (const last of [null, "", undefined]) {
+    answer(last);
+    const page = await fetchHimalayasPage();
+    assert.equal(page.status, "ok");
+    assert.equal(page.status === "ok" ? page.nextCursor : "x", null);
+  }
+  answer("page-2");
+  const page = await fetchHimalayasPage();
+  assert.equal(page.status === "ok" ? page.nextCursor : null, "page-2");
+});
+
+test("a rejected cursor mid-run is no complete pass: no miss, checkpoint and window kept", async () => {
+  const originalFetch = globalThis.fetch;
+  test.after(() => { globalThis.fetch = originalFetch; });
+  const persistence = createMemoryPersistence();
+  // A complete pass with all three fixture postings.
+  await runHimalayasImport({
+    transport: async () => ({ status: "ok" as const, jobs: [...himalayasContractFixture], nextCursor: null }),
+    persistence, policy: enabledPolicy, now: NOW,
+  });
+  // A day later the real fetcher reads two pages; the second names a cursor in a
+  // format the fetcher rejects. Before B58 this ended the walk as complete and
+  // gave the third posting a miss.
+  const [first, second] = himalayasContractFixture;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const cursor = new URL(String(input)).searchParams.get("cursor");
+    return cursor === null
+      ? jsonResponse({ jobs: [first], nextCursor: "page-2" })
+      : jsonResponse({ jobs: [second], nextCursor: "a/b+c" });
+  }) as typeof fetch;
+  const later = "2026-09-25T12:30:00.000Z";
+  const report = await runHimalayasImport({
+    transport: cursor => fetchHimalayasPage({ cursor }), persistence, policy: enabledPolicy, now: later,
+  });
+  assert.equal(report.result, "retry_scheduled");
+  for (const stored of Object.values(persistence.store.records)) {
+    assert.equal(stored.fullPassMisses, 0, stored.snapshot.id);
+    assert.equal(stored.snapshot.lifecycle, "active");
+  }
+  assert.equal(persistence.state?.lastRunAt, NOW); // the window is not used
+  assert.equal(persistence.state?.nextCursor, null);
+});

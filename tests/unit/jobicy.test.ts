@@ -456,6 +456,28 @@ test("fetcher: the jobicy cursor reaches the URL unchanged; a malformed one send
   assert.equal(seen.length, 2);
 });
 
+test("a rejected cursor ends the jobicy walk as interrupted, not complete (B58)", async () => {
+  const originalFetch = globalThis.fetch;
+  test.after(() => { globalThis.fetch = originalFetch; });
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const cursor = new URL(String(input)).searchParams.get("cursor");
+    const body = cursor === null
+      ? { jobs: [jobA], nextCursor: "c1" }
+      : { jobs: [jobB], nextCursor: "a/b+c" };
+    return new Response(JSON.stringify(body), {
+      status: 200, headers: { "content-type": "application/json" },
+    });
+  }) as typeof fetch;
+  const report = await runJobicyImport({
+    transport: cursor => fetchJobicyWindow({ count: 200, cursor }),
+    persistence: createMemoryPersistence(), policy: enabledPolicy, now: NOW,
+  });
+  assert.equal(report.result, "partial");
+  assert.equal(report.traversal, "interrupted");
+  assert.equal(report.pagesFetched, 1);
+  assert.equal(report.recordsMapped, 1);
+});
+
 test("fetcher: jobicy window is pinned to jobicy.com", async () => {
   const originalFetch = globalThis.fetch;
   test.after(() => { globalThis.fetch = originalFetch; });
