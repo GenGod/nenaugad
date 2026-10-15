@@ -210,6 +210,10 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   catalog, so it is a separate task.
 
 ## Known limits
+- `/matched` scans every posting per request: 3.9 s cold, 1.3 s repeat on 3,582 postings;
+  the skill cache holds about 6,100, past which repeats cost as much as cold
+  ([PERF-001](tasks/PERF-001-matched-at-catalog-scale.md)). A daily himalayas worker passes
+  that in about five days.
 - The monthly quota window is stored but has no calendar reset (OPEN_GAPS A5).
 - Constants of the new ranking layers wait for accumulated data; measurements come
   from one machine (DGAP-001).
