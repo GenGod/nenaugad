@@ -7,7 +7,7 @@ import {
 import {
   mapHimalayasFixture, AdapterInputError as HimalayaAdapterInputError,
 } from "../../src/server/import/himalayas-fixture.ts";
-import { runJobicyImport } from "../../src/server/import/jobicy-adapter.ts";
+import { runJobicyImport, DEFAULT_MAX_JOBICY_PAGES } from "../../src/server/import/jobicy-adapter.ts";
 import { createMemoryPersistence } from "../../src/server/import/himalayas-adapter.ts";
 import { jobicyCandidatePolicy, permissionFor } from "../../src/server/source-policies.ts";
 import { fetchJobicyWindow } from "../../src/server/import/fetcher.ts";
@@ -336,6 +336,124 @@ test("window import: always partial, idempotent, poll-gated, disabled refuses", 
   });
   assert.equal(rateLimited.result, "retry_scheduled");
   assert.equal(failing.state, null);
+});
+
+// A labelled stand-in for fetchJobicyWindow: serves the given pages in order and
+// records the cursor of every request (B57-001).
+type Page = Awaited<ReturnType<typeof fetchJobicyWindow>>;
+function pagedFeed(pages: readonly Page[]) {
+  const cursors: (string | null)[] = [];
+  const transport = async (cursor: string | null): Promise<Page> => {
+    cursors.push(cursor);
+    return pages[cursors.length - 1] ?? { status: "server_error" };
+  };
+  return { transport, cursors };
+}
+const [jobA, jobB, jobC] = jobicyContractFixture;
+
+test("window import follows the cursor, unchanged and in order, until it is null", async () => {
+  const persistence = createMemoryPersistence();
+  const feed = pagedFeed([
+    { status: "ok", jobs: [jobA], nextCursor: "c1" },
+    { status: "ok", jobs: [jobB], nextCursor: "c2" },
+    { status: "ok", jobs: [jobC], nextCursor: null },
+  ]);
+  const report = await runJobicyImport({
+    transport: feed.transport, persistence, policy: enabledPolicy, now: NOW,
+  });
+  assert.deepEqual(feed.cursors, [null, "c1", "c2"]);
+  assert.equal(report.result, "partial");
+  assert.equal(report.traversal, "complete");
+  assert.equal(report.pagesFetched, 3);
+  assert.equal(report.recordsMapped, 3);
+  assert.equal(Object.keys((await persistence.loadStore()).store.records).length, 3);
+  for (const stored of Object.values((await persistence.loadStore()).store.records)) {
+    assert.equal(stored.fullPassMisses, 0); // a complete walk is still a window, not a snapshot
+  }
+});
+
+test("window import stops at the page cap, 10 by default", async () => {
+  let calls = 0;
+  const endless = async () => {
+    calls += 1;
+    return { status: "ok" as const, jobs: [jobA], nextCursor: `page-${calls}` };
+  };
+  const capped = await runJobicyImport({
+    transport: endless, persistence: createMemoryPersistence(), policy: enabledPolicy, now: NOW,
+    maxPages: 2,
+  });
+  assert.equal(capped.traversal, "page_cap");
+  assert.equal(capped.pagesFetched, 2);
+  assert.equal(calls, 2);
+  calls = 0;
+  const byDefault = await runJobicyImport({
+    transport: endless, persistence: createMemoryPersistence(), policy: enabledPolicy, now: NOW,
+  });
+  assert.equal(byDefault.pagesFetched, DEFAULT_MAX_JOBICY_PAGES);
+  assert.equal(calls, 10);
+  calls = 0;
+  const zero = await runJobicyImport({
+    transport: endless, persistence: createMemoryPersistence(), policy: enabledPolicy, now: NOW,
+    maxPages: 0,
+  });
+  assert.equal(zero.pagesFetched, 1); // a run never uses the window without reading a page
+  assert.equal(calls, 1);
+});
+
+test("a later page that fails keeps the pages read; the run counts", async () => {
+  const persistence = createMemoryPersistence();
+  const feed = pagedFeed([
+    { status: "ok", jobs: [jobA, jobB], nextCursor: "c1" },
+    { status: "rate_limited" },
+  ]);
+  const report = await runJobicyImport({
+    transport: feed.transport, persistence, policy: enabledPolicy, now: NOW,
+  });
+  assert.equal(report.result, "partial");
+  assert.equal(report.traversal, "interrupted");
+  assert.equal(report.pagesFetched, 1);
+  assert.equal(report.recordsMapped, 2);
+  assert.equal(feed.cursors.length, 2); // no third request after the failure
+  assert.equal(Object.keys((await persistence.loadStore()).store.records).length, 2);
+  assert.equal(persistence.state?.lastRunAt, NOW); // the 6-hour window is used
+});
+
+test("a job repeated across pages keeps its first copy and that copy's excerpt", async () => {
+  const persistence = createMemoryPersistence();
+  const feed = pagedFeed([
+    { status: "ok", jobs: [{ ...jobA!, jobExcerpt: "first page" }], nextCursor: "c1" },
+    { status: "ok", jobs: [{ ...jobA!, jobExcerpt: "second page" }], nextCursor: null },
+  ]);
+  const report = await runJobicyImport({
+    transport: feed.transport, persistence, policy: enabledPolicy, now: NOW,
+  });
+  assert.equal(report.recordsMapped, 2);
+  const store = await persistence.loadStore();
+  assert.equal(Object.keys(store.store.records).length, 1);
+  assert.equal(store.excerpts[`jobicy:${jobA!.id}`], "first page");
+});
+
+test("fetcher: the jobicy cursor reaches the URL unchanged; a malformed one sends nothing", async () => {
+  const originalFetch = globalThis.fetch;
+  test.after(() => { globalThis.fetch = originalFetch; });
+  const seen: string[] = [];
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    seen.push(String(input));
+    return new Response(JSON.stringify({ jobs: [], nextCursor: "eyJ0IjoxfQ.sig_-", hasMore: true }), {
+      status: 200, headers: { "content-type": "application/json" },
+    });
+  }) as typeof fetch;
+  const first = await fetchJobicyWindow({ count: 200 });
+  assert.equal(first.status, "ok");
+  assert.equal(first.status === "ok" ? first.nextCursor : undefined, "eyJ0IjoxfQ.sig_-");
+  assert.equal(new URL(seen[0] ?? "").searchParams.has("cursor"), false);
+  await fetchJobicyWindow({ count: 200, cursor: "eyJ0IjoxfQ.sig_-" });
+  const second = new URL(seen[1] ?? "");
+  assert.equal(second.searchParams.get("cursor"), "eyJ0IjoxfQ.sig_-");
+  assert.equal(second.searchParams.get("count"), "200"); // the page size stays the same
+  const refused = await fetchJobicyWindow({ count: 200, cursor: "https://evil.example/x" });
+  assert.equal(refused.status, "network_error");
+  assert.equal(seen.length, 2);
 });
 
 test("fetcher: jobicy window is pinned to jobicy.com", async () => {

@@ -56,7 +56,7 @@ async function attempt(setup: Setup): Promise<void> {
           persistence: setup.persistence, policy: setup.policy, now,
         })
       : await runJobicyImport({
-          transport: () => fetchJobicyWindow({ count: 200 }),
+          transport: cursor => fetchJobicyWindow({ count: 200, cursor }),
           persistence: setup.persistence, policy: setup.policy, now,
         });
     if (report.result === "refused_poll_interval" || report.result === "refused_disabled") {
@@ -72,6 +72,8 @@ async function attempt(setup: Setup): Promise<void> {
       result: report.result,
       recordsMapped: "recordsMapped" in report ? report.recordsMapped : undefined,
       recordsRejected: "recordsRejected" in report ? report.recordsRejected : undefined,
+      pagesFetched: report.pagesFetched,
+      traversal: "traversal" in report ? report.traversal : undefined,
       changes: report.changes.length,
       tombstoned: report.tombstoned,
       consecutiveFailures: state?.consecutiveFailures ?? 0,

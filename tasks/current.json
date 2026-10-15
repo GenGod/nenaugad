@@ -1,10 +1,10 @@
 {
-  "task_id": "B56-001",
-  "file": "tasks/B56-001-jobicy-batch-status.md",
-  "status": "accepted",
+  "task_id": "B57-001",
+  "file": "tasks/B57-001-jobicy-feed-paging.md",
+  "status": "implemented",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "Owner accepted B56-001 on 2026-10-15 (Jobicy closure checks use the batch status endpoint; terms re-baselined, policy v6). Suggested next: B56 decision 4, cursor paging of the Jobicy feed."
+  "note": "B57-001 implemented, tested locally and committed 2026-10-15 at the owner's request: the Jobicy import follows nextCursor, up to 10 pages a run. The next import reports pagesFetched and traversal (page_cap = raise the cap). Offered separately: B58 (a rejected cursor reads as the last page; risky for himalayas)."
 }

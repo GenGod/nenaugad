@@ -46,7 +46,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
 - **Sources:** himalayas and jobicy, owner-activated (S1-002 2026-09-24, S1-003
   2026-09-25). Normalized terms fingerprints; jobicy holds `process_with_ml` (EDEC-001).
 - **Import and catalog:** worker with schedules, backoff and a per-source circuit
-  breaker (S1-004); jobicy closure checks (S1-005); cross-source dedup with provenance
+  breaker (S1-004); jobicy closure checks (S1-005, the batch status endpoint since B56-001);
+  the jobicy import follows the feed cursor through the 7-day window, up to 10 pages a run
+  ([B57-001](tasks/B57-001-jobicy-feed-paging.md)); cross-source dedup with provenance
   (A4); a cross-language near-dup queue for a human, nothing merged automatically
   (B5-001); expired records become tombstones, and the journal keeps 12 months (RET-001).
   A worldwide jobicy label is checked against the posting text: a stated residence
@@ -106,6 +108,8 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-10-15 (B57-001): `npm run check` (unit 358/358) and `npm run test:coverage` (480/480;
+  84.41 / 87.68 / 93.10), exit 0. Not run: `build`, `test:e2e`.
 - 2026-10-15 (B56-001, after the review fix): `npm run check` (unit 353/353),
   `npm run test:coverage` (unit and DB 475/475; 84.32% lines, 87.47% branches, 93.13%
   functions; ratchet raised to 84/87/92), all exit 0; `npm run build` exit 0 before the

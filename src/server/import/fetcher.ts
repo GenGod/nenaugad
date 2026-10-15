@@ -76,24 +76,30 @@ export async function fetchHimalayasPage(request: PageRequest = {}): Promise<Fet
   return pinnedJsonFetch(url, request.timeoutMs ?? DEFAULT_TIMEOUT_MS);
 }
 
-// Jobicy window feed: one request returns the latest window (no cursor).
-// The window is NOT a full snapshot — the importer always treats it as partial.
+// Jobicy window feed: the jobs published in the last 7 days, newest first, one
+// page per request; `nextCursor` continues the traversal and is null on the last
+// page (B57-001). The window is NOT a full snapshot — the importer always treats
+// it as partial. `nextCursor` is optional so a single-page stand-in stays valid.
 export type JobicyWindowResult = Readonly<
-  | { status: "ok"; jobs: readonly unknown[] }
+  | { status: "ok"; jobs: readonly unknown[]; nextCursor?: string | null }
   | { status: "rate_limited" }
   | { status: "server_error" }
   | { status: "network_error" }
 >;
 
 export async function fetchJobicyWindow(request: Readonly<{
-  count?: number; timeoutMs?: number;
+  count?: number; cursor?: string | null; timeoutMs?: number;
 }> = {}): Promise<JobicyWindowResult> {
+  const cursor = request.cursor ?? null;
+  if (cursor !== null && !CURSOR_PATTERN.test(cursor)) {
+    return { status: "network_error" };
+  }
   const count = Math.min(Math.max(request.count ?? 200, 1), 200);
   const url = new URL(JOBICY_FEED_URL);
   url.searchParams.set("count", String(count));
+  if (cursor !== null) url.searchParams.set("cursor", cursor);
   if (url.host !== "jobicy.com") return { status: "network_error" };
-  const result = await pinnedJsonFetch(url, request.timeoutMs ?? DEFAULT_TIMEOUT_MS);
-  return result.status === "ok" ? { status: "ok", jobs: result.jobs } : result;
+  return pinnedJsonFetch(url, request.timeoutMs ?? DEFAULT_TIMEOUT_MS);
 }
 
 // Batch liveness check of stored Jobicy jobs (B56-001). Since 2026-10-01 the

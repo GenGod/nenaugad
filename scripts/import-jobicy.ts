@@ -26,7 +26,7 @@ try {
   await migrate(pool);
   const persistence = createPostgresPersistence(pool, policy);
   const report = await runJobicyImport({
-    transport: () => fetchJobicyWindow({ count: 200 }),
+    transport: cursor => fetchJobicyWindow({ count: 200, cursor }),
     persistence,
     policy,
     now: new Date().toISOString(),
