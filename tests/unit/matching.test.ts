@@ -225,3 +225,62 @@ test("rule TIME-01: unpublished schedule is not_applicable; accepted zones check
   const utcZero = ruleOf(evaluateJob(withZones([0]), profileWith({ timezone: "UTC" })), "TIME-01");
   assert.equal(utcZero?.outcome, "pass");
 });
+
+test("rule TIME-01 (B59): a standard-offset list names zones by their winter offset", () => {
+  const listed = (offsets: number[], semantics: "standard_utc_offset" | "fixed_utc_offset") =>
+    snapshotMutated(snapshot => ({
+      ...snapshot,
+      hiring_options: [{ ...snapshot.hiring_options[0]!,
+        schedule: { ...snapshot.hiring_options[0]!.schedule,
+          status: "explicit", zone_semantics: semantics, mode: "within_offset_set",
+          accepted_utc_offsets_minutes: offsets, original_text: JSON.stringify(offsets.map(m => m / 60)) } }],
+    }));
+  const time = (offsets: number[], timezone: string, semantics: "standard_utc_offset" | "fixed_utc_offset" = "standard_utc_offset") =>
+    ruleOf(evaluateJob(listed(offsets, semantics), profileWith({ timezone })), "TIME-01");
+  const usList = [-600, -540, -480, -420, -360, -300, 840]; // Himalayas' US list, in minutes
+
+  // A zone whose winter offset is listed passes all year, summer time included.
+  assert.equal(time([60], "Europe/Berlin")?.outcome, "pass");
+  assert.equal(time([0], "Europe/London")?.outcome, "pass");
+  assert.equal(time(usList, "America/New_York")?.outcome, "pass");
+  assert.equal(time([600], "Australia/Sydney")?.outcome, "pass"); // southern-hemisphere summer time
+  assert.equal(time(usList, "America/Los_Angeles")?.outcome, "pass");
+  // A zone at UTC+2 all year is not a UTC+1 zone.
+  const johannesburg = time([60], "Africa/Johannesburg");
+  assert.equal(johannesburg?.outcome, "fail");
+  assert.deepEqual(johannesburg?.reasonCodes, ["OVERLAP_INSUFFICIENT"]);
+  // A zone that meets the list only in summer stays unknown, as before.
+  assert.equal(time([60], "Europe/London")?.outcome, "unknown");
+  // Ramadan moves Casablanca to UTC+0 for weeks: its lowest offset is 0, not listed.
+  assert.equal(time([60], "Africa/Casablanca")?.outcome, "unknown");
+  // Without a profile zone nothing is decided.
+  const noZone = ruleOf(evaluateJob(listed([60], "standard_utc_offset"), { ...profileWith({}), timezone: null }), "TIME-01");
+  assert.equal(noZone?.outcome, "unknown");
+
+  // The fixed reading is unchanged: Berlin is UTC+2 in summer, not in [60].
+  assert.equal(time([60], "Europe/Berlin", "fixed_utc_offset")?.outcome, "unknown");
+  assert.equal(RULESET_VERSION, 5);
+});
+
+test("B59: the standard reading only ever turns unknown into pass", () => {
+  const zones = ["Europe/Berlin", "Europe/London", "America/New_York", "America/Los_Angeles",
+    "Australia/Sydney", "Africa/Johannesburg", "Africa/Casablanca", "Asia/Tbilisi",
+    "America/Sao_Paulo", "Asia/Kolkata", "Pacific/Auckland", "America/St_Johns", "UTC"];
+  const lists = [[0], [60], [120], [-300], [-600, -540, -480, -420, -360, -300, 840],
+    [-480, -420, -360, -300, -240, -210], [0, 60], [330], [600], [-180]];
+  for (const timezone of zones) for (const offsets of lists) {
+    const at = (semantics: "standard_utc_offset" | "fixed_utc_offset") => ruleOf(evaluateJob(
+      snapshotMutated(snapshot => ({
+        ...snapshot,
+        hiring_options: [{ ...snapshot.hiring_options[0]!,
+          schedule: { ...snapshot.hiring_options[0]!.schedule,
+            status: "explicit", zone_semantics: semantics, mode: "within_offset_set",
+            accepted_utc_offsets_minutes: offsets, original_text: "[]" } }],
+      })), profileWith({ timezone })), "TIME-01")?.outcome;
+    const fixed = at("fixed_utc_offset");
+    const standard = at("standard_utc_offset");
+    if (fixed !== standard) {
+      assert.equal(`${fixed}->${standard}`, "unknown->pass", `${timezone} ${JSON.stringify(offsets)}`);
+    }
+  }
+});

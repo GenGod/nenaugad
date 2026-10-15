@@ -80,8 +80,10 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   golden set v4 (39 vacancies, A1 and DGAP-001). Skills dictionary v2 with Russian
   aliases (A3) plus 13,939 ESCO v1.2.1 skills with mandatory attribution (ESCO-001).
   Freshness, seen-set, negative preference, digest, journal, ghost demotion and shadow
-  guardrails (A5–A10). Matching rules v4: GEO-01 never fails a candidate on an incomplete
-  country list (B25-001).
+  guardrails (A5–A10). Matching rules v5: GEO-01 never fails a candidate on an incomplete
+  country list (B25-001); a Himalayas time-zone list names zones by their standard (winter)
+  offset, so summer time passes ([B59-001](tasks/B59-001-himalayas-standard-offsets.md);
+  the 2,859 stored himalayas postings re-mapped 2026-10-15, rollback in `backups/`).
 - **Retrieval:** pinned local embedding model (`npm run models:fetch`), pgvector, dense
   leg, BM25 and RRF are implemented and measured but not switched on: BM25 alone beats
   fusion, and the ranker beats every leg (B1-001, B1-002, B2-001). The rerank input is
@@ -110,6 +112,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-10-15 (B59-001): `npm run check` (unit 364/364), `npm run test:coverage` (486/486;
+  84.43 / 87.80 / 93.11), `npm run test:e2e` (123 passed) and `npm run eval:matching`
+  (unchanged), exit 0.
 - 2026-10-15 (B58-001): `npm run check` (unit 361/361) and `npm run test:coverage` (483/483;
   84.41 / 87.70 / 93.10), exit 0. Not run: `build`, `test:e2e`.
 - 2026-10-15 (B57-001): `npm run check` (unit 358/358) and `npm run test:coverage` (480/480;

@@ -217,6 +217,7 @@
           "enum": [
             "iana",
             "fixed_utc_offset",
+            "standard_utc_offset",
             "ambiguous",
             "not_stated"
           ]

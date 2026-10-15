@@ -261,6 +261,8 @@ function scheduleFor(raw: HimalayasRawRecord): Schedule {
   // Live contract (verified 2026-09-24): timezoneRestrictions are numeric UTC
   // offsets in hours (fractional .25/.5/.75 allowed), despite the OpenAPI
   // claiming strings. A set spanning -11..14 means no restriction is stated.
+  // The numbers are the standard (winter) offsets of the allowed countries: [1] on
+  // Germany-only postings, -10..-5 on US ones (B59-001), so summer time is included.
   const rawZones = raw.timezoneRestrictions ?? [];
   const offsets = rawZones
     .map(zone => parseZoneHours(zone))
@@ -271,7 +273,7 @@ function scheduleFor(raw: HimalayasRawRecord): Schedule {
   return {
     status: stated ? "explicit" : "not_stated",
     timezone: null,
-    zone_semantics: stated ? "fixed_utc_offset" : rawZones.length > 0 ? "ambiguous" : "not_stated",
+    zone_semantics: stated ? "standard_utc_offset" : rawZones.length > 0 ? "ambiguous" : "not_stated",
     mode: stated ? "within_offset_set" : "not_stated",
     local_windows: [],
     required_overlap_minutes: null,

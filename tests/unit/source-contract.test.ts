@@ -464,3 +464,24 @@ test("himalayas: a source's own country list stands; text without a rule leaves 
     assert.deepEqual(snapshot.hiring_options[0]!.evidence_ids, [id], text);
   }
 });
+
+test("B59: a Himalayas time-zone list is stored as standard offsets; none or every zone stays unstated", () => {
+  const withZones = (timezoneRestrictions: readonly number[]) =>
+    mapHimalayasRecord({ ...himalayasContractFixture[0]!, timezoneRestrictions }, NOW);
+  const germany = withZones([1]);
+  assert.equal(isJobSnapshot(germany), true);
+  assert.deepEqual(
+    { ...germany.hiring_options[0]!.schedule, evidence_ids: undefined },
+    {
+      status: "explicit", timezone: null, zone_semantics: "standard_utc_offset",
+      mode: "within_offset_set", local_windows: [], required_overlap_minutes: null,
+      accepted_utc_offsets_minutes: [60], original_text: "[1]", evidence_ids: undefined,
+    });
+  assert.deepEqual(withZones([-10, -9, -8, -7, -6, -5, 14]).hiring_options[0]!.schedule.accepted_utc_offsets_minutes,
+    [-600, -540, -480, -420, -360, -300, 840]);
+  // No list, or one spanning every zone, states nothing.
+  assert.equal(withZones([]).hiring_options[0]!.schedule.zone_semantics, "not_stated");
+  const everywhere = withZones([-11, -5, 0, 5, 14]).hiring_options[0]!.schedule;
+  assert.equal(everywhere.status, "not_stated");
+  assert.equal(everywhere.zone_semantics, "ambiguous");
+});

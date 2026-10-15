@@ -86,7 +86,9 @@ export type LocalWindow = Readonly<{
 export type Schedule = Readonly<{
   status: "explicit" | "not_stated" | "unknown";
   timezone: string | null;
-  zone_semantics: "iana" | "fixed_utc_offset" | "ambiguous" | "not_stated";
+  // standard_utc_offset (B59-001): each offset names the zones whose standard (winter)
+  // offset it is; their summer time is included.
+  zone_semantics: "iana" | "fixed_utc_offset" | "standard_utc_offset" | "ambiguous" | "not_stated";
   mode: "daily_minimum" | "weekly_total" | "within_offset_set" | "not_stated" | "unknown";
   local_windows: readonly LocalWindow[];
   required_overlap_minutes: number | null;
@@ -346,7 +348,7 @@ function isSchedule(value: unknown): value is Schedule {
   ])) return false;
   return isEnum(value.status, ["explicit", "not_stated", "unknown"]) &&
     (value.timezone === null || isString(value.timezone)) &&
-    isEnum(value.zone_semantics, ["iana", "fixed_utc_offset", "ambiguous", "not_stated"]) &&
+    isEnum(value.zone_semantics, ["iana", "fixed_utc_offset", "standard_utc_offset", "ambiguous", "not_stated"]) &&
     isEnum(value.mode, ["daily_minimum", "weekly_total", "within_offset_set", "not_stated", "unknown"]) &&
     Array.isArray(value.local_windows) && value.local_windows.every(isLocalWindow) &&
     (value.required_overlap_minutes === null ||

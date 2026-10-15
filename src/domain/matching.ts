@@ -6,7 +6,7 @@ import type { JobSnapshot, HiringOption } from "./source-contracts.ts";
 import type { ManualProfileInput } from "./profile.ts";
 import { extractSkills, skillOverlap, skillCategory } from "./skills.ts";
 
-export const RULESET_VERSION = 4;
+export const RULESET_VERSION = 5;
 
 export type RuleOutcome = "pass" | "fail" | "unknown" | "not_applicable";
 
@@ -246,17 +246,26 @@ function ruleOverlap(
       explanation: "Часовой пояс профиля не задан." };
   }
   const accepted = schedule.accepted_utc_offsets_minutes;
-  const inAccepted: boolean[] = [];
+  const offsets: number[] = [];
   for (const offset of monthlyOffsets(profile.timezone)) {
     if (offset === null) {
       return { ...base, outcome: "unknown", reasonCodes: ["TIMEZONE_AMBIGUOUS"],
         explanation: "Не удалось вычислить смещение часового пояса профиля." };
     }
-    inAccepted.push(accepted.includes(offset));
+    offsets.push(offset);
   }
+  const inAccepted = offsets.map(offset => accepted.includes(offset));
   if (inAccepted.every(Boolean)) {
     return { ...base, outcome: "pass", reasonCodes: [],
       explanation: "Часовой пояс профиля входит в принимаемые источником зоны весь год." };
+  }
+  // A standard-offset list (B59-001) names a zone by its standard (winter) offset,
+  // the lowest it takes in the year, and covers its summer time. Only an unknown
+  // becomes a pass here: a zone with its lowest offset listed always meets the list
+  // in some month, so it could not have failed. RULESET_VERSION 5.
+  if (schedule.zone_semantics === "standard_utc_offset" && accepted.includes(Math.min(...offsets))) {
+    return { ...base, outcome: "pass", reasonCodes: [],
+      explanation: "Стандартное (зимнее) смещение часового пояса профиля входит в принимаемые источником зоны; летнее время включено." };
   }
   if (!inAccepted.some(Boolean)) {
     return { ...base, outcome: "fail", reasonCodes: ["OVERLAP_INSUFFICIENT"],

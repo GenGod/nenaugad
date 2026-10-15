@@ -1,10 +1,10 @@
 {
-  "task_id": "PERF-001",
-  "file": "tasks/PERF-001-matched-at-catalog-scale.md",
-  "status": "measured",
+  "task_id": "B59-001",
+  "file": "tasks/B59-001-himalayas-standard-offsets.md",
+  "status": "implemented",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "PERF-001 measured 2026-10-15: /matched 3.9 s cold, 1.3 s repeat on 3,582 postings (no regression); the skill cache is 59% full (~6,100 postings). Next: store extracted skills at import time. Owner profile: 0 eligible, 3,367 needs review."
+  "note": "B59-001 implemented and committed 2026-10-15: Himalayas time-zone lists read as standard (winter) offsets (ruleset 5); 2,859 stored postings re-mapped (rollback script in backups/remap-2026-10-15). The owner profile needs a country and time zone to get matches. Next candidates: store extracted skills at import (PERF-001), monthly quota reset."
 }
