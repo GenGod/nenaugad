@@ -1,10 +1,10 @@
 {
-  "task_id": "MODEL-003",
-  "file": "tasks/MODEL-003-role-aware-rubric.md",
-  "status": "measured",
+  "task_id": "B56-001",
+  "file": "tasks/B56-001-jobicy-batch-status.md",
+  "status": "accepted",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "MODEL-003 measured 2026-10-14: role-first fixes the keyword traps but is a no-go (p-backend-eu regression, j24 contract miss); a next variant needs fresh owner-graded data. MODEL-002: owner marked all six letters usable (letter leg passes). Both uncommitted."
+  "note": "Owner accepted B56-001 on 2026-10-15 (Jobicy closure checks use the batch status endpoint; terms re-baselined, policy v6). Suggested next: B56 decision 4, cursor paging of the Jobicy feed."
 }

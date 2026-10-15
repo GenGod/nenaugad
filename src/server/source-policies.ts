@@ -126,8 +126,11 @@ export const himalayasCandidatePolicy: SourcePolicy = {
 // after the S1-003 implementation review. The paid Bearer direct-link option
 // and the affiliate parameter stay out of scope.
 // terms_hash = sha256 of the NORMALIZED terms text (src/server/terms-fingerprint.ts);
-// the revision reviewed on 2026-09-30 is committed at
+// the revision reviewed on 2026-10-15 (page dated October 1, 2026) is committed at
 // docs/sources/terms/jobicy-feed.txt, listed in docs/sources/terms/snapshots.json.
+// Its Fair Use section is word for word the one reviewed on 2026-09-30; the API
+// part changed (a 7-day feed with cursor paging, and a batch status endpoint
+// instead of HEAD checks, which the closure pass now uses: B56-001).
 // send_to_ai_provider was granted by the owner on 2026-10-01, and process_with_ml
 // on 2026-10-02 (owner decision 04) after the Fair Use section was read in full:
 // the same text that names "AI assistants" also names "AI products" and
@@ -139,7 +142,7 @@ export const jobicyCandidatePolicy: SourcePolicy = {
   kind: "source_policy",
   schema_version: "1.0.0",
   id: "policy/jobicy/1",
-  version: 5,
+  version: 6,
   source_id: "jobicy",
   status: "approved",
   enabled: true,
@@ -147,8 +150,8 @@ export const jobicyCandidatePolicy: SourcePolicy = {
     "https://jobicy.com/jobs-rss-feed",
     "https://github.com/Jobicy/remote-jobs-api",
   ],
-  terms_hash: "feff80168fed52ef2ff4a25299f7ef160aee143ec9df667fb9fdfb5e5e0eace4",
-  reviewed_at: "2026-10-02T00:00:00.000Z",
+  terms_hash: "b498119f769bba6b830175c8c89cf4ceda120190a69d8d8160ce769221801756",
+  reviewed_at: "2026-10-15T00:00:00.000Z",
   approved_by: "owner",
   approval_reference:
     "Owner-approved permission matrix 2026-09-25 (live review of API docs); " +
@@ -158,6 +161,8 @@ export const jobicyCandidatePolicy: SourcePolicy = {
     "owner decision 2026-10-02 (No 4): local ML inference (process_with_ml) granted — " +
     "the Fair Use section read in full names \"AI products\" and \"research tools\"; " +
     "terms fingerprint re-baselined 2026-09-30 (normalized text + committed snapshot); " +
+    "owner decision 2026-10-15 (B56-001): terms re-baselined after the API page change " +
+    "(Fair Use unchanged), closure checks use the batch status endpoint; " +
     "re-review by 2026-12-23",
   valid_until: "2026-12-23T00:00:00.000Z",
   permissions: {

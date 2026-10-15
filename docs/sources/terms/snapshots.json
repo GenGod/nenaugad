@@ -9,9 +9,9 @@
     },
     "jobicy": {
       "url": "https://jobicy.com/jobs-rss-feed",
-      "fetched_at": "2026-09-30T11:05:24.118Z",
+      "fetched_at": "2026-10-15T11:41:44.441Z",
       "snapshot": "docs/sources/terms/jobicy-feed.txt",
-      "sha256": "feff80168fed52ef2ff4a25299f7ef160aee143ec9df667fb9fdfb5e5e0eace4"
+      "sha256": "b498119f769bba6b830175c8c89cf4ceda120190a69d8d8160ce769221801756"
     }
   }
 }

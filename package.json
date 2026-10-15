@@ -29,7 +29,7 @@
     "db:migrate": "node --experimental-strip-types --env-file-if-exists=.env scripts/migrate.ts",
     "db:seed": "node --experimental-strip-types --env-file-if-exists=.env scripts/seed.ts",
     "test:db": "node --experimental-strip-types --env-file-if-exists=.env --test --test-concurrency=1 tests/integration/*.test.ts",
-    "test:coverage": "node --experimental-strip-types --env-file-if-exists=.env --test --test-concurrency=1 --experimental-test-coverage --test-coverage-include-all --test-coverage-include=src/**/*.ts --test-coverage-lines=82 --test-coverage-branches=86 --test-coverage-functions=91 tests/unit/*.test.ts tests/integration/*.test.ts",
+    "test:coverage": "node --experimental-strip-types --env-file-if-exists=.env --test --test-concurrency=1 --experimental-test-coverage --test-coverage-include-all --test-coverage-include=src/**/*.ts --test-coverage-lines=84 --test-coverage-branches=87 --test-coverage-functions=92 tests/unit/*.test.ts tests/integration/*.test.ts",
     "test:e2e": "playwright test",
     "import:himalayas": "node --experimental-strip-types --env-file-if-exists=.env scripts/import-himalayas.ts",
     "import:jobicy": "node --experimental-strip-types --env-file-if-exists=.env scripts/import-jobicy.ts",

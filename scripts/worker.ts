@@ -11,7 +11,7 @@ import { getSourcePolicy, permissionFor } from "../src/server/source-policies.ts
 import { createPostgresPersistence } from "../src/server/storage/snapshots.ts";
 import { runHimalayasImport } from "../src/server/import/himalayas-adapter.ts";
 import { runJobicyImport } from "../src/server/import/jobicy-adapter.ts";
-import { fetchHimalayasPage, fetchJobicyWindow, headJobicyListing } from "../src/server/import/fetcher.ts";
+import { fetchHimalayasPage, fetchJobicyWindow, fetchJobicyStatuses } from "../src/server/import/fetcher.ts";
 import { runClosureCheckPass, closureStatus } from "../src/server/import/closure-checks.ts";
 import { purgeExpiredEvents } from "../src/server/events-service.ts";
 import {
@@ -207,14 +207,15 @@ async function main(): Promise<void> {
         await attempt(setup);
       }
     }
-    // Closure pass (jobicy only): 404/410 HEAD signals per spec 5.2/14.3.
+    // Closure pass (jobicy only): the batch status endpoint, at most one pass an
+    // hour (B56-001). The hourly gate answers every tick in between, so it is not logged.
     const jobicy = setups.find(item => item.source === "jobicy");
     if (jobicy && !flag("no-closure") &&
       permissionFor(jobicy.policy, "fetch", new Date().toISOString()) === "allowed") {
       const report = await runClosureCheckPass({
-        pool, now: new Date().toISOString(), head: headJobicyListing,
+        pool, now: new Date().toISOString(), check: ids => fetchJobicyStatuses(ids),
       });
-      if (report.result !== "nothing_due") {
+      if (report.result !== "nothing_due" && report.result !== "budget_exhausted") {
         log({ event: "closure_pass", source: "jobicy", ...report });
       }
     }

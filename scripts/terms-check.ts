@@ -11,6 +11,8 @@
 // human has read the new text. It writes the snapshot and the manifest only; the
 // source policy's `terms_hash` and version are updated by hand, and the offline
 // unit test (tests/unit/terms-fingerprint.test.ts) fails until they are.
+// `--source=<id>` limits the check, or the re-baseline, to one source: a human
+// may have re-read one page and not the other (B56-001).
 //
 // This command talks to the network on purpose and therefore is NOT part of
 // `npm run check`. It makes no rights decision: a changed fingerprint means
@@ -33,9 +35,11 @@ type Manifest = Readonly<{ note: string; snapshots: Readonly<Record<string, Snap
 
 const args = process.argv.slice(2);
 const write = args.includes("--write");
-const unknown = args.filter(a => a !== "--write");
-if (unknown.length > 0) {
-  console.error(`Unknown argument(s): ${unknown.join(", ")}. Usage: terms:check [--write]`);
+const sourceArgs = args.filter(a => a.startsWith("--source="));
+const onlySource = sourceArgs.length === 1 ? sourceArgs[0]!.slice("--source=".length) : null;
+const unknown = args.filter(a => a !== "--write" && !a.startsWith("--source="));
+if (unknown.length > 0 || sourceArgs.length > 1 || onlySource === "") {
+  console.error(`Unknown argument(s): ${unknown.join(", ") || sourceArgs.join(", ")}. Usage: terms:check [--write] [--source=<id>]`);
   process.exitCode = 2;
 } else {
   process.exitCode = await run();
@@ -50,9 +54,12 @@ async function run(): Promise<number> {
     return 2;
   }
 
-  const entries = Object.entries(manifest.snapshots);
+  const entries = Object.entries(manifest.snapshots)
+    .filter(([sourceId]) => onlySource === null || sourceId === onlySource);
   if (entries.length === 0) {
-    console.error(`${MANIFEST} contains no snapshots — nothing to check.`);
+    console.error(onlySource === null
+      ? `${MANIFEST} contains no snapshots — nothing to check.`
+      : `${MANIFEST} has no snapshot for source "${onlySource}".`);
     return 2;
   }
 

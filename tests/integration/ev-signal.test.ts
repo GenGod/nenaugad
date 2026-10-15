@@ -62,7 +62,7 @@ test("A10: an unconfirmed posting stays in the feed with an honest note", async 
   // close), so it must still be delivered — demotion is not hiding.
   const pass = await runClosureCheckPass({
     pool, now: at(7),
-    head: async () => ({ result: "inactive" as const }),
+    check: async (ids: readonly number[]) => ({ status: "ok" as const, outcomes: new Map(ids.map(id => [id, "inactive" as const])) }),
   });
   assert.equal(pass.closed, 0);
   const after = await matchedForUser(userId, { pool, shadow: () => {} });
@@ -87,7 +87,7 @@ test("A10: an unconfirmed posting stays in the feed with an honest note", async 
   // Only the closure rule itself takes it out of the feed.
   const second = await runClosureCheckPass({
     pool, now: at(14),
-    head: async () => ({ result: "inactive" as const }),
+    check: async (ids: readonly number[]) => ({ status: "ok" as const, outcomes: new Map(ids.map(id => [id, "inactive" as const])) }),
   });
   assert.ok(second.closed >= 1);
   const closedFeed = await matchedForUser(userId, { pool, shadow: () => {} });
@@ -99,7 +99,7 @@ test("A10: an unknown check result is neither hiding nor suspicion", async () =>
   const userId = await seed();
   await runClosureCheckPass({
     pool, now: at(7),
-    head: async () => ({ result: "unknown" as const }),
+    check: async (ids: readonly number[]) => ({ status: "ok" as const, outcomes: new Map(ids.map(id => [id, "unknown" as const])) }),
   });
   const feed = await matchedForUser(userId, { pool, shadow: () => {} });
   const visible = [...feed.eligible, ...feed.needsReview];

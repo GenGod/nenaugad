@@ -6,9 +6,10 @@
 // same few postings. Phase 1 asks for fixed multipliers before any model exists.
 //
 // What phase 1 is here, and what it honestly is not:
-//   * m_ghost — real and new. The closure checks (jobicy: two inactive HEAD
-//     checks close a record) and the pipeline's own staleness mark are signals
-//     about whether the posting is still alive. They were collected but never
+//   * m_ghost — real and new. The closure checks (jobicy: two `closed` answers
+//     of the batch status endpoint close a record, B56-001) and the pipeline's
+//     own staleness mark are signals about whether the posting is still alive.
+//     They were collected but never
 //     reached ranking. A post whose existence we could not confirm is still
 //     SHOWN (a single failed check is not proof, and the pipeline deliberately
 //     refuses to close on one) but it sinks, and the candidate is told why.

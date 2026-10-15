@@ -127,11 +127,11 @@ test("A7 (golden 7): a posting closed before the digest is read never appears in
   await resetCatalog();
   await importRecords(jobicyContractFixture, T0);
   const userId = await seededUser();
-  const head = async () => ({ result: "inactive" as const });
+  const check = async (ids: readonly number[]) => ({ status: "ok" as const, outcomes: new Map(ids.map(id => [id, "inactive" as const])) });
   // Two spaced inactive checks close the records (the real closure mechanism,
   // not a hand-edited lifecycle): the digest is computed later, live.
-  const first = await runClosureCheckPass({ pool, now: at(7), head });
-  const second = await runClosureCheckPass({ pool, now: at(14), head });
+  const first = await runClosureCheckPass({ pool, now: at(7), check });
+  const second = await runClosureCheckPass({ pool, now: at(14), check });
   assert.equal(first.closed, 0);
   assert.equal(second.closed, 3);
 

@@ -7,7 +7,9 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-10-12: the owner accepted [B37-001](tasks/B37-001-no-retry-after-uncertain.md) (no retry after
+**Updated:** 2026-10-15: the owner accepted [B56-001](tasks/B56-001-jobicy-batch-status.md)
+(Jobicy closure checks use the batch status endpoint), re-read the catalog and switched
+live AI on for extraction. 2026-10-12: the owner accepted [B37-001](tasks/B37-001-no-retry-after-uncertain.md) (no retry after
 an uncertain call). 2026-10-09: the owner accepted [B44-001](tasks/B44-001-visual-baselines.md) (9 visual baselines
 re-recorded for B42's hint) and [B43-001](tasks/B43-001-logout-redirect.md) (logout stays on this
 origin). 2026-10-08: the owner accepted [B42-001](tasks/B42-001-missing-country-notice.md) (a notice
@@ -22,8 +24,10 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
 [B30-001](tasks/B30-001-card-excerpts.md).
 
 ## Switches and boundaries
-- **Live AI is off** (`LIVE_AI_ENABLED=false`, a real switch since AI-007): no provider
-  call happens.
+- **Live AI is on locally since 2026-10-15** (`LIVE_AI_ENABLED=true` in the owner's `.env`,
+  a real switch since AI-007): the only automatic provider calls are extraction of job
+  text, at most 25 per source per import (B34). Scoring and letters stay closed by the
+  boundary below.
 - **Personal data stays inside the contour** (`personal-data-boundary.ts`): relevance
   scoring and letter generation are closed until a local model serves them. MODEL-001:
   the 1.5–1.7B CPU candidates fail the rubric; a 7–8B GPU spike is
@@ -102,6 +106,11 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-10-15 (B56-001, after the review fix): `npm run check` (unit 353/353),
+  `npm run test:coverage` (unit and DB 475/475; 84.32% lines, 87.47% branches, 93.13%
+  functions; ratchet raised to 84/87/92), all exit 0; `npm run build` exit 0 before the
+  fix (which changed no page). Not run: `test:e2e` (no page changed). One live status
+  call (read-only). Not pushed.
 - 2026-10-07 (B38-001): `npm run check` (unit 315/315), `npm run test:coverage`
   (unit and DB 403/403; 83.15% lines, 86.75% branches, 92.01% functions), `npm run build` and `npm run test:e2e` (99 passed), all exit 0. Not
   pushed.
@@ -129,10 +138,13 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   accepted). B36-001 (a settlement releases its own hold only) is accepted too. The five
   records were reviewed: faithful, nothing invented, two salaries found where the source
   has none. B38-001 (clean description text and prompt p2) is accepted (2026-10-08).
-  **Before the worker extracts the catalog**, with live AI off: `npm run import:himalayas` until a pass
-  that started at page 1 has finished (one run per 24 hours; the current pass is midway),
-  and `npm run import:jobicy` once; then live AI on. Otherwise a posting extracted on its
-  old text is paid again when re-read (under $0.40 for today's catalog). Talent-pool
+  **The catalog was re-read before extraction (2026-10-15):** jobicy once; himalayas 100
+  pages, its pass still midway (2,981 himalayas postings). Old text is left only on what
+  was last read 2026-09-25 (the 10-08 imports already used B38's cleaner): 498 himalayas
+  postings, which extraction (newest first) does not reach before the first import after
+  2026-10-25 11:42 UTC tombstones them, and 201 jobicy postings, out of the 7-day feed, so
+  paid once at most. Until then, no `extract:fields --source=himalayas` with a large
+  `--limit` (at most about $0.25 paid twice). Talent-pool
   postings are hidden and not extracted ([B40-001](tasks/B40-001-hide-talent-pools.md), owner
   decision and acceptance 2026-10-13). Himalayas geography reads the posting text with
   the shared detector, only to test a worldwide claim ([B26-001](tasks/B26-001-himalayas-shared-text-geography.md),
@@ -145,7 +157,8 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   books an uncertain call's charge; `--cancel=` still releases a hold without booking. A call
   that died in flight takes `--settle` 5 minutes after its dispatch
   ([B48-001](tasks/B48-001-settle-crashed-in-flight.md), money, reviewed, owner-accepted
-  2026-10-12). Restart a running worker or `extract:fields` before live AI is switched on.
+  2026-10-12). A worker or `extract:fields` started before 2026-10-12 runs older code:
+  restart it.
 - **Extraction reads the clock per posting** ([B49-001](tasks/B49-001-fresh-clock-per-posting.md),
   source rights and the paid path, reviewed, owner-accepted 2026-10-12): each call
   meets the source's permission at the time it is made, and a lapse stops the pass.
@@ -177,10 +190,12 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   2026-10-13).
 - Which design document is authoritative: AGENTS.md and README still name Atlas 1.1,
   while the tokens come from the design system 1.3 (flagged by DEVX-001).
-- **Jobicy changed its API page (`terms:check`, 2026-10-05):** the fair-use rules are
-  unchanged, but listings now come from a 7-day window and closure checks moved to a
-  batch status endpoint. Re-read it, and decide whether S1-005 and A10 need a task
-  ([DEVX-003](tasks/DEVX-003-weekly-checks.md)).
+- **Jobicy changed its API page (`terms:check`, 2026-10-05; re-read 2026-10-15):** fair
+  use unchanged; import and field mapping still work. Closure checks now use the
+  documented batch status endpoint (100 IDs a request, one pass an hour, still two
+  `closed` answers to close) and the terms are re-baselined, policy v6
+  ([B56-001](tasks/B56-001-jobicy-batch-status.md), source rights, reviewed, owner-accepted
+  2026-10-15).
 - Whether to normalize the himalayas "Current as of" date in the terms fingerprint
   (source-rights tooling). It is the precondition for a weekly `terms:check`.
 - **Himalayas text check** (B26): narrower than jobicy's; widening it changes that

@@ -96,36 +96,53 @@ export async function fetchJobicyWindow(request: Readonly<{
   return result.status === "ok" ? { status: "ok", jobs: result.jobs } : result;
 }
 
-// HEAD availability probe of a canonical Jobicy listing (spec 5.2/14.3):
-// 404/410 is an inactivity signal; every other outcome — including 429, 5xx,
-// redirects and network errors — stays unknown and never closes a record.
-export type ListingCheckResult = Readonly<{ result: "active" | "inactive" | "unknown" }>;
+// Batch liveness check of stored Jobicy jobs (B56-001). Since 2026-10-01 the
+// source documents this endpoint instead of a HEAD of the listing: up to 100
+// numeric IDs per GET, each answered active, closed or unknown, including jobs
+// older than the 7-day feed. Only an explicit `closed` is an inactivity signal;
+// `unknown`, an ID missing from the answer, a contradictory or malformed entry
+// and every failed request stay unknown and never close a record.
+export const JOBICY_STATUS_URL = "https://jobicy.com/api/v2/remote-jobs/status";
+export const JOBICY_STATUS_BATCH_LIMIT = 100; // documented maximum
 
-export async function headJobicyListing(listingUrl: string, timeoutMs = 10000): Promise<ListingCheckResult> {
-  let url: URL;
-  try {
-    url = new URL(listingUrl);
-  } catch {
-    return { result: "unknown" };
+export type JobicyStatusOutcome = "active" | "inactive" | "unknown";
+export type JobicyStatusResult = Readonly<
+  | { status: "ok"; outcomes: ReadonlyMap<number, JobicyStatusOutcome> }
+  | { status: "rate_limited" }
+  | { status: "server_error" }
+  | { status: "network_error" }
+>;
+
+export async function fetchJobicyStatuses(
+  ids: readonly number[], timeoutMs = DEFAULT_TIMEOUT_MS,
+): Promise<JobicyStatusResult> {
+  if (ids.length < 1 || ids.length > JOBICY_STATUS_BATCH_LIMIT ||
+    !ids.every(id => Number.isSafeInteger(id) && id > 0)) {
+    return { status: "network_error" };
   }
-  if (url.protocol !== "https:" || url.host !== "jobicy.com" || url.port !== "" || url.username !== "") {
-    return { result: "unknown" };
+  const url = new URL(JOBICY_STATUS_URL);
+  // The IDs are validated integers, so the commas stay literal, as documented.
+  url.search = `?ids=${ids.join(",")}`;
+  if (url.host !== "jobicy.com") return { status: "network_error" };
+  const result = await pinnedJsonFetch(url, timeoutMs);
+  if (result.status !== "ok") return result;
+
+  const requested = new Set(ids);
+  const answers = new Map<number, string>();
+  for (const entry of result.jobs) {
+    if (!entry || typeof entry !== "object") continue;
+    const { id, status } = entry as { id?: unknown; status?: unknown };
+    const numericId = typeof id === "number" ? id
+      : typeof id === "string" && /^\d{1,15}$/u.test(id) ? Number(id) : Number.NaN;
+    if (!requested.has(numericId) || typeof status !== "string") continue;
+    const answer = status.toLowerCase();
+    const previous = answers.get(numericId);
+    answers.set(numericId, previous === undefined || previous === answer ? answer : "contradictory");
   }
-  const timeout = new AbortController();
-  const timer = setTimeout(() => timeout.abort(), timeoutMs);
-  try {
-    const response = await fetch(url, {
-      method: "HEAD",
-      redirect: "error",
-      signal: timeout.signal,
-      headers: { accept: "text/html" },
-    });
-    if (response.status === 404 || response.status === 410) return { result: "inactive" };
-    if (response.ok) return { result: "active" };
-    return { result: "unknown" };
-  } catch {
-    return { result: "unknown" };
-  } finally {
-    clearTimeout(timer);
+  const outcomes = new Map<number, JobicyStatusOutcome>();
+  for (const id of ids) {
+    const answer = answers.get(id);
+    outcomes.set(id, answer === "active" ? "active" : answer === "closed" ? "inactive" : "unknown");
   }
+  return { status: "ok", outcomes };
 }
