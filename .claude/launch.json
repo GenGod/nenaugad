@@ -1,0 +1,24 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "nenaugad-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "3200"],
+      "port": 3200
+    },
+    {
+      "name": "nenaugad-fixture",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "3300"],
+      "port": 3300,
+      "env": {
+        "ATLAS_ENV": "test",
+        "DATA_BACKEND": "fixture",
+        "LIVE_AI_ENABLED": "false",
+        "LIVE_SOURCES_ENABLED": "false",
+        "NEXT_TELEMETRY_DISABLED": "1"
+      }
+    }
+  ]
+}
