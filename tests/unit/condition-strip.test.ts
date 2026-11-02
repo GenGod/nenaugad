@@ -142,3 +142,24 @@ test("zone text: runs of three or more whole hours collapse into a range", () =>
   const halves = zoneStrip({ offsetsMinutes: [270, 330, 390], semantics: "fixed_utc_offset" }, []);
   assert.equal(halves.acceptedText, "UTC+4:30, UTC+5:30, UTC+6:30");
 });
+
+test("a job-level rule the engine did not return is unknown with a reason, never a pass", () => {
+  const strip = conditionStrip(evaluation([
+    rule("GEO-01", "pass", "a"), rule("CONTRACT-01", "pass", "a"), rule("TIME-01", "pass", "a"),
+  ]));
+  for (const cell of strip.slice(3)) {
+    assert.equal(cell.outcome, "unknown");
+    assert.match(cell.explanation, /не оценивало/u);
+  }
+});
+
+test("zone fact: an explicit schedule without offsets draws no strip", async () => {
+  const { zoneFactOf } = await import("../../src/domain/condition-strip.ts");
+  const { mapHimalayasFixture } = await import("../../src/server/import/himalayas-fixture.ts");
+  const base = mapHimalayasFixture("2026-09-24T12:00:00.000Z")[0]!;
+  const option = base.hiring_options[0]!;
+  const explicitEmpty = { ...base, hiring_options: [{ ...option, schedule: { ...option.schedule,
+    status: "explicit" as const, accepted_utc_offsets_minutes: [] } }] };
+  const ev = evaluation([rule("GEO-01", "pass", option.id), rule("CONTRACT-01", "pass", option.id), rule("TIME-01", "pass", option.id)]);
+  assert.equal(zoneFactOf(explicitEmpty, ev), null);
+});

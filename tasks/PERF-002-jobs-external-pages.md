@@ -86,3 +86,28 @@ rows. The pager was checked on page 2 of 147.
 | `npm run test:coverage` | exit 0, 504/504; 84.66 / 88.02 / 93.30 (ratchet 84/88/93 holds); `catalog-page.ts` 100% lines |
 | `npm run test:e2e` | 126/126 (run with the review dev server stopped: Next 16 refuses a second `next dev` in the same folder) |
 | `build`, `test:db` | not re-run: `test:db` does not touch the page; the build was green at DS-002d and this adds one route file and a pure module |
+
+## Repair log: CI's coverage gate after the push of main (2026-11-02)
+
+CI run 41447897923 (merge `239e3e0`): Code quality and Build green; Tests failed with every
+test passing (`fail 0`) and "87.99% branch coverage does not meet threshold of 88%". The
+threshold was raised 87 → 88 in DS-002b on a local 88.02%; Linux CI measures ~0.03 points
+lower, so the raise overshot.
+
+**Cycle 1 (hypothesis recorded):** "CI measures 87.99% branch coverage against the 88%
+ratchet because the new catalog-page and condition-strip modules leave a few branches
+untested; covering those branches lifts CI above 88% without lowering the ratchet."
+Change: three tests — an unreadable date sorts last and equal cards keep a stable order
+(`catalog-page.ts` 83.33% → 100% branches); a job-level rule the engine did not return is
+unknown with a reason; an explicit schedule without offsets draws no strip
+(`condition-strip.ts` 97.96% → 100%). Local branch coverage 88.02% → 88.14%. The
+ratchet is not lowered.
+
+**Found on the way, not fixed here (auth, B53):** `tests/integration/auth-attempts.test.ts`
+"expired windows are pruned…" fails in the local full run (2/2) and sometimes alone: one
+prune removed all 150 expired rows instead of at most 100. `EXPLAIN` on the test database
+shows `pruneAttempts`' `DELETE … WHERE key IN (SELECT … LIMIT 100 FOR UPDATE SKIP LOCKED)`
+planned as a Nested Loop Semi Join with the limited subquery on the inner side, which
+PostgreSQL may rescan, so the per-login bound depends on table statistics. Only expired
+windows are ever deleted (no security bypass); the bounded-work guarantee fails. Passed on
+CI (fresh database). Proposed as its own task; auth changes need a separate review.

@@ -44,3 +44,13 @@ test("the page parameter: absent is 1; one positive integer up to 9999; anything
     assert.throws(() => parsePageParam(new URLSearchParams(raw)), /INVALID_QUERY/u, raw);
   }
 });
+
+test("newest first: an unreadable date sorts last, and equal cards keep a stable order", () => {
+  const sorted = newestFirst([
+    card("bad", "not a date", "also not a date"),
+    card("b", "2026-10-01T00:00:00Z", "2026-10-01T00:00:00Z"),
+    card("a", "2026-10-01T00:00:00Z", "2026-10-01T00:00:00Z"),
+    card("a", "2026-10-01T00:00:00Z", "2026-10-01T00:00:00Z"),
+  ]);
+  assert.deepEqual(sorted.map(item => item.id), ["a", "a", "b", "bad"]);
+});

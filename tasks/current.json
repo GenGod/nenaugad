@@ -2,9 +2,14 @@
   "task_id": "PERF-002",
   "file": "tasks/PERF-002-jobs-external-pages.md",
   "status": "implemented",
-  "repair_cycles_used": 0,
+  "repair_cycles_used": 1,
   "max_repair_cycles": 2,
-  "hypotheses": [],
+  "hypotheses": [
+    {
+      "text": "CI measures 87.99% branch coverage against the 88% ratchet because the new catalog-page and condition-strip modules leave a few branches untested; covering those branches lifts CI above 88% without lowering the ratchet",
+      "recorded_at": "2026-11-02T13:14:30.629Z"
+    }
+  ],
   "coding_host_spend": "unknown",
   "note": "PERF-002 implemented and tested locally 2026-11-02. DS-002 (Signal, slices 1-5), E2E-001 and PERF-002 merged into main at the owner's request 2026-11-02 (local; not pushed). Open: B60 (search ignores external sources); the Next.js security upgrade (OPEN_GAPS E6)."
 }
