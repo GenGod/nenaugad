@@ -123,6 +123,43 @@ test("expired windows are pruned, and a locked row is skipped, not waited for (B
   assert.equal(await left(), 0);
 });
 
+test("one prune deletes at most 100 rows even when the planner rescans its row choice (B61)", async () => {
+  await migrate(pool);
+  // Older than any window other tests write, so at `now` only this test's rows are expired.
+  const start = new Date("2000-01-03T00:00:00.000Z");
+  const now = new Date(start.getTime() + 15 * MINUTE);
+  const prefix = key();
+  await pool.query(
+    "INSERT INTO auth_attempts (key, attempts, window_started_at) SELECT $1 || ':' || n, 1, $2 FROM generate_series(1, 150) AS n",
+    [prefix, start]);
+  const left = async () => ((await pool.query("SELECT COUNT(*)::int AS n FROM auth_attempts WHERE key LIKE $1 || ':%'", [prefix])).rows[0] as { n: number }).n;
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      // Leaves the planner one join for a limited, locking subquery: a nested loop that
+      // rescans it for every outer row. Each rescan skips the rows the statement already
+      // deleted, so `key IN (… LIMIT 100 FOR UPDATE SKIP LOCKED)` deleted all 150 under it.
+      for (const setting of ["enable_hashjoin", "enable_mergejoin", "enable_hashagg", "enable_sort", "enable_material"]) {
+        await client.query(`SET LOCAL ${setting} = off`);
+      }
+      await pruneAttempts(client, now);
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+    assert.equal(await left(), 50);
+    await pruneAttempts(pool, now);
+    assert.equal(await left(), 0);
+  } finally {
+    // Rows left by a failure would be expired for the other pruning tests too.
+    await pool.query("DELETE FROM auth_attempts WHERE key LIKE $1 || ':%'", [prefix]);
+  }
+});
+
 test("login counts every attempt per email before the password; a success clears it (B53)", async () => {
   await migrate(pool);
   const address = email();

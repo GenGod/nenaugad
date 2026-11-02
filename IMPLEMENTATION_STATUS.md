@@ -66,7 +66,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
 - **Auth and profiles:** manual private profile, explainable matching, saved jobs
   (S2-001, owner-accepted); hide with a reason and applied marks (S2-002). Login and
   account deletion allow 5 password attempts per 15 minutes, per email and per account
-  ([B53-001](tasks/B53-001-password-attempt-limit.md), reviewed, owner-accepted 2026-10-13). The
+  ([B53-001](tasks/B53-001-password-attempt-limit.md), reviewed, owner-accepted 2026-10-13); one
+  login prunes at most 100 expired counters, under a nested-loop plan too
+  ([B61-001](tasks/B61-001-prune-attempts-bound.md), tested locally, review and owner acceptance pending). The
   email is keyed by `AUTH_SECRET`, and login refuses without it; `npm run doctor` says whether it
   is set ([B54-001](tasks/B54-001-keyed-login-attempt-hash.md), reviewed, owner-accepted 2026-10-13).
   Registration allows 10 per 15 minutes service-wide (`REGISTRATION_LIMIT`;

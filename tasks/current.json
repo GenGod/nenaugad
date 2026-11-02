@@ -1,15 +1,15 @@
 {
-  "task_id": "PERF-002",
-  "file": "tasks/PERF-002-jobs-external-pages.md",
+  "task_id": "B61-001",
+  "file": "tasks/B61-001-prune-attempts-bound.md",
   "status": "implemented",
   "repair_cycles_used": 1,
   "max_repair_cycles": 2,
   "hypotheses": [
     {
-      "text": "CI measures 87.99% branch coverage against the 88% ratchet because the new catalog-page and condition-strip modules leave a few branches untested; covering those branches lifts CI above 88% without lowering the ratchet",
-      "recorded_at": "2026-11-02T13:14:30.629Z"
+      "text": "pruneAttempts over-deletes because a nested-loop semi join rescans the LIMIT 100 FOR UPDATE SKIP LOCKED subquery and each rescan skips rows the statement already deleted; choosing and locking the keys once in a MATERIALIZED CTE keeps one prune at 100 rows, so the B61 test (forced nested loop) and the B53 bound test pass",
+      "recorded_at": "2026-11-02T13:24:32.246Z"
     }
   ],
   "coding_host_spend": "unknown",
-  "note": "PERF-002 implemented and tested locally 2026-11-02. DS-002 (Signal, slices 1-5), E2E-001 and PERF-002 merged into main at the owner's request 2026-11-02 (local; not pushed). Open: B60 (search ignores external sources); the Next.js security upgrade (OPEN_GAPS E6)."
+  "note": "B61-001 (auth, high risk) implemented, tested locally and reviewed 2026-11-02 (no blocking findings): pruneAttempts chooses its at most 100 rows once in a MATERIALIZED CTE. Owner acceptance required before merging; not pushed, not merged. Previous task PERF-002 implemented and tested locally 2026-11-02, owner acceptance pending."
 }

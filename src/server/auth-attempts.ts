@@ -70,14 +70,18 @@ export async function clearAttempts(db: Queryable, keys: readonly string[]): Pro
 
 /**
  * Deletes up to 100 counters whose window has ended, so a hashed email does not outlive
- * its window for long and one login never does unbounded work. Skips a row another
+ * its window for long and one login never deletes more than 100 rows. Skips a row another
  * transaction holds: pruning never waits on, or deadlocks with, a deletion or an attempt.
+ * The rows are chosen and locked once, in a materialized CTE (B61): as a `key IN (…)`
+ * subquery, a nested-loop plan rescanned it for every outer row, each rescan skipped the
+ * rows already deleted, and the limit reached every expired row.
  */
 export async function pruneAttempts(db: Queryable, now = new Date()): Promise<void> {
   const expired = new Date(now.getTime() - ATTEMPT_WINDOW_MS);
   await db.query(
-    `DELETE FROM auth_attempts WHERE key IN (
-       SELECT key FROM auth_attempts WHERE window_started_at <= $1 LIMIT 100 FOR UPDATE SKIP LOCKED)`,
+    `WITH doomed AS MATERIALIZED (
+       SELECT key FROM auth_attempts WHERE window_started_at <= $1 LIMIT 100 FOR UPDATE SKIP LOCKED)
+     DELETE FROM auth_attempts a USING doomed d WHERE a.key = d.key`,
     [expired],
   );
 }
