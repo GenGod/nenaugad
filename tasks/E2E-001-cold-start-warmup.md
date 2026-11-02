@@ -19,11 +19,17 @@ the condition that failed the DS-002 and DS-002b runs.
 while the submit button stays disabled). The same tests pass at 390 and 320 px, which run
 after desktop. The A/B in DS-002 shows the same failure on the pre-DS-002 code (`570685b`).
 
-**Not included:** upgrading Next.js and acting on its upgrade notice (owner decisions, see
-"Open"); any change to assertions, per-assertion timeouts or retries (`retries: 0` stays).
+**Not included:** upgrading Next.js and acting on its upgrade notice (see "Open"); any
+change to assertions, per-assertion timeouts or retries (`retries: 0` stays).
 
-**Risk:** low. Test infrastructure: one Next config value read only when `ATLAS_ENV=test`,
-and a removed test hook. No app code, rules, storage or API.
+**Owner decision 2026-11-02** (relayed by the DS-002 session, the owner's words "Yes,
+option A"): only the Playwright test server (`ATLAS_ENV=test`) skips Next's agent upgrade
+notice, through `experimental.agentUpgrade: false`; `npm run dev` and `npm run build` keep
+it. No Next upgrade, and nothing from the notice's instructions acted on.
+
+**Risk:** low. Test infrastructure: two Next config values that change only when
+`ATLAS_ENV=test`, a port override for Playwright, and a removed test hook. No app code,
+rules, storage or API.
 
 ## Root cause
 
@@ -71,7 +77,7 @@ only on a `next.config.*` change, the deletion of `.next` or `.next/dev`, or hea
 `next dev` (none).
 
 **Next.js's agent upgrade notice stops the server in the middle of a run (separate
-issue, open).** `experimental.agentUpgrade` defaults to `'security'` in 16.4.0. When
+issue; the e2e side closed by the owner's decision above).** `experimental.agentUpgrade` defaults to `'security'` in 16.4.0. When
 `@vercel/detect-agent` finds a coding agent in the environment (`AI_AGENT`, `CLAUDECODE`, …),
 the dev worker starts an advisory check as an unawaited promise
 (`server/lib/router-server.js`) after "Ready". 16.4.0 is listed in the npm security
@@ -89,25 +95,41 @@ above). The owner's own terminal and CI do not detect an agent, so no check runs
   persisted cache, so every run compiles the current code from scratch; `npm run dev` keeps
   its cache. Checked: the cache's files kept their 11:37 UTC timestamps through all later
   runs.
+- `next.config.ts` (owner decision): `experimental.agentUpgrade` is `false` when
+  `ATLAS_ENV=test`, `"security"` (Next's default) otherwise. `ATLAS_ENV=test` is also set
+  by the CI job (whose build detects no agent, so nothing changes there) and by the
+  `nenaugad-fixture` preview in the main checkout's local `.claude/launch.json`, which
+  skips the notice too. Without the advisory check the DevTools "1 Insight" security
+  badge is gone from the e2e pages; no screenshot changed (the visual tests passed
+  against the committed PNGs).
+- `playwright.config.ts`: `E2E_PORT` (default 3100) sets the server port and `baseURL`,
+  so two checkouts can run the suite at once; validated as a number before it reaches the
+  web server command. The two checkouts still share one database, and the visual
+  authed flow reuses fixed accounts, so concurrent runs can still collide there.
 - `tests/e2e/visual.spec.ts`: the DS-002 `beforeAll` warm-up is removed. Its premise (the
   first compile of a route reloads the page) is contradicted by runs 2, 3 and full, and
-  both verification runs passed without it. The `nextjs-portal` removal in `shot()` stays.
+  all four verification runs passed without it. The `nextjs-portal` removal in `shot()` stays.
 - No global warm-up was added: it would not help, because a warmed `/login` loops the same way.
 
 ## Checks (2026-11-02)
 
 | Command | Result |
 |---|---|
-| `npm run test:e2e`, run 1 | exit 0, **123 passed** (1.8 min); the stale `570685b` cache on disk |
+| `npm run test:e2e`, run 1 (cache fix only) | exit 0, **123 passed** (1.8 min); the stale `570685b` cache on disk |
 | `npm run test:e2e`, run 2 (right after) | exit 0, **123 passed** (1.7 min) |
-| `npm run check` | exit 0: unit 377/377, lint, typecheck, guardrails, tokens, icons |
+| `E2E_PORT=3101 npm run test:e2e`, run 3 (with option A) | exit 0, **123 passed** (1.9 min); agent variables set; no notice line |
+| `E2E_PORT=3101 npm run test:e2e`, run 4 (right after) | exit 0, **123 passed** (1.9 min); no notice line |
+| `npm run dev` (no `ATLAS_ENV`), agent variables set | exit 1 after "Ready" with Next's notice: dev keeps it, as decided |
+| `npm run check` (after option A) | exit 0: unit 377/377, lint, typecheck, guardrails, tokens, icons |
 
-Both e2e runs: compose database up, the main checkout's `.env` in the environment, and
-`AI_AGENT`/`CLAUDECODE` unset for the command (the owner's terminal has neither), because
-otherwise Next's notice stops one of the two starts (see above). Not run: `npm run build`,
-`test:db`, `test:coverage` (no source, migration or build-config path changed beyond the
-dev-only flag), CI (nothing pushed), and e2e inside the main checkout (another session's
-tree; the stale cache was reproduced here instead).
+All e2e runs: compose database up, the main checkout's `.env` in the environment, the
+stale cache on disk. Runs 1–2 (before the owner's decision) had `AI_AGENT`/`CLAUDECODE`
+unset for the command, as in the owner's terminal, because Next's notice would otherwise
+stop one of the two starts; runs 3–4 kept them set. Nothing listened on 3100 during runs
+3–4 (sampled every 5 s). Not run: `npm run build`, `test:db`, `test:coverage` (no source,
+migration or build path changed beyond dev/test-only config), CI (nothing pushed), and e2e
+inside the main checkout (another session's tree; the stale cache was reproduced here
+instead).
 
 ## Repair log
 
@@ -120,9 +142,9 @@ desktop account and catalog specs pass on the same stale cache that failed them 
 
 ## Open
 
-- Next.js 16.4.0's agent upgrade notice (OPEN_GAPS §E item 6): an owner decision between
-  the security upgrade and `experimental.agentUpgrade: false` for the e2e server only.
-  Until then, an agent that runs `npm run test:e2e` twice in a row loses the second start.
+- Next.js 16.4.0 is listed in the npm security advisories (OPEN_GAPS §E item 6). The
+  upgrade is the owner's decision; under a coding agent, `npm run dev` and `npm run build`
+  still stop on every other start until then.
 - `npm run dev` can hit the same reload loop after the code changes under its persisted
   cache (not tested here); deleting `.next/dev/cache/turbopack` while no dev server runs
   clears it.

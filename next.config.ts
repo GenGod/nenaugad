@@ -17,12 +17,17 @@ const csp = [
 
 // The e2e server (ATLAS_ENV=test, playwright.config.ts) compiles from scratch: a Turbopack
 // dev cache that an earlier `next dev` on other code left in .next/dev makes its pages
-// reload in a loop (E2E-001).
+// reload in a loop (E2E-001). It also skips Next's upgrade notice, which under a coding
+// agent stops every other start mid-run; `npm run dev` and `npm run build` keep it (owner
+// decision 2026-11-02).
 const testServer = process.env.ATLAS_ENV === "test";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  experimental: { turbopackFileSystemCacheForDev: !testServer },
+  experimental: {
+    agentUpgrade: testServer ? false : "security",
+    turbopackFileSystemCacheForDev: !testServer
+  },
   async headers() {
     return [{
       source: "/:path*",
