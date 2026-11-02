@@ -109,8 +109,10 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   condition label with receipts and drawn absences;
   [DS-002c](tasks/DS-002c-signal-condition-label.md)) and slice 4 (home as the search, real
   catalog rows and how to read the outcomes; [DS-002d](tasks/DS-002d-signal-home.md))
-  implemented and tested locally on `feature/ds-002-signal`, not accepted. README and the
-  `Reference/` brandbook still describe 1.3. Visual baselines are recorded on Windows.
+  and slice 5 (favicon; README, pipeline, task template, CL spec and the archived
+  `Reference/` brandbook point to Signal; [DS-002e](tasks/DS-002e-signal-docs-favicon.md))
+  implemented and tested locally on `feature/ds-002-signal`, not accepted. Visual baselines
+  are recorded on Windows.
 - **Documentation:** English since DOC-EN-001 (2026-10-05).
 - **Development process:** Claude Code setup, model and effort policy, CI on pushes
   to `main` that change more than Markdown (DEVX-001, 2026-10-05). The CI job was
@@ -233,8 +235,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
 - Restore (SP-T22, a beta prerequisite): it must re-apply `account_deletions`. Account deletion
   itself is done ([B11-001](tasks/B11-001-account-deletion.md), reviewed, owner-accepted
   2026-10-13).
-- Which design document is authoritative: AGENTS.md now names Signal 2.0 with Atlas 1.1
-  for behaviour (DS-002); README and `Reference/Nenaugad/` still describe 1.3.
+- Which design document is authoritative: settled by DS-002e — Signal 2.0 for the
+  appearance, Atlas 1.1 for behaviour, in AGENTS.md, README, the pipeline and the archived
+  brandbook's banner.
 - **Jobicy changed its API page (`terms:check`, 2026-10-05; re-read 2026-10-15):** fair
   use unchanged; import and field mapping still work. Closure checks now use the
   documented batch status endpoint (100 IDs a request, one pass an hour, still two

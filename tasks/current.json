@@ -1,10 +1,10 @@
 {
-  "task_id": "DS-002d",
-  "file": "tasks/DS-002d-signal-home.md",
+  "task_id": "DS-002e",
+  "file": "tasks/DS-002e-signal-docs-favicon.md",
   "status": "implemented",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "DS-002d (Signal slice 4: home as search, real catalog rows and the reading guide) implemented and tested locally 2026-11-02 on feature/ds-002-signal. Next: DS-002e (README, Reference brandbook, favicon), then owner acceptance of DS-002."
+  "note": "DS-002e (Signal slice 5: favicon; README, pipeline, task template, CL spec and Reference brandbook point to Signal) implemented 2026-11-02 on feature/ds-002-signal. DS-002 (slices 1-5) and E2E-001 await owner review and acceptance; nothing pushed."
 }

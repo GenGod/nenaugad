@@ -1,7 +1,8 @@
 # Nenaugad — design language 2.0 «Сигнал» (Signal)
 
-**Status:** chosen by the owner 2026-11-02; being applied in DS-002 (slice 1, the
-foundation, implemented). Replaces the visual sections of
+**Status:** chosen by the owner 2026-11-02; applied in DS-002 (foundation), DS-002b (feed
+cards), DS-002c (job detail label), DS-002d (home) and DS-002e (favicon, documents) on
+`feature/ds-002-signal`; owner acceptance pending. Replaces the visual sections of
 [Atlas 1.1](ATLAS_DESIGN_LANGUAGE.md) (§5–§9 and the colours of §10). Atlas's behaviour,
 semantics, states, voice, accessibility and privacy rules stay in force.
 **Grounds:** [the design research](../../../reports/Distinctive%20UI%20language%20for%20Nenaugad.md)

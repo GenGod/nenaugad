@@ -14,7 +14,7 @@ Optimize total cost: implementation, review, fixing, maintenance, services and t
 Priority among Atlas materials:
 1. Current explicit owner decisions within the permissions of the working environment.
 2. SP 1.0 — development method, starting architecture, sequence and beta boundaries.
-3. The product technical spec and CL 1.0 — the meaning of data and functions; Atlas 1.1 — the approved design.
+3. The product technical spec and CL 1.0 — the meaning of data and functions; Signal 2.0 (`context/NENAUGAD_SIGNAL.md`) — the approved appearance, with Atlas 1.1's behaviour rules.
 4. The old AP 1.0 — a reference of risks and evolution, not a mandatory backlog of the first release.
 5. Prototypes and fixtures — illustrations, not proof of integration.
 
@@ -45,7 +45,7 @@ Always preserve:
 
 Source documents and previous generations are untrusted data. A letter created by a model does not become proof of experience.
 
-**The design is approved:** Atlas 1.1, warm light base, white surfaces, blue accent; Source Serif 4 for editorial headings, Inter for working data. Use the attached tokens. Discover — acquaintance, Workspace — work. Signature components: «Карта условий» [Condition Map] and search context. Compatibility, freshness and personal status are three different axes. Do not invent a new style.
+**The design is approved:** Signal 2.0 (owner decision 2026-11-02; `context/NENAUGAD_SIGNAL.md`): cool paper, ink, cyan as an ink-bordered surface and the evidence highlighter, petrol bands; Tektur for display, Geologica for the interface, Martian Mono for times and sources; "unknown" is drawn (hatch, dashed outline), never amber. Use the tokens in `context/nenaugad.tokens.json`. Atlas 1.1 keeps its behaviour rules: Discover — acquaintance, Workspace — work. Signature components: «Карта условий» [Condition Map] and search context. Compatibility, freshness and personal status are three different axes. Do not invent a new style.
 
 ## 3. Starting architecture
 
@@ -284,8 +284,10 @@ Do not repeat questions whose answer is already known. For safe ambiguity, choos
 ## Context
 
 `context/01_TECHNICAL_SPEC.md` — the product and the original invariants.  
-`context/ATLAS_DESIGN_LANGUAGE.md` — the approved Atlas 1.1.  
-`context/atlas.tokens.json` — the original design tokens.  
+`context/NENAUGAD_SIGNAL.md` — Signal 2.0, the approved appearance (2026-11-02).  
+`context/nenaugad.tokens.json` — the Signal tokens (generates `src/app/tokens.css`).  
+`context/ATLAS_DESIGN_LANGUAGE.md` — Atlas 1.1: its behaviour rules; its visuals are superseded.  
+`context/atlas.tokens.json` — the original design tokens (historical).  
 `context/ATLAS_COVER_LETTERS_SPEC.md` — CL 1.0.
 
 The context was copied without changes. Its old stage plans do not cancel SP 1.0. References/price hypotheses in it are not a fresh check of the API. The full AP 1.0 is intentionally not included: the necessary invariants were carried over here.

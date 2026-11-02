@@ -1,4 +1,11 @@
 # Ненаугад — дизайн-система
+
+> **Superseded for visuals (2026-11-02).** This archived 1.3 brandbook is no longer the
+> appearance of Nenaugad: the owner chose Signal 2.0, described in
+> `docs/solo/context/NENAUGAD_SIGNAL.md` (tasks DS-002…DS-002e). Colours, type, radii, the
+> wordmark and amber "unknown" below are historical. The name, the voice and the product
+> rules it inherits from Atlas 1.1 still hold where Signal does not replace them.
+
 ## Версия 1.3 · 24 сентября 2026
 
 **Предмет:** применение брендбука «Ненаугад» к утверждённой системе Atlas 1.1. Данные, совместимость, права источников и поведение продукта не меняются. Главные изменения: имя, знак, голос бренда, иконки, CSS namespace и передача в код.
