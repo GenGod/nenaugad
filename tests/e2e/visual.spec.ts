@@ -30,18 +30,6 @@ const ANON_ROUTES = [
   "/login", "/status", "/profile", "/saved", "/cv",
 ];
 
-// Cold start (DS-002): the dev server compiles each route on first request and can
-// reload the page in the middle of a screenshot. Visit every route once first.
-test.beforeAll(async ({ browser }, testInfo) => {
-  // First compiles of eleven routes take longer than one test's budget.
-  testInfo.setTimeout(180000);
-  const page = await browser.newPage({ baseURL: testInfo.project.use.baseURL });
-  // The load event is enough to compile a route; "networkidle" never settles once a
-  // page talks to the database (DS-002b).
-  for (const route of ANON_ROUTES) await page.goto(route, { waitUntil: "load" });
-  await page.close();
-});
-
 for (const route of ANON_ROUTES) {
   test(`anonymous page renders as baselined: ${route}`, async ({ page }) => {
     await page.goto(route);

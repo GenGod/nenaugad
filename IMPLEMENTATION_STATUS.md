@@ -119,6 +119,12 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-11-02 ([E2E-001](tasks/E2E-001-cold-start-warmup.md)): `npm run test:e2e` 123/123
+  twice in a row under a coding agent, `npm run check` (unit 377/377) exit 0. The desktop
+  failures were pages reloading in a loop from a Turbopack dev cache persisted on other
+  code; the e2e server no longer uses that cache and, by owner decision, skips Next's
+  upgrade notice (dev and build keep it; the upgrade is open, OPEN_GAPS §E item 6).
+  `E2E_PORT` lets two checkouts run the suite at once.
 - 2026-11-02 (DS-002c): `npm run check` (unit 377/377) exit 0; `npm run build` exit 0
   (second start); e2e visual 36/36 after regenerating the detail and `/status` baselines;
   design-system + catalog 44 passed, 1 desktop cold-start failure (passes warm). Not run:

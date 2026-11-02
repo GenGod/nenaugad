@@ -310,6 +310,11 @@ Remaining:
 4. **Email channel** for alerts (item 7) — **owner decision 2026-10-02: stays
    in-app**; email is a separate task later (`send_email` denied in the matrices).
 5. **Retention/limits, thresholds and weights** from section D — as data appears.
+6. **Next.js 16.4.0 is listed in the npm security advisories** (found 2026-11-02,
+   [E2E-001](../tasks/E2E-001-cold-start-warmup.md)). Under a coding agent, `next dev` and
+   `next build` stop on every other start to say so. **Owner decision 2026-11-02:** the e2e
+   server (`ATLAS_ENV=test`) skips the notice (`experimental.agentUpgrade: false`); dev and
+   build keep it. Still open: the upgrade itself.
 
 ## F. Documents versus code (stale claims)
 

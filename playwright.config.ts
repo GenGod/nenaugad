@@ -7,6 +7,11 @@ import { defineConfig } from "@playwright/test";
 // that one value is read; nothing is printed.
 const localSecret = existsSync(".env") ? parseEnv(readFileSync(".env", "utf8")).AUTH_SECRET : undefined;
 
+// Two checkouts (worktrees) can run the suite at the same time on different ports
+// (E2E-001); 3100 when unset.
+const port = process.env.E2E_PORT ?? "3100";
+if (!/^\d{2,5}$/u.test(port)) throw new Error("E2E_PORT must be a port number.");
+
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
@@ -18,10 +23,10 @@ export default defineConfig({
   // the Linux CI runner, every functional assertion still runs and only the
   // pixel comparisons are skipped instead of failing on missing baselines.
   ignoreSnapshots: process.platform !== "win32",
-  use: { baseURL: "http://127.0.0.1:3100", trace: "off", screenshot: "only-on-failure" },
+  use: { baseURL: `http://127.0.0.1:${port}`, trace: "off", screenshot: "only-on-failure" },
   webServer: {
-    command: "npm run dev -- --port 3100",
-    url: "http://127.0.0.1:3100/api/health",
+    command: `npm run dev -- --port ${port}`,
+    url: `http://127.0.0.1:${port}/api/health`,
     reuseExistingServer: false,
     timeout: 90000,
     env: {
