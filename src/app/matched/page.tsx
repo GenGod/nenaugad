@@ -22,6 +22,8 @@ import {
 import { latestProfile } from "../../server/profile-service.ts";
 import { snapshotPool } from "../../server/storage/snapshots.ts";
 import type { RelevanceScore } from "../../server/relevance-service.ts";
+import { candidateOffsets, conditionStrip, zoneStrip } from "../../domain/condition-strip.ts";
+import { ConditionStrip, ZoneStrip } from "../../components/condition-strip.tsx";
 
 export const metadata: Metadata = { title: "Подбор" };
 export const dynamic = "force-dynamic";
@@ -85,9 +87,9 @@ function RequirementsList({ requirements }: { requirements: MatchedJob["requirem
   </>;
 }
 
-function MatchedCard({ job, score, tone, now, feed, position }: {
+function MatchedCard({ job, score, tone, now, feed, position, candidateZone }: {
   job: MatchedJob; score?: RelevanceScore | null; tone: "match" | "review"; now: string;
-  feed: FeedKey; position: number;
+  feed: FeedKey; position: number; candidateZone: readonly number[];
 }) {
   const card = job.card;
   const primary = job.evaluation.rules.find(rule => rule.explanation.trim().length > 0);
@@ -119,6 +121,11 @@ function MatchedCard({ job, score, tone, now, feed, position }: {
     {availabilityNote !== null && <p className="small secondary" style={{ marginTop: 4 }}>
       <Icon name="help-circle" size={16} /> {availabilityNote}
     </p>}
+    {/* DS-002b: the rules' own outcomes per group, from the option that decides the status. */}
+    <div className="job-signals">
+      <ConditionStrip cells={conditionStrip(job.evaluation)} />
+      {job.zones !== null && <ZoneStrip view={zoneStrip(job.zones, candidateZone)} />}
+    </div>
     <div className="job-bottom">
       <div>
         <span className={`badge ${tone === "match" ? "pass" : "review"}`}>
@@ -211,6 +218,7 @@ async function MatchedResults({ userId, result, tab }: {
     contract || "Не задано",
   ].join(" · ");
   const roles = (input?.targetRoles ?? []).join(", ");
+  const candidateZone = input?.timezone ? candidateOffsets(input.timezone) : [];
   // The profile flag «Показывать вкладку „Нужно уточнить“» decides whether that
   // tab exists (B4): with it off, a review request renders the match tab and no
   // review link is offered anywhere on the page.
@@ -309,7 +317,8 @@ async function MatchedResults({ userId, result, tab }: {
           : <div className="job-list">
             {list.map(({ job, score }, index) =>
               <MatchedCard key={job.card.id} job={job} score={score}
-                tone={activeTab === "review" ? "review" : "match"} now={now} feed={activeTab} position={index} />)}
+                tone={activeTab === "review" ? "review" : "match"} now={now} feed={activeTab} position={index}
+                candidateZone={candidateZone} />)}
           </div>}
         {list.length > 0 && suppressedHere > 0 && <p className="small secondary" style={{ marginTop: 8 }}>
           Скрыто как уже показанное: {suppressedHere} — вернутся, если вакансия изменится,

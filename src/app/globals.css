@@ -193,6 +193,28 @@ fieldset legend{font-size:.875rem;font-weight:600;margin-bottom:8px;padding:0}
 .source .ng-icon{width:16px;height:16px}
 .source .source-link{border:0;padding:0;background:none;border-radius:0;min-height:24px;text-decoration:underline;text-underline-offset:3px;font-size:inherit;color:var(--link)}
 
+/* Feed cards (DS-002b): the five-cell condition strip and the time-zone strip. */
+.job-signals{margin-top:14px;display:flex;flex-direction:column;gap:10px}
+.signal-strip{display:flex;flex-wrap:wrap;list-style:none;margin:0;padding:0;width:fit-content;max-width:100%;border:2px solid var(--ink);border-radius:var(--ng-radius-badge);background:var(--surface)}
+.signal-cell{display:flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;font-size:.875rem;line-height:1.3}
+.signal-cell+.signal-cell{box-shadow:inset 1px 0 var(--line)}
+.signal-mark{width:24px;height:24px;display:grid;place-items:center;flex-shrink:0;border-radius:var(--ng-radius-badge);border:2px solid transparent}
+.signal-mark .ng-icon{stroke-width:2.5}
+.signal-cell.pass .signal-mark{background:var(--green-solid);border-color:var(--green);color:var(--ng-color-text-inverse)}
+.signal-cell.unknown .signal-mark{background-color:var(--review-bg);background-image:var(--hatch);border:2px dashed var(--ink);color:var(--review)}
+.signal-cell.unknown .signal-mark .ng-icon{background:var(--review-bg);border-radius:50%}
+.signal-cell.fail .signal-mark{background:var(--red-solid);border-color:var(--red);color:var(--ng-color-text-inverse);clip-path:polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,0 100%)}
+.signal-cell.not_applicable .signal-mark{background:var(--neutral-bg);border-color:var(--neutral);color:var(--neutral)}
+.zone-axis{display:grid;grid-template-columns:repeat(27,minmax(0,1fr));width:min(100%,324px);height:14px;margin-top:7px;border:1.5px solid var(--ink);background:var(--surface)}
+.zone-cell{position:relative;box-shadow:inset 1px 0 color-mix(in srgb,var(--ink) 22%,transparent)}
+.zone-cell:first-child{box-shadow:none}
+/* UTC±0 gets the ruler's long tick, so the axis reads without labels. */
+.zone-cell.utc::before{content:"";position:absolute;left:0;top:-5px;bottom:-5px;width:2px;background:var(--ink)}
+.zone-cell.accepted{background:var(--petrol)}
+.zone-cell.you::after{content:"";position:absolute;left:50%;top:-8px;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--ink);border-bottom:0}
+.zone-text{margin-top:6px;font-size:.875rem;line-height:1.45;color:var(--secondary)}
+.zone-text .mono{color:var(--ink);font-size:.8125rem}
+
 /* Detail: the conditions read as a ruled label. */
 .detail-head{margin:24px 0 32px}
 .detail-head h1{font-size:2.25rem;line-height:1.15}

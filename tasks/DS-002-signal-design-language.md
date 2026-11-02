@@ -1,7 +1,7 @@
 # DS-002 — the «Сигнал» (Signal) design language, slice 1: the foundation
 
-**Status: implemented and tested locally 2026-11-02 (slice 1 of 5); not committed; owner
-acceptance pending.** Owner decision 2026-11-02: after a design research
+**Status: implemented and tested locally 2026-11-02 (slice 1 of 5); committed `aa8d5a9` on
+`feature/ds-002-signal`; owner acceptance pending.** Owner decision 2026-11-02: after a design research
 ([reports/Distinctive UI language for Nenaugad.md](../reports/Distinctive%20UI%20language%20for%20Nenaugad.md))
 and mockups of three directions, the owner chose «Сигнал» / Signal ("Signal") to replace
 the Nenaugad 1.3 appearance (Atlas 1.1 values). Font files: the owner approved downloading
@@ -77,8 +77,8 @@ Manual review: full-page shots of `/`, `/jobs`, `/jobs/orbit-product`, `/profile
 
 ## Open after slice 1
 
-- Regenerate the authed visual baselines with the database running
-  (`npx playwright test visual --update-snapshots`).
+- ~~Regenerate the authed visual baselines with the database running~~ — done in DS-002b
+  (the owner approved starting the compose database).
 - Desktop cold-start navigation failures in the e2e suite (pre-existing; see the A/B above).
   A likely cause is the dev tooling of this Next.js version (it now prints a security
   advisory and stops every other start); an upgrade needs the owner's go-ahead.

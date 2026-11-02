@@ -36,10 +36,9 @@ test.beforeAll(async ({ browser }, testInfo) => {
   // First compiles of eleven routes take longer than one test's budget.
   testInfo.setTimeout(180000);
   const page = await browser.newPage({ baseURL: testInfo.project.use.baseURL });
-  for (const route of ANON_ROUTES) {
-    await page.goto(route);
-    await page.waitForLoadState("networkidle");
-  }
+  // The load event is enough to compile a route; "networkidle" never settles once a
+  // page talks to the database (DS-002b).
+  for (const route of ANON_ROUTES) await page.goto(route, { waitUntil: "load" });
   await page.close();
 });
 

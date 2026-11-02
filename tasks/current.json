@@ -1,15 +1,15 @@
 {
-  "task_id": "DS-002",
-  "file": "tasks/DS-002-signal-design-language.md",
+  "task_id": "DS-002b",
+  "file": "tasks/DS-002b-signal-strip.md",
   "status": "implemented",
   "repair_cycles_used": 1,
   "max_repair_cycles": 2,
   "hypotheses": [
     {
-      "text": "Cold-start next dev compiles trigger full-page reloads during the first desktop visual tests; visiting every anonymous route once in a beforeAll warm-up makes all 33 anonymous baselines pass on two repeat runs",
-      "recorded_at": "2026-11-02T09:19:07.179Z"
+      "text": "With the database up a warmed page never reaches networkidle, so the visual warm-up hangs past 180 s; waiting only for the load event keeps it within budget and all 36 visual tests pass on a repeat run",
+      "recorded_at": "2026-11-02T10:41:30.059Z"
     }
   ],
   "coding_host_spend": "unknown",
-  "note": "DS-002 slice 1 (Signal foundation: tokens, self-hosted fonts, global CSS, status grammar, header mark) implemented and tested locally 2026-11-02; not committed; owner acceptance pending. Open: authed visual baselines need the compose DB; pre-existing desktop cold-start e2e flakiness. Next: DS-002b list rows (signal strip, overlap micro-strip)."
+  "note": "DS-002b (Signal slice 2: condition strip and time-zone strip on /matched cards) implemented and tested locally 2026-11-02 on feature/ds-002-signal. Open: pre-existing desktop cold-start e2e reloads (9 tests); the hours overlap waits for team hours in the data. Next: DS-002c job detail label."
 }

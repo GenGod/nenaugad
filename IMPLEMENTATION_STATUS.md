@@ -103,9 +103,11 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
 - **NLI pre-check:** evaluated with a negative result, not integrated (B4-001).
 - **Design:** Signal 2.0 ([NENAUGAD_SIGNAL.md](docs/solo/context/NENAUGAD_SIGNAL.md)),
   chosen by the owner 2026-11-02; slice 1 (tokens, self-hosted fonts, global styles,
-  status grammar, header mark) implemented and tested locally, not accepted
-  ([DS-002](tasks/DS-002-signal-design-language.md)). Signature components and the home
-  page are later slices. Visual baselines are recorded on Windows.
+  status grammar, header mark; [DS-002](tasks/DS-002-signal-design-language.md)) and
+  slice 2 (feed cards: the five-cell condition strip and the time-zone strip;
+  [DS-002b](tasks/DS-002b-signal-strip.md)) implemented and tested locally on
+  `feature/ds-002-signal`, not accepted. The job-detail label and the home page are later
+  slices. Visual baselines are recorded on Windows.
 - **Documentation:** English since DOC-EN-001 (2026-10-05).
 - **Development process:** Claude Code setup, model and effort policy, CI on pushes
   to `main` that change more than Markdown (DEVX-001, 2026-10-05). The CI job was
@@ -115,6 +117,11 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-11-02 (DS-002b): `npm run check` (unit 377/377) and `npm run test:coverage`
+  (499/499; 84.60 / 88.02 / 93.25, ratchet raised to 84/88/93) exit 0; `test:db` 122/122;
+  `npm run build` exit 0 (second start, after Next's upgrade notice); e2e visual 36/36 on
+  two repeat runs; full `test:e2e` 114 passed, 9 failed — all desktop, first in the run
+  (account, catalog), the page reloading during the cold start, as on the pre-DS-002 code.
 - 2026-11-02 (DS-002 slice 1): `npm run check` (unit 365/365, lint, typecheck) exit 0;
   `npm run build` exit 0 on the second start (the first exited 1 on Next's upgrade
   notice after compiling); e2e visual, anonymous routes 33/33 on two repeat runs;

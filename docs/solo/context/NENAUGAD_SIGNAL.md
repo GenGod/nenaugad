@@ -89,9 +89,16 @@ usage rank). Section titles stay sans (Geologica 600). No tracked all-caps eyebr
 ## 6. Layout
 
 - Results are rows in one ruled list, not floating cards.
-- Signature components (DS-002b–c): the five-cell signal strip in list rows (fixed order:
-  country · hours · contract · pay · requirements; an index, never a meter, never "4/5");
-  the overlap micro-strip («6 ч», a duration, never a percentage); the «Условия вакансии»
+- Feed cards (DS-002b, implemented): the five-cell condition strip (fixed order: страна ·
+  часы · договор · оплата · навыки = GEO-01, TIME-01, CONTRACT-01, SAL-01, SKILL-01; an index,
+  never a meter, never "4/5"). Per-option cells come from the hiring option that decides
+  the status, never mixed across options. Below it, when the job publishes accepted UTC
+  offsets, the **time-zone strip**: a −12…+14 axis with the accepted zones filled (petrol),
+  the candidate's zone marked (ink caret), a long tick at UTC±0 and a text line.
+  **Deviation from the mockups:** the mockups show an hours overlap («6 ч»); the imported
+  data has no team hours (Himalayas gives offsets, Jobicy nothing), so drawing hours would
+  invent data. The overlap micro-strip and ribbon wait for real hours.
+- Signature components still to build (DS-002c): the «Условия вакансии»
   label beside the posting; the overlap ribbon («Лента пересечения»: your hours and the
   team's in your local time, the intersection band, hatched when hours are not published,
   dashed when only a zone range is known); the Ground as a receipt (exact quote with

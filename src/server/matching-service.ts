@@ -11,6 +11,7 @@ import { choosePrimary, groupDuplicates } from "../domain/dedup.ts";
 import { classifySnapshot, policyPublishes, projectCard, type PolicyBoundRecord } from "../domain/snapshot-projection.ts";
 import { evaluateJob, RULESET_VERSION, type JobEvaluation } from "../domain/matching.ts";
 import { assessSnapshotRequirements, type RequirementAssessment } from "../domain/requirements.ts";
+import { zoneFactOf, type ZoneFact } from "../domain/condition-strip.ts";
 import { rankJobs, type RankableJob } from "../domain/match-ranker.ts";
 import { dislikedPosting, type DislikedPosting } from "../domain/negative-preference.ts";
 import type { ClosureSignal } from "../domain/ev-multipliers.ts";
@@ -26,6 +27,9 @@ export type MatchedJob = Readonly<{
   /** Structured requirements with per-requirement verdicts (item A2). B5 gives
    *  the computed data its consumer: the card's evidence block renders it. */
   requirements: RequirementAssessment;
+  /** DS-002b: accepted UTC offsets of the option that decides the status, for the
+   *  card's time-zone strip; null when that option publishes none. */
+  zones: ZoneFact | null;
 }>;
 
 export type MatchedResult = Readonly<{
@@ -137,6 +141,7 @@ export async function matchedForUser(
     const matched: MatchedJob = {
       card, evaluation, closure: primary.closure,
       requirements: assessSnapshotRequirements(primary.stored.snapshot, profile.input),
+      zones: zoneFactOf(primary.stored.snapshot, evaluation),
     };
     if (evaluation.status === "eligible") eligible.push(matched);
     else if (evaluation.status === "needs_review") needsReview.push(matched);
