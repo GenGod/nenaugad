@@ -117,6 +117,11 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-11-02 ([E2E-001](tasks/E2E-001-cold-start-warmup.md)): `npm run test:e2e` 123/123
+  twice in a row, `npm run check` (unit 377/377) exit 0. The desktop failures were pages
+  reloading in a loop from a Turbopack dev cache persisted on other code; the e2e server
+  no longer uses that cache. Under a coding agent, Next 16.4.0's upgrade notice still stops
+  every other `next dev` start (owner decision, OPEN_GAPS §E item 6).
 - 2026-11-02 (DS-002b): `npm run check` (unit 377/377) and `npm run test:coverage`
   (499/499; 84.60 / 88.02 / 93.25, ratchet raised to 84/88/93) exit 0; `test:db` 122/122;
   `npm run build` exit 0 (second start, after Next's upgrade notice); e2e visual 36/36 on

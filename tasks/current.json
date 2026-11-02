@@ -1,15 +1,15 @@
 {
-  "task_id": "DS-002b",
-  "file": "tasks/DS-002b-signal-strip.md",
+  "task_id": "E2E-001",
+  "file": "tasks/E2E-001-cold-start-warmup.md",
   "status": "implemented",
   "repair_cycles_used": 1,
   "max_repair_cycles": 2,
   "hypotheses": [
     {
-      "text": "With the database up a warmed page never reaches networkidle, so the visual warm-up hangs past 180 s; waiting only for the load event keeps it within budget and all 36 visual tests pass on a repeat run",
-      "recorded_at": "2026-11-02T10:41:30.059Z"
+      "text": "The first desktop tests fail because the e2e dev server restores the persisted Turbopack dev cache in .next/dev/cache/turbopack written by a next dev on other code, and pages served from it reload in a loop; with experimental.turbopackFileSystemCacheForDev off for the e2e server (ATLAS_ENV=test), the desktop account and catalog specs pass on the same stale cache that failed them in two runs (7 and 8 failures)",
+      "recorded_at": "2026-11-02T11:49:13.780Z"
     }
   ],
   "coding_host_spend": "unknown",
-  "note": "DS-002b (Signal slice 2: condition strip and time-zone strip on /matched cards) implemented and tested locally 2026-11-02 on feature/ds-002-signal. Open: pre-existing desktop cold-start e2e reloads (9 tests); the hours overlap waits for team hours in the data. Next: DS-002c job detail label."
+  "note": "E2E-001 implemented and tested locally 2026-11-02 (not committed to main, not accepted): the desktop e2e failures were pages reloading in a loop from a Turbopack dev cache persisted on other code; next.config.ts turns that cache off for the e2e server (ATLAS_ENV=test) and the DS-002 visual warm-up is removed. test:e2e 123/123 twice in a row, npm run check exit 0. Open: Next 16.4.0 agent upgrade notice (owner decision, OPEN_GAPS E6)."
 }

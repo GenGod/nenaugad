@@ -15,8 +15,14 @@ const csp = [
   "form-action 'self'"
 ].join("; ");
 
+// The e2e server (ATLAS_ENV=test, playwright.config.ts) compiles from scratch: a Turbopack
+// dev cache that an earlier `next dev` on other code left in .next/dev makes its pages
+// reload in a loop (E2E-001).
+const testServer = process.env.ATLAS_ENV === "test";
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  experimental: { turbopackFileSystemCacheForDev: !testServer },
   async headers() {
     return [{
       source: "/:path*",
