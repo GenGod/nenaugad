@@ -111,7 +111,8 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   catalog rows and how to read the outcomes; [DS-002d](tasks/DS-002d-signal-home.md))
   and slice 5 (favicon; README, pipeline, task template, CL spec and the archived
   `Reference/` brandbook point to Signal; [DS-002e](tasks/DS-002e-signal-docs-favicon.md))
-  implemented and tested locally on `feature/ds-002-signal`, not accepted. Visual baselines
+  implemented and tested locally; merged into `main` at the owner's request 2026-11-02
+  (with E2E-001 and PERF-002). Visual baselines
   are recorded on Windows.
 - **Documentation:** English since DOC-EN-001 (2026-10-05).
 - **Development process:** Claude Code setup, model and effort policy, CI on pushes

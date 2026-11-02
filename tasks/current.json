@@ -6,5 +6,5 @@
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "PERF-002 (/jobs pages its external section: 24 a page, newest first, loading state; 26-35 s -> 0.05-0.08 s TTFB) implemented and tested locally 2026-11-02 on feature/ds-002-signal. DS-002 (slices 1-5), E2E-001 and PERF-002 await owner review; nothing pushed. Open: B60 (search ignores external sources)."
+  "note": "PERF-002 implemented and tested locally 2026-11-02. DS-002 (Signal, slices 1-5), E2E-001 and PERF-002 merged into main at the owner's request 2026-11-02 (local; not pushed). Open: B60 (search ignores external sources); the Next.js security upgrade (OPEN_GAPS E6)."
 }
