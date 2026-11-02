@@ -12,6 +12,7 @@ import type {
 } from "../../domain/source-contracts.ts";
 import { AdapterInputError, descriptionToText } from "./himalayas-fixture.ts";
 import { countryCodeOf } from "./geography-text.ts";
+import { readTravel, withTravel } from "./travel-text.ts";
 
 export type RemoteFirstJobsRawRecord = Readonly<{
   id: string;
@@ -303,6 +304,13 @@ export function mapRemoteFirstJobsRecord(raw: RemoteFirstJobsRawRecord, fetchedA
   const salaryOriginal = salaryKnown
     ? `${salaryMin ?? "?"}–${salaryMax ?? "?"} USD / annual (converted by the source)`
     : null;
+  // Required travel from the title and text (B64-001); the profile decides what it means.
+  const travelled = withTravel(workplace.workplace, [geo.evidence, workplace.evidence, ...(salaryKnown ? [{
+    id: `ev:${id}:comp`, origin_type: "job_source" as const,
+    origin_id: id, origin_version: 1,
+    field_path: "salary_min,salary_max", quote: salaryOriginal, method: "source_field" as const,
+    confidence: 1,
+  }] : [])], readTravel(raw.title.trim(), text), id);
   return {
     kind: "job_snapshot",
     schema_version: "1.0.0",
@@ -316,7 +324,7 @@ export function mapRemoteFirstJobsRecord(raw: RemoteFirstJobsRawRecord, fetchedA
     apply_url: null, // direct_apply denied; the listing on Remote First Jobs is the route
     description_text: text,
     description_language: "en",
-    workplace: workplace.workplace,
+    workplace: travelled.workplace,
     hiring_options: [{
       id: `opt:${id}:1`,
       geography: geo.geography,
@@ -354,12 +362,7 @@ export function mapRemoteFirstJobsRecord(raw: RemoteFirstJobsRawRecord, fetchedA
     },
     lifecycle: "active",
     conflicts: workplace.conflict === null ? [] : [workplace.conflict],
-    evidence: [geo.evidence, workplace.evidence, ...(salaryKnown ? [{
-      id: `ev:${id}:comp`, origin_type: "job_source" as const,
-      origin_id: id, origin_version: 1,
-      field_path: "salary_min,salary_max", quote: salaryOriginal, method: "source_field" as const,
-      confidence: 1,
-    }] : [])],
+    evidence: travelled.evidence,
   };
 }
 

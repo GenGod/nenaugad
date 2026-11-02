@@ -259,7 +259,7 @@ test("rule TIME-01 (B59): a standard-offset list names zones by their winter off
 
   // The fixed reading is unchanged: Berlin is UTC+2 in summer, not in [60].
   assert.equal(time([60], "Europe/Berlin", "fixed_utc_offset")?.outcome, "unknown");
-  assert.equal(RULESET_VERSION, 5);
+  assert.equal(RULESET_VERSION, 6); // 5 for B59; 6 since B64 (REMOTE-01 reads travel)
 });
 
 test("B59: the standard reading only ever turns unknown into pass", () => {

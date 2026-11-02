@@ -11,6 +11,7 @@ import type {
 import { AdapterInputError, descriptionToText } from "./himalayas-fixture.ts";
 import { countryCodeOf, worldwideUnlessTextSays } from "./geography-text.ts";
 import { decodeHtmlEntities } from "./html-entities.ts";
+import { readTravel, withTravel } from "./travel-text.ts";
 
 export type JobicyRawRecord = Readonly<{
   id: number;
@@ -207,6 +208,13 @@ export function mapJobicyRecord(raw: JobicyRawRecord, fetchedAt: string): JobSna
   const employmentTypes = (raw.jobType ?? [])
     .map(type => EMPLOYMENT_TYPE_MAP[type.toLowerCase()])
     .filter(type => type !== undefined);
+  // Required travel from the title and text (B64-001); the profile decides what it means.
+  const travelled = withTravel(workplace.workplace, [...geo.evidence, workplace.evidence, ...(salaryKnown ? [{
+    id: `ev:${id}:comp`, origin_type: "job_source" as const,
+    origin_id: id, origin_version: 1,
+    field_path: "salary", quote: salaryOriginal, method: "source_field" as const,
+    confidence: 1,
+  }] : [])], readTravel(raw.jobTitle, text), id);
   return {
     kind: "job_snapshot",
     schema_version: "1.0.0",
@@ -220,7 +228,7 @@ export function mapJobicyRecord(raw: JobicyRawRecord, fetchedAt: string): JobSna
     apply_url: null, // direct_apply denied; the canonical listing is the route
     description_text: text,
     description_language: "en",
-    workplace: workplace.workplace,
+    workplace: travelled.workplace,
     hiring_options: [{
       id: `opt:${id}:1`,
       geography: geo.geography,
@@ -259,12 +267,7 @@ export function mapJobicyRecord(raw: JobicyRawRecord, fetchedAt: string): JobSna
     },
     lifecycle: "active",
     conflicts: [geo.conflict, workplace.conflict].filter((c): c is string => c !== null),
-    evidence: [...geo.evidence, workplace.evidence, ...(salaryKnown ? [{
-      id: `ev:${id}:comp`, origin_type: "job_source" as const,
-      origin_id: id, origin_version: 1,
-      field_path: "salary", quote: salaryOriginal, method: "source_field" as const,
-      confidence: 1,
-    }] : [])],
+    evidence: travelled.evidence,
   };
 }
 
