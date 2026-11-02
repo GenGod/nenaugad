@@ -26,8 +26,8 @@ import { parseManualProfileInput } from "../../src/domain/profile.ts";
 import { parseEventBatch } from "../../src/domain/events.ts";
 
 const NOW = "2026-11-02T12:00:00.000Z";
-// The approved matrix, enabled: what activation would look like.
-const activePolicy = { ...remoteFirstJobsCandidatePolicy, enabled: true };
+// The policy as activated 2026-11-02; tests derive the switched-off forms from it.
+const activePolicy = remoteFirstJobsCandidatePolicy;
 const [remoteJob, hybridJob, silentJob] = remoteFirstJobsContractFixture as
   readonly [RemoteFirstJobsRawRecord, RemoteFirstJobsRawRecord, RemoteFirstJobsRawRecord];
 
@@ -78,19 +78,25 @@ function fullPage(page: number): FetchPageResult {
   };
 }
 
-test("policy: the matrix is approved but not activated, so nothing runs", () => {
+test("policy: approved and activated; rollback by enabled: false denies everything", () => {
   const policy = remoteFirstJobsCandidatePolicy;
   assert.equal(isSourcePolicy(policy), true);
   assert.equal(getSourcePolicy("remote_first_jobs"), policy);
-  // Owner approval of the matrix 2026-11-02; activation is a separate decision.
+  // Owner approval of the matrix and activation, both 2026-11-02.
   assert.equal(policy.status, "approved");
   assert.equal(policy.approved_by, "owner");
-  assert.equal(policy.enabled, false);
-  for (const permission of SOURCE_POLICY_PERMISSIONS) {
-    assert.equal(permissionFor(policy, permission, NOW), "denied", permission);
-  }
-  assert.equal(policyPublishes(policy, NOW), false); // 0 cards in catalog and matching
+  assert.equal(policy.enabled, true);
+  assert.equal(permissionFor(policy, "fetch", NOW), "allowed");
+  assert.equal(policyPublishes(policy, NOW), true);
+  // Active or not, its text never goes to the provider.
   assert.equal(maySendTextToProvider("remote_first_jobs", NOW), false);
+  // Rollback without other code changes: a disabled or pending clone denies every operation.
+  for (const off of [{ ...policy, enabled: false }, { ...policy, status: "pending" as const }]) {
+    for (const permission of SOURCE_POLICY_PERMISSIONS) {
+      assert.equal(permissionFor(off, permission, NOW), "denied", permission);
+    }
+    assert.equal(policyPublishes(off, NOW), false); // 0 cards in catalog and matching
+  }
 });
 
 test("policy: the matrix holds the owner decisions of 2026-11-02", () => {
@@ -310,7 +316,7 @@ test("excerpt: the start of the text, cut at a word", () => {
 });
 
 test("window import: a disabled or unapproved policy refuses before any request", async () => {
-  for (const policy of [remoteFirstJobsCandidatePolicy, { ...activePolicy, enabled: false },
+  for (const policy of [{ ...activePolicy, enabled: false }, { ...activePolicy, status: "revoked" as const },
     { ...activePolicy, status: "pending" as const }]) {
     const feed = pagedFeed([fullPage(0)]);
     const persistence = createMemoryPersistence();

@@ -62,6 +62,11 @@ source).
    proposed matrix below, unchanged; policy v2 `status: "approved"`, `approved_by:
    "owner"`, `enabled: false`. Not decided yet: the residual risk of the remote rule, and
    activation.
+4. **Activated** (2026-11-02, after the merge: "switch this resource on if it's
+   ready"). The main session judged it ready (reviewed, approved, merged, local checks
+   green, CI running) with the remote rule's residual risk accepted by activating, and
+   checked by hand every posting the first live import put in the catalog. Policy v3
+   `enabled: true`.
 
 ## Proposed permission matrix (for owner approval)
 
@@ -204,7 +209,30 @@ the owner 2026-11-02; not activated, not committed.** The policy is `approved` a
   the four candidates re-checked today.
 - Coverage ratchet lines 84 → 85 (measured 85.21 / 88.70 / 93.71).
 
-**Not done:** no live import (the source is not activated); closure checks; the "Remote OK"
+## Activation (2026-11-02)
+
+- `npm run import:remote-first-jobs` (exit 0): 5 pages, `page_cap`, **500 mapped, 0
+  rejected, 498 created** (2 repeats across pages: the window moved while read);
+  extraction `no_permission` — nothing sent, $0. Migration 0025 applied to the local
+  database by the same run.
+- **498 stored: 102 main catalog (20%), 314 needs-review, 82 excluded.**
+- **Hand check of all 102 confirmed postings** for the residual patterns of the final
+  review (other-language office words, studio/campus/facility/site/lab, WFH, field-based,
+  title qualifiers, "no remote", travel): **no office arrangement found.** The non-travel
+  hits were all false ("Site Reliability Engineering", "Label Studio", "WFH setup
+  reimbursement", a one-time fingerprinting at a government facility). **About 13 of the
+  102 require travel**, two of them up to 50% ("national travel expected up to 50%",
+  "a remote role with up to 50% travel"); travel is not detected for any source.
+- `npm run embeddings:index -- --embedder=local --source=remote_first_jobs` (exit 0):
+  498/498 embedded locally (`qwen3-embedding-0.6b-int8`), 0 invalid; nothing left the
+  machine.
+- The running dev server's `/jobs` shows Remote First Jobs cards with "Источник: Remote
+  First Jobs", the excerpt, the converted salary and an "Открыть на Remote First Jobs"
+  link to the listing; all 48 such links carry `rel="nofollow noreferrer"`, no logo.
+  CI on the merge commit `21a447d`: success.
+- AGENTS.md, README, ARCHITECTURE and the status snapshot now name three live sources.
+
+**Not done:** closure checks; the "Remote OK"
 task.
 
 **Risk: high** (source rights). Effort `xhigh`; a `reviewer` pass before owner approval.

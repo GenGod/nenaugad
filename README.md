@@ -27,7 +27,7 @@ This is not a promise of a production build: the beta is closed (see `docs/SAFET
 - Nenaugad 1.3 design system and all screens: catalog, matching, profile, CV,
   letters, saved, «что нового» [What's new], status.
 - Auth and private versioned profiles (owner from the session only).
-- Import of two approved sources (Himalayas, Jobicy): policies, worker,
+- Import of three approved sources (Himalayas, Jobicy, Remote First Jobs): policies, worker,
   canonicalization, attribution and provenance, closure-checks.
 - Deterministic eligibility gate (pass/fail/unknown, DST-accurate window) and the A1
   golden set with an eval harness and ratchet thresholds.
@@ -41,7 +41,7 @@ This is not a promise of a production build: the beta is closed (see `docs/SAFET
 
 There are no third-party CVs, contacts, font binaries or fabricated letters. A provider key
 may sit in the local environment, but it is not a switch. The catalog data are
-real posts from two approved sources with attribution; the synthetic fixtures
+real posts from three approved sources with attribution; the synthetic fixtures
 remain as a separate demo set.
 
 ## Requirements

@@ -3,7 +3,7 @@
 **Update 2026-10-02 (FDOC-001).** The ADR decisions stand: one Next.js project,
 Postgres as the only storage, without a vector DB service, model router, queues and
 a new API layer. But the «Сейчас» [Now] section below describes the starting stage and is stale in fact:
-since then auth and private profiles (S2), import of two approved sources
+since then auth and private profiles (S2), import of three approved sources
 with a worker (S1), CV intake behind a flag (S3), private letters (S4) and the guarded
 AI contour with a spending ledger (AI-001…AI-007; live calls are forbidden until
 `LIVE_AI_ENABLED` is `true`) have appeared. The current state is in `IMPLEMENTATION_STATUS.md`,

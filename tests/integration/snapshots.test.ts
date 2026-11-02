@@ -148,7 +148,7 @@ test("a himalayas record fetched without an excerpt shows none; one not fetched 
   ]);
 });
 
-test("remote_first_jobs rows share the snapshot tables after 0025; the unactivated policy shows none (S1-006)", async () => {
+test("remote_first_jobs rows share the snapshot tables after 0025; the catalog shows only the confirmed remote one (S1-006)", async () => {
   await migrate(pool);
   const { remoteFirstJobsCandidatePolicy } = await import("../../src/server/source-policies.ts");
   const { runRemoteFirstJobsImport } = await import("../../src/server/import/remote-first-jobs-adapter.ts");
@@ -160,8 +160,7 @@ test("remote_first_jobs rows share the snapshot tables after 0025; the unactivat
   };
   await clear();
   try {
-    // Stored as activation would store them; the policy in the code is approved, not enabled.
-    const active = { ...remoteFirstJobsCandidatePolicy, enabled: true };
+    const active = remoteFirstJobsCandidatePolicy; // approved and activated 2026-11-02
     const report = await runRemoteFirstJobsImport({
       transport: async () => ({ status: "ok" as const, jobs: [...remoteFirstJobsContractFixture], nextCursor: null }),
       persistence: createPostgresPersistence(pool, active),
@@ -178,10 +177,18 @@ test("remote_first_jobs rows share the snapshot tables after 0025; the unactivat
       "remote_first_jobs:platform-engineer-synthetic-fixture-900101",
     ]);
     assert.ok(rows.rows.every(row => row.excerpt.length > 0));
-    // Approval is not activation: with the policy as committed, no card of the source.
+    // With the policy as committed, the catalog shows the confirmed remote posting with
+    // its attribution and listing link; the hybrid one and the silent one stay out.
     const catalog = await readSnapshotCards({ pool });
-    assert.equal(catalog.unavailable, false); // the catalog did read; it skipped the source
-    assert.equal(catalog.cards.filter(card => card.id.startsWith("remote_first_jobs:")).length, 0);
+    assert.equal(catalog.unavailable, false);
+    const cards = catalog.cards.filter(card => card.id.startsWith("remote_first_jobs:"));
+    assert.deepEqual(cards.map(card => card.id), ["remote_first_jobs:platform-engineer-synthetic-fixture-900101"]);
+    assert.equal(cards[0]!.source.displayName, "Remote First Jobs");
+    assert.equal(cards[0]!.source.backlinkRequired, true);
+    assert.equal(cards[0]!.apply.url, remoteFirstJobsContractFixture[0]!.url);
+    // Rollback: the same rows, the policy disabled, no card.
+    const { policyPublishes } = await import("../../src/domain/snapshot-projection.ts");
+    assert.equal(policyPublishes({ ...active, enabled: false }, "2026-11-02T12:00:00.000Z"), false);
   } finally {
     await clear();
   }
