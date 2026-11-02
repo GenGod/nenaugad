@@ -1,7 +1,7 @@
 {
   "task_id": "S1-006",
   "file": "tasks/S1-006-remote-first-jobs-source.md",
-  "status": "implemented",
+  "status": "activated",
   "repair_cycles_used": 2,
   "max_repair_cycles": 2,
   "hypotheses": [
@@ -15,5 +15,5 @@
     }
   ],
   "coding_host_spend": "unknown",
-  "note": "S1-006 (source rights, high risk) implemented, tested locally and reviewed 2026-11-02: Remote First Jobs as the third source. The owner approved the permission matrix 2026-11-02 (policy v2 approved, enabled=false). Both repair cycles used on review finding H1 (the remote rule); residual risks recorded in the task file. Still open for the owner: the residual risk and activation (a separate decision). Not committed. Previous task B61-001 merged into main."
+  "note": "S1-006 (source rights, high risk): Remote First Jobs reviewed, matrix approved and activated by the owner 2026-11-02 (policy v3 enabled). First live import 498 postings, 102 in the catalog; hand check found no office arrangement among them, about 13 require travel (not detected for any source). CI green on the merge commit 21a447d. Activation change not yet committed. Follow-ups for the owner: residual risk of the remote rule (task file), a travel rule, closure checks."
 }

@@ -198,19 +198,19 @@ export const jobicyCandidatePolicy: SourcePolicy = {
 // page is "free and public" with two rules — credit Remote First Jobs with a link,
 // and "do not republish": do not submit its jobs to third-party sites (LinkedIn
 // Jobs, Google Jobs, Jooble). Nothing on AI or ML: by owner decision 2026-11-02
-// process_with_ml is local only and send_to_ai_provider stays unknown. NOT ACTIVATED:
-// enabled stays false until the owner's separate activation decision, so nothing
-// runs yet.
+// process_with_ml is local only and send_to_ai_provider stays unknown. Activated by
+// the owner on 2026-11-02 after the S1-006 review and merge, accepting the remote
+// rule's recorded residual risk; rollback is enabled: false.
 // terms_hash = sha256 of the NORMALIZED API page (src/server/terms-fingerprint.ts),
 // committed at docs/sources/terms/remote-first-jobs-api.txt.
 export const remoteFirstJobsCandidatePolicy: SourcePolicy = {
   kind: "source_policy",
   schema_version: "1.0.0",
   id: "policy/remote_first_jobs/1",
-  version: 2,
+  version: 3,
   source_id: "remote_first_jobs",
   status: "approved",
-  enabled: false,
+  enabled: true,
   terms_urls: [
     "https://remotefirstjobs.com/jobs-api",
     "https://remotefirstjobs.com/terms",
@@ -221,7 +221,8 @@ export const remoteFirstJobsCandidatePolicy: SourcePolicy = {
   approval_reference:
     "Owner-approved permission matrix 2026-11-02 (live review of the API page and site terms, S1-006); " +
     "owner decisions 2026-11-02: explicit-remote rule, local ML only; " +
-    "not activated: activation is a separate owner decision; re-review by 2026-12-23",
+    "activated by the owner 2026-11-02 after the S1-006 review and merge " +
+    "(remote-rule residual risk accepted); re-review by 2026-12-23",
   valid_until: "2026-12-23T00:00:00.000Z",
   permissions: {
     fetch: "allowed",
