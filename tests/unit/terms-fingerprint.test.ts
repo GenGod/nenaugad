@@ -10,7 +10,9 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { normalizeTermsText, sha256Hex, termsFingerprint } from "../../src/server/terms-fingerprint.ts";
-import { himalayasCandidatePolicy, jobicyCandidatePolicy } from "../../src/server/source-policies.ts";
+import {
+  himalayasCandidatePolicy, jobicyCandidatePolicy, remoteFirstJobsCandidatePolicy,
+} from "../../src/server/source-policies.ts";
 
 const ROOT = path.resolve(import.meta.dirname, "..", "..");
 const MANIFEST_PATH = "docs/sources/terms/snapshots.json";
@@ -51,7 +53,10 @@ test("normalization: an injected per-request script does not change the fingerpr
 });
 
 test("policies: terms_hash, manifest and committed snapshots agree offline", () => {
-  const policies = { himalayas: himalayasCandidatePolicy, jobicy: jobicyCandidatePolicy };
+  const policies = {
+    himalayas: himalayasCandidatePolicy, jobicy: jobicyCandidatePolicy,
+    remote_first_jobs: remoteFirstJobsCandidatePolicy,
+  };
   for (const [sourceId, policy] of Object.entries(policies)) {
     const entry = manifest.snapshots[sourceId];
     assert.ok(entry, `${sourceId} must have a snapshot entry in ${MANIFEST_PATH}`);

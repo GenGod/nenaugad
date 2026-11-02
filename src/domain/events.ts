@@ -8,6 +8,7 @@
 // Privacy: nothing here accepts free text. Ids, a type and a position — that is
 // the whole vocabulary. Show-time propensities are computed server-side from the
 // scores the feed ordered by (B2/B20): the client does not get to send them.
+import { SNAPSHOT_ID_PATTERN } from "./source-contracts.ts";
 
 export const EVENT_TYPES = ["impression", "click"] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
@@ -21,7 +22,6 @@ export type EventType = (typeof EVENT_TYPES)[number];
  */
 export const EVENT_RETENTION_MONTHS = 12;
 
-const SNAPSHOT_ID = /^(himalayas|jobicy):[a-z0-9-]{1,150}$/u;
 const MAX_EVENTS_PER_REQUEST = 50;
 
 export type EventItem = Readonly<{
@@ -69,7 +69,7 @@ export function parseEventBatch(value: unknown): readonly EventItem[] {
   for (const raw of items) {
     if (!isRecord(raw)) throw new EventValidationError("INVALID_EVENT_ITEM");
     const snapshotId = raw.snapshotId;
-    if (typeof snapshotId !== "string" || !SNAPSHOT_ID.test(snapshotId)) {
+    if (typeof snapshotId !== "string" || !SNAPSHOT_ID_PATTERN.test(snapshotId)) {
       throw new EventValidationError("INVALID_SNAPSHOT_ID");
     }
     let position: number | null = null;

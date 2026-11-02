@@ -6,6 +6,16 @@
 
 export type TriState = "allowed" | "denied" | "unknown";
 
+/**
+ * The live sources whose postings are stored as snapshots (job_snapshots.source_id),
+ * in the order the catalog and matching read them. A source here still shows
+ * nothing until its policy is approved and enabled.
+ */
+export const SNAPSHOT_SOURCE_IDS = ["himalayas", "jobicy", "remote_first_jobs"] as const;
+
+/** A stored snapshot's id: `<source>:<record>`, for the ids a request may name. */
+export const SNAPSHOT_ID_PATTERN = /^(himalayas|jobicy|remote_first_jobs):[a-z0-9-]{1,150}$/u;
+
 export const SOURCE_POLICY_PERMISSIONS = [
   "fetch", "cache", "store_full_text", "store_excerpt", "derive_fields",
   "process_with_ml", "send_to_ai_provider", "publish_full_text", "publish_excerpt",

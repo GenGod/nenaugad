@@ -15,6 +15,7 @@ import { zoneFactOf, type ZoneFact } from "../domain/condition-strip.ts";
 import { rankJobs, type RankableJob } from "../domain/match-ranker.ts";
 import { dislikedPosting, type DislikedPosting } from "../domain/negative-preference.ts";
 import type { ClosureSignal } from "../domain/ev-multipliers.ts";
+import { SNAPSHOT_SOURCE_IDS } from "../domain/source-contracts.ts";
 import type { RankedRequestItem } from "../domain/rank-guardrails.ts";
 import { computeRankerShadow, logRankerShadow, type ShadowRequest } from "./ranker-shadow-service.ts";
 
@@ -81,7 +82,7 @@ export async function matchedForUser(
   // the ranker (A6-002) — that signal needs their company and stack, not just ids.
   const disliked: DislikedPosting[] = [];
   const collected: (PolicyBoundRecord & { excerpt: string; closure: ClosureSignal | null })[] = [];
-  for (const sourceId of ["himalayas", "jobicy"]) {
+  for (const sourceId of SNAPSHOT_SOURCE_IDS) {
     const policy = getSourcePolicy(sourceId);
     if (!policy || !policyPublishes(policy, now)) continue;
     const rows = await readSnapshotCardsData(pool, sourceId);

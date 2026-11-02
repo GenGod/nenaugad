@@ -45,6 +45,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
 ## By area
 - **Sources:** himalayas and jobicy, owner-activated (S1-002 2026-09-24, S1-003
   2026-09-25). Normalized terms fingerprints; jobicy holds `process_with_ml` (EDEC-001).
+  Remote First Jobs: adapter implemented, tested locally and reviewed; permission matrix
+  **owner-approved 2026-11-02, not activated** ([S1-006](tasks/S1-006-remote-first-jobs-source.md));
+  remote is confirmed only by the posting's own words, local ML only, no provider transfer.
 - **Import and catalog:** worker with schedules, backoff and a per-source circuit
   breaker (S1-004); jobicy closure checks (S1-005, the batch status endpoint since B56-001);
   the jobicy import follows the feed cursor through the 7-day window, up to 10 pages a run

@@ -2,6 +2,7 @@
 // operation takes the session userId; SQL is inline fixed literals with $n
 // parameters.
 import type { Pool } from "pg";
+import { SNAPSHOT_ID_PATTERN } from "../domain/source-contracts.ts";
 
 export class FeedbackError extends Error {
   constructor(code: "INVALID_REASON" | "SNAPSHOT_NOT_FOUND") { super(code); }
@@ -18,7 +19,7 @@ export type HiddenJobRecord = Readonly<{
 export async function hideJobForUser(params: Readonly<{
   pool: Pool; userId: string; snapshotId: string; reasonCode: string;
 }>): Promise<void> {
-  if (!/^(himalayas|jobicy):[a-z0-9-]{1,150}$/u.test(params.snapshotId)) {
+  if (!SNAPSHOT_ID_PATTERN.test(params.snapshotId)) {
     throw new FeedbackError("SNAPSHOT_NOT_FOUND");
   }
   try {

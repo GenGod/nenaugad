@@ -3,6 +3,7 @@ import { readConfig } from "./config.ts";
 import { getSourcePolicy } from "./source-policies.ts";
 import { choosePrimary, groupDuplicates } from "../domain/dedup.ts";
 import type { ClosureSignal } from "../domain/ev-multipliers.ts";
+import { SNAPSHOT_SOURCE_IDS } from "../domain/source-contracts.ts";
 import {
   classifySnapshot, policyPublishes, projectCard, type PolicyBoundRecord,
   type CatalogCardProjection,
@@ -35,7 +36,7 @@ export async function readSnapshotCards(
   const pool = options.pool ?? snapshotPool();
   const collected: (PolicyBoundRecord & { excerpt: string; closure: ClosureSignal | null })[] = [];
   let unavailable = false;
-  for (const sourceId of ["himalayas", "jobicy"]) {
+  for (const sourceId of SNAPSHOT_SOURCE_IDS) {
     const policy = getSourcePolicy(sourceId);
     if (!policy || !policyPublishes(policy, now)) continue;
     try {
