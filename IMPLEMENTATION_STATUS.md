@@ -105,9 +105,11 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   chosen by the owner 2026-11-02; slice 1 (tokens, self-hosted fonts, global styles,
   status grammar, header mark; [DS-002](tasks/DS-002-signal-design-language.md)) and
   slice 2 (feed cards: the five-cell condition strip and the time-zone strip;
-  [DS-002b](tasks/DS-002b-signal-strip.md)) implemented and tested locally on
-  `feature/ds-002-signal`, not accepted. The job-detail label and the home page are later
-  slices. Visual baselines are recorded on Windows.
+  [DS-002b](tasks/DS-002b-signal-strip.md)) and slice 3 (the job detail as a ruled
+  condition label with receipts and drawn absences;
+  [DS-002c](tasks/DS-002c-signal-condition-label.md)) implemented and tested locally on
+  `feature/ds-002-signal`, not accepted. The home page is a later slice. Visual baselines
+  are recorded on Windows.
 - **Documentation:** English since DOC-EN-001 (2026-10-05).
 - **Development process:** Claude Code setup, model and effort policy, CI on pushes
   to `main` that change more than Markdown (DEVX-001, 2026-10-05). The CI job was
@@ -117,6 +119,10 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-11-02 (DS-002c): `npm run check` (unit 377/377) exit 0; `npm run build` exit 0
+  (second start); e2e visual 36/36 after regenerating the detail and `/status` baselines;
+  design-system + catalog 44 passed, 1 desktop cold-start failure (passes warm). Not run:
+  `test:db`, `test:coverage` (no `.ts` logic changed).
 - 2026-11-02 (DS-002b): `npm run check` (unit 377/377) and `npm run test:coverage`
   (499/499; 84.60 / 88.02 / 93.25, ratchet raised to 84/88/93) exit 0; `test:db` 122/122;
   `npm run build` exit 0 (second start, after Next's upgrade notice); e2e visual 36/36 on

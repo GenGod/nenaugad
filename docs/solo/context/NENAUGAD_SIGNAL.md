@@ -98,11 +98,17 @@ usage rank). Section titles stay sans (Geologica 600). No tracked all-caps eyebr
   **Deviation from the mockups:** the mockups show an hours overlap («6 ч»); the imported
   data has no team hours (Himalayas gives offsets, Jobicy nothing), so drawing hours would
   invent data. The overlap micro-strip and ribbon wait for real hours.
-- Signature components still to build (DS-002c): the «Условия вакансии»
-  label beside the posting; the overlap ribbon («Лента пересечения»: your hours and the
-  team's in your local time, the intersection band, hatched when hours are not published,
-  dashed when only a zone range is known); the Ground as a receipt (exact quote with
-  `<mark>`, source, a dated «сверено с объявлением» stamp; an "empty receipt" for unknowns).
+- Job detail (DS-002c, implemented on the synthetic catalog's detail page — real snapshots
+  link to their source and have no detail page yet): the condition map as a **label** — a
+  ruled panel titled «Карта условий» (the established term, Atlas §11; the mockups said
+  «Условия вакансии»), a mono source line, a 4px rule, the rows, and the footer «Это сверка
+  с текстом объявления, а не гарантия найма или юридической допустимости». The Ground is a
+  **receipt**: the quote on an ink rule, its provenance in an outlined mono stamp (on
+  synthetic records it says so; «сверено с объявлением» is for real, checked postings).
+  Absences are drawn: unpublished hours get an **empty ribbon** (a hatched, dashed bar),
+  unknown countries an **empty receipt** (a hatched band and what to ask the employer).
+- Still waiting for data: the overlap ribbon («Лента пересечения») needs team hours;
+  `<mark>` on the decisive words needs evidence spans, not whole quotes.
 - Home (DS-002d): the search and live rows; no floating example card, no feature strip.
 
 ## 7. Motion

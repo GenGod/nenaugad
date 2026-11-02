@@ -1,15 +1,10 @@
 {
-  "task_id": "DS-002b",
-  "file": "tasks/DS-002b-signal-strip.md",
+  "task_id": "DS-002c",
+  "file": "tasks/DS-002c-signal-condition-label.md",
   "status": "implemented",
-  "repair_cycles_used": 1,
+  "repair_cycles_used": 0,
   "max_repair_cycles": 2,
-  "hypotheses": [
-    {
-      "text": "With the database up a warmed page never reaches networkidle, so the visual warm-up hangs past 180 s; waiting only for the load event keeps it within budget and all 36 visual tests pass on a repeat run",
-      "recorded_at": "2026-11-02T10:41:30.059Z"
-    }
-  ],
+  "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "DS-002b (Signal slice 2: condition strip and time-zone strip on /matched cards) implemented and tested locally 2026-11-02 on feature/ds-002-signal. Open: pre-existing desktop cold-start e2e reloads (9 tests); the hours overlap waits for team hours in the data. Next: DS-002c job detail label."
+  "note": "DS-002c (Signal slice 3: job detail as a ruled condition label, receipts, drawn absences) implemented and tested locally 2026-11-02 on feature/ds-002-signal. Next: DS-002d home without the floating card and the feature strip."
 }
