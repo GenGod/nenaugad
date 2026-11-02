@@ -109,7 +109,11 @@ usage rank). Section titles stay sans (Geologica 600). No tracked all-caps eyebr
   unknown countries an **empty receipt** (a hatched band and what to ask the employer).
 - Still waiting for data: the overlap ribbon («Лента пересечения») needs team hours;
   `<mark>` on the decisive words needs evidence spans, not whole quotes.
-- Home (DS-002d): the search and live rows; no floating example card, no feature strip.
+- Home (DS-002d, implemented): one column — the hero with the catalog search
+  (`/jobs?q=`), the three newest catalog rows (the same data and card as `/jobs`; absent,
+  not invented, if the catalog cannot be read), and «Как читать условия»: the three outcomes
+  in the status grammar with one sentence each and the no-percentage line. No floating
+  example card, no icon strip.
 
 ## 7. Motion
 

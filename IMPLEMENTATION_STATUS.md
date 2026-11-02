@@ -107,9 +107,10 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   slice 2 (feed cards: the five-cell condition strip and the time-zone strip;
   [DS-002b](tasks/DS-002b-signal-strip.md)) and slice 3 (the job detail as a ruled
   condition label with receipts and drawn absences;
-  [DS-002c](tasks/DS-002c-signal-condition-label.md)) implemented and tested locally on
-  `feature/ds-002-signal`, not accepted. The home page is a later slice. Visual baselines
-  are recorded on Windows.
+  [DS-002c](tasks/DS-002c-signal-condition-label.md)) and slice 4 (home as the search, real
+  catalog rows and how to read the outcomes; [DS-002d](tasks/DS-002d-signal-home.md))
+  implemented and tested locally on `feature/ds-002-signal`, not accepted. README and the
+  `Reference/` brandbook still describe 1.3. Visual baselines are recorded on Windows.
 - **Documentation:** English since DOC-EN-001 (2026-10-05).
 - **Development process:** Claude Code setup, model and effort policy, CI on pushes
   to `main` that change more than Markdown (DEVX-001, 2026-10-05). The CI job was
@@ -119,6 +120,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-11-02 (DS-002d): `npm run check` (unit 377/377) exit 0, `npm run build` exit 0,
+  `npm run test:e2e` 126/126 on two runs in a row (the new home test included). Not run:
+  `test:db`, `test:coverage` (no `.ts` logic changed).
 - 2026-11-02 ([E2E-001](tasks/E2E-001-cold-start-warmup.md)): `npm run test:e2e` 123/123
   twice in a row under a coding agent, `npm run check` (unit 377/377) exit 0. The desktop
   failures were pages reloading in a loop from a Turbopack dev cache persisted on other

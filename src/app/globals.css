@@ -113,28 +113,23 @@ button, input, select, textarea{border-radius:var(--ng-radius-control)}
 .icon-btn[aria-pressed=true]{color:var(--ink);background:var(--signal);border-color:var(--ink)}
 .icon-btn[aria-pressed=true] .bookmark{fill:currentColor}
 
-/* Home. The floating proof card and the icon strip are reworked in a later DS-002 slice. */
-.hero{display:grid;grid-template-columns:1.08fr 1fr;gap:64px;align-items:center;padding:56px 0 56px}
-.hero h1{font-size:4rem;line-height:1.02;letter-spacing:-.015em;margin-top:20px}
+/* Home (DS-002d): one column — the search, real rows, and how to read the outcomes. */
+.hero{padding:40px 0 48px;max-width:880px}
+.hero h1{font-size:4.5rem;line-height:1.02;letter-spacing:-.015em;margin-top:16px}
 .hero h1 em{font-style:normal;background:var(--signal);box-shadow:inset 0 -4px var(--ink);padding:0 .06em}
-.hero p.lead{font-size:1.0625rem;line-height:1.7;color:var(--secondary);max-width:47ch;margin-top:24px}
-.hero .actions{margin-top:28px;display:flex;flex-wrap:wrap;gap:16px;align-items:center}
-.hero .privacy{margin-top:16px;color:var(--secondary);display:flex;gap:8px;font-size:.875rem;max-width:49ch;align-items:flex-start}
-.proof-shell{position:relative;padding:24px;background:var(--surface);border:2px solid var(--ink);border-radius:var(--ng-radius-panel)}
-.proof-shell .proof-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:10px;border-bottom:4px solid var(--ink);color:var(--ink);font-family:var(--mono);font-stretch:87.5%;font-size:.75rem;font-weight:500}
-.proof-card{background:var(--surface)}
+.hero p.lead{font-size:1.0625rem;line-height:1.7;color:var(--secondary);max-width:58ch;margin-top:20px}
+.home-search{max-width:720px;margin:28px 0 0}
+.hero .actions{margin-top:16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.hero .privacy{margin-top:16px;color:var(--secondary);display:flex;gap:8px;font-size:.875rem;max-width:58ch;align-items:flex-start}
+.home-latest{padding-top:8px}
+.home-legend{margin-top:48px;padding:20px 24px;background:var(--surface);border:2px solid var(--ink);border-radius:var(--ng-radius-panel)}
+.home-legend h2{font-size:1.25rem}
+.home-legend ul{list-style:none;margin:14px 0;padding:0;display:grid;gap:10px}
+/* Company marks on job cards. */
 .company-mark{width:44px;height:44px;background:var(--subtle);display:grid;place-items:center;border:2px solid var(--ink);border-radius:var(--ng-radius-badge);font-family:var(--display);font-weight:var(--ng-weight-bold);font-size:1.375rem;flex-shrink:0}
 .company-mark.fern{background:var(--green-bg);color:var(--green)}
 .company-mark.river{background:var(--signal-soft);color:var(--ink)}
 .company-mark.pearl{background:var(--subtle);color:var(--ink)}
-.proof-card h3{font-size:1.25rem}.proof-card .pay{font-weight:600;margin:20px 0 12px;font-variant-numeric:tabular-nums}
-.proof-rule{padding:14px 0;border-top:1px solid var(--line);display:flex;gap:12px;align-items:flex-start;font-size:.875rem}
-.proof-rule>.ng-icon{color:var(--green);margin-top:2px}
-.proof-rule strong{font-weight:600;display:block}
-.proof-foot{color:var(--secondary);font-size:.875rem;margin-top:16px}
-.promise-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;border-top:2px solid var(--ink);border-bottom:1px solid var(--line);padding:28px 0;margin-top:48px}
-.promise-grid h3{font-size:1rem;margin:10px 0 6px}.promise-grid p{font-size:.875rem;color:var(--secondary)}
-.promise-grid>.promise>.ng-icon{color:var(--ink)}
 
 /* Results. */
 .results-layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:32px}
@@ -318,13 +313,18 @@ dialog::backdrop{background:color-mix(in srgb,var(--ink) 44%,transparent)}
 .letter-area textarea{min-height:480px;line-height:1.85}
 .filters-body{display:flex;flex-wrap:wrap;gap:16px;align-items:end;margin-bottom:20px}
 .filters-body .field{min-width:200px}
+/* Home overrides (DS-002d) come after the rules they refine. */
+.home-latest .section-head{margin-top:0;padding-top:20px;border-top:2px solid var(--ink)}
+.home-legend .signal-cell{align-items:flex-start;gap:12px;padding:0;font-size:.9375rem;line-height:1.5}
+.home-legend .signal-cell+.signal-cell{box-shadow:none}
+.home-legend .signal-mark{margin-top:1px}
 
 /* QA corrections: search padding outranks the generic input rule. */
 .search-row .search-control input{padding-left:44px}
 
 @media(max-width:1279px){
  .results-layout{grid-template-columns:1fr}.results-sidebar{display:none}
- .hero{gap:32px}.hero h1{font-size:3.25rem}
+ .hero h1{font-size:3.5rem}
  .detail-layout{gap:28px}.header-inner{gap:24px}.tagline{display:none}
 }
 @media(max-width:1100px){.tagline{display:none}.header-inner{gap:16px}}
@@ -349,16 +349,12 @@ dialog::backdrop{background:color-mix(in srgb,var(--ink) 44%,transparent)}
  h1{font-size:2rem;line-height:1.15}
  h2{font-size:1.5rem;line-height:1.33}
  .page-head{margin-bottom:24px}
- .hero{grid-template-columns:1fr;padding:32px 0;gap:32px}
+ .hero{padding:24px 0 32px}
  .hero h1{font-size:2.5rem;line-height:1.05}
  .hero p.lead{font-size:1rem}
  .hero .actions{align-items:stretch;flex-direction:column}
  .hero .actions .btn{width:100%}
- .proof-shell{padding:16px}
- .proof-shell .proof-head{gap:12px;margin-bottom:16px}
- .promise-grid{grid-template-columns:1fr;gap:24px;padding:24px 0;margin-top:36px}
- .promise{display:grid;grid-template-columns:24px 1fr;column-gap:12px}
- .promise h3{margin:0 0 6px}.promise p{grid-column:2}
+ .home-legend{padding:16px}
  .context{padding:14px 16px;flex-direction:row;align-items:center;gap:12px}
  .context .context-info,.context .context-title{font-size:.875rem}
  .context .btn{padding:8px;min-width:44px}

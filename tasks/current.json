@@ -1,15 +1,10 @@
 {
-  "task_id": "E2E-001",
-  "file": "tasks/E2E-001-cold-start-warmup.md",
+  "task_id": "DS-002d",
+  "file": "tasks/DS-002d-signal-home.md",
   "status": "implemented",
-  "repair_cycles_used": 1,
+  "repair_cycles_used": 0,
   "max_repair_cycles": 2,
-  "hypotheses": [
-    {
-      "text": "The first desktop tests fail because the e2e dev server restores the persisted Turbopack dev cache in .next/dev/cache/turbopack written by a next dev on other code, and pages served from it reload in a loop; with experimental.turbopackFileSystemCacheForDev off for the e2e server (ATLAS_ENV=test), the desktop account and catalog specs pass on the same stale cache that failed them in two runs (7 and 8 failures)",
-      "recorded_at": "2026-11-02T11:49:13.780Z"
-    }
-  ],
+  "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "E2E-001 implemented and tested locally 2026-11-02 (merged into feature/ds-002-signal 2026-11-02 at the owner's request, not accepted): the desktop e2e failures were pages reloading in a loop from a Turbopack dev cache persisted on other code; the e2e server (ATLAS_ENV=test) no longer uses that cache and, by owner decision 2026-11-02 (option A), skips Next's agent upgrade notice; E2E_PORT added; the DS-002 visual warm-up removed. test:e2e 123/123 twice in a row under a coding agent, npm run check exit 0. Open: the Next.js security upgrade (owner, OPEN_GAPS E6). DS-002c (job detail label, 8dfa752) is also implemented on this branch; next design slice: DS-002d (home)."
+  "note": "DS-002d (Signal slice 4: home as search, real catalog rows and the reading guide) implemented and tested locally 2026-11-02 on feature/ds-002-signal. Next: DS-002e (README, Reference brandbook, favicon), then owner acceptance of DS-002."
 }
