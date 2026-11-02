@@ -91,7 +91,8 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   offset, so summer time passes ([B59-001](tasks/B59-001-himalayas-standard-offsets.md);
   the 2,859 stored himalayas postings re-mapped 2026-10-15, rollback in `backups/`);
   required travel is read from every source's text and REMOTE-01 applies it under "no
-  mandatory attendance", the catalog keeps the posting with a travel note
+  mandatory attendance" (the profile checkbox names travel), the catalog keeps the posting
+  with a travel note
   ([B64-001](tasks/B64-001-required-travel.md); 434 stored postings re-mapped 2026-11-02,
   rollback in `backups/`).
 - **Retrieval:** pinned local embedding model (`npm run models:fetch`), pgvector, dense
@@ -133,6 +134,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-11-02 ([B64-001](tasks/B64-001-required-travel.md), checkbox wording): the 9
+  `authed-profile-*` baselines re-recorded (only the label differs), `npm run test:e2e`
+  126/126, `npm run check` (unit 408/408) exit 0.
 - 2026-11-02 ([PERF-002](tasks/PERF-002-jobs-external-pages.md)): `/jobs` rendered all 3,527
   external cards (26–35 s, 21 MB); now 24 a page, newest first, with a loading state:
   0.05–0.08 s to first byte, 192 KB. `npm run check` (unit 382/382) and `test:coverage`
