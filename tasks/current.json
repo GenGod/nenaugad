@@ -1,10 +1,10 @@
 {
-  "task_id": "B64-001",
-  "file": "tasks/B64-001-required-travel.md",
+  "task_id": "B60-001",
+  "file": "tasks/B60-001-external-search.md",
   "status": "implemented",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "B64-001 implemented, re-mapped (434 stored postings) and tested locally 2026-11-02: required travel detected for all three sources, REMOTE-01 ruleset 6, catalog note. Checkbox wording deferred (visual baselines cannot be re-recorded while another session holds next dev). Not committed. Previous task S1-006: Remote First Jobs activated and pushed (5969945)."
+  "note": "B60-001 implemented and tested locally 2026-11-02: the /jobs search box searches the external sources too (owner decisions: title + company + excerpt; filter, newest first, then page; every word at a word start). check and test:coverage exit 0; latency unchanged. Not committed. Previous task B64-001: required travel, merged into main (91bb863)."
 }

@@ -133,6 +133,11 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-11-02 ([B60-001](tasks/B60-001-external-search.md)): the `/jobs` search box filters the
+  external cards too (title, company, excerpt; every word at a word start; newest first,
+  then paged); ~4 ms over 3,622 cards, `/jobs` 0.04–0.06 s to first byte, unchanged.
+  `npm run check` (unit 421/421) and `test:coverage` (546/546; 85.48 / 88.90 / 93.84)
+  exit 0. Not run: `build`, `test:e2e` (fixture backend has no external section).
 - 2026-11-02 ([PERF-002](tasks/PERF-002-jobs-external-pages.md)): `/jobs` rendered all 3,527
   external cards (26–35 s, 21 MB); now 24 a page, newest first, with a loading state:
   0.05–0.08 s to first byte, 192 KB. `npm run check` (unit 382/382) and `test:coverage`
