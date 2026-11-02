@@ -13,8 +13,10 @@ Unknown is not pass/fail. Eligibility is not relevance or offer probability.
 AI does not change permissions, budgets or application status. No auto-apply.
 Sources require purpose-specific approval. Profiles and letters are private.
 
-Approved appearance: [Atlas 1.1](docs/solo/context/ATLAS_DESIGN_LANGUAGE.md).
-Use `src/app/tokens.css`, generated from the original tokens. Do not redesign Nenaugad.
+Appearance: [Signal 2.0](docs/solo/context/NENAUGAD_SIGNAL.md), chosen by the owner
+2026-11-02 and applied in DS-002; behaviour rules from
+[Atlas 1.1](docs/solo/context/ATLAS_DESIGN_LANGUAGE.md) stay. Use `src/app/tokens.css`,
+generated from `docs/solo/context/nenaugad.tokens.json`. Do not redesign Nenaugad.
 
 ## What exists
 One Next.js TypeScript app. Public read-only synthetic catalog plus snapshots from

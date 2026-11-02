@@ -101,8 +101,11 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   owner-accepted 2026-10-07). After an import, from the worker or a manual import alike,
   it makes at most 25 calls per source (B34-001).
 - **NLI pre-check:** evaluated with a negative result, not integrated (B4-001).
-- **Design:** the Nenaugad design system 1.3 with `--ng-*` tokens (DS-001,
-  owner-accepted 2026-09-27); visual baselines are recorded on Windows.
+- **Design:** Signal 2.0 ([NENAUGAD_SIGNAL.md](docs/solo/context/NENAUGAD_SIGNAL.md)),
+  chosen by the owner 2026-11-02; slice 1 (tokens, self-hosted fonts, global styles,
+  status grammar, header mark) implemented and tested locally, not accepted
+  ([DS-002](tasks/DS-002-signal-design-language.md)). Signature components and the home
+  page are later slices. Visual baselines are recorded on Windows.
 - **Documentation:** English since DOC-EN-001 (2026-10-05).
 - **Development process:** Claude Code setup, model and effort policy, CI on pushes
   to `main` that change more than Markdown (DEVX-001, 2026-10-05). The CI job was
@@ -112,6 +115,12 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-11-02 (DS-002 slice 1): `npm run check` (unit 365/365, lint, typecheck) exit 0;
+  `npm run build` exit 0 on the second start (the first exited 1 on Next's upgrade
+  notice after compiling); e2e visual, anonymous routes 33/33 on two repeat runs;
+  design-system + catalog 41 passed, 4 desktop cold-start navigation failures that the
+  pre-DS-002 code shows too. Not run: `test:db`, `test:coverage`, and the authed e2e
+  (account, s2, s2b, s3, authed visual) — the compose database on port 54329 was down.
 - 2026-10-15 (B59-001): `npm run check` (unit 364/364), `npm run test:coverage` (486/486;
   84.43 / 87.80 / 93.11), `npm run test:e2e` (123 passed) and `npm run eval:matching`
   (unchanged), exit 0.
@@ -201,8 +210,8 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
 - Restore (SP-T22, a beta prerequisite): it must re-apply `account_deletions`. Account deletion
   itself is done ([B11-001](tasks/B11-001-account-deletion.md), reviewed, owner-accepted
   2026-10-13).
-- Which design document is authoritative: AGENTS.md and README still name Atlas 1.1,
-  while the tokens come from the design system 1.3 (flagged by DEVX-001).
+- Which design document is authoritative: AGENTS.md now names Signal 2.0 with Atlas 1.1
+  for behaviour (DS-002); README and `Reference/Nenaugad/` still describe 1.3.
 - **Jobicy changed its API page (`terms:check`, 2026-10-05; re-read 2026-10-15):** fair
   use unchanged; import and field mapping still work. Closure checks now use the
   documented batch status endpoint (100 IDs a request, one pass an hour, still two

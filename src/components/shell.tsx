@@ -14,8 +14,13 @@ export async function Header() {
     <header className="site-header">
       <div className="wrap header-inner">
         <Link className="logo" href="/" aria-label="Ненаугад — главная">
-          {/* biome-ignore lint/performance/noImgElement: a fixed 208×31 brand asset; next/image would change the header markup that every visual baseline covers */}
-          <img className="brand-logo" src="/brand/wordmark.png" alt="ненаугад" width={208} height={31} />
+          {/* Signal 2.0 mark: two bars (your hours, the team's) and the white overlap between them. */}
+          <svg className="logo-mark" width="36" height="24" viewBox="0 0 36 24" aria-hidden="true" focusable="false">
+            <rect x="1" y="3" width="22" height="7" fill="currentColor" />
+            <rect x="13" y="14" width="22" height="7" fill="currentColor" />
+            <rect x="13" y="1" width="10" height="22" fill="var(--surface)" stroke="currentColor" strokeWidth="2" />
+          </svg>
+          <span className="wordmark" aria-hidden="true">ненаугад</span>
         </Link>
         <span className="tagline">Только удалённо</span>
         <SiteNav />

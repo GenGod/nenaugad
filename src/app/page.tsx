@@ -31,7 +31,7 @@ export default function Home() {
           <p className="pay money">€72 000–90 000 <small className="small secondary">/ год, до налогов</small></p>
           <div className="proof-rule"><Icon name="check" size={16} />
             <span><strong>Страна найма</strong>По всему миру — по контракту источника</span></div>
-          <div className="proof-rule"><Icon name="help-circle" size={16} style={{ color: "var(--amber)" }} />
+          <div className="proof-rule"><Icon name="help-circle" size={16} style={{ color: "var(--review)" }} />
             <span><strong>Рабочие часы</strong>Не опубликованы — нужно уточнить</span></div>
           <div className="proof-rule"><Icon name="check" size={16} />
             <span><strong>Формат</strong>Постоянная полная удалёнка, без обязательного офиса</span></div>

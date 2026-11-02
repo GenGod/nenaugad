@@ -14,6 +14,9 @@ const SHOT = { fullPage: true, animations: "disabled", caret: "hide" } as const;
 // of the app UI. Production builds do not render it.
 async function shot(page: Page, name: string) {
   await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
+  // Next 16's dev tools can still paint their badge (e.g. "1 Insight") past that rule,
+  // depending on when they mount (DS-002): drop the host element itself.
+  await page.evaluate(() => { for (const host of document.querySelectorAll("nextjs-portal")) host.remove(); });
   await expect(page).toHaveScreenshot(name, SHOT);
 }
 
@@ -26,6 +29,19 @@ const ANON_ROUTES = [
   "/jobs?q=React", "/jobs?q=unlisted-skill",
   "/login", "/status", "/profile", "/saved", "/cv",
 ];
+
+// Cold start (DS-002): the dev server compiles each route on first request and can
+// reload the page in the middle of a screenshot. Visit every route once first.
+test.beforeAll(async ({ browser }, testInfo) => {
+  // First compiles of eleven routes take longer than one test's budget.
+  testInfo.setTimeout(180000);
+  const page = await browser.newPage({ baseURL: testInfo.project.use.baseURL });
+  for (const route of ANON_ROUTES) {
+    await page.goto(route);
+    await page.waitForLoadState("networkidle");
+  }
+  await page.close();
+});
 
 for (const route of ANON_ROUTES) {
   test(`anonymous page renders as baselined: ${route}`, async ({ page }) => {
