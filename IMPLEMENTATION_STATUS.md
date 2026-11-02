@@ -122,6 +122,10 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-11-02 ([PERF-002](tasks/PERF-002-jobs-external-pages.md)): `/jobs` rendered all 3,527
+  external cards (26–35 s, 21 MB); now 24 a page, newest first, with a loading state:
+  0.05–0.08 s to first byte, 192 KB. `npm run check` (unit 382/382) and `test:coverage`
+  (504/504; 84.66 / 88.02 / 93.30) exit 0; `test:e2e` 126/126.
 - 2026-11-02 (DS-002d): `npm run check` (unit 377/377) exit 0, `npm run build` exit 0,
   `npm run test:e2e` 126/126 on two runs in a row (the new home test included). Not run:
   `test:db`, `test:coverage` (no `.ts` logic changed).
