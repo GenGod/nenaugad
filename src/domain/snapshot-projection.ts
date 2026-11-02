@@ -52,8 +52,10 @@ export function classifySnapshot(snapshot: JobSnapshot): SnapshotVisibility {
   if (snapshot.workplace.verification_state === "conflicting" ||
     snapshot.workplace.verification_state === "rejected") return "excluded";
   const workplace = snapshot.workplace;
+  // Required travel does not leave the catalog: spec §10.2 excludes it only under the
+  // candidate's zero-mandatory-attendance setting, which REMOTE-01 applies (B64-001).
   if (workplace.type !== "remote" || workplace.permanence !== "permanent" ||
-    workplace.mandatory_onsite === "required" || workplace.mandatory_travel === "required") {
+    workplace.mandatory_onsite === "required") {
     return "excluded";
   }
   return workplace.verification_state === "confirmed" ? "main_catalog" : "needs_review";
@@ -102,6 +104,8 @@ export type CatalogCardProjection = Readonly<{
     /** False when the source named more than these countries (a region too, B25). */
     exhaustive: boolean;
   }>;
+  /** Stated travel (B64-001): the posting's own words; null when it says nothing. */
+  travel: Readonly<{ requirement: "required" | "unknown"; quote: string | null }> | null;
   visibility: SnapshotVisibility;
 }>;
 
@@ -136,6 +140,12 @@ export function projectCard(
       countries: geography?.allowed_countries ?? [],
       exhaustive: geography?.exhaustive ?? false,
     },
+    travel: snapshot.workplace.mandatory_travel === "required" || snapshot.workplace.mandatory_travel === "unknown"
+      ? {
+          requirement: snapshot.workplace.mandatory_travel,
+          quote: snapshot.evidence.find(item => item.id === `ev:${snapshot.id}:travel`)?.quote ?? null,
+        }
+      : null,
     visibility: classifySnapshot(snapshot),
   };
 }

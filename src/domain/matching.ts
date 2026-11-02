@@ -6,7 +6,8 @@ import type { JobSnapshot, HiringOption } from "./source-contracts.ts";
 import type { ManualProfileInput } from "./profile.ts";
 import { extractSkills, skillOverlap, skillCategory } from "./skills.ts";
 
-export const RULESET_VERSION = 5;
+// 6: REMOTE-01 also reads required travel (B64-001).
+export const RULESET_VERSION = 6;
 
 export type RuleOutcome = "pass" | "fail" | "unknown" | "not_applicable";
 
@@ -114,11 +115,25 @@ function ruleAttendance(
     return { ...base, outcome: "not_applicable", reasonCodes: [],
       explanation: "Профиль не требует полного отсутствия обязательного присутствия." };
   }
-  return snapshot.workplace.mandatory_onsite === "required"
-    ? { ...base, outcome: "fail", reasonCodes: ["MANDATORY_ONSITE"],
-        explanation: "У вакансии есть обязательное физическое присутствие." }
-    : { ...base, outcome: "pass", reasonCodes: [],
-        explanation: "Обязательное присутствие не требуется или не заявлено." };
+  if (snapshot.workplace.mandatory_onsite === "required") {
+    return { ...base, outcome: "fail", reasonCodes: ["MANDATORY_ONSITE"],
+      explanation: "У вакансии есть обязательное физическое присутствие." };
+  }
+  // Required travel is mandatory attendance too (spec §10.2, B64-001); a possibility is
+  // unknown, never a fail. The posting's own words go into the explanation.
+  const travel = snapshot.workplace.mandatory_travel;
+  const quote = snapshot.evidence.find(item => item.id === `ev:${snapshot.id}:travel`)?.quote ?? null;
+  const quoted = quote === null ? "" : `: «${quote}»`;
+  if (travel === "required") {
+    return { ...base, outcome: "fail", reasonCodes: ["MANDATORY_TRAVEL"],
+      explanation: `У вакансии есть обязательные поездки${quoted}.` };
+  }
+  if (travel === "unknown") {
+    return { ...base, outcome: "unknown", reasonCodes: ["MANDATORY_TRAVEL_UNCLEAR"],
+      explanation: `Поездки возможны, обязательность не ясна${quoted}.` };
+  }
+  return { ...base, outcome: "pass", reasonCodes: [],
+    explanation: "Обязательное присутствие не требуется или не заявлено." };
 }
 
 // ROLE-01: do any of the user's target roles appear in the job title or
