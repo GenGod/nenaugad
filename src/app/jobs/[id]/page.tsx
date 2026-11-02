@@ -19,8 +19,10 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
     </header>
     <div className="detail-layout">
       <div>
-        <section aria-label="Карта условий">
-          <h2>Карта условий</h2>
+        {/* Signal label (DS-002c): a ruled panel; row statuses are unchanged. */}
+        <section aria-labelledby="conditions-title" className="condition-label">
+          <h2 id="conditions-title">Карта условий</h2>
+          <p className="label-source">по данным записи · Nenaugad Fixtures · {job.publishedDate}</p>
           <p className="small secondary" style={{ marginTop: 8 }}>
             Профиль не задан: персональная совместимость не оценена.</p>
           <div className="conditions">
@@ -33,7 +35,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                 </div>
               </div>
               <details><summary>Основание по удалённому формату</summary>
-                <figure className="evidence">
+                <figure className="evidence receipt">
                   <blockquote>{job.remote.evidence}</blockquote>
                   <figcaption className="figcaption">Синтетическая запись · версия {job.contentVersion}.
                     Не реальная проверка работодателя.</figcaption>
@@ -53,6 +55,12 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                       Нужно уточнить у работодателя</span>}
                 </div>
               </div>
+              {/* An empty receipt: the absence is drawn, and it is a question, not a refusal. */}
+              {!job.geographyKnown && <div className="empty-receipt">
+                <div className="hatch-band" aria-hidden="true" />
+                <p>В записи нет списка стран найма. Это вопрос работодателю, а не отказ:
+                  спросите, из каких стран возможен найм и по какому договору.</p>
+              </div>}
             </div>
             <div className="condition-row">
               <div className="condition-top">
@@ -69,6 +77,8 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                 <div>
                   <strong>Рабочие часы</strong>
                   <p>Не опубликованы — сравнение расписаний появится после подтверждения профиля.</p>
+                  {/* An empty ribbon: no hours are drawn when none are published. */}
+                  <div className="empty-ribbon" aria-hidden="true" />
                 </div>
               </div>
             </div>
@@ -82,6 +92,8 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
               </div>
             </div>
           </div>
+          <p className="label-foot">Это сверка с текстом объявления, а не гарантия найма
+            или юридической допустимости.</p>
         </section>
         <section className="prose" style={{ marginTop: 32 }}>
           <h2>Описание примера</h2>
@@ -101,7 +113,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
           <p id="apply-helper" className="small secondary">Действие недоступно для синтетических данных.</p>
           <Link className="back-link" href="/status">Что предстоит подключить →</Link>
         </div>
-        <div className="aside-card">
+        <div className="aside-card inverse">
           <h3>Источник и свежесть</h3>
           <p className="small secondary">Nenaugad Fixtures · синтетический каталог.
             Запись добавлена {job.publishedDate}; жизненный цикл: {job.lifecycle === "active"

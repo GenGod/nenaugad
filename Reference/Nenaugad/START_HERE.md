@@ -1,4 +1,9 @@
 # Передача дизайн-системы Ненаугад
+
+> **Superseded (2026-11-02).** This archived handoff describes the 1.3 design system. The
+> current appearance is Signal 2.0: `docs/solo/context/NENAUGAD_SIGNAL.md`. Do not apply
+> this bundle to the app.
+
 Прочитай README.md, затем NENAUGAD_DESIGN_SYSTEM.md и docs/MIGRATION.md.
 Это адаптация Atlas 1.1, не новая логика продукта. Не переписывай приложение.
 Сначала открой автономные `nenaugad-ui-kit.html` и `nenaugad-cover-letters.html`.

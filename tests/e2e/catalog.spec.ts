@@ -55,3 +55,17 @@ test("HTML-like search text is not executed", async ({ page }) => {
   await page.goto("/jobs?q="+encodeURIComponent('<script>document.title="injected"</script>'));
   await expect(page).not.toHaveTitle("injected");
 });
+
+test("home shows real catalog rows, the reading guide, and searches the catalog (DS-002d)", async ({ page }) => {
+  await page.goto("/");
+  // Three newest rows from the same catalog as /jobs, not a floating example card.
+  await expect(page.getByRole("region", { name: "Свежее в демо-каталоге" }).getByRole("article")).toHaveCount(3);
+  const legend = page.getByRole("region", { name: "Как читать условия" });
+  await expect(legend.getByRole("listitem")).toHaveCount(3);
+  await expect(legend).toContainText("Это вопрос работодателю, а не отказ.");
+  const search = page.getByRole("form", { name: "Поиск по каталогу" });
+  await search.getByLabel("Роль, компания или навык").fill("React");
+  await search.getByRole("button", { name: "Найти", exact: true }).click();
+  await expect(page).toHaveURL(/\/jobs\?q=React$/u);
+  await expect(page.getByRole("article")).toHaveCount(1);
+});

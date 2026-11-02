@@ -5,9 +5,13 @@ import { expect, test } from "@playwright/test";
 // visual.spec.ts; behavior contracts live in catalog/s2/s2b/s3.
 
 test("brand assets and the 64-glyph icon sprite are served", async ({ request }) => {
-  const wordmark = await request.get("/brand/wordmark.png");
-  expect(wordmark.status()).toBe(200);
-  expect(wordmark.headers()["content-type"]).toContain("image/png");
+  // Signal 2.0 fonts are self-hosted (CSP font-src 'self'), Latin and Cyrillic subsets.
+  for (const family of ["geologica", "tektur", "martian-mono"]) {
+    for (const subset of ["latin", "cyrillic"]) {
+      const font = await request.get(`/fonts/${family}-${subset}.woff2`);
+      expect(font.status(), `${family}-${subset}`).toBe(200);
+    }
+  }
   const favicon = await request.get("/brand/favicon.svg");
   expect(favicon.status()).toBe(200);
   const sprite = await request.get("/icons/nenaugad.sprite.svg");
@@ -39,8 +43,11 @@ test("footer carries the mandatory ESCO attribution and the adaptation note", as
 
 test("header lockup, favicon wiring and decorative icons", async ({ page }, testInfo) => {
   await page.goto("/jobs");
-  await expect(page.locator(".brand-logo")).toHaveAttribute("alt", "ненаугад");
-  await expect(page.locator(".brand-logo")).toHaveAttribute("width", "208");
+  // Signal 2.0 lockup (DS-002): a decorative two-bar mark and a live-text wordmark; the
+  // link carries the name.
+  await expect(page.getByRole("link", { name: "Ненаугад — главная" })).toBeVisible();
+  await expect(page.locator(".logo .wordmark")).toHaveText("ненаугад");
+  await expect(page.locator(".logo .logo-mark")).toHaveAttribute("aria-hidden", "true");
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute("href", /favicon\.svg$/u);
   // Brand glyphs are decorative; action names live on buttons and links.
   const firstFactIcon = page.locator(".job-card .job-facts svg.ng-icon").first();
@@ -57,7 +64,7 @@ test("header lockup, favicon wiring and decorative icons", async ({ page }, test
   }
 });
 
-test("condition map lists five honest groups; unknown geography turns amber", async ({ page }) => {
+test("condition map lists five honest groups; unknown geography is marked for review", async ({ page }) => {
   await page.goto("/jobs/fern-frontend");
   await expect(page.locator(".condition-row")).toHaveCount(5);
   await expect(page.locator(".condition-icon.review")).toHaveCount(0);

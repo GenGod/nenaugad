@@ -14,6 +14,9 @@ const SHOT = { fullPage: true, animations: "disabled", caret: "hide" } as const;
 // of the app UI. Production builds do not render it.
 async function shot(page: Page, name: string) {
   await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
+  // Next 16's dev tools can still paint their badge (e.g. "1 Insight") past that rule,
+  // depending on when they mount (DS-002): drop the host element itself.
+  await page.evaluate(() => { for (const host of document.querySelectorAll("nextjs-portal")) host.remove(); });
   await expect(page).toHaveScreenshot(name, SHOT);
 }
 

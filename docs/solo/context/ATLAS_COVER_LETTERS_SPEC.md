@@ -1,6 +1,11 @@
 # Atlas — cover letters
 ## Functional addendum CL 1.0 to the product technical spec and Atlas Design Language 1.1
 
+> **Visuals superseded (owner decision 2026-11-02, DS-002):** the lines below that describe
+> Atlas 1.1's look — the warm background, the blue accent, Source Serif 4 and Inter — are
+> replaced by [Signal 2.0](NENAUGAD_SIGNAL.md). Everything this addendum says about
+> behaviour, privacy, validation and acceptance stands.
+
 **Purpose:** a task for implementing the generation and editing of cover letters based on an uploaded resume. The main scenario is a letter for a selected job; the additional one is a general draft based on a confirmed profile without a job. This is a compatible extension of Atlas, not a new visual concept.
 
 **Delivery status:** specification, contract schemas, model instruction, synthetic examples, acceptance scenarios and a local interactive UI prototype. The backend, real CV uploads and the external AI model are not connected. UI checks do not confirm the quality of the generative model.

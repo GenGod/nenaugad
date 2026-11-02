@@ -1,10 +1,11 @@
 # Nenaugad — a local project under Solo Pipeline SP 1.0
 
-One TypeScript / Next.js App Router project, approved Atlas 1.1 design,
+One TypeScript / Next.js App Router project, the Signal 2.0 design language
+([NENAUGAD_SIGNAL](docs/solo/context/NENAUGAD_SIGNAL.md), owner decision 2026-11-02),
 small end-to-end tasks; risky features are implemented with their own gates
 ([SAFETY_GATES](docs/SAFETY_GATES.md)) and are off until an owner decision.
-The project was renamed by the owner from Atlas to **Nenaugad** (2026-09-24);
-the design-language name Atlas 1.1 and its original artifacts are kept.
+The project was renamed by the owner from Atlas to **Nenaugad** (2026-09-24). Signal
+replaced the visuals of the Atlas 1.1 design language; Atlas's behaviour rules are kept.
 
 **This is not a finished beta.** Auth, private profiles, CV intake, import of real
 sources, letters and the financial ledger are implemented and locally verified; but
@@ -195,10 +196,12 @@ check the Actions and pin their full SHA (see [docs/DEPENDENCIES.md](docs/DEPEND
 
 ## Design
 
-Source Serif 4 / Inter are specified as families with system fallbacks. Font files
-are not included, there are no external font/CDN requests. After fonts are connected separately,
-repeat the line-breaking check. `npm run tokens` derives the CSS from the source JSON;
-manual edits to the generated CSS are detected by `npm run tokens:check`.
+Signal 2.0 uses three OFL fonts — Tektur (display), Geologica (interface) and Martian Mono
+(times, sources) — self-hosted from `public/fonts/` as Latin and Cyrillic subsets with their
+licences beside them; there are no external font/CDN requests (CSP `font-src 'self'`).
+`npm run tokens` derives the CSS from the source JSON; manual edits to the generated CSS
+are detected by `npm run tokens:check`. A unit test checks the token text pairs against
+WCAG 2.2 AA.
 
 The card has no fake match-percent, no fake save and no active apply
 to a fictional company. The whole feed is explicitly labelled as a demo.

@@ -24,7 +24,7 @@ export type JobEvaluation = Readonly<{
   rules: readonly RuleResult[];
 }>;
 
-function timezoneOffsetMinutes(timezone: string, date: Date): number | null {
+export function timezoneOffsetMinutes(timezone: string, date: Date): number | null {
   try {
     const formatter = new Intl.DateTimeFormat("en-US", {
       timeZone: timezone, timeZoneName: "longOffset",

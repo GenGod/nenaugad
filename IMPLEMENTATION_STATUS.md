@@ -101,8 +101,19 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   owner-accepted 2026-10-07). After an import, from the worker or a manual import alike,
   it makes at most 25 calls per source (B34-001).
 - **NLI pre-check:** evaluated with a negative result, not integrated (B4-001).
-- **Design:** the Nenaugad design system 1.3 with `--ng-*` tokens (DS-001,
-  owner-accepted 2026-09-27); visual baselines are recorded on Windows.
+- **Design:** Signal 2.0 ([NENAUGAD_SIGNAL.md](docs/solo/context/NENAUGAD_SIGNAL.md)),
+  chosen by the owner 2026-11-02; slice 1 (tokens, self-hosted fonts, global styles,
+  status grammar, header mark; [DS-002](tasks/DS-002-signal-design-language.md)) and
+  slice 2 (feed cards: the five-cell condition strip and the time-zone strip;
+  [DS-002b](tasks/DS-002b-signal-strip.md)) and slice 3 (the job detail as a ruled
+  condition label with receipts and drawn absences;
+  [DS-002c](tasks/DS-002c-signal-condition-label.md)) and slice 4 (home as the search, real
+  catalog rows and how to read the outcomes; [DS-002d](tasks/DS-002d-signal-home.md))
+  and slice 5 (favicon; README, pipeline, task template, CL spec and the archived
+  `Reference/` brandbook point to Signal; [DS-002e](tasks/DS-002e-signal-docs-favicon.md))
+  implemented and tested locally; merged into `main` at the owner's request 2026-11-02
+  (with E2E-001 and PERF-002). Visual baselines
+  are recorded on Windows.
 - **Documentation:** English since DOC-EN-001 (2026-10-05).
 - **Development process:** Claude Code setup, model and effort policy, CI on pushes
   to `main` that change more than Markdown (DEVX-001, 2026-10-05). The CI job was
@@ -112,6 +123,34 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-11-02 ([PERF-002](tasks/PERF-002-jobs-external-pages.md)): `/jobs` rendered all 3,527
+  external cards (26–35 s, 21 MB); now 24 a page, newest first, with a loading state:
+  0.05–0.08 s to first byte, 192 KB. `npm run check` (unit 382/382) and `test:coverage`
+  (504/504; 84.66 / 88.02 / 93.30) exit 0; `test:e2e` 126/126.
+- 2026-11-02 (DS-002d): `npm run check` (unit 377/377) exit 0, `npm run build` exit 0,
+  `npm run test:e2e` 126/126 on two runs in a row (the new home test included). Not run:
+  `test:db`, `test:coverage` (no `.ts` logic changed).
+- 2026-11-02 ([E2E-001](tasks/E2E-001-cold-start-warmup.md)): `npm run test:e2e` 123/123
+  twice in a row under a coding agent, `npm run check` (unit 377/377) exit 0. The desktop
+  failures were pages reloading in a loop from a Turbopack dev cache persisted on other
+  code; the e2e server no longer uses that cache and, by owner decision, skips Next's
+  upgrade notice (dev and build keep it; the upgrade is open, OPEN_GAPS §E item 6).
+  `E2E_PORT` lets two checkouts run the suite at once.
+- 2026-11-02 (DS-002c): `npm run check` (unit 377/377) exit 0; `npm run build` exit 0
+  (second start); e2e visual 36/36 after regenerating the detail and `/status` baselines;
+  design-system + catalog 44 passed, 1 desktop cold-start failure (passes warm). Not run:
+  `test:db`, `test:coverage` (no `.ts` logic changed).
+- 2026-11-02 (DS-002b): `npm run check` (unit 377/377) and `npm run test:coverage`
+  (499/499; 84.60 / 88.02 / 93.25, ratchet raised to 84/88/93) exit 0; `test:db` 122/122;
+  `npm run build` exit 0 (second start, after Next's upgrade notice); e2e visual 36/36 on
+  two repeat runs; full `test:e2e` 114 passed, 9 failed — all desktop, first in the run
+  (account, catalog), the page reloading during the cold start, as on the pre-DS-002 code.
+- 2026-11-02 (DS-002 slice 1): `npm run check` (unit 365/365, lint, typecheck) exit 0;
+  `npm run build` exit 0 on the second start (the first exited 1 on Next's upgrade
+  notice after compiling); e2e visual, anonymous routes 33/33 on two repeat runs;
+  design-system + catalog 41 passed, 4 desktop cold-start navigation failures that the
+  pre-DS-002 code shows too. Not run: `test:db`, `test:coverage`, and the authed e2e
+  (account, s2, s2b, s3, authed visual) — the compose database on port 54329 was down.
 - 2026-10-15 (B59-001): `npm run check` (unit 364/364), `npm run test:coverage` (486/486;
   84.43 / 87.80 / 93.11), `npm run test:e2e` (123 passed) and `npm run eval:matching`
   (unchanged), exit 0.
@@ -201,8 +240,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
 - Restore (SP-T22, a beta prerequisite): it must re-apply `account_deletions`. Account deletion
   itself is done ([B11-001](tasks/B11-001-account-deletion.md), reviewed, owner-accepted
   2026-10-13).
-- Which design document is authoritative: AGENTS.md and README still name Atlas 1.1,
-  while the tokens come from the design system 1.3 (flagged by DEVX-001).
+- Which design document is authoritative: settled by DS-002e — Signal 2.0 for the
+  appearance, Atlas 1.1 for behaviour, in AGENTS.md, README, the pipeline and the archived
+  brandbook's banner.
 - **Jobicy changed its API page (`terms:check`, 2026-10-05; re-read 2026-10-15):** fair
   use unchanged; import and field mapping still work. Closure checks now use the
   documented batch status endpoint (100 IDs a request, one pass an hour, still two

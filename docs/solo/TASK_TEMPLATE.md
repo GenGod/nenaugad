@@ -46,7 +46,7 @@ Report: what works; files; commands + exit code; limitations; mock/live; costs/u
 4. Two tabs do not silently overwrite changes: the expected version is checked.
 5. Profile deletion deletes the derived draft according to the adopted policy.
 6. There are no AI calls in the scenario; personal text does not get into the logs.
-7. The editor is accessible from the keyboard and at 390 px, the Atlas 1.1 style is preserved.
+7. The editor is accessible from the keyboard and at 390 px, the Signal 2.0 style is preserved (`context/NENAUGAD_SIGNAL.md`).
 
 **Approval:** local/test only on synthetic profiles; without new costs and deploy.
 The criteria are not considered met until real checks are done.

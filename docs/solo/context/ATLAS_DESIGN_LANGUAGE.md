@@ -1,6 +1,12 @@
 # Atlas — product design language
 ## Version 1.1 · 23 September 2026
 
+> **Superseded in part (owner decision 2026-11-02, DS-002):** the visual sections — §5
+> identity, §6 colour, §7 typography, §9 geometry, and the colours of §10 — are replaced by
+> [Signal 2.0](NENAUGAD_SIGNAL.md). In particular "unknown" is no longer amber. The idea,
+> principles, status semantics, components, states, voice, accessibility and privacy
+> rules below stay in force.
+
 **Subject:** the visual language, interface behaviour and component contract of a service for selecting exclusively remote jobs for a resume. This is an evolution of the chosen Atlas concept, not a change to the product spec.
 
 **Priority:** the invariants of `01_TECHNICAL_SPEC.md` → the semantics of this document → components → tokens → demonstration screens. A mockup does not cancel the employer's restriction, data uncertainty or source conditions.
