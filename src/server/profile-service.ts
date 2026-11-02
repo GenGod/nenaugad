@@ -3,6 +3,7 @@
 // there is no API surface that accepts a client-supplied owner. All SQL is
 // fixed literals with $n parameters — no user input is ever concatenated.
 import type { Pool } from "pg";
+import { SNAPSHOT_ID_PATTERN } from "../domain/source-contracts.ts";
 import {
   buildProfileDocuments, parseManualProfileInput, profileFromDocuments,
   type CandidateProfileDocument, type ManualProfileInput, type ProfileSnapshot,
@@ -77,7 +78,7 @@ export async function deleteAllProfiles(pool: Pool, userId: string): Promise<num
 }
 
 export async function saveJobForUser(pool: Pool, userId: string, snapshotId: string): Promise<void> {
-  if (!/^(himalayas|jobicy):[a-z0-9-]{1,150}$/u.test(snapshotId)) {
+  if (!SNAPSHOT_ID_PATTERN.test(snapshotId)) {
     throw new ProfileServiceError("SNAPSHOT_NOT_FOUND");
   }
   try {

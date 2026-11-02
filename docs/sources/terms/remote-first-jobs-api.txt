@@ -1,0 +1,123 @@
+Remote Jobs API — Remote First Jobs Remote First Jobs
+Find Jobs
+Remote Jobs
+Hybrid Jobs
+Web3 Jobs
+Internship Jobs
+Categories
+Software Development
+Cybersecurity
+Customer Service
+Design
+Marketing
+Sales
+Product
+Business
+Data
+DevOps
+Finance & Legal
+Human Resources
+QA
+Writing
+Project Management
+Companies
+Top 100 Remote Companies
+Search Remote Companies
+Blog
+Advertise
+Post a Job
+Sidebar Navigation
+Remote First Jobs
+Find Jobs
+Remote Jobs
+Hybrid Jobs
+Web3 Jobs
+Internship Jobs
+Categories Software Development
+Cybersecurity
+Customer Service
+Design
+Marketing
+Sales
+Product
+Business
+Data
+DevOps
+Finance & Legal
+Human Resources
+QA
+Writing
+Project Management
+Companies
+Top 100 Remote Companies
+Search Companies
+More
+Blog
+About
+Post a Job Advertise
+Remote Jobs API
+Access the latest remote jobs from Remote First Jobs through our public JSON API.
+Table of Contents
+API Endpoint
+Terms of Use
+Looking for RSS?
+Looking for Remote Work?
+Browse thousands of remote job opportunities from companies worldwide
+Find Remote Jobs
+Integrate remote job listings into your website or application using our free public JSON API. Returns up to 100 jobs per page with full-text search and pagination support.
+API Endpoint
+GET /api/search-jobs
+Query Parameters
+query (optional) — Full-text search term (e.g. "python", "react engineer")
+category (optional) — Filter by job category (e.g. "software-development", "design")
+page (optional) — Page number, 0 to 4 (default: 0). Up to 5 pages of 100 jobs each.
+Example Requests
+All recent remote jobs:
+GET /api/search-jobs
+Search for Python jobs:
+GET /api/search-jobs?query=python
+Design jobs, page 2:
+GET /api/search-jobs?category=design&page=2
+Important Notes
+24-hour delay — Jobs appear in the API 24 hours after publication. Fresh listings are available only on the website.
+Pagination — Max 5 pages (0-4), 100 jobs per page. Total of up to 500 jobs per query.
+Caching — Results are cached and updated periodically.
+Response Fields
+Each job in the response includes:
+page — Current page number
+jobs_count — Number of jobs on the current page
+id — Unique job identifier (slug)
+url — Direct link to the job on Remote First Jobs
+company_name — Hiring company name
+company_logo — Company logo URL (may be null)
+title — Job title
+category — Job category
+seniority — Seniority level
+description — Full HTML job description
+salary_min / salary_max — Salary range (may be null)
+locations — List of countries (max 3)
+published_at — Publication timestamp
+Terms of Use
+The API is free and public. Please follow these rules:
+Credit us — Include a link to Remote First Jobs and mention us as the source.
+Do not republish — Do not submit jobs from our API to third-party websites including LinkedIn Jobs, Google Jobs, or Jooble.
+Non-compliance may lead to access denial.
+Interested in unlimited or private API access? Contact us at [email protected] .
+Looking for RSS?
+We also provide skill-specific RSS feeds for every job category. Check out the RSS Feeds page for the full list.
+Author
+Max
+Creator of the RemoteFirstJobs.com
+Max is the engineer and solo founder behind RemoteFirstJobs.com. He uses his 10+ years of backend experience to power a system that monitors 21,000+ companies to surface 100,000+ remote job postings monthly. His goal? Help users find remote work without paywalls or sign-up forms.
+Read more from Max
+Remote Jobs API
+Remote First Jobs — remote jobs platform for remote workers. Find your next role before the crowd.
+Find Remote Jobs Browse Remote Companies Browse Remote Locations Post Jobs Advertise Remote Jobs API RSS Feeds Blog About Contact Us
+Trust & Transparency
+About Us Contact Us Editorial Policy Methodology
+Remote Jobs by Category
+Software Development Cybersecurity Customer Service Design Marketing Sales Product Business Data Analysis DevOps and SRE Finance and Legal Human Resources QA Writing Project Management
+Popular Remote Jobs
+Writing Data Annotation Help Desk Overnight Graphic Design Travel Social Media Property Management Marketing Cybersecurity Golang Data Science Data Processing Fraud AI AML Virtual Assistant Mentoring Unreal Engine Security Engineer Executive
+© 2023-2026 RemoteFirstJobs.com | Built with ❤️ by Max
+Terms of Service Privacy Policy Cookie Policy Our Commitment to Climate

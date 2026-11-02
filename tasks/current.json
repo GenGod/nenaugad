@@ -1,15 +1,19 @@
 {
-  "task_id": "B61-001",
-  "file": "tasks/B61-001-prune-attempts-bound.md",
+  "task_id": "S1-006",
+  "file": "tasks/S1-006-remote-first-jobs-source.md",
   "status": "implemented",
-  "repair_cycles_used": 1,
+  "repair_cycles_used": 2,
   "max_repair_cycles": 2,
   "hypotheses": [
     {
-      "text": "pruneAttempts over-deletes because a nested-loop semi join rescans the LIMIT 100 FOR UPDATE SKIP LOCKED subquery and each rescan skips rows the statement already deleted; choosing and locking the keys once in a MATERIALIZED CTE keeps one prune at 100 rows, so the B61 test (forced nested loop) and the B53 bound test pass",
-      "recorded_at": "2026-11-02T13:24:32.246Z"
+      "text": "S1-006 review H1: the remote rule confirms hybrid/on-site postings because the office check matches only exact phrases, the title remote check accepts any 'Remote' word, title negation is unchecked and 'remote-first' alone confirms. Hypothesis: a two-tier office check (explicit office statements exclude; any bare office word - hybrid not followed by cloud/IT, on-site, in office, in person, office-based - blocks confirmation into needs-review), negation (non-remote, not ... remote) checked in title and text, a title 'Remote' accepted only as a label (bracketed, separated or 100%/fully), and 'remote-first' no longer confirming, make all 16 reviewer probe rows non-main and leave 0 of the sample's office-mentioning postings in the main catalog.",
+      "recorded_at": "2026-11-02T14:37:56.653Z"
+    },
+    {
+      "text": "S1-006 re-review: tier 2 lists office phrases one by one, so office wording without 'in' (work from our London office, commute, relocation, HQ, work from home N days, partially remote), Unicode hyphens (U+2011, soft hyphen) and a leading 'Remote-First' title still confirm. Hypothesis: folding U+00AD and U+2010-U+2015/U+2212 before matching, making ANY office vocabulary block confirmation (bare office(s) except home office, commut*, relocat*, HQ/headquarters, partially remote, work from home <n>, in person, onsite, hybrid), and accepting a title Remote label only when bracketed or followed by the end or a spaced separator, sends all 18 second-review rows out of the main catalog, keeps the existing 39 table rows unchanged, and leaves 0 office-vocabulary postings of the 100-job sample in the main catalog.",
+      "recorded_at": "2026-11-02T14:45:51.076Z"
     }
   ],
   "coding_host_spend": "unknown",
-  "note": "B61-001 (auth, high risk) implemented, tested locally and reviewed 2026-11-02 (no blocking findings): pruneAttempts chooses its at most 100 rows once in a MATERIALIZED CTE. Owner acceptance required before merging; not pushed, not merged. Previous task PERF-002 implemented and tested locally 2026-11-02, owner acceptance pending."
+  "note": "S1-006 (source rights, high risk) implemented, tested locally and reviewed 2026-11-02: Remote First Jobs as the third source. The owner approved the permission matrix 2026-11-02 (policy v2 approved, enabled=false). Both repair cycles used on review finding H1 (the remote rule); residual risks recorded in the task file. Still open for the owner: the residual risk and activation (a separate decision). Not committed. Previous task B61-001 merged into main."
 }

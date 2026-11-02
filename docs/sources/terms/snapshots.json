@@ -12,6 +12,12 @@
       "fetched_at": "2026-10-15T11:41:44.441Z",
       "snapshot": "docs/sources/terms/jobicy-feed.txt",
       "sha256": "b498119f769bba6b830175c8c89cf4ceda120190a69d8d8160ce769221801756"
+    },
+    "remote_first_jobs": {
+      "url": "https://remotefirstjobs.com/jobs-api",
+      "fetched_at": "2026-11-02T14:20:18.239Z",
+      "snapshot": "docs/sources/terms/remote-first-jobs-api.txt",
+      "sha256": "dc0e9c8922e109691077e9eb3622cc9fd8bc143f1cfd1f30a051b5aec7b17159"
     }
   }
 }

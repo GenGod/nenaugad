@@ -148,6 +148,45 @@ test("a himalayas record fetched without an excerpt shows none; one not fetched 
   ]);
 });
 
+test("remote_first_jobs rows share the snapshot tables after 0025; the unactivated policy shows none (S1-006)", async () => {
+  await migrate(pool);
+  const { remoteFirstJobsCandidatePolicy } = await import("../../src/server/source-policies.ts");
+  const { runRemoteFirstJobsImport } = await import("../../src/server/import/remote-first-jobs-adapter.ts");
+  const { remoteFirstJobsContractFixture } = await import("../../src/server/import/remote-first-jobs-fixture.ts");
+  const { readSnapshotCards } = await import("../../src/server/snapshot-catalog-service.ts");
+  const clear = async () => {
+    await pool.query("DELETE FROM job_snapshots WHERE source_id = 'remote_first_jobs'");
+    await pool.query("DELETE FROM import_state WHERE source_id = 'remote_first_jobs'");
+  };
+  await clear();
+  try {
+    // Stored as activation would store them; the policy in the code is approved, not enabled.
+    const active = { ...remoteFirstJobsCandidatePolicy, enabled: true };
+    const report = await runRemoteFirstJobsImport({
+      transport: async () => ({ status: "ok" as const, jobs: [...remoteFirstJobsContractFixture], nextCursor: null }),
+      persistence: createPostgresPersistence(pool, active),
+      policy: active,
+      now: "2026-11-02T12:00:00.000Z",
+    });
+    assert.equal(report.result, "partial");
+    assert.equal(report.recordsMapped, 3);
+    const rows = await pool.query<{ id: string; excerpt: string }>(
+      "SELECT id, excerpt FROM job_snapshots WHERE source_id = 'remote_first_jobs' ORDER BY id");
+    assert.deepEqual(rows.rows.map(row => row.id), [
+      "remote_first_jobs:account-manager-synthetic-fixture-900102",
+      "remote_first_jobs:data-analyst-synthetic-fixture-900103",
+      "remote_first_jobs:platform-engineer-synthetic-fixture-900101",
+    ]);
+    assert.ok(rows.rows.every(row => row.excerpt.length > 0));
+    // Approval is not activation: with the policy as committed, no card of the source.
+    const catalog = await readSnapshotCards({ pool });
+    assert.equal(catalog.unavailable, false); // the catalog did read; it skipped the source
+    assert.equal(catalog.cards.filter(card => card.id.startsWith("remote_first_jobs:")).length, 0);
+  } finally {
+    await clear();
+  }
+});
+
 test("jobicy rows share the snapshot tables after migration 0004", async () => {
   await migrate(pool);
   await pool.query("DELETE FROM job_snapshots WHERE source_id = 'jobicy'");
