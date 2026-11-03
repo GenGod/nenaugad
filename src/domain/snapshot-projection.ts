@@ -20,10 +20,12 @@ export type StoredSnapshot = Readonly<{
 }>;
 
 /**
- * The redacted form retention leaves behind (RET-001): identifiers, dates and
- * the content hash stay — dedup and history keep their trace — while the
- * posting's prose is removed and the lifecycle says what happened. The excerpt
- * is cleared by the caller, which owns the row's other text column.
+ * The redacted form retention leaves behind (RET-001): identifiers, URLs, dates,
+ * the content hash and the structured fields stay — dedup and history keep their
+ * trace — while every verbatim piece of the posting is removed and the lifecycle
+ * says what happened. Until B62-001 the quotes survived (evidence, salary, region,
+ * authorization, schedule and requirement text). The excerpt is cleared by the
+ * caller, which owns the row's other text column.
  */
 export function tombstoneSnapshot(snapshot: JobSnapshot): JobSnapshot {
   return {
@@ -31,6 +33,15 @@ export function tombstoneSnapshot(snapshot: JobSnapshot): JobSnapshot {
     title: "",
     company_name: "",
     description_text: "",
+    hiring_options: snapshot.hiring_options.map(option => ({
+      ...option,
+      geography: { ...option.geography, region_text: null },
+      authorization: { ...option.authorization, original_text: null },
+      schedule: { ...option.schedule, original_text: null },
+    })),
+    requirements: snapshot.requirements.map(requirement => ({ ...requirement, original_text: "" })),
+    compensation: { ...snapshot.compensation, original_text: null },
+    evidence: snapshot.evidence.map(item => ({ ...item, quote: null })),
     lifecycle: "tombstoned",
   };
 }

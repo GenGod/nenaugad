@@ -2,7 +2,8 @@
 // operation takes the session userId; SQL is inline fixed literals with $n
 // parameters.
 import type { Pool } from "pg";
-import { SNAPSHOT_ID_PATTERN } from "../domain/source-contracts.ts";
+import { isJobSnapshot, SNAPSHOT_ID_PATTERN } from "../domain/source-contracts.ts";
+import { sourcePublishesSnapshot } from "./source-policies.ts";
 
 export class FeedbackError extends Error {
   constructor(code: "INVALID_REASON" | "SNAPSHOT_NOT_FOUND") { super(code); }
@@ -12,8 +13,17 @@ export type HiddenJobRecord = Readonly<{
   snapshotId: string;
   reasonCode: string;
   createdAt: string;
+  /** Empty when the source no longer publishes at `now` (B62-001). */
   excerpt: string;
-  snapshot: unknown;
+  publishes: boolean;
+  /**
+   * What a private list may show of the posting, null once retention blanked it. Never
+   * the stored snapshot: it holds the full description, which no source lets us
+   * republish (B62-001).
+   */
+  title: string | null;
+  company: string | null;
+  listingUrl: string | null;
 }>;
 
 export async function hideJobForUser(params: Readonly<{
@@ -43,19 +53,26 @@ export async function unhideJobForUser(pool: Pool, userId: string, snapshotId: s
   return (result.rowCount ?? 0) > 0;
 }
 
-export async function listHiddenJobs(pool: Pool, userId: string): Promise<readonly HiddenJobRecord[]> {
+export async function listHiddenJobs(
+  pool: Pool, userId: string, now: string,
+): Promise<readonly HiddenJobRecord[]> {
   const result = await pool.query(
     "SELECT h.snapshot_id, h.reason_code, h.created_at, j.excerpt, j.snapshot FROM hidden_jobs h LEFT JOIN job_snapshots j ON j.id = h.snapshot_id WHERE h.user_id = $1 ORDER BY h.created_at DESC",
     [userId],
   );
   return result.rows.map(row => {
     const record = row as Record<string, unknown>;
+    const publishes = sourcePublishesSnapshot(String(record.snapshot_id), now);
+    const snapshot = isJobSnapshot(record.snapshot) ? record.snapshot : null;
     return {
       snapshotId: String(record.snapshot_id),
       reasonCode: String(record.reason_code),
       createdAt: new Date(record.created_at as Date).toISOString(),
-      excerpt: record.excerpt === null || record.excerpt === undefined ? "" : String(record.excerpt),
-      snapshot: record.snapshot ?? null,
+      excerpt: !publishes || record.excerpt === null || record.excerpt === undefined ? "" : String(record.excerpt),
+      publishes,
+      title: snapshot?.title || null,
+      company: snapshot?.company_name || null,
+      listingUrl: snapshot?.source_url ?? null,
     };
   });
 }
@@ -81,8 +98,11 @@ export async function setAppliedMark(params: Readonly<{
 }
 
 // Extends the saved list with the manual apply mark.
-export async function listSavedJobsWithApplied(pool: Pool, userId: string): Promise<
-  readonly { snapshotId: string; savedAt: string; excerpt: string; snapshot: unknown; markedAppliedAt: string | null }[]
+export async function listSavedJobsWithApplied(pool: Pool, userId: string, now: string): Promise<
+  readonly {
+    snapshotId: string; savedAt: string; excerpt: string; publishes: boolean;
+    snapshot: unknown; markedAppliedAt: string | null;
+  }[]
 > {
   const result = await pool.query(
     "SELECT s.snapshot_id, s.created_at, s.marked_applied_at, j.excerpt, j.snapshot FROM saved_jobs s JOIN job_snapshots j ON j.id = s.snapshot_id WHERE s.user_id = $1 ORDER BY s.created_at DESC",
@@ -90,12 +110,14 @@ export async function listSavedJobsWithApplied(pool: Pool, userId: string): Prom
   );
   return result.rows.map(row => {
     const record = row as Record<string, unknown>;
+    const publishes = sourcePublishesSnapshot(String(record.snapshot_id), now);
     return {
       snapshotId: String(record.snapshot_id),
       savedAt: new Date(record.created_at as Date).toISOString(),
       markedAppliedAt: record.marked_applied_at
         ? new Date(record.marked_applied_at as Date).toISOString() : null,
-      excerpt: String(record.excerpt ?? ""),
+      excerpt: publishes ? String(record.excerpt ?? "") : "",
+      publishes,
       snapshot: record.snapshot,
     };
   });

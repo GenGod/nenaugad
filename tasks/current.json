@@ -1,19 +1,15 @@
 {
-  "task_id": "B65-001",
-  "file": "tasks/B65-001-remote-rule-residual.md",
-  "status": "implemented",
-  "repair_cycles_used": 2,
+  "task_id": "B62-001",
+  "file": "tasks/B62-001-withdrawn-source-text.md",
+  "status": "accepted",
+  "repair_cycles_used": 1,
   "max_repair_cycles": 2,
   "hypotheses": [
     {
-      "text": "Cycle 1 (B65 review, 101 probes reproduced): the misses come from listing phrasings instead of reading structures. Hypothesis: (a) a whitelist for what is attached to the title's remote label (geography, time zone, contract type, travel), (b) a negator within four vetted words of a remote word in either direction, (c) presence read as a frequency, weekday range or day count next to a capitalised place or a workplace, prefixed compounds, owner-less client sites and the travel exemption limited to occasional travel, and (d) hiding tiers also reading an NFKC, zero-width-free copy of the text together hide all 101 review probes, keep every table row, move no stored posting toward showing and cost at most 6 of the 102 catalog postings; plus a bounded owner token (no quadratic time) and a rollback that checks each row's digest before writing.",
-      "recorded_at": "2026-11-02T18:00:36.004Z"
-    },
-    {
-      "text": "Cycle 2 (re-review of cycle 1): (a) the title check keys on REMOTE_TITLE's exact label shape, so '- Remote (Austin campus)', 'Remote US, Austin studio' or '(Remote; Austin campus)' skip it: reading every standalone 'remote' word in the title (skipping the job name after a leading one) closes H1; (b) TITLE_WORDS backtracks quadratically because a lazy core meets a repeated optional suffix: capping titles at 300 characters and stripping affixes with anchored single passes makes titles linear and fixes 'Worldwide'; (c) the remaining negation, presence and office-word misses (H2, H3, M4) and the false exclusions of common remote wording (M3) are vocabulary edges of the same structures. Testable: every re-review probe hidden, the M3 controls not excluded, a 99,000-character title under 100 ms, no stored posting moves toward showing, catalog cost at most 8 of 102.",
-      "recorded_at": "2026-11-02T18:26:23.795Z"
+      "text": "Cycle 1 (B62 independent review): (a) the no-full-text guarantee of GET /api/v1/hidden rests on the route alone because listHiddenJobs still returns the stored snapshot; having the service return only title, company and listing link makes it hold for every caller, and a service test that checks no description or quote reaches the record fails on the current code; (b) the letter evidence panel reads a tombstone's empty title as unavailable once it maps '' to null; (c) FOR NO KEY UPDATE keeps the retention batch from blocking foreign-key inserts (saved, hidden, events) with the same protection. Testable: the new test fails before and passes after; check, test:coverage, build and e2e stay green.",
+      "recorded_at": "2026-11-03T07:06:50.714Z"
     }
   ],
   "coding_host_spend": "unknown",
-  "note": "B65-001 implemented, re-mapped (14 stored Remote First Jobs rows; 102 -> 97 in the catalog, 5 false hides, 0 toward showing) and tested locally 2026-11-02; reviewed twice, repair limit reached; committed (b7d1e82) and merged into main 2026-11-03 at the owner's word, with the 5 false hides accepted by the owner; not pushed. Previous task B64-001: required travel, merged into main (91bb863)."
+  "note": "B62-001 accepted by the owner 2026-11-03: implemented, tested locally and independently reviewed (repair cycle 1 used for the review's fixes); committed in eb10d25 and merged into main; not pushed. Previous task B65-001: merged into main and pushed 2026-11-03 (CI green on f95abf1)."
 }
