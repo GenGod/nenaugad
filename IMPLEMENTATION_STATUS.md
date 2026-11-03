@@ -134,6 +134,11 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-11-02 ([B60-001](tasks/B60-001-external-search.md)): the `/jobs` search box filters the
+  external cards too (title, company, excerpt; every word at a word start; newest first,
+  then paged); ~4 ms over 3,622 cards, `/jobs` 0.04–0.06 s to first byte, unchanged.
+  `npm run check` (unit 421/421) and `test:coverage` (546/546; 85.48 / 88.90 / 93.84)
+  exit 0. Not run: `build`, `test:e2e` (fixture backend has no external section).
 - 2026-11-02 ([B64-001](tasks/B64-001-required-travel.md), checkbox wording): the 9
   `authed-profile-*` baselines re-recorded (only the label differs), `npm run test:e2e`
   126/126, `npm run check` (unit 408/408) exit 0.
