@@ -46,7 +46,12 @@ export type ExtractionOutcome =
   | Readonly<{ status: "no_permission" }>
   | Readonly<{ status: "empty_text" }>
   /** Retention cleared the posting after the caller read it: nothing was sent or paid (B66-001). */
-  | Readonly<{ status: "tombstoned" }>;
+  | Readonly<{ status: "tombstoned" }>
+  /**
+   * The stored text is not the caller's copy (an import changed it since), or the posting
+   * is not stored: nothing was sent or paid; the next read has the current text (B67-001).
+   */
+  | Readonly<{ status: "stale" }>;
 
 /**
  * A ledger refusal of an extraction call, carrying the key the call was made under: the
@@ -122,6 +127,10 @@ export async function extractPostingFields(params: Readonly<{
   // nothing, so a count above zero on a live row always means a relisting (B66-001).
   const state = await retentionStateOf(params.pool, params.snapshot.id);
   if (state.tombstoned) return { status: "tombstoned" };
+  // The text sent is the text stored now (B67-001): a copy read before an import changed
+  // the posting would pay for text no record can answer, and after a relisting with new
+  // text it would spend the relisting's key on the old text.
+  if (state.text === null || extractionInputHash(state.text) !== inputHash) return { status: "stale" };
   const idempotencyKey = extractionKey(params.snapshot, state.clearedCount);
 
   const prompt = buildJobOnlyPrompt({

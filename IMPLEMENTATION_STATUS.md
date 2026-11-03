@@ -7,9 +7,10 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-11-03: the owner accepted [B66-001](tasks/B66-001-tombstone-derived-rows.md)
-(clearing deletes the derived rows; a relisted posting is extracted once more; reviewed three
-times, a residual race is B67; on its branch, not merged). The owner accepted [B62-001](tasks/B62-001-withdrawn-source-text.md) (a
+**Updated:** 2026-11-03: the owner accepted [B67-001](tasks/B67-001-stale-extraction-text.md)
+(an extraction sends only the text stored now; reviewed) and
+[B66-001](tasks/B66-001-tombstone-derived-rows.md) (clearing deletes the derived rows; a
+relisted posting is extracted once more; reviewed three times); both merged into main. The owner accepted [B62-001](tasks/B62-001-withdrawn-source-text.md) (a
 source that stops publishing leaves the private lists; retention runs in the worker for every
 source; a tombstone keeps no quote; reviewed) and [B61-001](tasks/B61-001-prune-attempts-bound.md)
 (one login prunes at most 100 expired attempt counters). 2026-10-15: the owner accepted [B56-001](tasks/B56-001-jobicy-batch-status.md)
@@ -123,7 +124,8 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   owner-accepted 2026-10-07). After an import, from the worker or a manual import alike,
   it makes at most 25 calls per source (B34-001). A posting retention cleared is extracted
   again, once, when its source lists it again (`cleared_count` in the key, migration 0026),
-  and one cleared while a pass runs is neither sent nor paid for (B66-001).
+  and one cleared while a pass runs is neither sent nor paid for (B66-001). Only the text
+  stored now is sent: a copy an import changed after the pass read it is skipped (B67-001).
 - **NLI pre-check:** evaluated with a negative result, not integrated (B4-001).
 - **Design:** Signal 2.0 ([NENAUGAD_SIGNAL.md](docs/solo/context/NENAUGAD_SIGNAL.md)),
   chosen by the owner 2026-11-02; slice 1 (tokens, self-hosted fonts, global styles,
@@ -147,6 +149,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-11-03 ([B67-001](tasks/B67-001-stale-extraction-text.md)): `npm run check` exit 0 (unit
+  425/425); `test:coverage` exit 0 (560/560; 85.98 / 89.04 / 94.04); `npm run build` exit 0;
+  `test:e2e` 126/126.
 - 2026-11-03 ([B66-001](tasks/B66-001-tombstone-derived-rows.md)): `npm run check` exit 0 (unit
   425/425); `test:coverage` exit 0 (556/556; 85.96 / 89.06 / 94.04); `npm run build` exit 0
   (after one advisory stop, E.6); `test:e2e` 126/126.

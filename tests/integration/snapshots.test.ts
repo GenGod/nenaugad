@@ -269,6 +269,34 @@ test("clearing a posting deletes the rows derived from its text, and none is wri
   assert.deepEqual(revived.rows[0], { tombstoned: false, cleared_count: 1 });
 });
 
+test("a relevance score waiting on a posting that a retention batch is clearing is not written (B67)", async () => {
+  await migrate(pool);
+  await pool.query("DELETE FROM job_snapshots");
+  await pool.query("DELETE FROM import_state");
+  await runHimalayasImport({
+    transport: fullPage, persistence: createPostgresPersistence(pool, enabledPolicy),
+    policy: enabledPolicy, now: "2026-09-24T12:00:00.000Z",
+  });
+  const user = await registerUser(pool, `b67-${randomBytes(6).toString("hex")}@example.invalid`, "long-enough-password");
+  const posting = "himalayas:jobs-fixture-h-001";
+  const retention = await pool.connect();
+  try {
+    await retention.query("BEGIN");
+    await retention.query("SELECT id FROM job_snapshots WHERE id = $1 FOR NO KEY UPDATE", [posting]);
+    await retention.query("UPDATE job_snapshots SET tombstoned_at = now() WHERE id = $1", [posting]);
+    const waiting = storeScore({ pool, userId: user.id, profileVersion: 1, modelId: "test-model", score: {
+      snapshotId: posting, score: 70, matchedSkills: [], missingSkills: [], explanation: "PLANTED explanation",
+    } });
+    await new Promise(resolve => setTimeout(resolve, 300));
+    await retention.query("COMMIT");
+    await waiting;
+  } finally {
+    retention.release();
+  }
+  const scores = await pool.query("SELECT count(*)::int AS n FROM job_relevance_scores WHERE user_id = $1", [user.id]);
+  assert.equal(scores.rows[0]?.n, 0);
+});
+
 test("an import keeps the stored excerpt of every record it did not fetch (B30)", async () => {
   await migrate(pool);
   await pool.query("DELETE FROM job_snapshots WHERE source_id = 'jobicy'");

@@ -71,6 +71,8 @@ export type ExtractionPassCounts = Readonly<{
   already_rejected: number;
   empty_text: number;
   tombstoned_skipped: number;
+  /** Changed since the pass read it, or no longer stored: not sent, not paid; the next pass reads it again (B67). */
+  stale_skipped: number;
   /** Invitations to a candidate pool, not vacancies (B40): never sent, never paid for. */
   not_a_vacancy: number;
   /** Postings whose operation is closed without a stored record, or over the ceiling (B31). */
@@ -130,7 +132,7 @@ export type ExtractionPassResult = Readonly<{
 function emptyCounts(): { -readonly [K in keyof ExtractionPassCounts]: number } {
   return {
     extracted: 0, rejected: 0, already_extracted: 0, already_rejected: 0,
-    empty_text: 0, tombstoned_skipped: 0, not_a_vacancy: 0, blocked: 0,
+    empty_text: 0, tombstoned_skipped: 0, stale_skipped: 0, not_a_vacancy: 0, blocked: 0,
   };
 }
 
@@ -252,6 +254,10 @@ export async function runExtractionPass(params: Readonly<{
       // Cleared after this pass read it (B66-001): nothing was sent, nothing was paid.
       if (outcome.status === "tombstoned") {
         counts.tombstoned_skipped += 1;
+        continue;
+      }
+      if (outcome.status === "stale") {
+        counts.stale_skipped += 1;
         continue;
       }
       counts[outcome.status] += 1;

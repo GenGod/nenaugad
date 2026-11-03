@@ -168,18 +168,29 @@ export async function tombstoneExpiredSnapshots(
 }
 
 /**
- * A stored posting's retention state as it is now, read in one row: whether it is a
- * tombstone, and how many times retention cleared it (migration 0026; part of its
- * extraction key once above zero, B66-001). A posting that is not stored reads as
- * live and never cleared.
+ * A stored posting as it is now, read in one row: whether it is a tombstone, how many
+ * times retention cleared it (migration 0026; part of its extraction key once above
+ * zero, B66-001) and the text an extraction would send (B67-001). A posting that is not
+ * stored reads as live, never cleared and without text.
  */
-export async function retentionStateOf(
-  pool: Pool, snapshotId: string,
-): Promise<Readonly<{ tombstoned: boolean; clearedCount: number }>> {
+export async function retentionStateOf(pool: Pool, snapshotId: string): Promise<Readonly<{
+  tombstoned: boolean;
+  clearedCount: number;
+  text: Readonly<{ title: string; company_name: string; description_text: string }> | null;
+}>> {
   const result = await pool.query(
-    "SELECT tombstoned_at IS NOT NULL AS tombstoned, cleared_count FROM job_snapshots WHERE id = $1", [snapshotId]);
+    "SELECT tombstoned_at IS NOT NULL AS tombstoned, cleared_count, snapshot->>'title' AS title, snapshot->>'company_name' AS company_name, snapshot->>'description_text' AS description_text FROM job_snapshots WHERE id = $1",
+    [snapshotId]);
   const row = result.rows[0] as Row | undefined;
-  return { tombstoned: row?.tombstoned === true, clearedCount: Number(row?.cleared_count ?? 0) };
+  return {
+    tombstoned: row?.tombstoned === true,
+    clearedCount: Number(row?.cleared_count ?? 0),
+    text: row ? {
+      title: String(row.title ?? ""),
+      company_name: String(row.company_name ?? ""),
+      description_text: String(row.description_text ?? ""),
+    } : null,
+  };
 }
 
 /**

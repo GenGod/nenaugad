@@ -2,7 +2,8 @@
 
 **Status: accepted by the owner, 2026-11-03, with the residual race as the next task (B67).**
 Implemented and tested locally 2026-11-03; reviewed three times; both repair cycles used
-(REPAIR_LIMIT); committed on `fix/b66-tombstone-derived-rows`; not merged, not pushed. Started from [docs/OPEN_GAPS.md](../docs/OPEN_GAPS.md) B66, found by
+(REPAIR_LIMIT); committed in `aaa8d02` and merged into main with B67 (owner-accepted the same
+day); not pushed. Started from [docs/OPEN_GAPS.md](../docs/OPEN_GAPS.md) B66, found by
 [B62-001](B62-001-withdrawn-source-text.md).
 
 ## Problem

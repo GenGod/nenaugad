@@ -211,6 +211,75 @@ test("a posting retention clears while the pass runs is neither sent nor paid fo
   await cleanup();
 });
 
+test("a posting whose text changed after the pass read it is counted apart, not sent, and the pass goes on (B67)", async () => {
+  const { pre, fresh } = await seedTwoSnapshots();
+  const [template] = mapHimalayasFixture(NOW);
+  assert.ok(template);
+  const third = snapshotWith(template, "himalayas:extp-third");
+  await insertSnapshot("himalayas", third, "2026-10-01T00:00:00.000Z");
+  await provisionExtractorBudget();
+  const previous = process.env.LIVE_AI_ENABLED;
+  process.env.LIVE_AI_ENABLED = "true";
+  try {
+    // Newest first: `fresh`, then `pre`, then `third`. During the call for `fresh`, an import
+    // rewrites `pre`'s text; the pass still holds the old copy.
+    let calls = 0;
+    const rewritingMidPass: ModelTransport = {
+      async dispatchOnce() {
+        calls += 1;
+        if (calls === 1) {
+          await pool.query("UPDATE job_snapshots SET snapshot = jsonb_set(snapshot, '{description_text}', $2) WHERE id = $1",
+            [pre.id, JSON.stringify(`${POSTING_TEXT}
+Nice to have: Go.`)]);
+        }
+        return { kind: "result" as const, actualMinor: 90n, output: VALID_OUTPUT };
+      },
+    };
+    const pass = await runExtractionPass({ pool, sourceId: "himalayas", transport: rewritingMidPass, clock: () => NOW });
+    assert.equal(pass.outcome, "ran");
+    assert.equal(pass.counts.stale_skipped, 1);
+    assert.equal(pass.counts.extracted, 2, "the pass goes on past the changed posting");
+    assert.equal(calls, 2, "the old copy is not sent");
+    assert.equal(pass.settledMicroUsd, 180n);
+    assert.deepEqual(pass.results.map(entry => entry.snapshotId).sort(), [fresh.id, third.id].sort());
+  } finally {
+    process.env.LIVE_AI_ENABLED = previous ?? "true";
+  }
+  await cleanup();
+});
+
+test("a relisted posting whose call ends uncertain holds the pass under its relisting key (B67)", async () => {
+  const { pre, fresh } = await seedTwoSnapshots();
+  await pool.query("DELETE FROM job_snapshots WHERE id = $1", [fresh.id]);
+  await provisionExtractorBudget();
+  const previous = process.env.LIVE_AI_ENABLED;
+  process.env.LIVE_AI_ENABLED = "true";
+  try {
+    // `pre` was extracted, cleared and relisted with the same text: its first call is settled
+    // under the old key, its record is gone.
+    assert.equal((await extractPostingFields({
+      pool, ownerId: EXTRACTOR_OWNER_ID, sourceId: "himalayas", snapshot: pre,
+      transport: transportReturning(VALID_OUTPUT), now: NOW,
+    })).status, "extracted");
+    await pool.query(
+      "UPDATE job_snapshots SET snapshot = jsonb_set(snapshot, '{dates,last_seen_at}', '\"2020-01-01T00:00:00.000Z\"') WHERE id = $1",
+      [pre.id]);
+    await tombstoneExpiredSnapshots(pool, "himalayas", 720, NOW);
+    await pool.query("UPDATE job_snapshots SET tombstoned_at = NULL, snapshot = $2::jsonb WHERE id = $1",
+      [pre.id, JSON.stringify(pre)]);
+
+    const timingOut: ModelTransport = { async dispatchOnce() { return { kind: "uncertain" as const }; } };
+    const pass = await runExtractionPass({ pool, sourceId: "himalayas", transport: timingOut, clock: () => NOW });
+    assert.equal(pass.outcome, "held", "money may be held: the pass stops instead of going on");
+    const relisting = await pool.query("SELECT id FROM ai_operations WHERE idempotency_key = $1", [extractionKey(pre, 1)]);
+    assert.equal(pass.held?.operationId, relisting.rows[0]?.id);
+    assert.equal(pass.held?.status, "uncertain");
+  } finally {
+    process.env.LIVE_AI_ENABLED = previous ?? "true";
+  }
+  await cleanup();
+});
+
 test("the pass refuses on an expired source policy and on a missing extractor budget", async () => {
   await migrate(pool);
   await cleanup();
