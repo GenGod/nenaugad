@@ -1,8 +1,9 @@
 # B62-001 — a source that stops publishing leaves the private lists, and retention runs without an import
 
-**Status: implemented and tested locally 2026-11-03; independently reviewed (no critical or
-high finding), the review's fixes applied in repair cycle 1 of 2. Committed on branch
-`fix/b62-withdrawn-source-text` (not merged, not pushed); owner acceptance pending.** Started from [docs/OPEN_GAPS.md](../docs/OPEN_GAPS.md) B62, found by the
+**Status: accepted by the owner, 2026-11-03.** Implemented and tested locally 2026-11-03;
+independently reviewed (no critical or high finding), the review's fixes applied in repair
+cycle 1 of 2; committed in `eb10d25` on `fix/b62-withdrawn-source-text` and merged into main
+at the owner's word; not pushed. Started from [docs/OPEN_GAPS.md](../docs/OPEN_GAPS.md) B62, found by the
 S1-006 review (M1).
 
 ## Problem

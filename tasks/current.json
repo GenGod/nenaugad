@@ -1,7 +1,7 @@
 {
   "task_id": "B62-001",
   "file": "tasks/B62-001-withdrawn-source-text.md",
-  "status": "implemented",
+  "status": "accepted",
   "repair_cycles_used": 1,
   "max_repair_cycles": 2,
   "hypotheses": [
@@ -11,5 +11,5 @@
     }
   ],
   "coding_host_spend": "unknown",
-  "note": "B62-001 implemented and tested locally 2026-11-03; independently reviewed, the review's fixes applied in repair cycle 1; committed on branch fix/b62-withdrawn-source-text (not merged, not pushed), owner acceptance pending. Previous task B65-001: merged into main and pushed 2026-11-03 (CI green on f95abf1)."
+  "note": "B62-001 accepted by the owner 2026-11-03: implemented, tested locally and independently reviewed (repair cycle 1 used for the review's fixes); committed in eb10d25 and merged into main; not pushed. Previous task B65-001: merged into main and pushed 2026-11-03 (CI green on f95abf1)."
 }

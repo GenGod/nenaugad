@@ -7,9 +7,9 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-11-03: [B62-001](tasks/B62-001-withdrawn-source-text.md) implemented and tested
-locally (a source that stops publishing leaves the private lists; retention runs in the worker
-for every source; a tombstone keeps no quote), independently reviewed; owner acceptance pending. The owner accepted [B61-001](tasks/B61-001-prune-attempts-bound.md)
+**Updated:** 2026-11-03: the owner accepted [B62-001](tasks/B62-001-withdrawn-source-text.md) (a
+source that stops publishing leaves the private lists; retention runs in the worker for every
+source; a tombstone keeps no quote; reviewed) and [B61-001](tasks/B61-001-prune-attempts-bound.md)
 (one login prunes at most 100 expired attempt counters). 2026-10-15: the owner accepted [B56-001](tasks/B56-001-jobicy-batch-status.md)
 (Jobicy closure checks use the batch status endpoint), re-read the catalog and switched
 live AI on for extraction. 2026-10-12: the owner accepted [B37-001](tasks/B37-001-no-retry-after-uncertain.md) (no retry after
