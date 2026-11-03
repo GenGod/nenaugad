@@ -4,7 +4,7 @@ Date of preparation: 23 September 2026. This is not an automatic confirmation of
 
 | Component | Chosen version | Justification |
 |---|---|---|
-| Next.js | 16.4.0 | Upgraded from 16.3.6 by [DEP-001](../tasks/DEP-001-audit-fixes.md) (owner-approved 2026-10-13): six high-severity advisories against 16.0.0–16.3.7 (the weekly `npm audit`). 16.4.0 only adds APIs and options, per its bundled docs |
+| Next.js | 16.4.4 | Upgraded from 16.4.0 by [E6-001](../tasks/E6-001-next-security-patch.md) (owner-approved 2026-11-03): two critical RCE advisories and one high DoS advisory against 16.0.0–16.4.0, fixed in 16.4.1; the owner chose 16.4.4 (bug-fix backports on top, the same lockfile entries). Earlier: 16.3.6 → 16.4.0 by [DEP-001](../tasks/DEP-001-audit-fixes.md) (2026-10-13) |
 | React / React DOM | 19.3.0 | The official React 19.3 release and the react/latest metadata |
 | pg | 8.23.0 | The package page of the node-postgres owner |
 | next-auth | 4.24.15 | The auth implementation of S2-001 (scrypt credentials, owner from the session only); the version is pinned exactly, without a range |
