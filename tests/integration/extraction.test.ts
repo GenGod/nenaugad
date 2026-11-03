@@ -7,9 +7,10 @@ import { mapHimalayasFixture } from "../../src/server/import/himalayas-fixture.t
 import { ensureBudget, GLOBAL_BUDGET_ID } from "../../src/server/ai/spending.ts";
 import { GPT6_LUNA, ownerBudgetId } from "../../src/server/ai/provider.ts";
 import {
-  extractPostingFields, extractionInputHash, extractionKey,
+  extractPostingFields, extractionInputHash, extractionKey, ExtractionCallRefused,
 } from "../../src/server/ai/extraction-service.ts";
 import { loadExtraction } from "../../src/server/ai/extraction-store.ts";
+import { tombstoneExpiredSnapshots } from "../../src/server/storage/snapshots.ts";
 import { UNKNOWN_VALUE } from "../../src/domain/extraction.ts";
 import type { ModelTransport } from "../../src/server/ai/gateway.ts";
 import type { JobSnapshot } from "../../src/domain/source-contracts.ts";
@@ -132,6 +133,83 @@ test("extraction: a grounded answer is stored accepted with provenance, and a re
   await cleanup();
 });
 
+test("extraction: a posting cleared by retention and listed again with the same text is extracted once more (B66)", async () => {
+  await migrate(pool);
+  await cleanup();
+  const ownerId = await freshOwner();
+  const [template] = mapHimalayasFixture(NOW);
+  assert.ok(template);
+  const snapshot = snapshotWith(template, "himalayas:ext-relisted", "Backend Engineer (Remote)");
+  await insertSnapshot("himalayas", snapshot);
+  const extract = (transport: ModelTransport) =>
+    extractPostingFields({ pool, ownerId, sourceId: "himalayas", snapshot, transport, now: NOW });
+  assert.equal((await extract(transportReturning(VALID_OUTPUT))).status, "extracted");
+
+  // Retention clears it: the record goes, the paid call stays in the ledger.
+  await pool.query("UPDATE job_snapshots SET snapshot = jsonb_set(snapshot, '{dates,last_seen_at}', $1) WHERE id = $2",
+    [JSON.stringify("2020-01-01T00:00:00.000Z"), snapshot.id]);
+  await tombstoneExpiredSnapshots(pool, "himalayas", 720, NOW);
+  const cleared = await pool.query("SELECT cleared_count FROM job_snapshots WHERE id = $1", [snapshot.id]);
+  assert.equal(cleared.rows[0]?.cleared_count, 1);
+  assert.equal(await loadExtraction(pool, { snapshotId: snapshot.id, inputHash: extractionInputHash(snapshot) }), null);
+
+  // The source lists it again with the same text; an import revives the row in place.
+  await pool.query("UPDATE job_snapshots SET tombstoned_at = NULL, snapshot = $2::jsonb WHERE id = $1",
+    [snapshot.id, JSON.stringify(snapshot)]);
+  assert.equal((await extract(transportReturning(VALID_OUTPUT))).status, "extracted", "one new paid call");
+  assert.equal(await operationCount(extractionKey(snapshot)), 1);
+  assert.equal(await operationCount(extractionKey(snapshot, 1)), 1);
+
+  // A repeat is answered by the new record without a call.
+  const exploding: ModelTransport = { async dispatchOnce() { throw new Error("MUST_NOT_BE_CALLED"); } };
+  assert.equal((await extract(exploding)).status, "already_extracted");
+  const budget = await pool.query("SELECT settled_minor FROM ai_budgets WHERE id = $1", [GLOBAL_BUDGET_ID]);
+  assert.equal((budget.rows[0] as { settled_minor: string }).settled_minor, "180", "two calls, each paid once");
+
+  // A refusal names the key the call was made under, for the caller's lookup of its operation.
+  await pool.query("DELETE FROM job_llm_fields WHERE snapshot_id = $1", [snapshot.id]);
+  await assert.rejects(extract(exploding), (error: unknown) =>
+    error instanceof ExtractionCallRefused && error.idempotencyKey === extractionKey(snapshot, 1));
+  await cleanup();
+});
+
+test("extraction: a copy whose text changed since it was read, or a posting no longer stored, is neither sent nor paid for (B67)", async () => {
+  await migrate(pool);
+  await cleanup();
+  const ownerId = await freshOwner();
+  const [template] = mapHimalayasFixture(NOW);
+  assert.ok(template);
+  const old = snapshotWith(template, "himalayas:ext-stale", "Backend Engineer (Remote)");
+  await insertSnapshot("himalayas", old);
+  const extract = (snapshot: JobSnapshot, transport: ModelTransport) =>
+    extractPostingFields({ pool, ownerId, sourceId: "himalayas", snapshot, transport, now: NOW });
+  const exploding: ModelTransport = { async dispatchOnce() { throw new Error("MUST_NOT_BE_CALLED"); } };
+  assert.equal((await extract(old, transportReturning(VALID_OUTPUT))).status, "extracted");
+
+  // While a pass holds `old`, retention clears the posting and an import revives it with new text.
+  await pool.query("UPDATE job_snapshots SET snapshot = jsonb_set(snapshot, '{dates,last_seen_at}', $1) WHERE id = $2",
+    [JSON.stringify("2020-01-01T00:00:00.000Z"), old.id]);
+  await tombstoneExpiredSnapshots(pool, "himalayas", 720, NOW);
+  const relisted: JobSnapshot = { ...old, title: "Senior Backend Engineer (Remote)" };
+  await pool.query("UPDATE job_snapshots SET tombstoned_at = NULL, snapshot = $2::jsonb WHERE id = $1",
+    [old.id, JSON.stringify(relisted)]);
+
+  assert.equal((await extract(old, exploding)).status, "stale");
+  assert.equal(await operationCount(extractionKey(old, 1)), 0, "the old text is not paid for");
+  assert.equal(await loadExtraction(pool, { snapshotId: old.id, inputHash: extractionInputHash(old) }), null);
+
+  // The next pass reads the new text: one call under the relisting key, then the record answers.
+  assert.equal((await extract(relisted, transportReturning(VALID_OUTPUT))).status, "extracted");
+  assert.equal(await operationCount(extractionKey(relisted, 1)), 1);
+  assert.equal((await extract(relisted, exploding)).status, "already_extracted");
+
+  // A posting that is not stored at all could never keep its record: nothing is paid for it.
+  const gone = snapshotWith(template, "himalayas:ext-gone", "Backend Engineer (Remote)");
+  assert.equal((await extract(gone, exploding)).status, "stale");
+  assert.equal(await operationCount(extractionKey(gone)), 0);
+  await cleanup();
+});
+
 test("extraction: an invented value rejects the record, and the rejection is stored and paid honestly", async () => {
   await migrate(pool);
   await cleanup();
@@ -203,6 +281,9 @@ test("extraction: a new posting version with the same input is answered from the
       ...remapped, version: remapped.version + 1,
       description_text: `${POSTING_TEXT}\nNice to have: Go.`,
     };
+    // The import stores the new text before a pass reads it (an extraction sends only the
+    // text stored now, B67).
+    await pool.query("UPDATE job_snapshots SET snapshot = $2::jsonb WHERE id = $1", [first.id, JSON.stringify(rewritten)]);
     const repaid = await extractPostingFields({
       pool, ownerId, sourceId: "himalayas", snapshot: rewritten, transport: transportReturning(VALID_OUTPUT), now: NOW });
     assert.equal(repaid.status, "extracted");

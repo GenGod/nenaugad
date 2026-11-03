@@ -35,3 +35,12 @@ test("extraction key: a changed title, company or description is a new input (B2
   // Another posting with the same text keeps its own record.
   assert.notEqual(extractionKey({ ...posting, id: "himalayas:jobs-other" }), key);
 });
+
+test("extraction key: each clearing by retention gives a relisted posting a new key; a never-cleared one keeps its own (B66)", () => {
+  const key = extractionKey(posting);
+  assert.equal(extractionKey(posting, 0), key, "existing keys and their paid records stay valid");
+  assert.notEqual(extractionKey(posting, 1), key);
+  assert.notEqual(extractionKey(posting, 2), extractionKey(posting, 1));
+  // The hold lookup ties an operation to its posting by the key's `extraction:<id>:` prefix.
+  assert.ok(extractionKey(posting, 1).startsWith(`extraction:${posting.id}:`));
+});

@@ -59,8 +59,10 @@ function toScore(row: Record<string, unknown> | undefined): RelevanceScore | nul
 export async function storeScore(params: Readonly<{
   pool: Pool; userId: string; profileVersion: number; score: RelevanceScore; modelId: string;
 }>): Promise<void> {
+  // Only onto a live posting, as the extraction store (B66-001): retention deletes a
+  // cleared posting's scores, and a late answer must not bring its explanation back.
   await params.pool.query(
-    "INSERT INTO job_relevance_scores (user_id, snapshot_id, profile_version, score, matched_skills, missing_skills, explanation, model_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT (user_id, snapshot_id, profile_version) DO UPDATE SET score = EXCLUDED.score, matched_skills = EXCLUDED.matched_skills, missing_skills = EXCLUDED.missing_skills, explanation = EXCLUDED.explanation, model_id = EXCLUDED.model_id",
+    "INSERT INTO job_relevance_scores (user_id, snapshot_id, profile_version, score, matched_skills, missing_skills, explanation, model_id) SELECT $1, $2, $3::integer, $4::integer, $5::jsonb, $6::jsonb, $7, $8 FROM job_snapshots WHERE id = $2 AND tombstoned_at IS NULL FOR SHARE ON CONFLICT (user_id, snapshot_id, profile_version) DO UPDATE SET score = EXCLUDED.score, matched_skills = EXCLUDED.matched_skills, missing_skills = EXCLUDED.missing_skills, explanation = EXCLUDED.explanation, model_id = EXCLUDED.model_id",
     [params.userId, params.score.snapshotId, params.profileVersion,
       params.score.score, JSON.stringify(params.score.matchedSkills),
       JSON.stringify(params.score.missingSkills), params.score.explanation, params.modelId],

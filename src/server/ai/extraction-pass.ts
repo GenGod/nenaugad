@@ -51,7 +51,7 @@ import {
   BudgetError, HOLDING_STATUSES, findOperationByKey, inFlightOverAt, type OperationStatus,
 } from "./spending.ts";
 import { PURPOSE_TASK_TYPE, type ModelTransport } from "./gateway.ts";
-import { extractPostingFields, extractionKey } from "./extraction-service.ts";
+import { ExtractionCallRefused, extractPostingFields } from "./extraction-service.ts";
 import { isTalentPoolTitle } from "../../domain/vacancy.ts";
 
 /** The budget row the extraction run books into; provisioned by `npm run seed:budgets`. */
@@ -71,6 +71,8 @@ export type ExtractionPassCounts = Readonly<{
   already_rejected: number;
   empty_text: number;
   tombstoned_skipped: number;
+  /** Changed since the pass read it, or no longer stored: not sent, not paid; the next pass reads it again (B67). */
+  stale_skipped: number;
   /** Invitations to a candidate pool, not vacancies (B40): never sent, never paid for. */
   not_a_vacancy: number;
   /** Postings whose operation is closed without a stored record, or over the ceiling (B31). */
@@ -130,7 +132,7 @@ export type ExtractionPassResult = Readonly<{
 function emptyCounts(): { -readonly [K in keyof ExtractionPassCounts]: number } {
   return {
     extracted: 0, rejected: 0, already_extracted: 0, already_rejected: 0,
-    empty_text: 0, tombstoned_skipped: 0, not_a_vacancy: 0, blocked: 0,
+    empty_text: 0, tombstoned_skipped: 0, stale_skipped: 0, not_a_vacancy: 0, blocked: 0,
   };
 }
 
@@ -249,6 +251,15 @@ export async function runExtractionPass(params: Readonly<{
       if (outcome.status === "unknown_source" || outcome.status === "no_permission") {
         return { sourceId: params.sourceId, outcome: outcome.status, counts, settledMicroUsd, results };
       }
+      // Cleared after this pass read it (B66-001): nothing was sent, nothing was paid.
+      if (outcome.status === "tombstoned") {
+        counts.tombstoned_skipped += 1;
+        continue;
+      }
+      if (outcome.status === "stale") {
+        counts.stale_skipped += 1;
+        continue;
+      }
       counts[outcome.status] += 1;
       // Only a fresh call settles money in THIS pass: an already_* answer comes
       // from the stored record whose provenance names an older payment, and
@@ -263,13 +274,13 @@ export async function runExtractionPass(params: Readonly<{
         ...(outcome.status === "rejected" ? { codes: outcome.reasons.map(reason => reason.code) } : {}),
       });
     } catch (error) {
-      if (!(error instanceof BudgetError)) throw error;
+      if (!(error instanceof ExtractionCallRefused)) throw error;
       // The ledger's code alone does not say whether money is still held: an
       // uncertain dispatch surfaces as OPERATION_UNCERTAIN, and DEADLINE_EXPIRED
       // covers a hold and a settled call alike. The posting's own operation does.
       const operation = await findOperationByKey({
         pool: params.pool, ownerId: EXTRACTOR_OWNER_ID,
-        taskType: PURPOSE_TASK_TYPE.extraction, idempotencyKey: extractionKey(snapshot),
+        taskType: PURPOSE_TASK_TYPE.extraction, idempotencyKey: error.idempotencyKey,
       });
       if (operation && HOLDING_STATUSES.has(operation.status)) {
         return {

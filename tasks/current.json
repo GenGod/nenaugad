@@ -1,15 +1,10 @@
 {
-  "task_id": "B62-001",
-  "file": "tasks/B62-001-withdrawn-source-text.md",
+  "task_id": "B67-001",
+  "file": "tasks/B67-001-stale-extraction-text.md",
   "status": "accepted",
-  "repair_cycles_used": 1,
+  "repair_cycles_used": 0,
   "max_repair_cycles": 2,
-  "hypotheses": [
-    {
-      "text": "Cycle 1 (B62 independent review): (a) the no-full-text guarantee of GET /api/v1/hidden rests on the route alone because listHiddenJobs still returns the stored snapshot; having the service return only title, company and listing link makes it hold for every caller, and a service test that checks no description or quote reaches the record fails on the current code; (b) the letter evidence panel reads a tombstone's empty title as unavailable once it maps '' to null; (c) FOR NO KEY UPDATE keeps the retention batch from blocking foreign-key inserts (saved, hidden, events) with the same protection. Testable: the new test fails before and passes after; check, test:coverage, build and e2e stay green.",
-      "recorded_at": "2026-11-03T07:06:50.714Z"
-    }
-  ],
+  "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "B62-001 accepted by the owner 2026-11-03: implemented, tested locally and independently reviewed (repair cycle 1 used for the review's fixes); committed in eb10d25 and merged into main; not pushed. Previous task B65-001: merged into main and pushed 2026-11-03 (CI green on f95abf1)."
+  "note": "B67-001 accepted by the owner 2026-11-03; committed on fix/b67-stale-extraction-text and merged into main together with B66-001 (aaa8d02); not pushed. Last pushed: B62-001 (CI green on 9c7c67b)."
 }

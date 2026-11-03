@@ -28,6 +28,7 @@ import { limitArg } from "./cli-limit.ts";
 import { isJobSnapshot } from "../src/domain/source-contracts.ts";
 import { extractionInstruction, EXTRACTION_PROMPT_VERSION } from "../src/domain/extraction.ts";
 import { extractionKey } from "../src/server/ai/extraction-service.ts";
+import { retentionStateOf } from "../src/server/storage/snapshots.ts";
 import {
   failureCode, holdHint, runExtractionPass, summarizeExtractionPass, systemClock,
 } from "../src/server/ai/extraction-pass.ts";
@@ -65,7 +66,7 @@ try {
         snapshotId: snapshot.id,
         snapshotVersion: snapshot.version,
         promptVersion: EXTRACTION_PROMPT_VERSION,
-        idempotencyKey: extractionKey(snapshot),
+        idempotencyKey: extractionKey(snapshot, (await retentionStateOf(pool, snapshot.id)).clearedCount),
         prompt,
         worstCaseMicroUsd: worstCase.toString(),
         operationCeilingMicroUsd: GPT6_LUNA.operationCeilingMicroUsd.toString(),

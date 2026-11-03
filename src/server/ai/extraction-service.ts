@@ -28,12 +28,14 @@ import {
 } from "../../domain/extraction.ts";
 import type { JobSnapshot } from "../../domain/source-contracts.ts";
 import { executeGuardedOperation, type ModelTransport } from "./gateway.ts";
+import { BudgetError } from "./spending.ts";
 import { buildJobOnlyPrompt } from "./personal-data-boundary.ts";
 import { GPT6_LUNA, reservationFor, worstCaseCostMicroUsd } from "./provider.ts";
 import { getSourcePolicy, permissionFor } from "../source-policies.ts";
 import {
   loadExtraction, storeExtraction, type ExtractionProvenance,
 } from "./extraction-store.ts";
+import { retentionStateOf } from "../storage/snapshots.ts";
 
 export type ExtractionOutcome =
   | Readonly<{ status: "extracted"; fields: ExtractedFields; provenance: ExtractionProvenance }>
@@ -42,7 +44,27 @@ export type ExtractionOutcome =
   | Readonly<{ status: "already_rejected"; reasons: readonly ExtractionRejection[]; provenance: ExtractionProvenance }>
   | Readonly<{ status: "unknown_source" }>
   | Readonly<{ status: "no_permission" }>
-  | Readonly<{ status: "empty_text" }>;
+  | Readonly<{ status: "empty_text" }>
+  /** Retention cleared the posting after the caller read it: nothing was sent or paid (B66-001). */
+  | Readonly<{ status: "tombstoned" }>
+  /**
+   * The stored text is not the caller's copy (an import changed it since), or the posting
+   * is not stored: nothing was sent or paid; the next read has the current text (B67-001).
+   */
+  | Readonly<{ status: "stale" }>;
+
+/**
+ * A ledger refusal of an extraction call, carrying the key the call was made under: the
+ * caller looks up that operation, not one under a count retention changed since
+ * (B66-001).
+ */
+export class ExtractionCallRefused extends BudgetError {
+  readonly idempotencyKey: string;
+  constructor(code: ConstructorParameters<typeof BudgetError>[0], idempotencyKey: string) {
+    super(code);
+    this.idempotencyKey = idempotencyKey;
+  }
+}
 
 type ExtractionInput = Readonly<Pick<JobSnapshot, "title" | "company_name" | "description_text">>;
 
@@ -58,9 +80,16 @@ export function extractionInputHash(snapshot: ExtractionInput): string {
     .digest("hex");
 }
 
-/** The idempotency key: same posting + same input + same prompt = same paid operation. */
-export function extractionKey(snapshot: ExtractionInput & Readonly<{ id: string }>): string {
-  return `extraction:${snapshot.id}:${extractionInputHash(snapshot)}:${EXTRACTION_PROMPT_VERSION}`;
+/**
+ * The idempotency key: same posting + same input + same prompt = same paid operation.
+ * A posting retention has cleared lost its record with its text, so a relisting under
+ * the old key would meet its own settled call and never be extracted again: once
+ * cleared, the count of clearings is part of the key — one new paid call per relisting
+ * (B66-001, owner decision 2026-11-03). A never-cleared posting keeps its old key.
+ */
+export function extractionKey(snapshot: ExtractionInput & Readonly<{ id: string }>, clearedCount = 0): string {
+  const key = `extraction:${snapshot.id}:${extractionInputHash(snapshot)}:${EXTRACTION_PROMPT_VERSION}`;
+  return clearedCount > 0 ? `${key}:cleared-${clearedCount}` : key;
 }
 
 /**
@@ -93,6 +122,17 @@ export async function extractPostingFields(params: Readonly<{
       : { status: "already_rejected", reasons: stored.reasons, provenance: stored.provenance };
   }
 
+  // The posting as stored now, not as the caller read it: a pass works from rows read at
+  // its start, and retention may have cleared one since. A cleared posting sends and pays
+  // nothing, so a count above zero on a live row always means a relisting (B66-001).
+  const state = await retentionStateOf(params.pool, params.snapshot.id);
+  if (state.tombstoned) return { status: "tombstoned" };
+  // The text sent is the text stored now (B67-001): a copy read before an import changed
+  // the posting would pay for text no record can answer, and after a relisting with new
+  // text it would spend the relisting's key on the old text.
+  if (state.text === null || extractionInputHash(state.text) !== inputHash) return { status: "stale" };
+  const idempotencyKey = extractionKey(params.snapshot, state.clearedCount);
+
   const prompt = buildJobOnlyPrompt({
     title: params.snapshot.title,
     company: params.snapshot.company_name,
@@ -104,11 +144,15 @@ export async function extractPostingFields(params: Readonly<{
     pool: params.pool,
     ownerId: params.ownerId,
     purpose: "extraction",
-    idempotencyKey: extractionKey(params.snapshot),
+    idempotencyKey,
     worstCaseMinor: worstCase,
     transport: params.transport,
     prompt,
     now: params.now,
+  }).catch((error: unknown) => {
+    throw error instanceof BudgetError
+      ? new ExtractionCallRefused(error.message as ConstructorParameters<typeof BudgetError>[0], idempotencyKey)
+      : error;
   });
 
   const parsed = parseExtraction(settled.output, text);
