@@ -1,15 +1,10 @@
 {
-  "task_id": "B63-001",
-  "file": "tasks/B63-001-batch-source-rights.md",
-  "status": "accepted",
-  "repair_cycles_used": 1,
+  "task_id": "E6-001",
+  "file": "tasks/E6-001-next-security-patch.md",
+  "status": "implemented",
+  "repair_cycles_used": 0,
   "max_repair_cycles": 2,
-  "hypotheses": [
-    {
-      "text": "Function coverage is 749/799 (93.74%) below the 94% ratchet only because the B63 test loads batch-queue-service.ts for the first time: --test-coverage-include-all counts an unloaded file's lines but none of its functions or branches, so its 5 uncovered functions (3 behind the closed gate) entered the count. Deterministic tests for functions that run today without the gate - processPendingBatches' closed return and the pure relevance helpers parseRelevanceResponse, parseBatchResponse and buildBatchPrompt - lift functions to at least 752/799 (94%) with the ratchet unchanged; the reviewer's test fixes add the uncovered batchJobsFor branches.",
-      "recorded_at": "2026-11-03T12:41:43.950Z"
-    }
-  ],
+  "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "B63-001 accepted by the owner 2026-11-03 (high risk: source rights); reviewed (no high or medium finding); repair cycle 1 lifted function coverage after the first load of batch-queue-service.ts; lines ratchet raised 85 -> 86. Not committed. Last green CI: c036137 (main, B66/B67 merge and the B67 coverage repair)."
+  "note": "E6-001: next 16.4.0 -> 16.4.4, owner-approved 2026-11-03; implemented and tested locally (check, build x2, test:e2e 126/126, test:coverage 572/572); committed on fix/e6-next-security-patch at the owner's word, on top of main 12c080e, not merged, not pushed; not accepted. Last green CI: 6f36b93 (B63-001's merge)."
 }

@@ -318,11 +318,17 @@ Remaining:
 4. **Email channel** for alerts (item 7) — **owner decision 2026-10-02: stays
    in-app**; email is a separate task later (`send_email` denied in the matrices).
 5. **Retention/limits, thresholds and weights** from section D — as data appears.
-6. **Next.js 16.4.0 is listed in the npm security advisories** (found 2026-11-02,
+6. ~~**Next.js 16.4.0 is listed in the npm security advisories**~~ (found 2026-11-02,
    [E2E-001](../tasks/E2E-001-cold-start-warmup.md)). Under a coding agent, `next dev` and
    `next build` stop on every other start to say so. **Owner decision 2026-11-02:** the e2e
    server (`ATLAS_ENV=test`) skips the notice (`experimental.agentUpgrade: false`); dev and
-   build keep it. Still open: the upgrade itself.
+   build keep it. **Closed 2026-11-03, [E6-001](../tasks/E6-001-next-security-patch.md)
+   (owner-approved upgrade; not yet accepted):** `next` 16.4.0 → 16.4.4 fixes the three
+   advisories (two critical RCE, one high DoS; first fixed in 16.4.1); `npm audit` is clean,
+   and `next build` ran twice under a coding agent without the stop. The e2e server keeps
+   skipping the notice, so an e2e result never depends on that network check. Next's
+   security release scheduled for 2026-11-03 (seven medium advisories) may list 16.4.4
+   again; until a newer patch, dev and build would stop again under an agent.
 
 ## F. Documents versus code (stale claims)
 
