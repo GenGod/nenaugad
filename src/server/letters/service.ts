@@ -2,6 +2,7 @@
 // session userId. SQL is inline fixed literals with $n parameters.
 import { randomBytes, createHash } from "node:crypto";
 import type { Pool } from "pg";
+import { SNAPSHOT_ID_PATTERN } from "../../domain/source-contracts.ts";
 
 export class LetterError extends Error {
   constructor(code: "LETTER_EXISTS" | "LETTER_NOT_FOUND" | "VERSION_CONFLICT" |
@@ -53,7 +54,7 @@ export async function createLetter(params: Readonly<{
   pool: Pool; userId: string; jobSnapshotId: string | null;
 }>): Promise<LetterSummary> {
   const isGeneral = params.jobSnapshotId === null;
-  if (!isGeneral && !/^(himalayas|jobicy):[a-z0-9-]{1,150}$/u.test(params.jobSnapshotId)) {
+  if (!isGeneral && !SNAPSHOT_ID_PATTERN.test(params.jobSnapshotId)) {
     throw new LetterError("SNAPSHOT_NOT_FOUND");
   }
   const id = `cl_${randomBytes(12).toString("hex")}`;

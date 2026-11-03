@@ -192,10 +192,70 @@ export const jobicyCandidatePolicy: SourcePolicy = {
   allowed_surfaces: ["public_web"],
 };
 
+// Third source (registry remote_first_jobs; JobsCollider now redirects here).
+// Permission matrix approved by the owner on 2026-11-02 after a live review of
+// remotefirstjobs.com/jobs-api and the general site terms (tasks/S1-006). The API
+// page is "free and public" with two rules — credit Remote First Jobs with a link,
+// and "do not republish": do not submit its jobs to third-party sites (LinkedIn
+// Jobs, Google Jobs, Jooble). Nothing on AI or ML: by owner decision 2026-11-02
+// process_with_ml is local only and send_to_ai_provider stays unknown. Activated by
+// the owner on 2026-11-02 after the S1-006 review and merge, accepting the remote
+// rule's recorded residual risk; rollback is enabled: false.
+// terms_hash = sha256 of the NORMALIZED API page (src/server/terms-fingerprint.ts),
+// committed at docs/sources/terms/remote-first-jobs-api.txt.
+export const remoteFirstJobsCandidatePolicy: SourcePolicy = {
+  kind: "source_policy",
+  schema_version: "1.0.0",
+  id: "policy/remote_first_jobs/1",
+  version: 3,
+  source_id: "remote_first_jobs",
+  status: "approved",
+  enabled: true,
+  terms_urls: [
+    "https://remotefirstjobs.com/jobs-api",
+    "https://remotefirstjobs.com/terms",
+  ],
+  terms_hash: "dc0e9c8922e109691077e9eb3622cc9fd8bc143f1cfd1f30a051b5aec7b17159",
+  reviewed_at: "2026-11-02T00:00:00.000Z",
+  approved_by: "owner",
+  approval_reference:
+    "Owner-approved permission matrix 2026-11-02 (live review of the API page and site terms, S1-006); " +
+    "owner decisions 2026-11-02: explicit-remote rule, local ML only; " +
+    "activated by the owner 2026-11-02 after the S1-006 review and merge " +
+    "(remote-rule residual risk accepted); re-review by 2026-12-23",
+  valid_until: "2026-12-23T00:00:00.000Z",
+  permissions: {
+    fetch: "allowed",
+    cache: "allowed",
+    store_full_text: "allowed",
+    store_excerpt: "allowed",
+    derive_fields: "allowed",
+    process_with_ml: "allowed",
+    send_to_ai_provider: "unknown",
+    publish_full_text: "denied",
+    publish_excerpt: "allowed",
+    send_email: "denied",
+    index_web_page: "denied",
+    syndicate_google_jobs: "denied",
+    train_model: "denied",
+    direct_apply: "denied",
+    bulk_export: "denied",
+  },
+  max_retention_hours: 720,
+  min_poll_interval_seconds: 21600,
+  attribution: {
+    required: true, display_name: "Remote First Jobs",
+    backlink_required: true, link_rel: ["nofollow"], logo_allowed: "unknown",
+  },
+  apply_route: "source_required",
+  allowed_surfaces: ["public_web"],
+};
+
 const policies: ReadonlyMap<string, SourcePolicy> = new Map([
   [atlasFixturesPolicy.source_id, atlasFixturesPolicy],
   [himalayasCandidatePolicy.source_id, himalayasCandidatePolicy],
   [jobicyCandidatePolicy.source_id, jobicyCandidatePolicy],
+  [remoteFirstJobsCandidatePolicy.source_id, remoteFirstJobsCandidatePolicy],
 ]);
 
 export function getSourcePolicy(sourceId: string): SourcePolicy | undefined {

@@ -4,6 +4,7 @@ import { parseCatalogQuery } from "../../domain/job.ts";
 import { readCatalog } from "../../server/catalog-service.ts";
 import { readSnapshotCards } from "../../server/snapshot-catalog-service.ts";
 import { EXTERNAL_PAGE_SIZE, newestFirst, pageOf, parsePageParam } from "../../domain/catalog-page.ts";
+import { searchCards } from "../../domain/catalog-search.ts";
 import { JobCard } from "../../components/job-card.tsx";
 import { SnapshotCard } from "../../components/snapshot-card.tsx";
 import { Icon } from "../../components/icon.tsx";
@@ -42,7 +43,8 @@ export default async function Jobs({ searchParams }: { searchParams: Promise<Sea
   // disabled; a storage failure degrades visibly without faking emptiness.
   const snapshots = await readSnapshotCards();
   // PERF-002: 24 cards a page, newest first — rendering all 3.5k took 26–35 s.
-  const external = pageOf(newestFirst(snapshots.cards), page, EXTERNAL_PAGE_SIZE);
+  // B60: the query filters the cards first, by the text each card shows.
+  const external = pageOf(newestFirst(searchCards(snapshots.cards, query.q)), page, EXTERNAL_PAGE_SIZE);
   const pageHref = (target: number): string => {
     const next = new URLSearchParams();
     if (query.q) next.set("q", query.q);
@@ -84,15 +86,22 @@ export default async function Jobs({ searchParams }: { searchParams: Promise<Sea
       </div> : <div className="job-list">
         {result.items.map(job => <JobCard key={job.id} job={job} />)}
       </div>}
-      {external.total > 0 && <div id="external">
+      {snapshots.cards.length > 0 && <div id="external">
         <div className="section-head">
           <h3>Внешние источники</h3>
-          <span className="small secondary">Показаны {external.from}–{external.to} из {external.total} ·
-            сначала новые · фрагменты с атрибуцией, без оценки совместимости</span>
+          {external.total > 0 && <span className="small secondary">
+            {query.q ? <>По запросу «{query.q}» показаны</> : "Показаны"} {external.from}–{external.to} из {external.total} ·
+            сначала новые · фрагменты с атрибуцией, без оценки совместимости</span>}
         </div>
-        <div className="job-list">
+        {query.q && <p className="small secondary" style={{ marginTop: -8, marginBottom: 12 }}>
+          Поиск идёт по названию, компании и показанному фрагменту; полный текст вакансии — на источнике.</p>}
+        {external.total === 0 ? <div className="empty">
+          <h2>Во внешних источниках по этому запросу ничего нет</h2>
+          <p>Попробуйте другое слово или более короткое: «design» найдёт и «Designer».</p>
+          <Link className="btn tertiary" href="/jobs#external">Показать все внешние вакансии</Link>
+        </div> : <div className="job-list">
           {external.items.map(card => <SnapshotCard key={card.id} card={card} now={now} />)}
-        </div>
+        </div>}
         {external.pageCount > 1 && <nav className="pager" aria-label="Страницы внешних источников">
           {external.page > 1
             ? <Link href={pageHref(external.page - 1)} rel="prev">← Новее</Link>

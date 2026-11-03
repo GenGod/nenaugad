@@ -4,6 +4,7 @@
 // no redirects, fixed hosts, opaque tokens validated as tokens.
 export const HIMALAYAS_FEED_URL = "https://himalayas.app/jobs/api";
 export const JOBICY_FEED_URL = "https://jobicy.com/api/v2/remote-jobs";
+export const REMOTE_FIRST_JOBS_FEED_URL = "https://remotefirstjobs.com/api/search-jobs";
 const CURSOR_PATTERN = /^[A-Za-z0-9._~=-]{1,512}$/u;
 const MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
 const DEFAULT_TIMEOUT_MS = 15000;
@@ -105,6 +106,24 @@ export async function fetchJobicyWindow(request: Readonly<{
   url.searchParams.set("count", String(count));
   if (cursor !== null) url.searchParams.set("cursor", cursor);
   if (url.host !== "jobicy.com") return { status: "network_error" };
+  return pinnedJsonFetch(url, request.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+}
+
+// Remote First Jobs: the 500 newest jobs of the default query, 100 a page, pages
+// 0 to 4 (the documented maximum), each job 24 hours after publication (S1-006).
+// The page number is the only parameter; no query or category filter is sent.
+export const REMOTE_FIRST_JOBS_MAX_PAGES = 5;
+
+export async function fetchRemoteFirstJobsPage(request: Readonly<{
+  page: number; timeoutMs?: number;
+}>): Promise<FetchPageResult> {
+  if (!Number.isSafeInteger(request.page) || request.page < 0 ||
+    request.page >= REMOTE_FIRST_JOBS_MAX_PAGES) {
+    return { status: "network_error" };
+  }
+  const url = new URL(REMOTE_FIRST_JOBS_FEED_URL);
+  url.searchParams.set("page", String(request.page));
+  if (url.host !== "remotefirstjobs.com") return { status: "network_error" };
   return pinnedJsonFetch(url, request.timeoutMs ?? DEFAULT_TIMEOUT_MS);
 }
 

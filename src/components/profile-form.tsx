@@ -239,7 +239,7 @@ export function ProfileForm({ initial, version }: { initial: ProfileState | null
     <label className="check full">
       <input type="checkbox" checked={state.zeroMandatoryAttendance}
         onChange={event => update({ zeroMandatoryAttendance: event.target.checked })} />
-      <span>Исключать обязательное физическое присутствие (zero mandatory attendance)</span>
+      <span>Исключать обязательное физическое присутствие и обязательные поездки (zero mandatory attendance)</span>
     </label>
     <div className="field full">
       <label htmlFor="salary">Минимальная оплата (в час, та же валюта, что у вакансий)</label>

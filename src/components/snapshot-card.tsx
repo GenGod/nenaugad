@@ -11,6 +11,13 @@ function geographyLabel(card: SnapshotCardView): string {
   return "Страны найма не указаны";
 }
 
+// Stated travel (B64-001), in the posting's own words; the profile decides what it means.
+function travelLabel(card: SnapshotCardView): string | null {
+  if (card.travel === null) return null;
+  const quoted = card.travel.quote === null ? "" : `: «${card.travel.quote}»`;
+  return card.travel.requirement === "required" ? `Обязательные поездки${quoted}` : `Поездки возможны${quoted}`;
+}
+
 function publishedDate(card: SnapshotCardView): string {
   return card.publishedAt ? card.publishedAt.slice(0, 10) : "дата не указана";
 }
@@ -26,6 +33,7 @@ export function SnapshotCard({ card, now }: { card: SnapshotCardView; now: strin
   // age caution. One honest source of the line (src/domain/survival.ts), not a
   // silent demotion.
   const availabilityNote = availabilityNoteFor(card.firstSeenAt, now, card.closure);
+  const travel = travelLabel(card);
   return <article className="job-card">
     <div className="job-top">
       <span className="company-mark" aria-hidden="true">{card.company.slice(0, 1)}</span>
@@ -38,6 +46,7 @@ export function SnapshotCard({ card, now }: { card: SnapshotCardView; now: strin
     <p className="salary money">{card.salaryOriginalText ?? "Зарплата не опубликована"}</p>
     <div className="job-facts">
       <span><Icon name="globe" />{geographyLabel(card)}</span>
+      {travel !== null && <span><Icon name={card.travel?.requirement === "required" ? "location" : "help-circle"} />{travel}</span>}
       <span><Icon name="info" />Показан фрагмент; полностью — на источнике</span>
       {age !== null && <span><Icon name="clock" />{age}</span>}
     </div>

@@ -46,6 +46,11 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
 ## By area
 - **Sources:** himalayas and jobicy, owner-activated (S1-002 2026-09-24, S1-003
   2026-09-25). Normalized terms fingerprints; jobicy holds `process_with_ml` (EDEC-001).
+  Remote First Jobs: matrix approved and **activated by the owner 2026-11-02**
+  ([S1-006](tasks/S1-006-remote-first-jobs-source.md)); first live import 498 postings, 97
+  in the catalog (remote confirmed only by the posting's own words; the rule's residual
+  gaps closed by [B65-001](tasks/B65-001-remote-rule-residual.md), stored postings re-mapped
+  2026-11-02, rollback in `backups/`), local ML only, no provider transfer, no closure checks.
 - **Import and catalog:** worker with schedules, backoff and a per-source circuit
   breaker (S1-004); jobicy closure checks (S1-005, the batch status endpoint since B56-001);
   the jobicy import follows the feed cursor through the 7-day window, up to 10 pages a run
@@ -83,10 +88,15 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   golden set v4 (39 vacancies, A1 and DGAP-001). Skills dictionary v2 with Russian
   aliases (A3) plus 13,939 ESCO v1.2.1 skills with mandatory attribution (ESCO-001).
   Freshness, seen-set, negative preference, digest, journal, ghost demotion and shadow
-  guardrails (A5–A10). Matching rules v5: GEO-01 never fails a candidate on an incomplete
+  guardrails (A5–A10). Matching rules v6: GEO-01 never fails a candidate on an incomplete
   country list (B25-001); a Himalayas time-zone list names zones by their standard (winter)
   offset, so summer time passes ([B59-001](tasks/B59-001-himalayas-standard-offsets.md);
-  the 2,859 stored himalayas postings re-mapped 2026-10-15, rollback in `backups/`).
+  the 2,859 stored himalayas postings re-mapped 2026-10-15, rollback in `backups/`);
+  required travel is read from every source's text and REMOTE-01 applies it under "no
+  mandatory attendance" (the profile checkbox names travel), the catalog keeps the posting
+  with a travel note
+  ([B64-001](tasks/B64-001-required-travel.md); 434 stored postings re-mapped 2026-11-02,
+  rollback in `backups/`).
 - **Retrieval:** pinned local embedding model (`npm run models:fetch`), pgvector, dense
   leg, BM25 and RRF are implemented and measured but not switched on: BM25 alone beats
   fusion, and the ranker beats every leg (B1-001, B1-002, B2-001). The rerank input is
@@ -126,6 +136,14 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-11-02 ([B60-001](tasks/B60-001-external-search.md)): the `/jobs` search box filters the
+  external cards too (title, company, excerpt; every word at a word start; newest first,
+  then paged); ~4 ms over 3,622 cards, `/jobs` 0.04–0.06 s to first byte, unchanged.
+  `npm run check` (unit 421/421) and `test:coverage` (546/546; 85.48 / 88.90 / 93.84)
+  exit 0. Not run: `build`, `test:e2e` (fixture backend has no external section).
+- 2026-11-02 ([B64-001](tasks/B64-001-required-travel.md), checkbox wording): the 9
+  `authed-profile-*` baselines re-recorded (only the label differs), `npm run test:e2e`
+  126/126, `npm run check` (unit 408/408) exit 0.
 - 2026-11-02 ([PERF-002](tasks/PERF-002-jobs-external-pages.md)): `/jobs` rendered all 3,527
   external cards (26–35 s, 21 MB); now 24 a page, newest first, with a loading state:
   0.05–0.08 s to first byte, 192 KB. `npm run check` (unit 382/382) and `test:coverage`

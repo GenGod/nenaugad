@@ -113,7 +113,7 @@
         "https://remoteok.com/faq",
         "https://remoteok.com/api"
       ],
-      "notes": "Parse legal metadata separately. Follow backlink requirement; no Remote OK logo without permission. Do not hardcode an undocumented window size.",
+      "notes": "Checked 2026-11-02: a window of about 99 jobs (about 2 new a day). The API legal notice requires a followed backlink (no nofollow) and the Remote OK name; no logo without written permission. Terms (updated 2026-10-26) require a link back where API data is used. location is free text, often empty; some names arrive double-encoded. Do not hardcode an undocumented window size.",
       "enabled": false,
       "runtime_policy_status": "pending_owner_review",
       "runtime_permissions": {
@@ -133,7 +133,7 @@
         "direct_apply": "unknown",
         "bulk_export": "denied"
       },
-      "checked_at": "2026-09-23",
+      "checked_at": "2026-11-02",
       "live_integration_tested": false,
       "owner_approval": null
     },
@@ -156,7 +156,7 @@
         "https://remotive.com/remote-jobs/api",
         "https://github.com/remotive-com/remote-jobs-api"
       ],
-      "notes": "24-hour delay. At most recommended 4 fetches daily. Listing view must not require signup/email collection. Attribution and link; syndication restrictions.",
+      "notes": "Checked 2026-11-02: the public API returns only 12 jobs (the private API starts at $5k/month), and the site Terms of Use (March 2026) forbid automated extraction without written permission and copying or publishing listings, which conflicts with the API page invitation to share. Not worth onboarding without a written agreement. Earlier: 24-hour delay, max 4 fetches daily, attribution and link, listing view must not require signup.",
       "enabled": false,
       "runtime_policy_status": "pending_owner_review",
       "runtime_permissions": {
@@ -176,7 +176,7 @@
         "direct_apply": "unknown",
         "bulk_export": "denied"
       },
-      "checked_at": "2026-09-23",
+      "checked_at": "2026-11-02",
       "live_integration_tested": false,
       "owner_approval": null
     },
@@ -198,7 +198,7 @@
       "documentation_urls": [
         "https://github.com/JobsCollider/remote-jobs-api"
       ],
-      "notes": "24-hour delay; capped query is not global snapshot. USD annual salary fields per documentation. Attribution and downstream restrictions.",
+      "notes": "Merged into Remote First Jobs: jobscollider.com redirects to remotefirstjobs.com (checked 2026-11-02) and the API README describes the same fields. Use remote_first_jobs; do not onboard separately.",
       "enabled": false,
       "runtime_policy_status": "pending_owner_review",
       "runtime_permissions": {
@@ -218,7 +218,7 @@
         "direct_apply": "unknown",
         "bulk_export": "denied"
       },
-      "checked_at": "2026-09-23",
+      "checked_at": "2026-11-02",
       "live_integration_tested": false,
       "owner_approval": null
     },
@@ -240,9 +240,10 @@
         "S06"
       ],
       "documentation_urls": [
-        "https://remotefirstjobs.com/jobs-api"
+        "https://remotefirstjobs.com/jobs-api",
+        "https://remotefirstjobs.com/terms"
       ],
-      "notes": "24-hour delay. locations max 3 may be incomplete; never assume exhaustive whitelist. Attribution and downstream restrictions.",
+      "notes": "24-hour delay; 5 pages of 100 (the 500 newest jobs); a window, never a full snapshot. Not remote-only: hybrid and on-site postings are mixed in, so remote is confirmed only by the posting text (owner decision 2026-11-02). published_at has no offset and is UTC. Salary is USD per year converted by the source. locations max 3 country names, often empty; never an exhaustive whitelist, empty is not worldwide. Attribution and link; no submission to LinkedIn Jobs, Google Jobs or Jooble. Absorbed JobsCollider. Onboarding: tasks/S1-006.",
       "enabled": false,
       "runtime_policy_status": "pending_owner_review",
       "runtime_permissions": {
@@ -262,7 +263,7 @@
         "direct_apply": "unknown",
         "bulk_export": "denied"
       },
-      "checked_at": "2026-09-23",
+      "checked_at": "2026-11-02",
       "live_integration_tested": false,
       "owner_approval": null
     },

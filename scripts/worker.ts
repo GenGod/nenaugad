@@ -11,7 +11,11 @@ import { getSourcePolicy, permissionFor } from "../src/server/source-policies.ts
 import { createPostgresPersistence } from "../src/server/storage/snapshots.ts";
 import { runHimalayasImport } from "../src/server/import/himalayas-adapter.ts";
 import { runJobicyImport } from "../src/server/import/jobicy-adapter.ts";
-import { fetchHimalayasPage, fetchJobicyWindow, fetchJobicyStatuses } from "../src/server/import/fetcher.ts";
+import { runRemoteFirstJobsImport } from "../src/server/import/remote-first-jobs-adapter.ts";
+import {
+  fetchHimalayasPage, fetchJobicyWindow, fetchJobicyStatuses, fetchRemoteFirstJobsPage,
+} from "../src/server/import/fetcher.ts";
+import { SNAPSHOT_SOURCE_IDS } from "../src/domain/source-contracts.ts";
 import { runClosureCheckPass, closureStatus } from "../src/server/import/closure-checks.ts";
 import { purgeExpiredEvents } from "../src/server/events-service.ts";
 import {
@@ -23,7 +27,7 @@ import {
 import { holdHint, runExtractionPassAfterImport, systemClock } from "../src/server/ai/extraction-pass.ts";
 import { openAiTransport } from "../src/server/ai/openai-transport.ts";
 
-const SOURCES = ["himalayas", "jobicy"] as const;
+const SOURCES = SNAPSHOT_SOURCE_IDS;
 const args = process.argv.slice(2);
 const flag = (name: string) => args.includes(`--${name}`);
 const resumeSource = args[args.indexOf("--resume") + 1];
@@ -45,20 +49,34 @@ type Setup = {
   pausedAnnounced: boolean;
 };
 
+// One importer per source, named explicitly: a source id without its own branch is a
+// type error here, never another source's importer storing rows under its id.
+function importSource(setup: Setup, now: string) {
+  const { persistence, policy } = setup;
+  switch (setup.source) {
+    case "himalayas":
+      return runHimalayasImport({ transport: cursor => fetchHimalayasPage({ cursor }), persistence, policy, now });
+    case "jobicy":
+      return runJobicyImport({
+        transport: cursor => fetchJobicyWindow({ count: 200, cursor }), persistence, policy, now,
+      });
+    case "remote_first_jobs":
+      return runRemoteFirstJobsImport({
+        transport: page => fetchRemoteFirstJobsPage({ page }), persistence, policy, now,
+      });
+    default: {
+      const unknown: never = setup.source;
+      throw new ConfigurationError(`UNKNOWN_SOURCE:${String(unknown)}`);
+    }
+  }
+}
+
 async function attempt(setup: Setup): Promise<void> {
   const now = new Date().toISOString();
   log({ source: setup.source, event: "attempt" });
   let imported = false;
   try {
-    const report = setup.source === "himalayas"
-      ? await runHimalayasImport({
-          transport: cursor => fetchHimalayasPage({ cursor }),
-          persistence: setup.persistence, policy: setup.policy, now,
-        })
-      : await runJobicyImport({
-          transport: cursor => fetchJobicyWindow({ count: 200, cursor }),
-          persistence: setup.persistence, policy: setup.policy, now,
-        });
+    const report = await importSource(setup, now);
     if (report.result === "refused_poll_interval" || report.result === "refused_disabled") {
       // Timing race or a policy flipped mid-run: not a failure, retry next tick.
       log({ source: setup.source, event: "skipped", result: report.result });
