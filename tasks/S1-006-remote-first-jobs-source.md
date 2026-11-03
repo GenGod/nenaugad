@@ -194,6 +194,8 @@ the owner 2026-11-02; not activated, not committed.** The policy is `approved` a
   confirmed postings of the sample. A regex reading of free text cannot be closed
   completely; the owner can accept the residual risk, ask for a follow-up task (more
   vocabulary, a travel rule, or a model-based check), or keep the source off.
+  Follow-ups: (5) travel in [B64-001](B64-001-required-travel.md); (1)–(4) in
+  [B65-001](B65-001-remote-rule-residual.md).
 - `remote-first-jobs-adapter.ts`: pages 0–4 in order, a page shorter than 100 ends the
   walk; failed first page → `retry_scheduled`, nothing saved; failed later page → the
   pages read are imported, `interrupted`; always `complete: false`; the 6 h gate.
