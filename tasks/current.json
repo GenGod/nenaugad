@@ -1,15 +1,19 @@
 {
-  "task_id": "B62-001",
-  "file": "tasks/B62-001-withdrawn-source-text.md",
+  "task_id": "B66-001",
+  "file": "tasks/B66-001-tombstone-derived-rows.md",
   "status": "accepted",
-  "repair_cycles_used": 1,
+  "repair_cycles_used": 2,
   "max_repair_cycles": 2,
   "hypotheses": [
     {
-      "text": "Cycle 1 (B62 independent review): (a) the no-full-text guarantee of GET /api/v1/hidden rests on the route alone because listHiddenJobs still returns the stored snapshot; having the service return only title, company and listing link makes it hold for every caller, and a service test that checks no description or quote reaches the record fails on the current code; (b) the letter evidence panel reads a tombstone's empty title as unavailable once it maps '' to null; (c) FOR NO KEY UPDATE keeps the retention batch from blocking foreign-key inserts (saved, hidden, events) with the same protection. Testable: the new test fails before and passes after; check, test:coverage, build and e2e stay green.",
-      "recorded_at": "2026-11-03T07:06:50.714Z"
+      "text": "Cycle 1 (B66 independent review, M1; owner decision 2026-11-03: allow one new paid call): a relisted posting with unchanged text meets its own settled operation under the same idempotency key once retention has deleted its record, so it is blocked for good. Hypothesis: a per-posting cleared_count (migration 0026), incremented by retention and appended to the extraction key only when above zero, makes a relisted posting extract again with exactly one new paid call, leaves every existing key and record unchanged (never-cleared postings), and keeps repeats free. Testable: an integration test that extracts, clears, relists the same text and extracts again sees two settled operations and a stored record, and a third attempt makes no call; it fails before the change.",
+      "recorded_at": "2026-11-03T07:33:54.749Z"
+    },
+    {
+      "text": "Cycle 2 (B66 re-review, M1 and L1): an extraction pass works from rows read at its start, so a posting retention clears mid-pass reaches the service as live, meets a deleted record and an incremented count, and pays a new key with expired text, spending the key its relisting needs; and after a ledger refusal the pass recomputes the key, which retention may have changed. Hypothesis: reading tombstoned_at and cleared_count together from the stored row right before any money moves (a cleared posting returns 'tombstoned', sends and pays nothing) and carrying the key actually used on the refusal makes a count above zero on a live row mean a relisting only, and the refusal lookup always find the call's own operation. Testable: a pass whose first call clears a second posting counts it tombstoned_skipped with no operation; a refusal carries the key the call used; a real import revival keeps cleared_count; all fail before the change.",
+      "recorded_at": "2026-11-03T07:41:53.491Z"
     }
   ],
   "coding_host_spend": "unknown",
-  "note": "B62-001 accepted by the owner 2026-11-03: implemented, tested locally and independently reviewed (repair cycle 1 used for the review's fixes); committed in eb10d25 and merged into main; not pushed. Previous task B65-001: merged into main and pushed 2026-11-03 (CI green on f95abf1)."
+  "note": "B66-001 accepted by the owner 2026-11-03 with B67 next; committed on fix/b66-tombstone-derived-rows (not merged, not pushed); both repair cycles used. Previous task B62-001: accepted, merged and pushed 2026-11-03 (CI green on 9c7c67b)."
 }

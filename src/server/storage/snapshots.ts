@@ -118,9 +118,11 @@ const DEFAULT_RETENTION_HOURS = 720;
  * tombstone instead of disappearing — identifiers, dates and the content hash stay
  * (dedup and history keep their trace; the candidate's journal rows are not cascaded
  * away before their own TTL), while `tombstoneSnapshot` blanks every verbatim piece of
- * the posting and the lifecycle says why. The derived vectors go: they were computed
- * from text that no longer exists. An import calls this for its own source, and the
- * worker for every source (`runSnapshotRetentionPass`).
+ * the posting and the lifecycle says why. The rows derived from that text go with it:
+ * the vectors, the AI extraction and every user's relevance score (B66-001, owner
+ * decision 2026-11-03); the record of the paid calls stays in `ai_operations`. An
+ * import calls this for its own source, and the worker for every source
+ * (`runSnapshotRetentionPass`).
  */
 export async function tombstoneExpiredSnapshots(
   pool: Pool, sourceId: string, retentionHours: number, now: string,
@@ -146,11 +148,14 @@ export async function tombstoneExpiredSnapshots(
         ? tombstoneSnapshot((row as Row).snapshot as JobSnapshot)
         : { kind: "job_snapshot", id: String((row as Row).id), source_record_id: String((row as Row).id), lifecycle: "tombstoned" }));
       await client.query(
-        `UPDATE job_snapshots j SET tombstoned_at = $1, excerpt = '', snapshot = t.snapshot
+        `UPDATE job_snapshots j SET tombstoned_at = $1, excerpt = '', snapshot = t.snapshot,
+           cleared_count = j.cleared_count + 1
            FROM unnest($2::text[], $3::jsonb[]) AS t(id, snapshot) WHERE j.id = t.id`,
         [now, ids, tombstones],
       );
       await client.query("DELETE FROM job_embeddings WHERE snapshot_id = ANY($1::text[])", [ids]);
+      await client.query("DELETE FROM job_llm_fields WHERE snapshot_id = ANY($1::text[])", [ids]);
+      await client.query("DELETE FROM job_relevance_scores WHERE snapshot_id = ANY($1::text[])", [ids]);
     }
     await client.query("COMMIT");
     return ids.length;
@@ -160,6 +165,21 @@ export async function tombstoneExpiredSnapshots(
   } finally {
     client.release();
   }
+}
+
+/**
+ * A stored posting's retention state as it is now, read in one row: whether it is a
+ * tombstone, and how many times retention cleared it (migration 0026; part of its
+ * extraction key once above zero, B66-001). A posting that is not stored reads as
+ * live and never cleared.
+ */
+export async function retentionStateOf(
+  pool: Pool, snapshotId: string,
+): Promise<Readonly<{ tombstoned: boolean; clearedCount: number }>> {
+  const result = await pool.query(
+    "SELECT tombstoned_at IS NOT NULL AS tombstoned, cleared_count FROM job_snapshots WHERE id = $1", [snapshotId]);
+  const row = result.rows[0] as Row | undefined;
+  return { tombstoned: row?.tombstoned === true, clearedCount: Number(row?.cleared_count ?? 0) };
 }
 
 /**

@@ -1,9 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { randomBytes } from "node:crypto";
 import { localPool, migrate } from "../../scripts/db.ts";
 import { createPostgresPersistence, runSnapshotRetentionPass } from "../../src/server/storage/snapshots.ts";
 import { tombstoneSnapshot } from "../../src/domain/snapshot-projection.ts";
 import { isJobSnapshot, type JobSnapshot } from "../../src/domain/source-contracts.ts";
+import { registerUser } from "../../src/server/users.ts";
+import { storeExtraction } from "../../src/server/ai/extraction-store.ts";
+import { storeScore } from "../../src/server/relevance-service.ts";
 import { runHimalayasImport } from "../../src/server/import/himalayas-adapter.ts";
 import { himalayasCandidatePolicy } from "../../src/server/source-policies.ts";
 import { himalayasContractFixture } from "../../src/server/import/himalayas-fixture.ts";
@@ -186,6 +190,83 @@ test("one source's retention failure leaves the others to run (B62)", async () =
     { sourceId: "jobicy", tombstoned: 0, failed: true },
   ]);
   await pool.query("DELETE FROM job_snapshots WHERE id = 'jobicy:bad-date'");
+});
+
+test("clearing a posting deletes the rows derived from its text, and none is written onto it (B66)", async () => {
+  await migrate(pool);
+  await pool.query("DELETE FROM job_snapshots");
+  await pool.query("DELETE FROM import_state");
+  await runHimalayasImport({
+    transport: fullPage, persistence: createPostgresPersistence(pool, enabledPolicy),
+    policy: enabledPolicy, now: "2026-09-24T12:00:00.000Z",
+  });
+  const user = await registerUser(pool, `b66-${randomBytes(6).toString("hex")}@example.invalid`, "long-enough-password");
+  const [cleared, live, racing] = [
+    "himalayas:jobs-fixture-h-001", "himalayas:jobs-fixture-h-002", "himalayas:jobs-fixture-h-003"];
+  const provenance = { promptVersion: "b66-test", modelVersion: "test-model", operationId: "op-b66", settledMinor: 53n };
+  const derive = async (snapshotId: string) => {
+    await storeExtraction(pool, {
+      snapshotId, snapshotVersion: 1, inputHash: `input-${snapshotId}`, status: "rejected",
+      fields: null, rawOutput: "PLANTED model output quoting the posting", reasons: [], provenance,
+    });
+    await storeScore({ pool, userId: user.id, profileVersion: 1, modelId: "test-model", score: {
+      snapshotId, score: 70, matchedSkills: ["go"], missingSkills: [], explanation: "PLANTED explanation",
+    } });
+  };
+  const derived = async (snapshotId: string) => Number((await pool.query<{ n: string }>(
+    "SELECT (SELECT count(*) FROM job_llm_fields WHERE snapshot_id = $1) + (SELECT count(*) FROM job_relevance_scores WHERE snapshot_id = $1) AS n",
+    [snapshotId])).rows[0]?.n);
+  await derive(cleared);
+  await derive(live);
+  assert.equal(await derived(cleared), 2);
+  await pool.query(
+    "UPDATE job_snapshots SET snapshot = jsonb_set(snapshot, '{dates,last_seen_at}', $1) WHERE id = $2",
+    [JSON.stringify("2020-01-01T00:00:00.000Z"), cleared],
+  );
+  const ledger = async () => ({
+    operations: (await pool.query("SELECT id, status, reserved_minor, settled_minor FROM ai_operations ORDER BY id")).rows,
+    budgets: (await pool.query("SELECT * FROM ai_budgets ORDER BY id")).rows,
+  });
+  const ledgerBefore = await ledger();
+
+  assert.deepEqual(await runSnapshotRetentionPass(pool, "2026-09-25T00:00:00.000Z"),
+    [{ sourceId: "himalayas", tombstoned: 1, failed: false }]);
+  assert.equal(await derived(cleared), 0, "the cleared posting keeps no derived row");
+  assert.equal(await derived(live), 2, "a live posting keeps its derived rows");
+  assert.deepEqual(await ledger(), ledgerBefore, "the record of paid calls and the budgets are untouched");
+
+  // A result that arrives after the posting was cleared is not stored.
+  await derive(cleared);
+  assert.equal(await derived(cleared), 0);
+
+  // Nor one that waits on the posting while a retention batch is clearing it.
+  const retention = await pool.connect();
+  try {
+    await retention.query("BEGIN");
+    await retention.query("SELECT id FROM job_snapshots WHERE id = $1 FOR NO KEY UPDATE", [racing]);
+    await retention.query("UPDATE job_snapshots SET tombstoned_at = now() WHERE id = $1", [racing]);
+    const waiting = derive(racing);
+    await new Promise(resolve => setTimeout(resolve, 300));
+    await retention.query("COMMIT");
+    await waiting;
+  } finally {
+    retention.release();
+  }
+  assert.equal(await derived(racing), 0);
+
+  // A second pass has nothing left to clear or delete.
+  assert.deepEqual(await runSnapshotRetentionPass(pool, "2026-09-25T00:00:00.000Z"),
+    [{ sourceId: "himalayas", tombstoned: 0, failed: false }]);
+  assert.equal(await derived(live), 2);
+
+  // The source lists the cleared posting again: the import revives it and keeps its count.
+  await runHimalayasImport({
+    transport: fullPage, persistence: createPostgresPersistence(pool, enabledPolicy),
+    policy: enabledPolicy, now: "2026-09-26T00:00:00.000Z",
+  });
+  const revived = await pool.query<{ tombstoned: boolean; cleared_count: number }>(
+    "SELECT tombstoned_at IS NOT NULL AS tombstoned, cleared_count FROM job_snapshots WHERE id = $1", [cleared]);
+  assert.deepEqual(revived.rows[0], { tombstoned: false, cleared_count: 1 });
 });
 
 test("an import keeps the stored excerpt of every record it did not fetch (B30)", async () => {

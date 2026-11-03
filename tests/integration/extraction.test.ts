@@ -7,9 +7,10 @@ import { mapHimalayasFixture } from "../../src/server/import/himalayas-fixture.t
 import { ensureBudget, GLOBAL_BUDGET_ID } from "../../src/server/ai/spending.ts";
 import { GPT6_LUNA, ownerBudgetId } from "../../src/server/ai/provider.ts";
 import {
-  extractPostingFields, extractionInputHash, extractionKey,
+  extractPostingFields, extractionInputHash, extractionKey, ExtractionCallRefused,
 } from "../../src/server/ai/extraction-service.ts";
 import { loadExtraction } from "../../src/server/ai/extraction-store.ts";
+import { tombstoneExpiredSnapshots } from "../../src/server/storage/snapshots.ts";
 import { UNKNOWN_VALUE } from "../../src/domain/extraction.ts";
 import type { ModelTransport } from "../../src/server/ai/gateway.ts";
 import type { JobSnapshot } from "../../src/domain/source-contracts.ts";
@@ -129,6 +130,46 @@ test("extraction: a grounded answer is stored accepted with provenance, and a re
   assert.equal(await operationCount(extractionKey(snapshot)), 1);
   const budget = await pool.query("SELECT settled_minor FROM ai_budgets WHERE id = $1", [GLOBAL_BUDGET_ID]);
   assert.equal((budget.rows[0] as { settled_minor: string }).settled_minor, "90");
+  await cleanup();
+});
+
+test("extraction: a posting cleared by retention and listed again with the same text is extracted once more (B66)", async () => {
+  await migrate(pool);
+  await cleanup();
+  const ownerId = await freshOwner();
+  const [template] = mapHimalayasFixture(NOW);
+  assert.ok(template);
+  const snapshot = snapshotWith(template, "himalayas:ext-relisted", "Backend Engineer (Remote)");
+  await insertSnapshot("himalayas", snapshot);
+  const extract = (transport: ModelTransport) =>
+    extractPostingFields({ pool, ownerId, sourceId: "himalayas", snapshot, transport, now: NOW });
+  assert.equal((await extract(transportReturning(VALID_OUTPUT))).status, "extracted");
+
+  // Retention clears it: the record goes, the paid call stays in the ledger.
+  await pool.query("UPDATE job_snapshots SET snapshot = jsonb_set(snapshot, '{dates,last_seen_at}', $1) WHERE id = $2",
+    [JSON.stringify("2020-01-01T00:00:00.000Z"), snapshot.id]);
+  await tombstoneExpiredSnapshots(pool, "himalayas", 720, NOW);
+  const cleared = await pool.query("SELECT cleared_count FROM job_snapshots WHERE id = $1", [snapshot.id]);
+  assert.equal(cleared.rows[0]?.cleared_count, 1);
+  assert.equal(await loadExtraction(pool, { snapshotId: snapshot.id, inputHash: extractionInputHash(snapshot) }), null);
+
+  // The source lists it again with the same text; an import revives the row in place.
+  await pool.query("UPDATE job_snapshots SET tombstoned_at = NULL, snapshot = $2::jsonb WHERE id = $1",
+    [snapshot.id, JSON.stringify(snapshot)]);
+  assert.equal((await extract(transportReturning(VALID_OUTPUT))).status, "extracted", "one new paid call");
+  assert.equal(await operationCount(extractionKey(snapshot)), 1);
+  assert.equal(await operationCount(extractionKey(snapshot, 1)), 1);
+
+  // A repeat is answered by the new record without a call.
+  const exploding: ModelTransport = { async dispatchOnce() { throw new Error("MUST_NOT_BE_CALLED"); } };
+  assert.equal((await extract(exploding)).status, "already_extracted");
+  const budget = await pool.query("SELECT settled_minor FROM ai_budgets WHERE id = $1", [GLOBAL_BUDGET_ID]);
+  assert.equal((budget.rows[0] as { settled_minor: string }).settled_minor, "180", "two calls, each paid once");
+
+  // A refusal names the key the call was made under, for the caller's lookup of its operation.
+  await pool.query("DELETE FROM job_llm_fields WHERE snapshot_id = $1", [snapshot.id]);
+  await assert.rejects(extract(exploding), (error: unknown) =>
+    error instanceof ExtractionCallRefused && error.idempotencyKey === extractionKey(snapshot, 1));
   await cleanup();
 });
 

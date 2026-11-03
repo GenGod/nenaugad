@@ -99,8 +99,11 @@ export async function storeExtraction(pool: Pool, entry: Readonly<{
   const payload = entry.status === "accepted"
     ? { fields: entry.fields }
     : { rawOutput: entry.rawOutput ?? "" };
+  // Only onto a live posting (B66-001): retention deletes these rows when it clears a
+  // posting, so a result that arrives afterwards is not stored. The shared lock waits for
+  // a retention batch that holds the posting and then reads it again.
   await pool.query(
-    "INSERT INTO job_llm_fields (snapshot_id, snapshot_version, input_hash, prompt_version, model_version, status, payload, reasons, operation_id, settled_minor) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ON CONFLICT DO NOTHING",
+    "INSERT INTO job_llm_fields (snapshot_id, snapshot_version, input_hash, prompt_version, model_version, status, payload, reasons, operation_id, settled_minor) SELECT $1, $2::integer, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, $10::bigint FROM job_snapshots WHERE id = $1 AND tombstoned_at IS NULL FOR SHARE ON CONFLICT DO NOTHING",
     [
       entry.snapshotId,
       entry.snapshotVersion,

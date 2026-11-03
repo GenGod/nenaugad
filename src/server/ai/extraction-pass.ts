@@ -51,7 +51,7 @@ import {
   BudgetError, HOLDING_STATUSES, findOperationByKey, inFlightOverAt, type OperationStatus,
 } from "./spending.ts";
 import { PURPOSE_TASK_TYPE, type ModelTransport } from "./gateway.ts";
-import { extractPostingFields, extractionKey } from "./extraction-service.ts";
+import { ExtractionCallRefused, extractPostingFields } from "./extraction-service.ts";
 import { isTalentPoolTitle } from "../../domain/vacancy.ts";
 
 /** The budget row the extraction run books into; provisioned by `npm run seed:budgets`. */
@@ -249,6 +249,11 @@ export async function runExtractionPass(params: Readonly<{
       if (outcome.status === "unknown_source" || outcome.status === "no_permission") {
         return { sourceId: params.sourceId, outcome: outcome.status, counts, settledMicroUsd, results };
       }
+      // Cleared after this pass read it (B66-001): nothing was sent, nothing was paid.
+      if (outcome.status === "tombstoned") {
+        counts.tombstoned_skipped += 1;
+        continue;
+      }
       counts[outcome.status] += 1;
       // Only a fresh call settles money in THIS pass: an already_* answer comes
       // from the stored record whose provenance names an older payment, and
@@ -263,13 +268,13 @@ export async function runExtractionPass(params: Readonly<{
         ...(outcome.status === "rejected" ? { codes: outcome.reasons.map(reason => reason.code) } : {}),
       });
     } catch (error) {
-      if (!(error instanceof BudgetError)) throw error;
+      if (!(error instanceof ExtractionCallRefused)) throw error;
       // The ledger's code alone does not say whether money is still held: an
       // uncertain dispatch surfaces as OPERATION_UNCERTAIN, and DEADLINE_EXPIRED
       // covers a hold and a settled call alike. The posting's own operation does.
       const operation = await findOperationByKey({
         pool: params.pool, ownerId: EXTRACTOR_OWNER_ID,
-        taskType: PURPOSE_TASK_TYPE.extraction, idempotencyKey: extractionKey(snapshot),
+        taskType: PURPOSE_TASK_TYPE.extraction, idempotencyKey: error.idempotencyKey,
       });
       if (operation && HOLDING_STATUSES.has(operation.status)) {
         return {
