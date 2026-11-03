@@ -131,11 +131,10 @@ Findings and what was done:
   argument that a materialized CTE is read once covers those.
 - Bounded deletions are not bounded reads: on a small table the planner still scans it.
   The window index (B53 review 3) serves large tables.
-- After the owner's acceptance this branch still has to be merged; until then `main` keeps
-  the over-deleting statement.
 
 ## Approvals and limits
 
 Requested by the main session on 2026-11-02 as its own branch and review. **The owner
-accepted B61-001 on 2026-11-03** («Accept B61-001», in this session). Merging into `main`
-and pushing are separate steps the owner has not asked for yet. Coding-host spend: not visible.
+accepted B61-001 on 2026-11-03** («Accept B61-001», in this session). The fix (`5482f05`) was
+already merged into `main` (`4866519`); this record of the acceptance is a separate commit.
+Coding-host spend: not visible.
