@@ -2,7 +2,9 @@
 
 **Status: accepted by the owner, 2026-11-03.** Implemented and tested locally 2026-11-03;
 independently reviewed (no high or medium finding); repair cycle 1 of 2 used on the
-coverage gate (tests only). Not committed. Started from
+coverage gate (tests only). Committed as `768a7a6` on `fix/b63-batch-source-rights`, merged
+into main (`6f36b93`) and pushed at the owner's word; CI green on the merge (572/572;
+86.94 / 89.21 / 94.25). Started from
 [docs/OPEN_GAPS.md](../docs/OPEN_GAPS.md) B63, found 2026-11-02 by the S1-006 review (L2).
 
 ## Problem
