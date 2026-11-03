@@ -62,6 +62,17 @@ test("hide with reason is ownership-scoped and matching-visible via ids", async 
   ));
 });
 
+test("hiding refuses a malformed id before any query; a database failure is not a missing posting", async () => {
+  const closed = localPool(process.env.TEST_DATABASE_URL, true);
+  await closed.end();
+  await assert.rejects(hideJobForUser({
+    pool: closed, userId: "u_any", snapshotId: "not a snapshot id", reasonCode: "other",
+  }), FeedbackError);
+  await assert.rejects(hideJobForUser({
+    pool: closed, userId: "u_any", snapshotId: "jobicy:any-posting", reasonCode: "other",
+  }), (error: unknown) => !(error instanceof FeedbackError));
+});
+
 test("manual apply mark lives on saved rows and only for the owner", async () => {
   await migrate(pool);
   const snapshotId = await seedSnapshot("2026-09-25T09:00:00.000Z");

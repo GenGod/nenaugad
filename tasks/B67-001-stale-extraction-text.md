@@ -1,8 +1,9 @@
 # B67-001 — an extraction sends only the text stored now
 
 **Status: accepted by the owner, 2026-11-03.** Implemented and tested locally 2026-11-03;
-independently reviewed (no high finding); no repair cycle used; committed on
-`fix/b67-stale-extraction-text` and merged into main with B66 at the owner's word; not pushed. Started from [docs/OPEN_GAPS.md](../docs/OPEN_GAPS.md)
+independently reviewed (no high finding); committed on `fix/b67-stale-extraction-text`,
+merged into main with B66 and pushed at the owner's word (59d1a77). That push's CI run failed
+on the branch-coverage gate alone; repair cycle 1 added tests (below). Started from [docs/OPEN_GAPS.md](../docs/OPEN_GAPS.md)
 B67, found by the third review of [B66-001](B66-001-tombstone-derived-rows.md) (whose repair
 limit was reached); the owner accepted B66 with this as the next task.
 
@@ -95,6 +96,33 @@ relisting and `storeScore` lock tests guard B66's mechanisms and passed before t
 
 **Mock/live:** labelled mock transports only; no provider call. **Spend:** none visible;
 coding-host spend unknown.
+
+## CI repair after the push (2026-11-03, repair cycle 1)
+
+The first CI run of the pushed main (59d1a77, run 41629010802) passed all 560 tests and
+failed only the coverage gate: 88.99 % of branches against the 89 % ratchet. Local runs of
+the same code gave 89.04 % and 89.01 %: the branch counts of `pipeline.ts` (47 or 45) and
+`profile-service.ts` (lines 94–95 run or not) varied between runs, and the gate sat inside
+that noise.
+
+Hypothesis, recorded first: tests for older uncovered branches that do not vary lift coverage
+enough to stay above 89 % run after run, with the ratchet unchanged. Two of the four
+candidates named there had no honest test: `ExtractionStoreError` is never thrown (dead code),
+and the pass's last rethrow is reached by no refusal the ledger makes without an operation.
+Tests only, no product code:
+
+- Saving and hiding refuse a malformed posting id before any query, and a database failure (a
+  closed pool) surfaces as itself, not as a missing posting (`profiles.test.ts`,
+  `feedback.test.ts`). Each fails when its guard is removed (both mutations run).
+- The terms fingerprint decodes `&#8212;` and `&#x2014;` like `&mdash;` and leaves zero, out of
+  range, past a safe integer and unknown entities as written (`terms-fingerprint.test.ts`).
+
+Result: three coverage runs gave the same 563/563 and 2853 / 3197 branches (89.24 %), 7
+branches above the gate; `npm run check` exit 0 (unit 426/426, lint, typecheck).
+
+Recorded, not fixed: `&#X2014;` (capital X) is not decoded, since the entity pattern matches
+only a lowercase `x` and the `#X` branch is unreachable. The change detector errs safe: a page
+that switched to that spelling would read as changed and be re-read by a human.
 
 ## Limitations
 

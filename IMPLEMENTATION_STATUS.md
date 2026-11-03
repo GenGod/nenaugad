@@ -10,7 +10,8 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 **Updated:** 2026-11-03: the owner accepted [B67-001](tasks/B67-001-stale-extraction-text.md)
 (an extraction sends only the text stored now; reviewed) and
 [B66-001](tasks/B66-001-tombstone-derived-rows.md) (clearing deletes the derived rows; a
-relisted posting is extracted once more; reviewed three times); both merged into main. The owner accepted [B62-001](tasks/B62-001-withdrawn-source-text.md) (a
+relisted posting is extracted once more; reviewed three times); both merged into main and
+pushed; the push's CI failed only on branch coverage (88.99 %), lifted by tests. The owner accepted [B62-001](tasks/B62-001-withdrawn-source-text.md) (a
 source that stops publishing leaves the private lists; retention runs in the worker for every
 source; a tombstone keeps no quote; reviewed) and [B61-001](tasks/B61-001-prune-attempts-bound.md)
 (one login prunes at most 100 expired attempt counters). 2026-10-15: the owner accepted [B56-001](tasks/B56-001-jobicy-batch-status.md)
@@ -149,6 +150,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-11-03 (B67-001 CI repair, tests only): CI on 59d1a77 failed on branch coverage alone
+  (88.99 % < 89 %; 560/560 passed); after the added tests `npm run check` exit 0 (unit
+  426/426); `test:coverage` three runs 563/563, 86.04 / 89.24 / 94.04 each.
 - 2026-11-03 ([B67-001](tasks/B67-001-stale-extraction-text.md)): `npm run check` exit 0 (unit
   425/425); `test:coverage` exit 0 (560/560; 85.98 / 89.04 / 94.04); `npm run build` exit 0;
   `test:e2e` 126/126.

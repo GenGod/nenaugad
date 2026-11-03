@@ -99,6 +99,16 @@ test("saved jobs are strictly ownership-scoped", async () => {
   );
 });
 
+test("saving refuses a malformed id before any query; a database failure is not a missing posting", async () => {
+  const closed = localPool(process.env.TEST_DATABASE_URL, true);
+  await closed.end();
+  await assert.rejects(saveJobForUser(closed, "u_any", "not a snapshot id"), ProfileServiceError);
+  await assert.rejects(
+    saveJobForUser(closed, "u_any", "himalayas:any-posting"),
+    (error: unknown) => !(error instanceof ProfileServiceError),
+  );
+});
+
 test("memory persistence still satisfies the adapter contract", () => {
   const memory = createMemoryPersistence(720);
   assert.equal(memory.state, null);
