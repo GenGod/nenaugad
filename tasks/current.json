@@ -1,15 +1,15 @@
 {
-  "task_id": "B67-001",
-  "file": "tasks/B67-001-stale-extraction-text.md",
+  "task_id": "B63-001",
+  "file": "tasks/B63-001-batch-source-rights.md",
   "status": "accepted",
   "repair_cycles_used": 1,
   "max_repair_cycles": 2,
   "hypotheses": [
     {
-      "text": "CI branch coverage (88.99%) sits within run-to-run noise of the 89% ratchet: pipeline.ts and profile-service.ts branch counts vary between runs. Tests for four older uncovered, deterministic branches (hideJobForUser invalid id, saveJobForUser non-FK rethrow, extraction pass unexpected-error rethrow, ExtractionStoreError) lift coverage enough that repeated local runs and CI stay above 89% without lowering the ratchet.",
-      "recorded_at": "2026-11-03T12:07:47.711Z"
+      "text": "Function coverage is 749/799 (93.74%) below the 94% ratchet only because the B63 test loads batch-queue-service.ts for the first time: --test-coverage-include-all counts an unloaded file's lines but none of its functions or branches, so its 5 uncovered functions (3 behind the closed gate) entered the count. Deterministic tests for functions that run today without the gate - processPendingBatches' closed return and the pure relevance helpers parseRelevanceResponse, parseBatchResponse and buildBatchPrompt - lift functions to at least 752/799 (94%) with the ratchet unchanged; the reviewer's test fixes add the uncovered batchJobsFor branches.",
+      "recorded_at": "2026-11-03T12:41:43.950Z"
     }
   ],
   "coding_host_spend": "unknown",
-  "note": "B67-001 accepted by the owner 2026-11-03; merged into main with B66-001 and pushed (59d1a77). That CI run failed only on branch coverage (88.99% < 89%); repair cycle 1 added tests (coverage 89.24% in three local runs). Last green CI: B62-001 (9c7c67b)."
+  "note": "B63-001 accepted by the owner 2026-11-03 (high risk: source rights); reviewed (no high or medium finding); repair cycle 1 lifted function coverage after the first load of batch-queue-service.ts; lines ratchet raised 85 -> 86. Not committed. Last green CI: c036137 (main, B66/B67 merge and the B67 coverage repair)."
 }

@@ -263,7 +263,8 @@ async function main(): Promise<void> {
         const submitted = await submitRelevanceBatch({ pool, userId });
         if (submitted) {
           log({ event: "batch_submitted", userId: userId.slice(0, 8) + "…",
-            batchId: submitted.openaiBatchId, jobs: submitted.jobCount });
+            batchId: submitted.openaiBatchId, jobs: submitted.jobCount,
+            rightsSkipped: submitted.rightsSkipped });
         }
       }
     }
