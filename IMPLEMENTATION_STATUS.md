@@ -7,7 +7,10 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-11-03: the owner accepted [B67-001](tasks/B67-001-stale-extraction-text.md)
+**Updated:** 2026-11-03: the owner accepted [B63-001](tasks/B63-001-batch-source-rights.md)
+(the closed batch relevance path builds its request only from sources with
+`send_to_ai_provider`; reviewed, no high or medium finding; lines ratchet 85 → 86; not
+committed). The owner accepted [B67-001](tasks/B67-001-stale-extraction-text.md)
 (an extraction sends only the text stored now; reviewed) and
 [B66-001](tasks/B66-001-tombstone-derived-rows.md) (clearing deletes the derived rows; a
 relisted posting is extracted once more; reviewed three times); both merged into main and
@@ -40,12 +43,14 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   the 1.5–1.7B CPU candidates fail the rubric; a 7–8B GPU spike is
   [MODEL-002](tasks/MODEL-002-gpu-spike.md).
 - **Approved AI purposes:** `job_matching` (AI-004, 2026-10-01) and `extraction`
-  (2026-10-04, job text only). `send_to_ai_provider` is granted to all three sources
-  (AI-005). The user quota is $1/month; `npm run ai:holds` resolves stuck holds. Money
+  (2026-10-04, job text only). `send_to_ai_provider` is granted to the synthetic catalog,
+  himalayas and jobicy (AI-005), not to Remote First Jobs (S1-006). The user quota is $1/month; `npm run ai:holds` resolves stuck holds. Money
   is counted in micro-dollars (μ$, 1 cent = 10,000); before B35-001 (owner-accepted
   2026-10-07) the tariff was a tenth of the price, so every call was booked at a tenth of
   its cost.
-  Automatic background batch scoring is off (AI-006).
+  Automatic background batch scoring is off (AI-006); its request builder asks the same
+  per-source right as the other provider paths and leaves refused postings out, counted
+  (B63-001).
 - **Uploads:** `UPLOADS_ENABLED` gates the whole CV surface (every CV route, B22).
 - **Not beta:** no restore, no public deploy, no owner acceptance of the whole.
 

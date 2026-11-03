@@ -11,13 +11,15 @@
 import { randomBytes } from "node:crypto";
 import type { Pool } from "pg";
 import {
-  isBatchEnabled, submitBatch, checkBatch, retrieveBatchResults,
+  isBatchEnabled, submitBatch, checkBatch, retrieveBatchResults, type BatchJob,
 } from "./openai-batch.ts";
 import { buildSinglePrompt } from "../relevance-service.ts";
 import { latestProfile } from "../profile-service.ts";
 import { readSnapshotCardsData } from "../storage/snapshots.ts";
 import { isJobSnapshot } from "../../domain/source-contracts.ts";
 import { matchedForUser } from "../matching-service.ts";
+import { sendableNow } from "../source-policies.ts";
+import type { ManualProfileInput } from "../../domain/profile.ts";
 
 export type BatchQueueEntry = Readonly<{
   id: string;
@@ -27,6 +29,8 @@ export type BatchQueueEntry = Readonly<{
   status: string;
   jobCount: number;
   storedCount: number;
+  /** This submission only, not stored: postings the source rights left out (B63). */
+  rightsSkipped: number;
 }>;
 
 // Submit a batch for all eligible jobs that lack cached scores for the
@@ -52,27 +56,10 @@ export async function submitRelevanceBatch(params: Readonly<{
   const toAnalyze = matched.eligible.filter(job => !cachedIds.has(job.card.id));
   if (toAnalyze.length === 0) return null;
 
-  // Load job data for prompts.
-  const batchJobs: { customId: string; snapshotId: string; prompt: string }[] = [];
-  const mapping: Record<string, string> = {};
-  for (const job of toAnalyze) {
-    const sourceId = job.card.id.split(":")[0] ?? "";
-    const rows = await readSnapshotCardsData(params.pool, sourceId);
-    const row = rows.find(r => r.stored.snapshot.id === job.card.id);
-    if (!row || !isJobSnapshot(row.stored.snapshot)) continue;
-    const customId = `rel-${job.card.id.replace(/[^a-z0-9-]/gu, "_")}`.slice(0, 180);
-    mapping[customId] = job.card.id;
-    batchJobs.push({
-      customId,
-      snapshotId: job.card.id,
-      prompt: buildSinglePrompt(
-        { title: row.stored.snapshot.title, company: row.stored.snapshot.company_name,
-          description: row.excerpt || row.stored.snapshot.description_text },
-        { targetRoles: profile.input.targetRoles,
-          country: profile.input.residenceCountry ?? "не указана" },
-      ),
-    });
-  }
+  const { jobs: batchJobs, mapping, rightsSkipped } = await batchJobsFor({
+    pool: params.pool, postingIds: toAnalyze.map(job => job.card.id),
+    profile: profile.input, now: new Date().toISOString(),
+  });
   if (batchJobs.length === 0) return null;
 
   try {
@@ -86,11 +73,56 @@ export async function submitRelevanceBatch(params: Readonly<{
     return {
       id, userId: params.userId, openaiBatchId: submission.batchId,
       profileVersion: profile.version, status: "submitted",
-      jobCount: batchJobs.length, storedCount: 0,
+      jobCount: batchJobs.length, storedCount: 0, rightsSkipped,
     };
   } catch {
     return null; // Batch submission failed; user can retry manually
   }
+}
+
+/** What one batch request carries, and what the source rights left out of it. */
+export type BatchJobsPlan = Readonly<{
+  jobs: readonly BatchJob[];
+  /** custom_id → posting id, stored with the queue row (the server-side mapping). */
+  mapping: Readonly<Record<string, string>>;
+  /** Postings left out because their source may not send text to the provider. */
+  rightsSkipped: number;
+  /** The sources those postings come from. */
+  deniedSources: readonly string[];
+}>;
+
+// The batch request's jobs, one prompt per posting. Rights before text, as on the
+// single-call relevance path (B63): a posting whose source may not send text to the
+// provider at `now` is counted and left out, and its source is not read at all, so
+// none of it reaches the request or the stored mapping. When the path is brought
+// behind the guard, its reservation comes after this.
+export async function batchJobsFor(params: Readonly<{
+  pool: Pool; postingIds: readonly string[];
+  profile: Readonly<Pick<ManualProfileInput, "targetRoles" | "residenceCountry">>;
+  now: string;
+}>): Promise<BatchJobsPlan> {
+  const { sendable, denied } = sendableNow(params.postingIds.map(id => ({ id })), params.now);
+  const jobs: BatchJob[] = [];
+  const mapping: Record<string, string> = {};
+  for (const { id: postingId } of sendable) {
+    const sourceId = postingId.split(":")[0] ?? "";
+    const rows = await readSnapshotCardsData(params.pool, sourceId);
+    const row = rows.find(r => r.stored.snapshot.id === postingId);
+    if (!row || !isJobSnapshot(row.stored.snapshot)) continue;
+    const customId = `rel-${postingId.replace(/[^a-z0-9-]/gu, "_")}`.slice(0, 180);
+    mapping[customId] = postingId;
+    jobs.push({
+      customId,
+      snapshotId: postingId,
+      prompt: buildSinglePrompt(
+        { title: row.stored.snapshot.title, company: row.stored.snapshot.company_name,
+          description: row.excerpt || row.stored.snapshot.description_text },
+        { targetRoles: params.profile.targetRoles,
+          country: params.profile.residenceCountry ?? "не указана" },
+      ),
+    });
+  }
+  return { jobs, mapping, rightsSkipped: params.postingIds.length - sendable.length, deniedSources: denied };
 }
 
 // Poll all pending batches; retrieve and persist results for completed ones.
