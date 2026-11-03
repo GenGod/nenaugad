@@ -322,8 +322,8 @@ Remaining:
    [E2E-001](../tasks/E2E-001-cold-start-warmup.md)). Under a coding agent, `next dev` and
    `next build` stop on every other start to say so. **Owner decision 2026-11-02:** the e2e
    server (`ATLAS_ENV=test`) skips the notice (`experimental.agentUpgrade: false`); dev and
-   build keep it. **Closed 2026-11-03, [E6-001](../tasks/E6-001-next-security-patch.md)
-   (owner-approved upgrade; not yet accepted):** `next` 16.4.0 → 16.4.4 fixes the three
+   build keep it. **Closed 2026-11-03, owner-accepted,
+   [E6-001](../tasks/E6-001-next-security-patch.md):** `next` 16.4.0 → 16.4.4 fixes the three
    advisories (two critical RCE, one high DoS; first fixed in 16.4.1); `npm audit` is clean,
    and `next build` ran twice under a coding agent without the stop. The e2e server keeps
    skipping the notice, so an e2e result never depends on that network check. Next's

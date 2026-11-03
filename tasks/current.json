@@ -1,10 +1,10 @@
 {
   "task_id": "E6-001",
   "file": "tasks/E6-001-next-security-patch.md",
-  "status": "implemented",
+  "status": "accepted",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "E6-001: next 16.4.0 -> 16.4.4, owner-approved 2026-11-03; implemented and tested locally (check, build x2, test:e2e 126/126, test:coverage 572/572); committed on fix/e6-next-security-patch at the owner's word, on top of main 12c080e, not merged, not pushed; not accepted. Last green CI: 6f36b93 (B63-001's merge)."
+  "note": "E6-001 accepted by the owner 2026-11-03 (\"accept\", of 1e29f37): next 16.4.0 -> 16.4.4; tested locally (check, build x2, test:e2e 126/126, test:coverage 572/572); committed on fix/e6-next-security-patch on top of main 12c080e (1e29f37, then the acceptance record), not merged, not pushed. Last green CI: 6f36b93 (B63-001's merge)."
 }

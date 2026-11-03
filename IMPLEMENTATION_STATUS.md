@@ -7,9 +7,9 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-11-03: [E6-001](tasks/E6-001-next-security-patch.md) moved Next.js
-16.4.0 → 16.4.4 (owner-approved; three advisories fixed, and the build no longer stops on
-Next's advisory notice; not accepted; committed on a branch, not merged). The owner accepted [B63-001](tasks/B63-001-batch-source-rights.md)
+**Updated:** 2026-11-03: the owner accepted [E6-001](tasks/E6-001-next-security-patch.md)
+(Next.js 16.4.0 → 16.4.4: three advisories fixed, and the build no longer stops on Next's
+advisory notice; committed on `fix/e6-next-security-patch`, not merged). The owner accepted [B63-001](tasks/B63-001-batch-source-rights.md)
 (the closed batch relevance path builds its request only from sources with
 `send_to_ai_provider`; reviewed, no high or medium finding; lines ratchet 85 → 86; not
 committed). The owner accepted [B67-001](tasks/B67-001-stale-extraction-text.md)

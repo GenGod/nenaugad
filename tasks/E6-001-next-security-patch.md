@@ -1,7 +1,8 @@
 # E6-001: Next.js leaves the npm security advisories
 
-**Status: implemented and tested locally 2026-11-03; committed at the owner's word on
-`fix/e6-next-security-patch` (not merged, not pushed); not accepted.** Basis: [OPEN_GAPS](../docs/OPEN_GAPS.md) E.6. Next.js
+**Status: accepted by the owner, 2026-11-03.** Implemented and tested locally 2026-11-03;
+committed at the owner's word as `1e29f37` on `fix/e6-next-security-patch` (not merged, not
+pushed). Basis: [OPEN_GAPS](../docs/OPEN_GAPS.md) E.6. Next.js
 16.4.0 is listed in the npm security advisories, and under a coding agent `next dev` and
 `next build` stop on every other start to say so ([E2E-001](E2E-001-cold-start-warmup.md)).
 
@@ -127,7 +128,9 @@ so CI has not run it.
 
 Owner approval for the upgrade: 2026-11-03, in the session ("Use 16.4.4 instead", after
 16.4.1 was proposed as the smallest fix). Commit on a branch only at the owner's word, given
-2026-11-03 ("Yes, commit it"); no push. Coding-host spend: not visible.
+2026-11-03 ("Yes, commit it"); no push. Owner acceptance of `1e29f37`: 2026-11-03, given in
+the parent session and relayed here ("accept"); merge and push not asked for. Coding-host
+spend: not visible.
 
 B63-001 was merged into main and pushed as `6f36b93` while this task was open. The first
 E6 commit (`8b5c878`, on `c036137`) left B63's hunks out of the shared files. The branch was
