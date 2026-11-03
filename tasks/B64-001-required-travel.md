@@ -1,6 +1,7 @@
 # B64-001 — required travel is detected, and the candidate's profile decides
 
-**Status: implemented, re-mapped and tested locally 2026-11-02; not committed.** The owner asked for "a rule that catches required
+**Status: implemented, re-mapped and tested locally 2026-11-02; committed in `ddf93f8`. The
+checkbox wording (acceptance 4) was finished the same day in a follow-up commit.** The owner asked for "a rule that catches required
 travel" after the S1-006 activation check found about 13 of the 102 Remote First Jobs
 catalog postings requiring travel (two up to 50%), and no source detecting it.
 
@@ -94,11 +95,9 @@ repair cycle used. Not independently reviewed (risk normal).
 - The catalog card shows "Обязательные поездки: «…»" or "Поездки возможны: «…»" in its
   facts row (checked on the running dev server; no horizontal scroll at 375 px, where the
   facts row is hidden as before).
-- **Not done (acceptance 4, the checkbox wording):** the label "Исключать обязательное
-  физическое присутствие" was not changed. It is in 9 visual baselines, and the e2e
-  server cannot start while another session's `next dev` holds this folder, so they could
-  not be re-recorded. The rule's explanation says "обязательные поездки". A small
-  follow-up: change the label and re-record the profile baselines.
+- **Acceptance 4, the checkbox wording:** first deferred (the label is in 9 visual
+  baselines, and the e2e server could not start while another session's `next dev` held
+  this folder), then done the same day in a separate worktree: see "Checkbox wording".
 
 **Measured** (4,080 stored rows; the detector over every active posting):
 
@@ -127,3 +126,26 @@ evidence changes, no classification moves, the backup holds no posting text.
 **Checks:** `npm run check:agent` exit 0 (408 unit tests); `npm run test:coverage` exit 0
 (532 unit and DB tests; 85.43 / 88.82 / 93.77); `npm run eval:matching` exit 0. Not run:
 `npm run test:e2e`, `npm run build` (the other session's dev server holds the folder).
+
+## Checkbox wording (acceptance 4, 2026-11-02)
+
+**Done and tested locally.** The label in `src/components/profile-form.tsx`
+now reads «Исключать обязательное физическое присутствие и обязательные поездки (zero
+mandatory attendance)»: the card's and the rule's own words. «…и поездки» alone would
+suggest that possible travel is excluded too; it stays unknown. Done in a separate worktree
+with its own `npm ci` and `E2E_PORT=3117`; the main checkout's `.env` was loaded into the
+environment without printing it (E2E-001's method).
+
+- **Baselines** (found by `--update-snapshots=changed`, as in B44-001): the same 9 files,
+  `authed-profile-empty`, `-error` and `-saved` × `desktop`, `mobile`, `narrow`. The other
+  51 are byte-identical.
+- **What changed**, old (`git show HEAD:…`) against new, row by row and viewed by eye for
+  all 9: on desktop one 16 px text line, same height (the label stays on one line); on
+  mobile the label's second and third lines, same height (still three lines); on narrow
+  the label wraps to four lines instead of three, +21 px, every row above it matches at
+  offset 0 and every row below it at +21. In `saved-narrow` the «К содержимому» skip link
+  (B44's overlay quirk: a fixed element lands where the page was scrolled at capture)
+  moves down the same 21 px over the unchanged weekday buttons. Nothing else differs.
+- **Checks:** `npm run test:e2e` 126 passed, 0 failed (exit 0); `npm run check` exit 0
+  (unit 408/408, lint, typecheck). Not run: `npm run build`, `test:coverage` (no `.ts`
+  logic changed). The owner accepts the re-recorded baselines (B44-001 precedent).
