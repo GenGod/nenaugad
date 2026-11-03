@@ -29,8 +29,9 @@ export default async function Saved() {
     </section>;
   }
   const pool = snapshotPool();
-  const rows = await listSavedJobsWithApplied(pool, user.id);
-  const hidden = await listHiddenJobs(pool, user.id);
+  const now = new Date().toISOString();
+  const rows = await listSavedJobsWithApplied(pool, user.id, now);
+  const hidden = await listHiddenJobs(pool, user.id, now);
   return <>
     <header className="page-head">
       <p className="overline">Сохранённое / только ваше</p>
@@ -49,16 +50,24 @@ export default async function Saved() {
           contentHash: "", firstSeenAt: row.savedAt, fullPassMisses: 0,
         }, policy);
         const closed = row.snapshot.lifecycle === "closed";
+        // A source that stopped publishing keeps its title, company and listing link
+        // here, never its excerpt or salary; retention later blanks the rest (B62-001).
         return <article key={row.snapshotId} className={`saved-row${closed ? " closed" : ""}`}>
           <div>
-            <p className="small secondary">{card.company} · Источник: {policy.attribution.display_name}</p>
-            <h3><a href={card.apply.url} rel="nofollow noreferrer" target="_blank">{card.title}</a></h3>
+            <p className="small secondary">
+              {card.company && `${card.company} · `}Источник: {policy.attribution.display_name}
+            </p>
+            <h3><a href={row.publishes ? card.apply.url : row.snapshot.source_url} rel="nofollow noreferrer"
+              target="_blank">{card.title || "Вакансия недоступна"}</a></h3>
             {row.excerpt && <p className="small secondary" style={{ marginTop: 4 }}>{row.excerpt}</p>}
             <p className="small secondary" style={{ marginTop: 4 }}>
-              {card.salaryOriginalText ?? "Зарплата не опубликована"} · сохранено {row.savedAt.slice(0, 10)}
+              {row.publishes && `${card.salaryOriginalText ?? "Зарплата не опубликована"} · `}
+              сохранено {row.savedAt.slice(0, 10)}
             </p>
             {closed && <span className="badge review" style={{ marginTop: 8 }}>
               <Icon name="info" size={16} />Закрыта (источник)</span>}
+            {!row.publishes && <span className="badge review" style={{ marginTop: 8 }}>
+              <Icon name="info" size={16} />Источник отключён: описание и зарплата скрыты</span>}
           </div>
           <div className="saved-status">
             <span className="saved-label">Личный статус</span>
@@ -82,22 +91,21 @@ export default async function Saved() {
       </div>
       <section aria-label="Скрытые вакансии" className="job-list">
         {hidden.map(row => {
-          const snapshot = isJobSnapshot(row.snapshot) ? row.snapshot : null;
-          const policy = policyForSnapshotId(row.snapshotId);
           return <article key={row.snapshotId} className="job-card">
             <div className="job-top">
               <span className="company-mark" aria-hidden="true">?</span>
               <div className="job-title-area">
-                <p className="company">{snapshot?.company_name ?? row.snapshotId}</p>
-                <h3>{snapshot?.title ?? "Вакансия недоступна"}</h3>
+                <p className="company">{row.company ?? "—"}</p>
+                <h3>{row.title ?? "Вакансия недоступна"}</h3>
               </div>
               <span className="badge review">Скрыто: {hideReasonLabel(row.reasonCode)}</span>
             </div>
             {row.excerpt && <p className="job-reason">{row.excerpt}</p>}
+            {!row.publishes && <p className="small secondary">Источник отключён: описание скрыто</p>}
             <div className="job-bottom">
               <span className="small secondary">Скрыто {row.createdAt.slice(0, 10)}</span>
               <div className="row" style={{ gap: 8 }}>
-                {snapshot && policy && <a className="btn tertiary" href={snapshot.source_url}
+                {row.listingUrl && <a className="btn tertiary" href={row.listingUrl}
                   rel="nofollow noreferrer" target="_blank">Открыть источник</a>}
                 <UnhideButton snapshotId={row.snapshotId} />
               </div>

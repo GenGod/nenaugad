@@ -43,7 +43,7 @@ export default async function LetterPage({ params }: { params: Promise<{ id: str
       <p>
         {isGeneral
           ? <span className="badge review">Общий черновик — адаптируйте под вакансию</span>
-          : job ? `${job.title} · ${job.company_name}` : "Вакансия недоступна"}
+          : job?.title ? `${job.title} · ${job.company_name}` : "Вакансия недоступна"}
         {" · "}версия профиля активна
       </p>
     </header>
@@ -53,8 +53,8 @@ export default async function LetterPage({ params }: { params: Promise<{ id: str
         evidence={{
           profileRoles: profile?.input.targetRoles ?? [],
           profileCountry: profile?.input.residenceCountry ?? null,
-          jobTitle: job?.title ?? null,
-          jobCompany: job?.company_name ?? null,
+          jobTitle: job?.title || null,
+          jobCompany: job?.company_name || null,
           generalMode: isGeneral,
         }}
         initialRevision={detail.current ? {

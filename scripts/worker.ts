@@ -8,7 +8,7 @@
 import { localPool, migrate } from "./db.ts";
 import { localDatabaseUrl, readConfig, ConfigurationError } from "../src/server/config.ts";
 import { getSourcePolicy, permissionFor } from "../src/server/source-policies.ts";
-import { createPostgresPersistence } from "../src/server/storage/snapshots.ts";
+import { createPostgresPersistence, runSnapshotRetentionPass } from "../src/server/storage/snapshots.ts";
 import { runHimalayasImport } from "../src/server/import/himalayas-adapter.ts";
 import { runJobicyImport } from "../src/server/import/jobicy-adapter.ts";
 import { runRemoteFirstJobsImport } from "../src/server/import/remote-first-jobs-adapter.ts";
@@ -241,9 +241,15 @@ async function main(): Promise<void> {
     }
     // Journal retention (RET-001): impressions and clicks older than the decided
     // horizon leave here; the per-profile cascade is a separate, stricter path.
+    // Snapshot retention runs here too, for every source and outside the import loop
+    // above (B62-001): a disabled, lapsed or paused source is never imported.
     if (!flag("no-retention")) {
       const purged = await purgeExpiredEvents(pool, new Date().toISOString());
       if (purged > 0) log({ event: "events_purged", purged });
+      for (const { sourceId, tombstoned, failed } of await runSnapshotRetentionPass(pool, new Date().toISOString())) {
+        if (failed) log({ event: "snapshot_retention_failed", source: sourceId });
+        else if (tombstoned > 0) log({ event: "snapshots_tombstoned", source: sourceId, tombstoned });
+      }
     }
     // Batch relevance: poll pending OpenAI Batches and persist results.
     if (!flag("no-batch")) {

@@ -6,6 +6,7 @@ import type {
   SourcePolicyPermission,
   TriState,
 } from "../domain/source-contracts.ts";
+import { policyPublishes } from "../domain/snapshot-projection.ts";
 
 // Synthetic bundled fixtures: the only source approved for public display today.
 // process_with_ml was granted by the owner on 2026-09-30 (matching brief §7.2)
@@ -285,6 +286,18 @@ export function permissionFor(
 export function maySendTextToProvider(sourceId: string, now: string): boolean {
   const policy = getSourcePolicy(sourceId);
   return policy !== undefined && permissionFor(policy, "send_to_ai_provider", now) === "allowed";
+}
+
+/**
+ * Whether a stored posting's source publishes now — the catalog's own test, asked by
+ * the private lists too (B62-001). A saved or hidden posting whose source stopped
+ * publishing keeps its title, company and listing link, never its excerpt or salary
+ * (owner decision 2026-11-03). The source is the snapshot id's prefix.
+ */
+export function sourcePublishesSnapshot(snapshotId: string, now: string): boolean {
+  const separator = snapshotId.indexOf(":");
+  const policy = separator > 0 ? getSourcePolicy(snapshotId.slice(0, separator)) : undefined;
+  return policy !== undefined && policyPublishes(policy, now);
 }
 
 /** Splits source ids into those whose text may be sent and those whose may not. */

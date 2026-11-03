@@ -18,8 +18,14 @@ function readSnapshotId(body: unknown): string | null {
 export async function GET() {
   const user = await currentUser();
   if (!user) return unauthorized();
-  const items = await listHiddenJobs(snapshotPool(), user.id);
-  return NextResponse.json({ items });
+  const rows = await listHiddenJobs(snapshotPool(), user.id, new Date().toISOString());
+  // Never the stored snapshot: it holds the posting's full text, which no source lets
+  // us republish (B62-001). The excerpt is empty once its source stops publishing.
+  return NextResponse.json({
+    items: rows.map(row => ({
+      snapshotId: row.snapshotId, reasonCode: row.reasonCode, createdAt: row.createdAt, excerpt: row.excerpt,
+    })),
+  });
 }
 
 export async function POST(request: Request) {

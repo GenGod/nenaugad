@@ -86,12 +86,12 @@ test("saved jobs are strictly ownership-scoped", async () => {
   });
   const snapshotId = mapHimalayasFixture(NOW)[0]!.id;
   await saveJobForUser(pool, userA.id, snapshotId);
-  assert.equal((await listSavedJobs(pool, userA.id)).length, 1);
-  assert.equal((await listSavedJobs(pool, userB.id)).length, 0);
+  assert.equal((await listSavedJobs(pool, userA.id, NOW)).length, 1);
+  assert.equal((await listSavedJobs(pool, userB.id, NOW)).length, 0);
   // B cannot unsave A's record; A can.
   assert.equal(await unsaveJobForUser(pool, userB.id, snapshotId), false);
   assert.equal(await unsaveJobForUser(pool, userA.id, snapshotId), true);
-  assert.equal((await listSavedJobs(pool, userA.id)).length, 0);
+  assert.equal((await listSavedJobs(pool, userA.id, NOW)).length, 0);
   // Unknown snapshots are rejected by the foreign key, not silently stored.
   await assert.rejects(
     saveJobForUser(pool, userA.id, "himalayas:does-not-exist"),

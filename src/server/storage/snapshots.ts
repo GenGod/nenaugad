@@ -4,11 +4,12 @@
 // the read path only ever exposes the excerpt + attribution. All SQL uses
 // fixed literals with $n parameters; no user input is ever concatenated.
 import { Pool } from "pg";
-import { isJobSnapshot, type SourcePolicy } from "../../domain/source-contracts.ts";
+import { isJobSnapshot, type JobSnapshot, type SourcePolicy } from "../../domain/source-contracts.ts";
 import type { ClosureSignal } from "../../domain/ev-multipliers.ts";
-import type { SnapshotStore, StoredSnapshot } from "../../domain/snapshot-projection.ts";
+import { tombstoneSnapshot, type SnapshotStore, type StoredSnapshot } from "../../domain/snapshot-projection.ts";
 import type { ImportState, SnapshotPersistence } from "../import/himalayas-adapter.ts";
 import { localDatabaseUrl } from "../config.ts";
+import { getSourcePolicy } from "../source-policies.ts";
 
 type Row = Record<string, unknown>;
 
@@ -29,7 +30,7 @@ function toStored(row: Row): StoredSnapshot | null {
 
 export function createPostgresPersistence(pool: Pool, policy: SourcePolicy): SnapshotPersistence {
   const sourceId = policy.source_id;
-  const retentionHours = policy.max_retention_hours ?? 720;
+  const retentionHours = policy.max_retention_hours ?? DEFAULT_RETENTION_HOURS;
   return {
     async loadImportState(): Promise<ImportState | null> {
       const result = await pool.query(
@@ -104,34 +105,87 @@ export function createPostgresPersistence(pool: Pool, policy: SourcePolicy): Sna
       }
     },
     async tombstoneExpired(now: string): Promise<number> {
-      // Retention (RET-001, owner decision No 4): a row past the policy window
-      // becomes a tombstone instead of disappearing — identifiers, dates and the
-      // content hash stay (dedup and history keep their trace; the candidate's
-      // journal rows are not cascaded away before their own TTL), while the
-      // posting's prose is blanked and the lifecycle says why. The derived
-      // vectors go: they were computed from text that no longer exists.
-      const lastSeenCutoff = new Date(Date.parse(now) - retentionHours * 3600 * 1000);
-      const expiryCutoff = new Date(Date.parse(now) - 7 * 24 * 3600 * 1000);
-      const result = await pool.query(
-        `UPDATE job_snapshots SET
-           tombstoned_at = $1,
-           excerpt = '',
-           snapshot = jsonb_set(jsonb_set(jsonb_set(snapshot, '{title}', '""'::jsonb), '{company_name}', '""'::jsonb), '{description_text}', '""'::jsonb) || jsonb_build_object('lifecycle', 'tombstoned')
-         WHERE source_id = $2 AND tombstoned_at IS NULL
-           AND ((snapshot#>>'{dates,last_seen_at}')::timestamptz < $3
-             OR ((snapshot#>>'{dates,expires_at}') IS NOT NULL AND (snapshot#>>'{dates,expires_at}')::timestamptz < $4))`,
-        [now, sourceId, lastSeenCutoff.toISOString(), expiryCutoff.toISOString()],
-      );
-      const tombstoned = result.rowCount ?? 0;
-      if (tombstoned > 0) {
-        await pool.query(
-          "DELETE FROM job_embeddings WHERE snapshot_id IN (SELECT id FROM job_snapshots WHERE source_id = $1 AND tombstoned_at = $2)",
-          [sourceId, now],
-        );
-      }
-      return tombstoned;
+      return tombstoneExpiredSnapshots(pool, sourceId, retentionHours, now);
     },
   };
+}
+
+/** The window for a source whose policy sets none, or that has no policy any more. */
+const DEFAULT_RETENTION_HOURS = 720;
+
+/**
+ * Retention (RET-001, owner decision No 4): a row past its source's window becomes a
+ * tombstone instead of disappearing — identifiers, dates and the content hash stay
+ * (dedup and history keep their trace; the candidate's journal rows are not cascaded
+ * away before their own TTL), while `tombstoneSnapshot` blanks every verbatim piece of
+ * the posting and the lifecycle says why. The derived vectors go: they were computed
+ * from text that no longer exists. An import calls this for its own source, and the
+ * worker for every source (`runSnapshotRetentionPass`).
+ */
+export async function tombstoneExpiredSnapshots(
+  pool: Pool, sourceId: string, retentionHours: number, now: string,
+): Promise<number> {
+  const lastSeenCutoff = new Date(Date.parse(now) - retentionHours * 3600 * 1000);
+  const expiryCutoff = new Date(Date.parse(now) - 7 * 24 * 3600 * 1000);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const due = await client.query(
+      `SELECT id, snapshot FROM job_snapshots
+        WHERE source_id = $1 AND tombstoned_at IS NULL
+          AND ((snapshot#>>'{dates,last_seen_at}')::timestamptz < $2
+            OR ((snapshot#>>'{dates,expires_at}') IS NOT NULL AND (snapshot#>>'{dates,expires_at}')::timestamptz < $3))
+        FOR NO KEY UPDATE`,
+      [sourceId, lastSeenCutoff.toISOString(), expiryCutoff.toISOString()],
+    );
+    const ids = due.rows.map(row => String((row as Row).id));
+    if (ids.length > 0) {
+      // A row that fails the contract is skipped by every reader, but its text is owed
+      // the same removal: it keeps only what the table's checks require.
+      const tombstones = due.rows.map(row => JSON.stringify(isJobSnapshot((row as Row).snapshot)
+        ? tombstoneSnapshot((row as Row).snapshot as JobSnapshot)
+        : { kind: "job_snapshot", id: String((row as Row).id), source_record_id: String((row as Row).id), lifecycle: "tombstoned" }));
+      await client.query(
+        `UPDATE job_snapshots j SET tombstoned_at = $1, excerpt = '', snapshot = t.snapshot
+           FROM unnest($2::text[], $3::jsonb[]) AS t(id, snapshot) WHERE j.id = t.id`,
+        [now, ids, tombstones],
+      );
+      await client.query("DELETE FROM job_embeddings WHERE snapshot_id = ANY($1::text[])", [ids]);
+    }
+    await client.query("COMMIT");
+    return ids.length;
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * The worker's retention pass (B62-001, owner decision 2026-11-03): every source that
+ * still has live rows, whatever its policy says now. A disabled, lapsed or paused
+ * source is never imported, so retention inside the import alone left its text stored
+ * for good; here it leaves on the same schedule as an active source's.
+ */
+export async function runSnapshotRetentionPass(
+  pool: Pool, now: string,
+): Promise<readonly Readonly<{ sourceId: string; tombstoned: number; failed: boolean }>[]> {
+  const sources = await pool.query(
+    "SELECT DISTINCT source_id FROM job_snapshots WHERE tombstoned_at IS NULL ORDER BY source_id");
+  const report: { sourceId: string; tombstoned: number; failed: boolean }[] = [];
+  for (const row of sources.rows) {
+    const sourceId = String((row as Row).source_id);
+    const retentionHours = getSourcePolicy(sourceId)?.max_retention_hours ?? DEFAULT_RETENTION_HOURS;
+    try {
+      report.push({ sourceId, tombstoned: await tombstoneExpiredSnapshots(pool, sourceId, retentionHours, now), failed: false });
+    } catch {
+      // One source's failure (a row whose date does not parse) leaves the others to run;
+      // inside an import it only ever failed that import, never the worker.
+      report.push({ sourceId, tombstoned: 0, failed: true });
+    }
+  }
+  return report;
 }
 
 export type SnapshotCardRecord = Readonly<{

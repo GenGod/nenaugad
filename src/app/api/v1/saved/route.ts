@@ -18,7 +18,7 @@ function readSnapshotId(body: unknown): string | null {
 export async function GET() {
   const user = await currentUser();
   if (!user) return unauthorized();
-  const rows = await listSavedJobs(snapshotPool(), user.id);
+  const rows = await listSavedJobs(snapshotPool(), user.id, new Date().toISOString());
   return NextResponse.json({
     items: rows.map(row => ({ snapshotId: row.snapshotId, savedAt: row.savedAt, excerpt: row.excerpt })),
   });

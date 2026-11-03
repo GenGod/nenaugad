@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { localPool, migrate } from "../../scripts/db.ts";
-import { createPostgresPersistence } from "../../src/server/storage/snapshots.ts";
+import { createPostgresPersistence, runSnapshotRetentionPass } from "../../src/server/storage/snapshots.ts";
+import { tombstoneSnapshot } from "../../src/domain/snapshot-projection.ts";
+import { isJobSnapshot, type JobSnapshot } from "../../src/domain/source-contracts.ts";
 import { runHimalayasImport } from "../../src/server/import/himalayas-adapter.ts";
 import { himalayasCandidatePolicy } from "../../src/server/source-policies.ts";
 import { himalayasContractFixture } from "../../src/server/import/himalayas-fixture.ts";
@@ -75,8 +77,17 @@ test("retention tombstones snapshots whose last_seen passed the policy window", 
     "UPDATE job_snapshots SET snapshot = jsonb_set(snapshot, '{dates,last_seen_at}', $1) WHERE id = $2",
     [JSON.stringify("2020-01-01T00:00:00.000Z"), "himalayas:jobs-fixture-h-001"],
   );
+  const before = await pool.query<{ snapshot: JobSnapshot }>(
+    "SELECT snapshot FROM job_snapshots WHERE id = $1", ["himalayas:jobs-fixture-h-001"]);
   const tombstoned = await persistence.tombstoneExpired("2026-09-24T12:00:00.000Z");
   assert.equal(tombstoned, 1);
+  // B62-001: the stored tombstone is exactly the domain's, so it holds no quote either.
+  const after = await pool.query<{ snapshot: JobSnapshot }>(
+    "SELECT snapshot FROM job_snapshots WHERE id = $1", ["himalayas:jobs-fixture-h-001"]);
+  assert.deepEqual(after.rows[0]?.snapshot, tombstoneSnapshot(before.rows[0]!.snapshot));
+  assert.equal(isJobSnapshot(after.rows[0]?.snapshot), true);
+  assert.ok(before.rows[0]!.snapshot.evidence.some(item => item.quote), "the fixture had quotes to blank");
+  assert.ok(after.rows[0]!.snapshot.evidence.every(item => item.quote === null));
   // RET-001: the row stays — identifiers, dates and the hash survive, the prose
   // does not, and the lifecycle says what happened. Nothing read-facing sees it:
   // classifySnapshot excludes anything that is not active.
@@ -95,6 +106,86 @@ test("retention tombstones snapshots whose last_seen passed the policy window", 
   assert.ok(tombstone.first_seen_at, "first_seen provenance survives");
   // A second pass does not re-tombstone what is already a tombstone.
   assert.equal(await persistence.tombstoneExpired("2026-09-24T12:00:00.000Z"), 0);
+});
+
+test("the worker's retention pass clears every source without an import (B62)", async () => {
+  await migrate(pool);
+  await pool.query("DELETE FROM job_snapshots");
+  await pool.query("DELETE FROM import_state");
+  const { jobicyCandidatePolicy } = await import("../../src/server/source-policies.ts");
+  const { runJobicyImport } = await import("../../src/server/import/jobicy-adapter.ts");
+  const { jobicyContractFixture } = await import("../../src/server/import/jobicy-fixture.ts");
+  const jobicyEnabled = { ...jobicyCandidatePolicy, enabled: true };
+  await runHimalayasImport({
+    transport: fullPage, persistence: createPostgresPersistence(pool, enabledPolicy),
+    policy: enabledPolicy, now: "2026-09-24T12:00:00.000Z",
+  });
+  await runJobicyImport({
+    transport: async () => ({ status: "ok" as const, jobs: [...jobicyContractFixture] }),
+    persistence: createPostgresPersistence(pool, jobicyEnabled), policy: jobicyEnabled,
+    now: "2026-09-24T12:00:00.000Z",
+  });
+  // One posting of each source was last seen long ago; nothing imports either source again.
+  for (const id of ["himalayas:jobs-fixture-h-001", "jobicy:900001"]) {
+    await pool.query(
+      "UPDATE job_snapshots SET snapshot = jsonb_set(snapshot, '{dates,last_seen_at}', $1) WHERE id = $2",
+      [JSON.stringify("2020-01-01T00:00:00.000Z"), id],
+    );
+  }
+  // A row the contract rejects (every reader skips it) still holds text and is past its window.
+  await pool.query(
+    "INSERT INTO job_snapshots (id, source_id, content_hash, first_seen_at, snapshot) VALUES ($1, 'himalayas', 'x', now(), $2::jsonb)",
+    ["himalayas:broken-1", JSON.stringify({
+      kind: "job_snapshot", id: "himalayas:broken-1", source_record_id: "himalayas:broken-1",
+      title: "PLANTED broken title", dates: { last_seen_at: "2020-01-01T00:00:00.000Z" },
+    })],
+  );
+
+  const report = await runSnapshotRetentionPass(pool, "2026-09-25T00:00:00.000Z");
+  assert.deepEqual(report, [
+    { sourceId: "himalayas", tombstoned: 2, failed: false },
+    { sourceId: "jobicy", tombstoned: 1, failed: false },
+  ]);
+  const rows = await pool.query<{ id: string; tombstoned: boolean }>(
+    "SELECT id, tombstoned_at IS NOT NULL AS tombstoned FROM job_snapshots ORDER BY id");
+  assert.deepEqual(rows.rows.filter(row => row.tombstoned).map(row => row.id),
+    ["himalayas:broken-1", "himalayas:jobs-fixture-h-001", "jobicy:900001"]);
+  assert.equal(rows.rows.filter(row => !row.tombstoned).length, 4, "postings inside their window are untouched");
+  const broken = await pool.query("SELECT snapshot FROM job_snapshots WHERE id = 'himalayas:broken-1'");
+  assert.deepEqual(broken.rows[0]?.snapshot, {
+    kind: "job_snapshot", id: "himalayas:broken-1", source_record_id: "himalayas:broken-1", lifecycle: "tombstoned",
+  });
+  // A second pass finds nothing new.
+  assert.deepEqual(await runSnapshotRetentionPass(pool, "2026-09-25T00:00:00.000Z"), [
+    { sourceId: "himalayas", tombstoned: 0, failed: false },
+    { sourceId: "jobicy", tombstoned: 0, failed: false },
+  ]);
+});
+
+test("one source's retention failure leaves the others to run (B62)", async () => {
+  await migrate(pool);
+  await pool.query("DELETE FROM job_snapshots");
+  await pool.query("DELETE FROM import_state");
+  await runHimalayasImport({
+    transport: fullPage, persistence: createPostgresPersistence(pool, enabledPolicy),
+    policy: enabledPolicy, now: "2026-09-24T12:00:00.000Z",
+  });
+  await pool.query(
+    "UPDATE job_snapshots SET snapshot = jsonb_set(snapshot, '{dates,last_seen_at}', $1) WHERE id = $2",
+    [JSON.stringify("2020-01-01T00:00:00.000Z"), "himalayas:jobs-fixture-h-001"],
+  );
+  await pool.query(
+    "INSERT INTO job_snapshots (id, source_id, content_hash, first_seen_at, snapshot) VALUES ($1, 'jobicy', 'x', now(), $2::jsonb)",
+    ["jobicy:bad-date", JSON.stringify({
+      kind: "job_snapshot", id: "jobicy:bad-date", source_record_id: "jobicy:bad-date",
+      dates: { last_seen_at: "not a date" },
+    })],
+  );
+  assert.deepEqual(await runSnapshotRetentionPass(pool, "2026-09-25T00:00:00.000Z"), [
+    { sourceId: "himalayas", tombstoned: 1, failed: false },
+    { sourceId: "jobicy", tombstoned: 0, failed: true },
+  ]);
+  await pool.query("DELETE FROM job_snapshots WHERE id = 'jobicy:bad-date'");
 });
 
 test("an import keeps the stored excerpt of every record it did not fetch (B30)", async () => {

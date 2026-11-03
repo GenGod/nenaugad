@@ -1,7 +1,7 @@
 # B65-001 — close the residual gaps of the Remote First Jobs remote rule
 
 **Status: implemented, re-mapped and tested locally 2026-11-02; committed in `b7d1e82`
-and merged into main 2026-11-03 at the owner's word, the 5 false hides accepted by the owner; not pushed.** Started
+and merged into main 2026-11-03 at the owner's word, the 5 false hides accepted by the owner; pushed 2026-11-03, CI green on the merge.** Started
 from the S1-006 follow-up: the final
 independent review of S1-006's cycle 2 named phrasings that still reach the main catalog
 with a remote label or an English remote phrase. The repair limit of S1-006 was reached,

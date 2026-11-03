@@ -7,7 +7,9 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-11-03: the owner accepted [B61-001](tasks/B61-001-prune-attempts-bound.md)
+**Updated:** 2026-11-03: [B62-001](tasks/B62-001-withdrawn-source-text.md) implemented and tested
+locally (a source that stops publishing leaves the private lists; retention runs in the worker
+for every source; a tombstone keeps no quote), independently reviewed; owner acceptance pending. The owner accepted [B61-001](tasks/B61-001-prune-attempts-bound.md)
 (one login prunes at most 100 expired attempt counters). 2026-10-15: the owner accepted [B56-001](tasks/B56-001-jobicy-batch-status.md)
 (Jobicy closure checks use the batch status endpoint), re-read the catalog and switched
 live AI on for extraction. 2026-10-12: the owner accepted [B37-001](tasks/B37-001-no-retry-after-uncertain.md) (no retry after
@@ -59,6 +61,8 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   cross-source dedup with provenance
   (A4); a cross-language near-dup queue for a human, nothing merged automatically
   (B5-001); expired records become tombstones, and the journal keeps 12 months (RET-001).
+  The worker runs that retention for every source on each tick, imported or not, and a
+  tombstone keeps no verbatim text; the posting's AI extraction rows stay (B62-001, B66).
   A worldwide jobicy label is checked against the posting text: a stated residence
   rule narrows it or leaves the countries unknown, and an exclusion is kept (B24-001).
   Other jobicy labels are read part by part: countries only make the complete list, and
@@ -70,7 +74,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   and an import no longer blanks the excerpts of records it did not fetch (B30-001,
   owner-accepted 2026-10-06; the 200 stored jobicy excerpts were decoded in place).
 - **Auth and profiles:** manual private profile, explainable matching, saved jobs
-  (S2-001, owner-accepted); hide with a reason and applied marks (S2-002). Login and
+  (S2-001, owner-accepted); hide with a reason and applied marks (S2-002). A saved or hidden
+  posting whose source stopped publishing keeps its title, company and link, not its excerpt
+  or salary, and `GET /api/v1/hidden` returns no stored snapshot (B62-001). Login and
   account deletion allow 5 password attempts per 15 minutes, per email and per account
   ([B53-001](tasks/B53-001-password-attempt-limit.md), reviewed, owner-accepted 2026-10-13); one
   login prunes at most 100 expired counters, under a nested-loop plan too
@@ -136,6 +142,10 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-11-03 ([B62-001](tasks/B62-001-withdrawn-source-text.md)): `npm run check` exit 0 (unit
+  424/424); `test:coverage` exit 0 (552/552; 85.90 / 89.06 / 94.01, ratchet raised to
+  85 / 89 / 94); `npm run build` exit 0 (every other run stops first on the Next.js advisory
+  notice, E.6); `test:e2e` 126/126.
 - 2026-11-02 ([B60-001](tasks/B60-001-external-search.md)): the `/jobs` search box filters the
   external cards too (title, company, excerpt; every word at a word start; newest first,
   then paged); ~4 ms over 3,622 cards, `/jobs` 0.04–0.06 s to first byte, unchanged.

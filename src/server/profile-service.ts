@@ -9,6 +9,7 @@ import {
   type CandidateProfileDocument, type ManualProfileInput, type ProfileSnapshot,
   type SearchProfileDocument,
 } from "../domain/profile.ts";
+import { sourcePublishesSnapshot } from "./source-policies.ts";
 
 export class ProfileServiceError extends Error {
   constructor(code: "INVALID_PROFILE" | "SNAPSHOT_NOT_FOUND") { super(code); }
@@ -105,11 +106,14 @@ export async function unsaveJobForUser(pool: Pool, userId: string, snapshotId: s
 export type SavedSnapshotRow = Readonly<{
   snapshotId: string;
   savedAt: string;
+  /** Empty when the source no longer publishes at `now` (B62-001). */
   excerpt: string;
   snapshot: unknown;
 }>;
 
-export async function listSavedJobs(pool: Pool, userId: string): Promise<readonly SavedSnapshotRow[]> {
+export async function listSavedJobs(
+  pool: Pool, userId: string, now: string,
+): Promise<readonly SavedSnapshotRow[]> {
   const result = await pool.query(
     "SELECT s.snapshot_id, s.created_at, j.excerpt, j.snapshot FROM saved_jobs s JOIN job_snapshots j ON j.id = s.snapshot_id WHERE s.user_id = $1 ORDER BY s.created_at DESC",
     [userId],
@@ -119,7 +123,7 @@ export async function listSavedJobs(pool: Pool, userId: string): Promise<readonl
     return {
       snapshotId: String(record.snapshot_id),
       savedAt: new Date(record.created_at as Date).toISOString(),
-      excerpt: String(record.excerpt ?? ""),
+      excerpt: sourcePublishesSnapshot(String(record.snapshot_id), now) ? String(record.excerpt ?? "") : "",
       snapshot: record.snapshot,
     };
   });
