@@ -1,7 +1,7 @@
 # B61-001: one prune of expired login counters deletes at most 100 rows (B61)
 
-**Status: implemented, tested locally and independently reviewed 2026-11-02; owner
-acceptance pending (required before merging).** Basis: [docs/OPEN_GAPS.md](../docs/OPEN_GAPS.md) B61,
+**Status: accepted by the owner, 2026-11-03.** Implemented, independently reviewed and
+checked locally 2026-11-02. Basis: [docs/OPEN_GAPS.md](../docs/OPEN_GAPS.md) B61,
 found 2026-11-02 by the main session while it fixed the PERF-002 coverage gate.
 
 ## Evidence (2026-11-02, local test database, PostgreSQL 17)
@@ -136,5 +136,6 @@ Findings and what was done:
 
 ## Approvals and limits
 
-Requested by the main session on 2026-11-02 as its own branch and review. The owner's
-acceptance is required before merging. No push, no merge. Coding-host spend: not visible.
+Requested by the main session on 2026-11-02 as its own branch and review. **The owner
+accepted B61-001 on 2026-11-03** («Accept B61-001», in this session). Merging into `main`
+and pushing are separate steps the owner has not asked for yet. Coding-host spend: not visible.
