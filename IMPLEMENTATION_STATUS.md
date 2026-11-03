@@ -7,7 +7,8 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-10-15: the owner accepted [B56-001](tasks/B56-001-jobicy-batch-status.md)
+**Updated:** 2026-11-03: the owner accepted [B61-001](tasks/B61-001-prune-attempts-bound.md)
+(one login prunes at most 100 expired attempt counters). 2026-10-15: the owner accepted [B56-001](tasks/B56-001-jobicy-batch-status.md)
 (Jobicy closure checks use the batch status endpoint), re-read the catalog and switched
 live AI on for extraction. 2026-10-12: the owner accepted [B37-001](tasks/B37-001-no-retry-after-uncertain.md) (no retry after
 an uncertain call). 2026-10-09: the owner accepted [B44-001](tasks/B44-001-visual-baselines.md) (9 visual baselines
@@ -73,7 +74,7 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   account deletion allow 5 password attempts per 15 minutes, per email and per account
   ([B53-001](tasks/B53-001-password-attempt-limit.md), reviewed, owner-accepted 2026-10-13); one
   login prunes at most 100 expired counters, under a nested-loop plan too
-  ([B61-001](tasks/B61-001-prune-attempts-bound.md), tested locally, review and owner acceptance pending). The
+  ([B61-001](tasks/B61-001-prune-attempts-bound.md), reviewed, owner-accepted 2026-11-03). The
   email is keyed by `AUTH_SECRET`, and login refuses without it; `npm run doctor` says whether it
   is set ([B54-001](tasks/B54-001-keyed-login-attempt-hash.md), reviewed, owner-accepted 2026-10-13).
   Registration allows 10 per 15 minutes service-wide (`REGISTRATION_LIMIT`;
