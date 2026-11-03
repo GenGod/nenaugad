@@ -1,6 +1,6 @@
 # B60-001 — the `/jobs` search box searches the external sources too
 
-**Status: implemented and tested locally 2026-11-02; not committed; owner acceptance pending.** Gap B60 in
+**Status: implemented and tested locally 2026-11-02; committed in `40feb4e` and merged into main 2026-11-03 at the owner's word; not pushed.** Gap B60 in
 `docs/OPEN_GAPS.md`, found by PERF-002: the search box (`q`) filters only the 4 synthetic
 catalog jobs, while the «Внешние источники» section (about 3,600 cards from Himalayas,
 Jobicy and Remote First Jobs, 24 a page, newest first) shows the same pages whatever the
