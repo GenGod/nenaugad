@@ -38,6 +38,16 @@ test("normalization: markup, scripts and entities are removed, block boundaries 
   assert.equal(normalizeTermsText("<p>&amp;lt;</p>"), "&lt;\n");
 });
 
+test("normalization: numeric entities decode like named ones; impossible code points stay as written", () => {
+  // A page that switches from &mdash; to &#8212; or &#x2014; has not changed its terms.
+  const named = termsFingerprint("<p>tail &mdash; end</p>");
+  assert.equal(termsFingerprint("<p>tail &#8212; end</p>"), named);
+  assert.equal(termsFingerprint("<p>tail &#x2014; end</p>"), named);
+  // Zero, past U+10FFFF, past a safe integer and unknown names are left as written.
+  const kept = "&#0; &#x0; &#1114112; &#x110000; &#99999999999999999999; &bogus;";
+  assert.equal(normalizeTermsText(`<p>${kept}</p>`), `${kept}\n`);
+});
+
 test("normalization: an injected per-request script does not change the fingerprint", () => {
   // The exact failure this fingerprint exists for: a CDN (Cloudflare on jobicy)
   // injects a script whose payload changes on every request, so hashing the raw
