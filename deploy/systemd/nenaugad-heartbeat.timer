@@ -1,0 +1,15 @@
+# Nenaugad heartbeat every 5 minutes (DEPLOY-006). Off until owner decision D7; then:
+#   sudo systemctl enable --now nenaugad-heartbeat.timer
+# Give the monitor a period of 5 minutes and a grace of 15, so a deploy (web and worker stopped
+# for the build) or one worker restart does not alert.
+
+[Unit]
+Description=Nenaugad heartbeat every 5 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

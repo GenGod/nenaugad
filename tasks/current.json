@@ -1,15 +1,10 @@
 {
-  "task_id": "DEPLOY-002",
-  "file": "tasks/DEPLOY-002-production-mode.md",
-  "status": "accepted",
-  "repair_cycles_used": 1,
+  "task_id": "DEPLOY-006",
+  "file": "tasks/DEPLOY-006-server-runbook.md",
+  "status": "implemented",
+  "repair_cycles_used": 0,
   "max_repair_cycles": 2,
-  "hypotheses": [
-    {
-      "text": "The two tests that merge a production env into process.env inherit UPLOADS_ENABLED=true from the local .env that test:coverage loads (--env-file-if-exists), so readConfig refuses PRODUCTION_UPLOADS_NOT_APPROVED; setting every config flag explicitly (and deleting NEXTAUTH_SECRET) makes both pass under npm test and test:coverage alike",
-      "recorded_at": "2026-11-04T09:42:34.569Z"
-    }
-  ],
+  "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "DEPLOY-002 (production mode) accepted by the owner 2026-11-04 (\"Accept and commit\"), committed as b6f3581 on feature/deploy-001-plan, merged into main as 30690a8 (with the DEPLOY-001 plan, 7c8cade) and pushed at the owner's word (\"merge and push\"). CI green on 30690a8 (run 41812488854: 587/587; 87.02 / 89.40 / 94.29; e2e 126/126). Not deployed. Local checks: check 446/446, test:coverage 587/587 (87.02 / 89.40 / 94.29; lines ratchet 86 -> 87), build, test:e2e 126/126, a production build checked by hand; reviewer twice, no blocking finding. Started 2026-11-04 as the first code slice of DEPLOY-001 (tasks/DEPLOY-001-single-vps-plan.md, a draft waiting on owner decisions D3 domain and D7 processors; decided D1 EU, D2 Hetzner Cloud EU, D4 start empty, D5 no sign-up yet, D6 live AI after the restore drill). High risk (auth, config): reviewer pass and owner acceptance before it counts as done. Previous task: E6-002, accepted 2026-11-04. Last green CI: 30690a8 (run 41812488854)."
+  "note": "DEPLOY-006 (server files and runbook) started 2026-11-04, pulled ahead of DEPLOY-003 at the owner's request so the owner can prepare the Hetzner server now. Normal risk: docs and server config only, no app code. Implemented and checked by reading, bash -n and npm run check (446/446); committed on feature/deploy-001-plan at the owner's word (\"Commit it\"), not merged, not run on any server, not accepted. Previous task: DEPLOY-002 (production mode), accepted 2026-11-04, merged into main and pushed, CI green."
 }

@@ -1,0 +1,62 @@
+# Nenaugad import worker: `npm run worker` (scripts/worker.ts, 60 s tick) (DEPLOY-006).
+# Install a copy, never a symlink: the checkout belongs to the nenaugad user, unit files to root.
+#   sudo install -m 644 -o root -g root deploy/systemd/nenaugad-worker.service /etc/systemd/system/
+# The worker reads /srv/nenaugad/app/.env through --env-file-if-exists; it logs JSON lines without
+# secrets to the journal: journalctl -u nenaugad-worker
+
+[Unit]
+Description=Nenaugad import worker (npm run worker)
+Documentation=file:///srv/nenaugad/app/deploy/README.md
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+# Restart=always without a start limit: after a reboot the worker may start before Postgres
+# answers, fail its migration check and come back 30 s later. A refused configuration loops
+# too, printing only its code; the heartbeat (deploy/README.md, Monitoring) notices either.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=nenaugad
+Group=nenaugad
+WorkingDirectory=/srv/nenaugad/app
+Environment=NEXT_TELEMETRY_DISABLED=1
+Environment=NPM_CONFIG_UPDATE_NOTIFIER=false
+Environment=NPM_CONFIG_LOGS_MAX=0
+# No heap cap: 75 MB measured on a --status run, the peak of a real import is not measured yet
+# (tasks/DEPLOY-001-single-vps-plan.md, Sizing). Measure it at DEPLOY-007 before capping.
+ExecStartPre=/usr/bin/npm run --silent doctor
+ExecStart=/usr/bin/npm run worker
+Restart=always
+RestartSec=30
+# SIGTERM goes to npm and node alike (KillMode=control-group, the default). The worker stops
+# between attempts: it finishes the import in progress, logs worker_stop and exits 0. An import
+# makes paced calls to a live source, so allow it minutes, not seconds, before SIGKILL.
+KillSignal=SIGTERM
+TimeoutStopSec=300
+
+# Hardening. Not set on purpose: MemoryDenyWriteExecute (V8's JIT needs writable and executable
+# memory) and SystemCallFilter (not tested against Node 26 yet; a measured follow-up).
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+UMask=0077
+PrivateTmp=yes
+PrivateDevices=yes
+# The worker writes no files: everything goes to Postgres over 127.0.0.1 or to the journal.
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+# AF_NETLINK: glibc's getaddrinfo opens a netlink socket for AI_ADDRCONFIG, which Node sets.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target

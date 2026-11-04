@@ -1,0 +1,53 @@
+# Nenaugad: Caddy in front of the Next.js server (DEPLOY-006). deploy/README.md installs it.
+#
+# Copied verbatim to /etc/caddy/Caddyfile. What belongs to one server stays outside this
+# public repository:
+#   - NENAUGAD_DOMAIN (the site's name, decision D3) in /etc/caddy/nenaugad.env, loaded into
+#     caddy.service by a drop-in;
+#   - the private-stage login, a bcrypt hash from `caddy hash-password`, in
+#     /etc/caddy/nenaugad-private-stage.caddy (root:caddy, mode 640). Not in the environment:
+#     the packaged caddy.service runs `caddy run --environ`, which prints it to the journal.
+# Check before every reload:
+#   sudo -u caddy caddy validate --config /etc/caddy/Caddyfile --envfile /etc/caddy/nenaugad.env
+
+# Defines the snippet `nenaugad_private_stage` (basic auth). Imported first, so it exists
+# before the site uses it. A missing file is an error, so the site never runs open by accident.
+import /etc/caddy/nenaugad-private-stage.caddy
+
+# A domain name as the site address turns on automatic HTTPS: a Let's Encrypt (or ZeroSSL)
+# certificate, renewed by Caddy, and HTTP on port 80 redirected to HTTPS. It needs the
+# domain's A record pointing at this server and ports 80 and 443 open in the cloud firewall.
+{$NENAUGAD_DOMAIN} {
+	# No `log` directive: Caddy then writes no access log, so visitors' IP addresses are not
+	# stored (GDPR data minimisation). Caddy's own errors still go to the journal.
+
+	# Request bodies over 1 MB get 413 before they reach Next. Nothing the app accepts in
+	# production is larger: uploads are off (PRODUCTION_UPLOADS_NOT_APPROVED), and Next's own
+	# limit for server actions is 1 MB. Opening CV uploads (10 MB files) must raise this.
+	request_body {
+		max_size 1MB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+
+	# Liveness for the external uptime check (deploy/README.md, Monitoring), outside basic
+	# auth so the monitor holds no password. It answers fixed facts: environment, backend and
+	# the AI and uploads switches; no secret, no personal data.
+	handle /api/health {
+		reverse_proxy 127.0.0.1:3000
+	}
+
+	# Everything else is the private stage: basic auth first, then Next. Streaming responses
+	# (unknown Content-Length) are flushed at once, as Next's self-hosting guide requires.
+	# Next compresses its own responses, so there is no `encode` here.
+	handle {
+		import nenaugad_private_stage
+		reverse_proxy 127.0.0.1:3000 {
+			# The private-stage password stops here; the app has no use for it.
+			header_up -Authorization
+		}
+	}
+}
