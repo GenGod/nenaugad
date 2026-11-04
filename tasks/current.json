@@ -1,10 +1,10 @@
 {
-  "task_id": "E6-001",
-  "file": "tasks/E6-001-next-security-patch.md",
-  "status": "accepted",
+  "task_id": "E6-002",
+  "file": "tasks/E6-002-next-16-4-5.md",
+  "status": "implemented",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "E6-001 accepted by the owner 2026-11-03 (\"accept\", of 1e29f37): next 16.4.0 -> 16.4.4; tested locally (check, build x2, test:e2e 126/126, test:coverage 572/572); committed on fix/e6-next-security-patch (1e29f37, then the acceptance record a36274c), merged into main as 6800202 and pushed at the owner's word. Last green CI: 6800202 (run 41677087740; 572/572; 86.94 / 89.21 / 94.25)."
+  "note": "E6-002: next 16.4.4 -> 16.4.5 (Next's November 2026 security release, seven medium advisories), owner-approved 2026-11-03; tested locally on a clean npm ci (audit, build x2, check 431/431, test:coverage 572/572, test:e2e 126/126); committed, merged and pushed at the owner's word (\"approved\") after every check passed; not accepted. E6-001 accepted, merged as 6800202. Last green CI: 6800202 (run 41677087740; 572/572; 86.94 / 89.21 / 94.25)."
 }
