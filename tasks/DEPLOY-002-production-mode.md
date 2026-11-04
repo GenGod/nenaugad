@@ -1,8 +1,9 @@
 # DEPLOY-002: production mode
 
 **Status: accepted by the owner, 2026-11-04 ("Accept and commit").** Implemented, tested
-locally and independently reviewed twice (no blocking finding) the same day; committed on
-`feature/deploy-001-plan` at the owner's word. Not merged into `main`, not pushed, not deployed.
+locally and independently reviewed twice (no blocking finding) the same day; committed as
+`b6f3581` on `feature/deploy-001-plan`, merged into `main` as `30690a8` and pushed at the
+owner's word ("merge and push"); CI green on `30690a8` (run 41812488854). Not deployed.
 The first code slice of the single-VPS plan
 ([DEPLOY-001](DEPLOY-001-single-vps-plan.md), section "Slices", draft criteria 1–6). The
 criteria below are fixed before the code and are not adjusted to match the result.
@@ -241,5 +242,10 @@ a scheme-less `name:port` is `*_INVALID`; the `next start` refusal above.
 
 **Mock/live:** no mocks in the product path; no provider call, no source call, no spend.
 **Coding-host spend:** unknown. **Rollback:** `git revert`; no migration, no data change.
-**Owner decision, 2026-11-04:** "Accept and commit": accepted, and committed on
-`feature/deploy-001-plan`. Merging into `main` and pushing are separate owner decisions.
+**Owner decision, 2026-11-04:** "Accept and commit": accepted, and committed as `b6f3581` on
+`feature/deploy-001-plan`. Then "merge and push": merged into `main` as `30690a8` (together
+with the DEPLOY-001 plan, `7c8cade`) and pushed.
+
+**CI on the merge `30690a8`** (run 41812488854, push, about 3.5 min): Code quality, Build and
+Tests green; unit and DB tests 587/587 with the coverage ratchet, 87.02 / 89.40 / 94.29
+(identical to local, so the lines ratchet 87 holds on Linux); e2e 126/126.

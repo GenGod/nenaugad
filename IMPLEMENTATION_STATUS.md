@@ -9,7 +9,7 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 
 **Updated:** 2026-11-04: the owner accepted [DEPLOY-002](tasks/DEPLOY-002-production-mode.md)
 ("Accept and commit"; `ATLAS_ENV=production` with its own refusals, no sign-up, `Secure`
-session cookies; committed on `feature/deploy-001-plan`, not merged or pushed). The owner
+session cookies; merged into main as `30690a8` and pushed; CI green). The owner
 accepted [E6-002](tasks/E6-002-next-16-4-5.md) ("Accept";
 Next.js 16.4.4 → 16.4.5, Next's November security release: seven medium advisories, none
 reaching this app's code; merged into main as `52bc615` and pushed; CI green). 2026-11-03: the owner accepted [E6-001](tasks/E6-001-next-security-patch.md)
@@ -166,11 +166,12 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
-- 2026-11-04 ([DEPLOY-002](tasks/DEPLOY-002-production-mode.md), production mode, on
-  `feature/deploy-001-plan`, no CI run yet): `npm run check` exit 0 (unit 446/446); `test:coverage` exit 0 (587/587; 87.02 /
+- 2026-11-04 ([DEPLOY-002](tasks/DEPLOY-002-production-mode.md), production mode):
+  `npm run check` exit 0 (unit 446/446); `test:coverage` exit 0 (587/587; 87.02 /
   89.40 / 94.29, lines ratchet 86 → 87); `npm run build` exit 0; `test:e2e` 126/126, no
   baseline changed; a production build checked by hand (health, register 403, login-only page,
-  `__Secure-` session cookie, `next start` exits 1 on a refused configuration).
+  `__Secure-` session cookie, `next start` exits 1 on a refused configuration). CI on the
+  merge `30690a8` green (run 41812488854; 587/587; 87.02 / 89.40 / 94.29; e2e 126/126).
 - 2026-11-04 ([E6-002](tasks/E6-002-next-16-4-5.md), Next.js 16.4.5, on a clean `npm ci`):
   `npm audit` exit 0; `npm run build` exit 0 twice in a row under a coding agent, no advisory
   stop; `npm run check` exit 0 (unit 431/431); `test:coverage` exit 0 (572/572; 86.94 /
@@ -268,9 +269,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   one Hetzner Cloud VPS in the EU, an empty start, no sign-up yet, live AI only after a
   restore drill. Open: D3 (domain) and D7 (processors). Nothing is provisioned or
   deployed. Its first slice, the production mode
-  ([DEPLOY-002](tasks/DEPLOY-002-production-mode.md)), is accepted (2026-11-04) and committed
-  on `feature/deploy-001-plan`, not merged or pushed; backups, restore, the production CSP and
-  the server files do not exist.
+  ([DEPLOY-002](tasks/DEPLOY-002-production-mode.md)), is accepted (2026-11-04), merged into
+  main as `30690a8` and pushed; backups, restore, the production CSP and the server files do
+  not exist.
 - **The first live extraction run happened (2026-10-07):** 5 himalayas postings, 5 calls
   settled on the first attempt, 5 records accepted, no hold left. It found B35 (fixed and
   accepted). B36-001 (a settlement releases its own hold only) is accepted too. The five
