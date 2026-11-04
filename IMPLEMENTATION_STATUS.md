@@ -7,12 +7,15 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-11-03: the owner accepted [E6-001](tasks/E6-001-next-security-patch.md)
+**Updated:** 2026-11-04: [E6-002](tasks/E6-002-next-16-4-5.md) moved Next.js 16.4.4 →
+16.4.5, Next's November security release (seven medium advisories, none reaching this app's
+code; owner-approved; merged and pushed at the owner's word after every check passed; not
+accepted). 2026-11-03: the owner accepted [E6-001](tasks/E6-001-next-security-patch.md)
 (Next.js 16.4.0 → 16.4.4: three advisories fixed, and the build no longer stops on Next's
-advisory notice; committed on `fix/e6-next-security-patch`, not merged). The owner accepted [B63-001](tasks/B63-001-batch-source-rights.md)
+advisory notice; merged into main as `6800202` and pushed; CI green). The owner accepted [B63-001](tasks/B63-001-batch-source-rights.md)
 (the closed batch relevance path builds its request only from sources with
-`send_to_ai_provider`; reviewed, no high or medium finding; lines ratchet 85 → 86; not
-committed). The owner accepted [B67-001](tasks/B67-001-stale-extraction-text.md)
+`send_to_ai_provider`; reviewed, no high or medium finding; lines ratchet 85 → 86; merged
+into main as `6f36b93` and pushed; CI green). The owner accepted [B67-001](tasks/B67-001-stale-extraction-text.md)
 (an extraction sends only the text stored now; reviewed) and
 [B66-001](tasks/B66-001-tombstone-derived-rows.md) (clearing deletes the derived rows; a
 relisted posting is extracted once more; reviewed three times); both merged into main and
@@ -157,10 +160,15 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-11-04 ([E6-002](tasks/E6-002-next-16-4-5.md), Next.js 16.4.5, on a clean `npm ci`):
+  `npm audit` exit 0; `npm run build` exit 0 twice in a row under a coding agent, no advisory
+  stop; `npm run check` exit 0 (unit 431/431); `test:coverage` exit 0 (572/572; 86.94 /
+  89.21 / 94.25, ratchet unchanged); `test:e2e` 126/126, no baseline changed.
 - 2026-11-03 ([E6-001](tasks/E6-001-next-security-patch.md), Next.js 16.4.4): `npm audit`
   exit 0; `npm run build` exit 0 twice in a row under a coding agent, no advisory stop;
   `npm run check` exit 0 (unit 431/431); `test:coverage` exit 0 (572/572; 86.94 / 89.21 /
-  94.25, ratchet unchanged); `test:e2e` 126/126, no baseline changed.
+  94.25, ratchet unchanged); `test:e2e` 126/126, no baseline changed. CI on the merge
+  `6800202` green (572/572; 86.94 / 89.21 / 94.25).
 - 2026-11-03 (B67-001 CI repair, tests only): CI on 59d1a77 failed on branch coverage alone
   (88.99 % < 89 %; 560/560 passed); after the added tests `npm run check` exit 0 (unit
   426/426); `test:coverage` three runs 563/563, 86.04 / 89.24 / 94.04 each.

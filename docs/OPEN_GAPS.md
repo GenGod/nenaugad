@@ -326,9 +326,12 @@ Remaining:
    [E6-001](../tasks/E6-001-next-security-patch.md):** `next` 16.4.0 → 16.4.4 fixes the three
    advisories (two critical RCE, one high DoS; first fixed in 16.4.1); `npm audit` is clean,
    and `next build` ran twice under a coding agent without the stop. The e2e server keeps
-   skipping the notice, so an e2e result never depends on that network check. Next's
-   security release scheduled for 2026-11-03 (seven medium advisories) may list 16.4.4
-   again; until a newer patch, dev and build would stop again under an agent.
+   skipping the notice, so an e2e result never depends on that network check. **Next's
+   November security release, 2026-11-04, [E6-002](../tasks/E6-002-next-16-4-5.md):**
+   `next` 16.4.4 → 16.4.5 fixes its seven medium advisories (published on Next's
+   repository 2026-11-03; none reaches this app's code). They are not yet in GitHub's
+   reviewed database, so `npm audit` and Next's agent check do not flag 16.4.4 yet; once
+   they do, 16.4.5 should stay clear.
 
 ## F. Documents versus code (stale claims)
 
