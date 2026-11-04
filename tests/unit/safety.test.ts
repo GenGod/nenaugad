@@ -10,7 +10,10 @@ test("starter defaults to fixture/local with all live features disabled", () => 
   });
 });
 test("production cannot be enabled through one environment switch", () => {
-  assert.throws(() => readConfig({ ATLAS_ENV: "production" }), /PRODUCTION_NOT_IMPLEMENTED/u);
+  // DEPLOY-002: the mode exists, but the switch alone is refused; each missing condition has
+  // its own code (tests/unit/production-mode.test.ts).
+  assert.throws(() => readConfig({ ATLAS_ENV: "production" }), /^ConfigurationError: PRODUCTION_REQUIRES_POSTGRES$/u);
+  assert.throws(() => readConfig({ ATLAS_ENV: "production", DATA_BACKEND: "postgres" }), /PRODUCTION_SECRET_REQUIRED/u);
 });
 test("live AI is a real switch: off by default, on only for the exact string \"true\"", () => {
   // Owner decision 2026-10-01: the variable used to be rejected whenever it was

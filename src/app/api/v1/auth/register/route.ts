@@ -1,10 +1,21 @@
 import { registerWithinLimit, RegistrationError } from "../../../../../server/users.ts";
 import { snapshotPool } from "../../../../../server/storage/snapshots.ts";
-import { ConfigurationError, registrationLimit } from "../../../../../server/config.ts";
+import { ConfigurationError, readConfig, registrationLimit, signUpOpen } from "../../../../../server/config.ts";
 
 // The standard Response (as /api/health), so the route itself runs under the Node test
 // runner (B55).
 export async function POST(request: Request) {
+  // Production has no sign-up (D5, DEPLOY-002): every request is refused before the body is
+  // read or a database pool opened.
+  let open: boolean;
+  try {
+    open = signUpOpen(readConfig(process.env));
+  } catch (error) {
+    const reason = error instanceof ConfigurationError ? error.message : undefined;
+    console.error(JSON.stringify({ code: "REGISTRATION_FAILED", reason }));
+    return Response.json({ error: "REGISTRATION_FAILED" }, { status: 500 });
+  }
+  if (!open) return Response.json({ error: "REGISTRATION_CLOSED" }, { status: 403 });
   let body: unknown;
   try {
     body = await request.json();

@@ -1,10 +1,15 @@
 {
-  "task_id": "E6-002",
-  "file": "tasks/E6-002-next-16-4-5.md",
+  "task_id": "DEPLOY-002",
+  "file": "tasks/DEPLOY-002-production-mode.md",
   "status": "accepted",
-  "repair_cycles_used": 0,
+  "repair_cycles_used": 1,
   "max_repair_cycles": 2,
-  "hypotheses": [],
+  "hypotheses": [
+    {
+      "text": "The two tests that merge a production env into process.env inherit UPLOADS_ENABLED=true from the local .env that test:coverage loads (--env-file-if-exists), so readConfig refuses PRODUCTION_UPLOADS_NOT_APPROVED; setting every config flag explicitly (and deleting NEXTAUTH_SECRET) makes both pass under npm test and test:coverage alike",
+      "recorded_at": "2026-11-04T09:42:34.569Z"
+    }
+  ],
   "coding_host_spend": "unknown",
-  "note": "E6-002 accepted by the owner 2026-11-04 (\"Accept\"): next 16.4.4 -> 16.4.5 (Next's November 2026 security release, seven medium advisories), owner-approved 2026-11-03; tested locally on a clean npm ci (audit, build x2, check 431/431, test:coverage 572/572, test:e2e 126/126); committed as 6d093cb (after the E6-001 docs fix e7bc94e) on fix/e6-002-next-16-4-5, merged into main as 52bc615 and pushed at the owner's word (\"approved\") after every check passed. Last green CI: 25f1f28 (run 41802837206; 572/572; 86.94 / 89.21 / 94.25)."
+  "note": "DEPLOY-002 (production mode) accepted by the owner 2026-11-04 (\"Accept and commit\") and committed on feature/deploy-001-plan; not merged into main, not pushed, no CI run. Checks: check 446/446, test:coverage 587/587 (87.02 / 89.40 / 94.29; lines ratchet 86 -> 87), build, test:e2e 126/126, a production build checked by hand; reviewer twice, no blocking finding. Started 2026-11-04 as the first code slice of DEPLOY-001 (tasks/DEPLOY-001-single-vps-plan.md, a draft waiting on owner decisions D3 domain and D7 processors; decided D1 EU, D2 Hetzner Cloud EU, D4 start empty, D5 no sign-up yet, D6 live AI after the restore drill). High risk (auth, config): reviewer pass and owner acceptance before it counts as done. Previous task: E6-002, accepted 2026-11-04; last green CI 25f1f28 (run 41802837206)."
 }

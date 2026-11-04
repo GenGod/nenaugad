@@ -37,7 +37,9 @@ This is not a promise of a production build: the beta is closed (see `docs/SAFET
   the `LIVE_AI_ENABLED` switch; personal data does not leave the contour.
 - SQL migrations, fixture/PostgreSQL adapters, unit/integration/Playwright tests,
   CI and working instructions.
-- Production is rejected by config; live AI calls are forbidden.
+- Production mode (`ATLAS_ENV=production`, DEPLOY-002) starts only with PostgreSQL, a strong
+  secret and a public `https://` address, and has no sign-up; nothing is deployed, and backups
+  and restore do not exist yet. Live AI calls are forbidden.
 
 There are no third-party CVs, contacts, font binaries or fabricated letters. A provider key
 may sit in the local environment, but it is not a switch. The catalog data are
