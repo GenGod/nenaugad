@@ -1,0 +1,70 @@
+# Nenaugad web server: `npm start` (next start on 127.0.0.1:3000) behind Caddy (DEPLOY-006).
+# Install a copy, never a symlink: the checkout belongs to the nenaugad user, unit files to root.
+#   sudo install -m 644 -o root -g root deploy/systemd/nenaugad-web.service /etc/systemd/system/
+# Next reads /srv/nenaugad/app/.env itself; keep every server setting there (deploy/README.md).
+
+[Unit]
+Description=Nenaugad web (Next.js, npm start on 127.0.0.1:3000)
+Documentation=file:///srv/nenaugad/app/deploy/README.md
+# Postgres runs in Docker (compose.yaml, restart: unless-stopped). Pages that read the database
+# answer errors until it is up; the server itself starts without it.
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+# A refused configuration exits at once (next.config.ts): stop retrying after five starts in five
+# minutes instead of looping. `systemctl reset-failed nenaugad-web` clears it after the fix.
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=nenaugad
+Group=nenaugad
+WorkingDirectory=/srv/nenaugad/app
+Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
+# Heap cap, from the measured sizing (tasks/DEPLOY-001-single-vps-plan.md, 2026-11-04): the web
+# server held 206 MB at start and 661 MB of working set after 160 requests, and Node reclaims
+# lazily. 1024 MB of old space leaves room for the /matched skill cache and still keeps web,
+# Postgres (~150 MB), the worker, Caddy and the OS well inside 4 GB. Re-measure at DEPLOY-007.
+Environment=NODE_OPTIONS=--max-old-space-size=1024
+# npm only runs a script here: no update check, no log files (the tree is read-only below).
+Environment=NPM_CONFIG_UPDATE_NOTIFIER=false
+Environment=NPM_CONFIG_LOGS_MAX=0
+# The refusal code (CONFIGURATION_REJECTED: <CODE>) lands in the journal before Next starts.
+# doctor prints facts only, never a value from .env.
+ExecStartPre=/usr/bin/npm run --silent doctor
+# Next's docs: behind a proxy, Node's keep-alive must outlast the proxy's, or the proxy reuses a
+# connection Node already closed (a 502 for a POST). Caddy keeps idle upstream connections for 2 min.
+ExecStart=/usr/bin/npm start -- --keepAliveTimeout 130000
+Restart=on-failure
+RestartSec=5
+# SIGTERM to every process of the unit; Next finishes in-flight requests (its docs: 10-30 s).
+TimeoutStopSec=30
+
+# Hardening. Not set on purpose: MemoryDenyWriteExecute (V8's JIT needs writable and executable
+# memory) and SystemCallFilter (not tested against Node 26 yet; a measured follow-up).
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+UMask=0077
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+# next start writes its cache (images, fetch, trace) under .next and nowhere else.
+ReadWritePaths=/srv/nenaugad/app/.next
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+# AF_NETLINK: glibc's getaddrinfo opens a netlink socket for AI_ADDRCONFIG, which Node sets.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target
