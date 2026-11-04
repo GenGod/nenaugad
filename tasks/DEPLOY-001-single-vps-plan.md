@@ -59,7 +59,7 @@ secret, host name tied to a person, backup or `.env` file is ever committed.
 
 | Part | How | Notes |
 |---|---|---|
-| Host | One VPS, Ubuntu 24.04 LTS, at least 2 vCPU, 4 GB RAM, 40 GB disk | `next build` needs the memory; measure on the first deploy |
+| Host | One VPS, Ubuntu 24.04 LTS, 2 vCPU, 4 GB RAM, 40 GB disk, plus 2 GB swap | Sized from the measurements below; the build is the memory peak |
 | Node | The version in `.nvmrc` (26.7.0) | Same as CI |
 | Postgres | The existing `compose.yaml` service (`pgvector/pgvector:0.8.6-pg17`), port bound to 127.0.0.1, named volume | `localDatabaseUrl` stays unchanged |
 | Web | `npm run build`, then `npm start` (already binds 127.0.0.1:3000) under a systemd unit, as an unprivileged `nenaugad` user | Next reads `.env` (mode 600, owned by that user) |
@@ -75,6 +75,34 @@ database first, check out a commit from `main` that has green CI, `npm ci`,
 `npm run db:migrate`, `npm run build`, restart web and worker, check `/api/health`.
 Rollback: check out the previous commit, build, restart. Migrations only go forward, so a
 rollback across a migration restores the dump taken before the deploy.
+
+## Sizing (measured 2026-11-04)
+
+Measured on the development machine (Windows, 16 CPU threads), on `main` after DEPLOY-002,
+with the local database (3,582 to 4,080 postings) and `NODE_ENV=production`. Memory is the
+working set summed over each process tree. A VPS will differ; the numbers that matter are
+re-measured on the first deploy (DEPLOY-007).
+
+| Part | Measured | Notes |
+|---|---|---|
+| `next build`, cold (no `.next`) | 2,990 MB peak, 11 s | 17 Node processes: Next starts one build worker per CPU thread. A 2-vCPU server runs fewer, so its peak should be lower (not measured). |
+| `next build`, warm | 1,682 MB peak | With the build cache |
+| Web server (`npm start`) | 206 MB at start; 386 MB after one hit per page; 661 MB after 160 more requests | Node reclaims memory lazily, so 661 MB is not a ceiling. DEPLOY-006 sets a heap cap (`--max-old-space-size`). |
+| Worker | 75 MB on a `--status` run | An import's peak is not measured: an import calls the live sources and, with live AI on locally, pays for extraction |
+| Postgres | 149 MiB in use; database 83 MB, data directory 223 MB; `shared_buffers` 128 MB (default) | A compressed `pg_dump` is 13 MB, test accounts included |
+
+- **Steady state:** Postgres, web, worker, Caddy and the OS together come to about
+  1–1.7 GB. On 4 GB the build is the only tight moment, which the 2 GB swap covers. The
+  alternative is to build elsewhere and copy `.next`.
+- **Disk:** under 10 GB of 40 GB. `node_modules` is 919 MB, of which 426 MB is the ONNX
+  runtime: only the offline embedding scripts use it, but `npm ci` installs it anyway. The build output is 78 MB; 14 daily
+  plus 8 weekly dumps come to about 300 MB; the OS and the Postgres image take a few GB.
+  The 14 GB `models/` folder stays off the server.
+- **CPU:** warm page times here: `/jobs` 344–364 ms (175 KB), the other measured pages
+  14–31 ms. A shared vCPU is slower (not measured). The heaviest page is `/matched`,
+  which scans every posting per request: 3.9 s cold and 1.3 s repeat at 3,582 postings
+  (PERF-001). With no sign-up, only the owner uses it at first.
+- **Traffic:** negligible against a VPS's included traffic.
 
 ## Owner decisions (open)
 
