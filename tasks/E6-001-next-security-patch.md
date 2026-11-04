@@ -1,8 +1,9 @@
 # E6-001: Next.js leaves the npm security advisories
 
 **Status: accepted by the owner, 2026-11-03.** Implemented and tested locally 2026-11-03;
-committed at the owner's word as `1e29f37` on `fix/e6-next-security-patch` (not merged, not
-pushed). Basis: [OPEN_GAPS](../docs/OPEN_GAPS.md) E.6. Next.js
+committed at the owner's word as `1e29f37` on `fix/e6-next-security-patch`, merged into main
+(`6800202`) and pushed at the owner's word; CI green on the merge (572/572; 86.94 / 89.21 /
+94.25). Basis: [OPEN_GAPS](../docs/OPEN_GAPS.md) E.6. Next.js
 16.4.0 is listed in the npm security advisories, and under a coding agent `next dev` and
 `next build` stop on every other start to say so ([E2E-001](E2E-001-cold-start-warmup.md)).
 
@@ -107,7 +108,9 @@ decision stands; dev and build keep the notice, which is how a new advisory gets
   ratchet 86 / 89 / 94.
 - `npm run test:e2e`: exit 0, 126/126 (1.8 min, compose database up); no visual baseline
   changed, none re-recorded.
-- Not run: `npm run test:db` on its own (its tests ran inside `test:coverage`); CI (no push).
+- CI on the merge `6800202` (run 41677087740, Linux): Tests, Build and Code quality
+  succeeded; unit and DB 572/572; coverage 86.94 / 89.21 / 94.25.
+- Not run: `npm run test:db` on its own (its tests ran inside `test:coverage`).
 - The runs used this working tree while B63-001's files were still uncommitted in it (their
   tests and the lines ratchet 86). B63 was then merged into main as `6f36b93` with the same
   content, and `12c080e` changed only B63's task file, so they cover the committed tree.
@@ -120,16 +123,16 @@ form back.
 
 **Open.** Next's 2026-11-03 security release: if its advisories cover 16.4.4, `npm audit`
 fails again and dev and build stop again under an agent until the next patch (a new task
-with its own approval). The CI and weekly workflows run on Linux; this was checked on
-Windows. Committed on `fix/e6-next-security-patch` (parent `12c080e`), not merged, not pushed,
-so CI has not run it.
+with its own approval). The local checks ran on Windows and CI on Linux; the weekly workflow
+has not run on 16.4.4 yet.
 
 ## Approvals and limits
 
 Owner approval for the upgrade: 2026-11-03, in the session ("Use 16.4.4 instead", after
 16.4.1 was proposed as the smallest fix). Commit on a branch only at the owner's word, given
 2026-11-03 ("Yes, commit it"); no push. Owner acceptance of `1e29f37`: 2026-11-03, given in
-the parent session and relayed here ("accept"); merge and push not asked for. Coding-host
+the parent session and relayed here ("accept"). Merge and push: 2026-11-03, relayed the
+same way ("merge and push"); merged with `--no-ff` as `6800202` and pushed. Coding-host
 spend: not visible.
 
 B63-001 was merged into main and pushed as `6f36b93` while this task was open. The first
