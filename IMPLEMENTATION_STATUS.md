@@ -9,8 +9,8 @@ with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 
 **Updated:** 2026-11-04: [E6-002](tasks/E6-002-next-16-4-5.md) moved Next.js 16.4.4 →
 16.4.5, Next's November security release (seven medium advisories, none reaching this app's
-code; owner-approved; merged and pushed at the owner's word after every check passed; not
-accepted). 2026-11-03: the owner accepted [E6-001](tasks/E6-001-next-security-patch.md)
+code; owner-approved; merged into main as `52bc615` and pushed at the owner's word after
+every check passed; CI green; not accepted). 2026-11-03: the owner accepted [E6-001](tasks/E6-001-next-security-patch.md)
 (Next.js 16.4.0 → 16.4.4: three advisories fixed, and the build no longer stops on Next's
 advisory notice; merged into main as `6800202` and pushed; CI green). The owner accepted [B63-001](tasks/B63-001-batch-source-rights.md)
 (the closed batch relevance path builds its request only from sources with
@@ -163,7 +163,8 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
 - 2026-11-04 ([E6-002](tasks/E6-002-next-16-4-5.md), Next.js 16.4.5, on a clean `npm ci`):
   `npm audit` exit 0; `npm run build` exit 0 twice in a row under a coding agent, no advisory
   stop; `npm run check` exit 0 (unit 431/431); `test:coverage` exit 0 (572/572; 86.94 /
-  89.21 / 94.25, ratchet unchanged); `test:e2e` 126/126, no baseline changed.
+  89.21 / 94.25, ratchet unchanged); `test:e2e` 126/126, no baseline changed. CI on the
+  merge `52bc615` green (572/572; 86.94 / 89.21 / 94.25).
 - 2026-11-03 ([E6-001](tasks/E6-001-next-security-patch.md), Next.js 16.4.4): `npm audit`
   exit 0; `npm run build` exit 0 twice in a row under a coding agent, no advisory stop;
   `npm run check` exit 0 (unit 431/431); `test:coverage` exit 0 (572/572; 86.94 / 89.21 /
