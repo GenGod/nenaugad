@@ -7,7 +7,9 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-11-04: the owner accepted [DEPLOY-002](tasks/DEPLOY-002-production-mode.md)
+**Updated:** 2026-11-04: the server files and runbook ([DEPLOY-006](tasks/DEPLOY-006-server-runbook.md),
+`deploy/`) are merged into main as `a9c3faa` and pushed; CI green; not run on any server, not
+accepted. The owner accepted [DEPLOY-002](tasks/DEPLOY-002-production-mode.md)
 ("Accept and commit"; `ATLAS_ENV=production` with its own refusals, no sign-up, `Secure`
 session cookies; merged into main as `30690a8` and pushed; CI green). The owner
 accepted [E6-002](tasks/E6-002-next-16-4-5.md) ("Accept";
@@ -170,7 +172,8 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   only): `npm run check` exit 0 (unit 446/446); `bash -n` on both scripts exit 0; a grep of
   `deploy/` finds no address, domain, e-mail or secret. Not run: `shellcheck` and
   `systemd-analyze` (not on this machine; the units were checked by reading), the scripts
-  themselves, anything on a server.
+  themselves, anything on a server. CI on the merge `a9c3faa` green (run 41828211333;
+  587/587; 87.02 / 89.40 / 94.29; e2e 126/126); CI does not exercise `deploy/`.
 - 2026-11-04 ([DEPLOY-002](tasks/DEPLOY-002-production-mode.md), production mode):
   `npm run check` exit 0 (unit 446/446); `test:coverage` exit 0 (587/587; 87.02 /
   89.40 / 94.29, lines ratchet 86 → 87); `npm run build` exit 0; `test:e2e` 126/126, no
@@ -278,8 +281,8 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   main as `30690a8` and pushed. The server files and runbook
   ([DEPLOY-006](tasks/DEPLOY-006-server-runbook.md), pulled ahead of DEPLOY-003: `deploy/`
   with the runbook, Caddyfile, systemd units, an owner-run release script and a heartbeat) are
-  written, checked by reading and committed on `feature/deploy-001-plan`; not merged into main
-  and not run on any server. Backups, restore
+  written, checked by reading, merged into main as `a9c3faa` and pushed (CI green); not run
+  on any server, not accepted. Backups, restore
   and the production CSP do not exist; the release script demands `--no-backup` until
   DEPLOY-003.
 - **The first live extraction run happened (2026-10-07):** 5 himalayas postings, 5 calls

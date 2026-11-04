@@ -6,5 +6,5 @@
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "DEPLOY-006 (server files and runbook) started 2026-11-04, pulled ahead of DEPLOY-003 at the owner's request so the owner can prepare the Hetzner server now. Normal risk: docs and server config only, no app code. Implemented and checked by reading, bash -n and npm run check (446/446); committed on feature/deploy-001-plan at the owner's word (\"Commit it\"), not merged, not run on any server, not accepted. Previous task: DEPLOY-002 (production mode), accepted 2026-11-04, merged into main and pushed, CI green."
+  "note": "DEPLOY-006 (server files and runbook) started 2026-11-04, pulled ahead of DEPLOY-003 at the owner's request so the owner can prepare the Hetzner server now. Normal risk: docs and server config only, no app code. Implemented and checked by reading, bash -n and npm run check (446/446); committed as cd947b3 on feature/deploy-001-plan at the owner's word (\"Commit it\"), merged into main as a9c3faa and pushed (\"Merge and push\"); CI green on a9c3faa (run 41828211333: 587/587; 87.02 / 89.40 / 94.29; e2e 126/126). Not run on any server, not accepted. Last green CI: a9c3faa (run 41828211333). Previous task: DEPLOY-002 (production mode), accepted 2026-11-04, merged into main and pushed, CI green."
 }
