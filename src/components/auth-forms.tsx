@@ -6,9 +6,10 @@ import {
   validateEmail, validatePassword,
 } from "./form-validation.ts";
 
-export function LoginForm() {
+/** `signUp` comes from the server (`signUpOpen`): false in production, which offers login only. */
+export function LoginForm({ signUp }: { signUp: boolean }) {
   const router = useRouter();
-  const [mode, setMode] = useState<"login" | "register">("register");
+  const [mode, setMode] = useState<"login" | "register">(signUp ? "register" : "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -73,7 +74,8 @@ export function LoginForm() {
     <div className="field">
       <label htmlFor="password">Пароль (минимум 10 символов)</label>
       <input id="password" type="password" required minLength={10} maxLength={200} value={password}
-        autoComplete="new-password" aria-invalid={touched.password === true && passwordError !== null}
+        autoComplete={signUp ? "new-password" : "current-password"}
+        aria-invalid={touched.password === true && passwordError !== null}
         onChange={event => setPassword(event.target.value)}
         onBlur={() => setTouched(current => ({ ...current, password: true }))} />
       {fieldError(touched.password === true, passwordError)}
@@ -83,14 +85,15 @@ export function LoginForm() {
       <button type="submit" className="btn primary" disabled={busy || !formValid}>
         {mode === "register" ? "Создать аккаунт и войти" : "Войти"}
       </button>
-      <button type="button" className="btn secondary" onClick={() => {
+      {signUp && <button type="button" className="btn secondary" onClick={() => {
         setMode(mode === "register" ? "login" : "register");
         setError(null);
       }}>
         {mode === "register" ? "У меня есть аккаунт" : "Создать аккаунт"}
-      </button>
+      </button>}
     </div>
-    <p className="small secondary">Локальный демо-аккаунт. Не используйте пароль от других сервисов.</p>
+    {/* The local-demo note goes with local sign-up; production has neither. */}
+    {signUp && <p className="small secondary">Локальный демо-аккаунт. Не используйте пароль от других сервисов.</p>}
   </form>;
 }
 

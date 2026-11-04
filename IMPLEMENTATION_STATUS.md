@@ -7,7 +7,10 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-11-04: the owner accepted [E6-002](tasks/E6-002-next-16-4-5.md) ("Accept";
+**Updated:** 2026-11-04: the owner accepted [DEPLOY-002](tasks/DEPLOY-002-production-mode.md)
+("Accept and commit"; `ATLAS_ENV=production` with its own refusals, no sign-up, `Secure`
+session cookies; committed on `feature/deploy-001-plan`, not merged or pushed). The owner
+accepted [E6-002](tasks/E6-002-next-16-4-5.md) ("Accept";
 Next.js 16.4.4 → 16.4.5, Next's November security release: seven medium advisories, none
 reaching this app's code; merged into main as `52bc615` and pushed; CI green). 2026-11-03: the owner accepted [E6-001](tasks/E6-001-next-security-patch.md)
 (Next.js 16.4.0 → 16.4.4: three advisories fixed, and the build no longer stops on Next's
@@ -99,6 +102,10 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   is set ([B54-001](tasks/B54-001-keyed-login-attempt-hash.md), reviewed, owner-accepted 2026-10-13).
   Registration allows 10 per 15 minutes service-wide (`REGISTRATION_LIMIT`;
   [B55-001](tasks/B55-001-registration-limit.md), reviewed, owner-accepted 2026-10-13).
+  `ATLAS_ENV=production` ([DEPLOY-002](tasks/DEPLOY-002-production-mode.md), reviewed,
+  owner-accepted 2026-11-04) needs PostgreSQL, a secret of at least 32 bytes and an `https://`
+  `NEXTAUTH_URL` on a public host, keeps uploads off, has no sign-up and sets `Secure`
+  `__Secure-` session cookies; local and test refuse a non-loopback `NEXTAUTH_URL`.
 - **CV intake:** offline text/txt/md/docx intake and private storage (S3-001,
   owner-accepted, activated locally); PDF text layer (S3-003).
 - **Letters:** private CRUD, versions and editor (S4-001); deterministic validator
@@ -159,6 +166,11 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-11-04 ([DEPLOY-002](tasks/DEPLOY-002-production-mode.md), production mode, on
+  `feature/deploy-001-plan`, no CI run yet): `npm run check` exit 0 (unit 446/446); `test:coverage` exit 0 (587/587; 87.02 /
+  89.40 / 94.29, lines ratchet 86 → 87); `npm run build` exit 0; `test:e2e` 126/126, no
+  baseline changed; a production build checked by hand (health, register 403, login-only page,
+  `__Secure-` session cookie, `next start` exits 1 on a refused configuration).
 - 2026-11-04 ([E6-002](tasks/E6-002-next-16-4-5.md), Next.js 16.4.5, on a clean `npm ci`):
   `npm audit` exit 0; `npm run build` exit 0 twice in a row under a coding agent, no advisory
   stop; `npm run check` exit 0 (unit 431/431); `test:coverage` exit 0 (572/572; 86.94 /
@@ -255,7 +267,10 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
 - **Deploy plan** ([DEPLOY-001](tasks/DEPLOY-001-single-vps-plan.md), drafted 2026-11-04):
   one Hetzner Cloud VPS in the EU, an empty start, no sign-up yet, live AI only after a
   restore drill. Open: D3 (domain) and D7 (processors). Nothing is provisioned or
-  deployed. The code still refuses to run outside local/test.
+  deployed. Its first slice, the production mode
+  ([DEPLOY-002](tasks/DEPLOY-002-production-mode.md)), is accepted (2026-11-04) and committed
+  on `feature/deploy-001-plan`, not merged or pushed; backups, restore, the production CSP and
+  the server files do not exist.
 - **The first live extraction run happened (2026-10-07):** 5 himalayas postings, 5 calls
   settled on the first attempt, 5 records accepted, no hold left. It found B35 (fixed and
   accepted). B36-001 (a settlement releases its own hold only) is accepted too. The five

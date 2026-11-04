@@ -1,4 +1,9 @@
 import type { NextConfig } from "next";
+import { readConfig } from "./src/server/config.ts";
+
+// `PHASE_PRODUCTION_SERVER` from next/constants, spelled out: that CommonJS path has no ESM
+// export, so a native import of it fails (tests/unit/production-mode.test.ts pins the value).
+const PRODUCTION_SERVER_PHASE = "phase-production-server";
 
 const dev = process.env.NODE_ENV !== "production";
 // Local starter policy. A production nonce-based CSP needs a separate task.
@@ -43,4 +48,13 @@ const nextConfig: NextConfig = {
     }];
   }
 };
-export default nextConfig;
+
+// `next start` exits 1 on a configuration that `readConfig` refuses, without answering a
+// request (DEPLOY-002): it prints "Ready", loads this file, logs the code and stops. Next
+// loads .env before this file. Without this the refusal came only from
+// src/instrumentation.ts, which `next start` runs on the first request: the process stayed
+// up and answered every request with 500. Dev and build keep their own paths.
+export default function config(phase: string): NextConfig {
+  if (phase === PRODUCTION_SERVER_PHASE) readConfig(process.env);
+  return nextConfig;
+}

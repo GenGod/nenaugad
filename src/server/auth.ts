@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { accountExists, authorizeCredentials } from "./users.ts";
 import { snapshotPool } from "./storage/snapshots.ts";
+import { secureCookies } from "./config.ts";
 
 declare module "next-auth" {
   interface Session {
@@ -13,6 +14,10 @@ declare module "next-auth" {
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt", maxAge: 30 * 24 * 3600 },
   pages: { signIn: "/login" },
+  // Production (DEPLOY-002): `Secure` cookies named `__Secure-next-auth.session-token` and
+  // `__Host-next-auth.csrf-token`, stated rather than left to the https NEXTAUTH_URL that
+  // production requires. Local and test keep next-auth's default (unset here).
+  useSecureCookies: secureCookies(process.env),
   providers: [
     Credentials({
       name: "email-password",

@@ -33,6 +33,10 @@ In the server config any live/production flag is rejected. There is no bypass in
 *(Stale 2026-10-02: `UPLOADS_ENABLED=true` and `LIVE_AI_ENABLED=true` are explicit
 local switches with an owner decision; production and unknown values
 are still fail-closed (`src/server/config.ts`).)*
+*(2026-11-04, [DEPLOY-002](../tasks/DEPLOY-002-production-mode.md): `ATLAS_ENV=production`
+exists and refuses, each with its own code, anything but PostgreSQL, a secret of at least
+32 bytes, an `https://` NEXTAUTH_URL on a public host and uploads off; it has no sign-up and
+sets `Secure` session cookies. Local and test refuse a non-loopback NEXTAUTH_URL.)*
 
 `atlas_demo_jobs` stores synthetic only. This is NOT production canonical jobs.
 Source records, job variants, candidate/letter tables appear according to the real
