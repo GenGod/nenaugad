@@ -1,8 +1,10 @@
 # DEPLOY-006: server files and runbook
 
-**Status: implemented and checked by reading and static checks (2026-11-04); committed on
-`feature/deploy-001-plan` at the owner's word ("Commit it"). Not merged into `main`, not run
-on any server, not accepted.** Pulled ahead of DEPLOY-003 at the owner's request, so
+**Status: implemented and checked by reading and static checks (2026-11-04); committed as
+`cd947b3` on `feature/deploy-001-plan` at the owner's word ("Commit it"), merged into `main`
+as `a9c3faa` and pushed ("Merge and push"); CI green on `a9c3faa` (run 41828211333: 587/587;
+87.02 / 89.40 / 94.29; e2e 126/126). CI does not exercise `deploy/`. Not run on any server,
+not accepted.** Pulled ahead of DEPLOY-003 at the owner's request, so
 the owner can prepare the Hetzner server now. A slice of the single-VPS plan
 ([DEPLOY-001](DEPLOY-001-single-vps-plan.md), sections "Target architecture", "Deploy
 procedure", "Sizing" and the DEPLOY-006 slice). The criteria below are fixed before the
@@ -207,7 +209,6 @@ and `systemd.exec(5)`, all fetched 2026-11-04.
 spend unknown. **Rollback:** delete `deploy/` and this file; restore `tasks/current.json`
 (previous task DEPLOY-002) and the two `IMPLEMENTATION_STATUS.md` edits.
 
-**Next small task:** the owner reviews `deploy/` and, if satisfied, merges the branch into
-`main` (the server clones `main`, so the files must be there first). Then DEPLOY-003
-(backup and restore), which replaces the `--no-backup` refusal with a real backup step; or
-the owner runs steps 1–12 now, before the domain exists.
+**Next small task:** DEPLOY-003 (backup and restore), which replaces the `--no-backup`
+refusal with a real backup step. Meanwhile the owner can run steps 1–12 of `deploy/README.md`
+on the server from `main` (they need no domain), and record what the first real run finds.
