@@ -252,6 +252,10 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   2026-10-06): green; a duplicate run was cancelled by the concurrency group.
 
 ## Waiting for the owner
+- **Deploy plan** ([DEPLOY-001](tasks/DEPLOY-001-single-vps-plan.md), drafted 2026-11-04):
+  one Hetzner Cloud VPS in the EU, an empty start, no sign-up yet, live AI only after a
+  restore drill. Open: D3 (domain) and D7 (processors). Nothing is provisioned or
+  deployed. The code still refuses to run outside local/test.
 - **The first live extraction run happened (2026-10-07):** 5 himalayas postings, 5 calls
   settled on the first attempt, 5 records accepted, no hold left. It found B35 (fixed and
   accepted). B36-001 (a settlement releases its own hold only) is accepted too. The five

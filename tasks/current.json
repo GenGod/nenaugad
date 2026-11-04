@@ -1,10 +1,10 @@
 {
-  "task_id": "E6-002",
-  "file": "tasks/E6-002-next-16-4-5.md",
-  "status": "accepted",
+  "task_id": "DEPLOY-001",
+  "file": "tasks/DEPLOY-001-single-vps-plan.md",
+  "status": "draft: waiting on owner decisions D3 and D7",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "E6-002 accepted by the owner 2026-11-04 (\"Accept\"): next 16.4.4 -> 16.4.5 (Next's November 2026 security release, seven medium advisories), owner-approved 2026-11-03; tested locally on a clean npm ci (audit, build x2, check 431/431, test:coverage 572/572, test:e2e 126/126); committed as 6d093cb (after the E6-001 docs fix e7bc94e) on fix/e6-002-next-16-4-5, merged into main as 52bc615 and pushed at the owner's word (\"approved\") after every check passed. Last green CI: 25f1f28 (run 41802837206; 572/572; 86.94 / 89.21 / 94.25)."
+  "note": "DEPLOY-001 drafted 2026-11-04 after the owner chose one VPS over a managed PaaS (\"Single VPS\"). It is the plan only: nothing provisioned, bought or deployed, no code changed. Decided 2026-11-04: D1 users outside Russia (EU region), D2 Hetzner Cloud EU, D4 start empty, D5 no sign-up yet (Google sign-in and email/password later), D6 live AI after the restore drill. Open: D3 domain, D7 processors. Slices DEPLOY-002..007 each get their own task file. Previous task: E6-002, accepted 2026-11-04; last green CI 25f1f28 (run 41802837206)."
 }
