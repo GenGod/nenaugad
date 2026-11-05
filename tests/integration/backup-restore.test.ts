@@ -75,6 +75,8 @@ const state: {
   keptUsers?: string; keptEvents?: string; keptRevisions?: string;
   /** Deletion exports (db:export-deletions): one taken before the older backup, one after A's deletion. */
   deletionsBefore?: string; deletionsExport?: string;
+  /** When the older backup's command had returned: its archive time is no later. */
+  olderBackupDone?: number;
 } = {};
 /** A, plus every account the backup holds although its ledger lists it. */
 const deletedAgain = () => 1 + (state.listedBefore ?? 0);
@@ -257,6 +259,12 @@ async function backupWithGuard(guard: "rule" | "trigger", table: (typeof GUARDED
   }
 }
 
+/** Waits until the clock has passed the whole second after `after` (a condition, not a delay). */
+async function untilNextSecond(after: number): Promise<void> {
+  const next = Math.floor(after / 1000) * 1000 + 1000;
+  while (Date.now() < next) await new Promise(resolve => setTimeout(resolve, next - Date.now() + 5));
+}
+
 /** Runs a --replace, which needs every session on the live database closed. */
 async function withoutPool<T>(work: () => Promise<T>): Promise<T> {
   await pool.end();
@@ -300,6 +308,7 @@ test("db:backup writes a private custom-format file outside the repository and p
     assert.equal((await stat(backupDir)).mode & 0o777, 0o700);
   }
   state.olderBackup = report.file;
+  state.olderBackupDone = Date.now();
   // Created after the backup: a restore that copied the live database instead of the file
   // would keep it.
   state.c = (await registerUser(pool, email(), PASSWORD)).id;
@@ -323,6 +332,10 @@ test("backups in which a deletion cannot take effect are taken for the negative 
 test("a drill restores the older backup without the account deleted after it was taken", async () => {
   const a = state.a!;
   await deleteAccount(pool, a.id, PASSWORD);
+  // pg_dump stamps an archive with whole seconds: the newer backup must start in a later second
+  // than the older one ended, or no restore can tell which is newer. On CI's small database both
+  // fell in one second (run 42007381527: DELETIONS_SOURCE_NOT_NEWER).
+  await untilNextSecond(state.olderBackupDone!);
   state.newerBackup = (await takeBackup({ url: TEST_URL, tools, dir: path.join(backupDir, "newer"), repositoryRoot: REPO })).file;
   // The 15-minute export (owner decision 2026-11-05): written when the ledger changed, not again.
   const exported = await exportDeletions({ url: TEST_URL, dir: path.join(backupDir, "deletions"), repositoryRoot: REPO });

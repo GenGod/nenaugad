@@ -442,3 +442,18 @@ shellcheck on the new step) green.
 **Next small task.** The heartbeat
 could require a recent successful backup and copy (an alert instead of a weekly look); and the
 AI spending ledger carried forward through a restore (B68, money, before D6).
+
+## Repair cycle 1 (2026-11-05)
+
+CI run 42007381527 on `a5a9914` (the merge of the record commit, docs only) failed one test:
+"on a lost server the restore needs the newest ledger", `DELETIONS_SOURCE_NOT_NEWER` when the
+older backup is restored with the newer one as `--deletions-from`. Hypothesis recorded first
+(`npm run task -- repair`, cycle 1 of 2): pg_dump stamps an archive with whole seconds, and on
+CI's small test database the two backups fell in one second, so the restore cannot tell which
+is newer and refuses, as designed. Evidence: the CI timings (the older backup's test ended at
+10:03:34.47, the newer backup was taken about 0.4 s later; in the green run 42001897999 the same
+gap happened to cross a second). Not reproducible locally, where every dump takes more than a
+second. Fix, in the test only: the newer backup waits until the clock has passed the whole
+second after the older one's command returned (`untilNextSecond`, a condition, not a fixed
+delay). The restore code is unchanged. Checks: the integration test 14/14, `npm run check`
+467/467, typecheck and lint clean.
