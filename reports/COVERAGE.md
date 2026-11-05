@@ -1,7 +1,8 @@
 # Coverage of the starting template
 
 **Update 2026-10-02 (FDOC-001):** the table was brought in line with the actual state.
-The only remaining «не реализовано» [not implemented] item is restore. The checks are run
+The only remaining «не реализовано» [not implemented] item was restore; since 2026-11-04 it is
+implemented, tested locally and owner-accepted 2026-11-05 (DEPLOY-003), not yet run on a server. The checks are run
 locally with the commands from `IMPLEMENTATION_STATUS.md` (`check`, `test:db`, `build`,
 `test:e2e`); CI does not run the DB or the browser.
 
@@ -17,7 +18,7 @@ locally with the commands from `IMPLEMENTATION_STATUS.md` (`check`, `test:db`, `
 | SP-T08 DST/hiring/salary rules | TIME-01 with a DST-accurate window (`RULESET_VERSION` 3); SAL-01 an honest unknown | The cross-language cases are not measured (section D of the inventory) |
 | SP-T10–17 budgets/queue | Spending ledger: atomic reserve, quotas, persistent counters, `npm run ai:holds`; the batch path is closed | Re-enabling the batch is an owner decision (the plan is in AI-006) |
 | SP-T18–19 letters | Private CRUD, versions, a whole-body validator, If-Match, the evidence panel; generation behind the boundary | The repair loop — B9, until a local model |
-| SP-T22 restore | Not implemented | Mandatory before beta |
+| SP-T22 restore | Implemented and tested locally (DEPLOY-003, 2026-11-04): `npm run db:restore` deletes again every account in `account_deletions` and checks none is left, before the restored database can be used; integration test on the isolated database | Owner-accepted 2026-11-05; not yet run on a server (DEPLOY-007 drills it); off-site copy: age + Hetzner Storage Box |
 
 The «не реализовано» [not implemented] item is gating backlog, not a passed check under the principle
 «нет функции — нет ошибки» [no feature — no bug]. Before the corresponding feature is enabled,

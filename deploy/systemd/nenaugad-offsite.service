@@ -1,0 +1,52 @@
+# Nenaugad off-site backup copy (DEPLOY-003): age-encrypted dumps to the Hetzner Storage Box over
+# SFTP (owner decision 2026-11-04). Started every 15 minutes by nenaugad-offsite.timer; it does
+# nothing until db:backup has written a dump it has not copied yet. deploy/README.md, Off-site copy.
+#   sudo install -m 755 -o root -g root deploy/nenaugad-offsite.sh /usr/local/sbin/nenaugad-offsite
+#   sudo install -m 644 -o root -g root deploy/systemd/nenaugad-offsite.service /etc/systemd/system/
+
+[Unit]
+Description=Nenaugad off-site backup copy (age, Storage Box)
+Documentation=file:///srv/nenaugad/app/deploy/README.md
+Wants=network-online.target
+After=network-online.target nenaugad-backup.service
+
+[Service]
+Type=oneshot
+# Root, for one reason: the Storage Box key in /etc/nenaugad/offsite stays out of the app user's
+# reach. Root runs only this root-owned script, ssh, sftp, age and coreutils, never code from the
+# checkout, and it touches the dumps only as the app user (setpriv).
+# Holds OFFSITE_HOST, OFFSITE_USER and the optional OFFSITE_PORT / OFFSITE_DIR; no secret.
+EnvironmentFile=/etc/nenaugad/offsite.env
+ExecStart=/usr/local/sbin/nenaugad-offsite
+SyslogIdentifier=nenaugad-offsite
+# /var/lib/nenaugad-offsite: the list of copies made, and the encrypted file while it uploads.
+StateDirectory=nenaugad-offsite
+StateDirectoryMode=0700
+TimeoutStartSec=1h
+Nice=10
+IOSchedulingClass=idle
+
+# Hardening. setpriv needs to change user and groups; root needs nothing else: the dumps are read
+# and deleted as the app user, and root's own files are root's.
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_SETUID CAP_SETGID
+UMask=0077
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+# The local copies it deletes once they are on the box (as the app user).
+ReadWritePaths=/srv/nenaugad/backups
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK

@@ -1,0 +1,15 @@
+# Nenaugad deletion-ledger export every 15 minutes (DEPLOY-003; owner decision 2026-11-05);
+# deploy/README.md, Off-site copy.
+#   sudo install -m 644 -o root -g root deploy/systemd/nenaugad-deletions.timer /etc/systemd/system/
+#   sudo systemctl enable --now nenaugad-deletions.timer
+# Stop it before a restore: `npm run db:restore -- ... --replace` refuses while it is connected.
+
+[Unit]
+Description=Nenaugad deletion-ledger export, every 15 minutes
+
+[Timer]
+OnCalendar=*:0/15
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

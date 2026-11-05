@@ -8,8 +8,8 @@ The project was renamed by the owner from Atlas to **Nenaugad** (2026-09-24). Si
 replaced the visuals of the Atlas 1.1 design language; Atlas's behaviour rules are kept.
 
 **This is not a finished beta.** Auth, private profiles, CV intake, import of real
-sources, letters and the financial ledger are implemented and locally verified; but
-restore, a public deploy and owner acceptance do not exist, and live AI calls are forbidden
+sources, letters and the financial ledger are implemented and locally verified, and so is
+restore (owner-accepted, not yet run on a server); but a public deploy and owner acceptance do not exist, and live AI calls are forbidden
 until `LIVE_AI_ENABLED` is `true` (currently `false`).
 
 ## Important delivery boundary
@@ -38,8 +38,9 @@ This is not a promise of a production build: the beta is closed (see `docs/SAFET
 - SQL migrations, fixture/PostgreSQL adapters, unit/integration/Playwright tests,
   CI and working instructions.
 - Production mode (`ATLAS_ENV=production`, DEPLOY-002) starts only with PostgreSQL, a strong
-  secret and a public `https://` address, and has no sign-up; nothing is deployed, and backups
-  and restore do not exist yet. Live AI calls are forbidden.
+  secret and a public `https://` address, and has no sign-up; nothing is deployed. Backup and
+  restore (`npm run db:backup`, `npm run db:restore`, DEPLOY-003) are tested locally, not
+  accepted. Live AI calls are forbidden.
 
 There are no third-party CVs, contacts, font binaries or fabricated letters. A provider key
 may sit in the local environment, but it is not a switch. The catalog data are
@@ -97,7 +98,8 @@ Playwright starts its own separate local server on port 3100, without reuse.
 
 The UI scenarios are specified for 320, 390 and 1440 px. This is not a full WCAG audit.
 Ownership, uploads, the ledger and the AI gates are covered by their own unit/integration tests;
-restore is not implemented, and it cannot be declared passed because the feature is absent.
+restore (SP-T22) has an integration test on the isolated database (DEPLOY-003), which needs
+`pg_dump` 17 (`PG_BIN_DIR` or `PG_TOOLS_CONTAINER` in `.env`), and is not accepted yet.
 The list of known gaps is [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 
 ## Local PostgreSQL

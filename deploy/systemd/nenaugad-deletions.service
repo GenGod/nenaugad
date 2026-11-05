@@ -1,0 +1,49 @@
+# Nenaugad deletion-ledger export (DEPLOY-003; owner decision 2026-11-05, every 15 minutes):
+# `npm run db:export-deletions` as the nenaugad user writes account-deletions-<UTC>.json (account
+# ids and deletion times only) into /srv/nenaugad/backups when the ledger changed, then starts the
+# off-site copy, so a lost server brings back at most about 15 minutes of deleted accounts.
+# Started by nenaugad-deletions.timer; deploy/README.md, Off-site copy.
+#   sudo install -m 644 -o root -g root deploy/systemd/nenaugad-deletions.service /etc/systemd/system/
+
+[Unit]
+Description=Nenaugad deletion-ledger export (npm run db:export-deletions)
+Documentation=file:///srv/nenaugad/app/deploy/README.md
+Wants=docker.service
+After=docker.service
+# The copy to the box right away; nenaugad-offsite.timer catches up if this start is missed.
+OnSuccess=nenaugad-offsite.service
+
+[Service]
+Type=oneshot
+User=nenaugad
+Group=nenaugad
+WorkingDirectory=/srv/nenaugad/app
+Environment=NEXT_TELEMETRY_DISABLED=1
+Environment=NPM_CONFIG_UPDATE_NOTIFIER=false
+Environment=NPM_CONFIG_LOGS_MAX=0
+# One JSON line per run: whether it wrote, the file, the entry count; never an id or a secret.
+SyslogIdentifier=nenaugad-deletions
+ExecStart=/usr/bin/npm run --silent db:export-deletions
+TimeoutStartSec=5min
+
+# Hardening, as for the backup unit.
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+UMask=0077
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ReadWritePaths=/srv/nenaugad/backups
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Nenaugad release script (DEPLOY-006): owner-run over SSH, never automatic, never from CI.
 #
-#   sudo nenaugad-release deploy <commit> --no-backup [--migrations]
+#   sudo nenaugad-release deploy <commit> [--migrations] [--no-backup]
 #   sudo nenaugad-release rollback [<commit>] [--across-migrations]
 #   sudo nenaugad-release status
 #
@@ -10,7 +10,8 @@
 #   sudo install -m 755 -o root -g root /srv/nenaugad/app/deploy/nenaugad-release.sh \
 #     /usr/local/sbin/nenaugad-release
 #
-# Root runs only systemctl, flock, cmp and curl here. git and npm run as the nenaugad user.
+# Root runs only systemctl, journalctl, flock, cmp and curl here. git and npm run as the nenaugad
+# user, and the database backup runs as nenaugad too, inside nenaugad-backup.service.
 # deploy/README.md explains each step.
 set -euo pipefail
 umask 077
@@ -19,6 +20,8 @@ APP_DIR=/srv/nenaugad/app
 APP_USER=nenaugad
 STATE_DIR=/var/lib/nenaugad-release
 UNITS=(nenaugad-web.service nenaugad-worker.service)
+# The database backup (DEPLOY-003): the same unit the nightly timer starts.
+BACKUP_UNIT=nenaugad-backup.service
 HEALTH_URL=http://127.0.0.1:3000/api/health
 SELF=/usr/local/sbin/nenaugad-release
 
@@ -121,12 +124,21 @@ report_drift() {
   for pair in \
     "deploy/systemd/nenaugad-web.service:/etc/systemd/system/nenaugad-web.service" \
     "deploy/systemd/nenaugad-worker.service:/etc/systemd/system/nenaugad-worker.service" \
+    "deploy/systemd/nenaugad-backup.service:/etc/systemd/system/nenaugad-backup.service" \
+    "deploy/systemd/nenaugad-backup.timer:/etc/systemd/system/nenaugad-backup.timer" \
+    "deploy/systemd/nenaugad-deletions.service:/etc/systemd/system/nenaugad-deletions.service" \
+    "deploy/systemd/nenaugad-deletions.timer:/etc/systemd/system/nenaugad-deletions.timer" \
+    "deploy/systemd/nenaugad-offsite.service:/etc/systemd/system/nenaugad-offsite.service" \
+    "deploy/systemd/nenaugad-offsite.timer:/etc/systemd/system/nenaugad-offsite.timer" \
+    "deploy/nenaugad-offsite.sh:/usr/local/sbin/nenaugad-offsite" \
     "deploy/Caddyfile:/etc/caddy/Caddyfile" \
     "deploy/nenaugad-release.sh:$SELF"; do
     repo="$APP_DIR/${pair%%:*}"
     installed="${pair#*:}"
     [ -e "$repo" ] || continue
-    if ! cmp -s "$repo" "$installed"; then
+    if [ ! -e "$installed" ]; then
+      warn "$installed is not installed; see deploy/README.md"
+    elif ! cmp -s "$repo" "$installed"; then
       warn "$installed differs from ${pair%%:*} at this commit; see deploy/README.md, Update"
     fi
   done
@@ -135,9 +147,20 @@ report_drift() {
 # Set while switch_to runs: any exit then (a failed command under set -e, or die) leaves web and
 # worker possibly stopped on a half-switched tree, and says what to do.
 SWITCHING=no
+# Set while the pre-deploy backup runs: nothing has changed yet, so a failure starts web and
+# worker again on the commit they ran before.
+BACKING_UP=no
 BEFORE=""
 on_exit() {
   local status=$?
+  if [ "$BACKING_UP" = yes ] && [ "$status" -ne 0 ]; then
+    warn "the backup failed (exit $status): journalctl -u $BACKUP_UNIT -n 30. Nothing was deployed."
+    if systemctl start "${UNITS[@]}"; then
+      warn "web and worker are running again on ${BEFORE:-the deployed commit}"
+    else
+      warn "web and worker did not start again: sudo systemctl start ${UNITS[*]}"
+    fi
+  fi
   if [ "$SWITCHING" = yes ] && [ "$status" -ne 0 ]; then
     warn "the release stopped (exit $status). Web and worker may be stopped."
     warn "Deployed before this run: ${BEFORE:-unknown}. Read the output above, then:"
@@ -145,6 +168,26 @@ on_exit() {
   fi
 }
 trap on_exit EXIT
+
+# The pre-deploy backup (DEPLOY-003): web and worker stop first, so the dump holds every write up
+# to the deploy, then the backup unit runs `npm run db:backup` as the app user, the same path as
+# the nightly timer. Root only starts the unit. The dump's file name is printed from this run's
+# journal (one JSON line: file, size, SHA-256; never a row or a secret).
+take_backup() {
+  local invocation
+  systemctl cat "$BACKUP_UNIT" >/dev/null 2>&1 ||
+    die "$BACKUP_UNIT is not installed (deploy/README.md, Backups); --no-backup deploys without a backup"
+  say "stopping web and worker for the backup"
+  BACKING_UP=yes
+  systemctl stop "${UNITS[@]}"
+  say "backing up the database ($BACKUP_UNIT)"
+  systemctl start "$BACKUP_UNIT"
+  BACKING_UP=no
+  invocation=$(systemctl show --property=InvocationID --value "$BACKUP_UNIT")
+  if [ -n "$invocation" ]; then
+    journalctl --no-pager --output=cat "_SYSTEMD_INVOCATION_ID=$invocation" | grep -F '"ok":true' || true
+  fi
+}
 
 # Stop, check out, install, (migrate,) build, start, check. Web and worker stay stopped from
 # `npm ci` to the end: npm ci replaces node_modules and next build replaces .next, both of which
@@ -204,16 +247,18 @@ cmd_deploy() {
   if [ -n "$migrations" ]; then
     printf '%s\n' "$migrations"
     if [ "$allow_migrations" != yes ]; then
-      die "this deploy adds the migrations above. They only go forward, and until DEPLOY-003 there is no restore: a rollback past them runs old code on the new schema. Rerun with --migrations to accept that."
+      die "this deploy adds the migrations above. They only go forward: going back past them means restoring the backup this deploy takes (deploy/README.md, Restore). Rerun with --migrations to accept that."
     fi
   fi
-  # DEPLOY-003 (backup and restore) is not done: there is no backup command to run yet. Each
-  # deploy without a backup is the owner's explicit choice. Once DEPLOY-003 lands, this step
-  # runs its backup instead and the flag goes.
-  if [ "$no_backup" != yes ]; then
-    die "no backup can be taken yet (DEPLOY-003 is not done). Rerun with --no-backup to deploy without one."
+  # Every deploy backs up first. --no-backup is the owner's stated exception, for example when
+  # the deployed commit predates `npm run db:backup` and its unit fails.
+  if [ "$no_backup" = yes ]; then
+    [ "$allow_migrations" != yes ] || [ -z "$migrations" ] ||
+      warn "these migrations cannot be undone by a restore of this deploy's backup: there is none"
+    warn "deploying without a database backup (--no-backup)"
+  else
+    take_backup
   fi
-  warn "deploying without a database backup (DEPLOY-003 not done)"
   record "$current" "$target"
   SWITCHING=yes
   switch_to "$target" yes
@@ -253,7 +298,7 @@ cmd_rollback() {
   if [ -n "$migrations" ]; then
     printf '%s\n' "$migrations"
     if [ "$across" != yes ]; then
-      die "the deployed commit added the migrations above, which stay applied. Restoring the database from before them needs DEPLOY-003. Rerun with --across-migrations to run $target on the newer schema anyway."
+      die "the deployed commit added the migrations above, which stay applied. Returning the database to its state before them is a restore of the backup taken before that deploy (deploy/README.md, Restore). Rerun with --across-migrations to run $target on the newer schema anyway."
     fi
     warn "rolling back across migrations; the schema stays at the newer version"
   fi
