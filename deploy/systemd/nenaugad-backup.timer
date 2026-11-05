@@ -1,0 +1,17 @@
+# Nenaugad database backup every night (DEPLOY-003); deploy/README.md, Backups.
+#   sudo install -m 644 -o root -g root deploy/systemd/nenaugad-backup.timer /etc/systemd/system/
+#   sudo systemctl enable --now nenaugad-backup.timer
+# Persistent: a night the server was off is made up at the next boot. Stop the timer before a
+# restore (`npm run db:restore -- ... --replace` refuses while a backup is connected).
+
+[Unit]
+Description=Nenaugad database backup, nightly
+
+[Timer]
+OnCalendar=*-*-* 03:15:00 UTC
+RandomizedDelaySec=15min
+AccuracySec=1min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

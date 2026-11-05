@@ -7,7 +7,14 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-11-04: the server files and runbook ([DEPLOY-006](tasks/DEPLOY-006-server-runbook.md),
+**Updated:** 2026-11-05: backup and restore ([DEPLOY-003](tasks/DEPLOY-003-backup-restore.md),
+SP-T22, high risk) are implemented and tested locally: `npm run db:backup`; `npm run db:restore`,
+which deletes again every account deleted after the backup (from the live ledger, or on a lost
+server from the newest deletion export of the same database lineage, migration 0027) before the
+restored database can be used, and refuses without that newest ledger; `db:export-deletions`
+every 15 minutes; a backup before every deploy and nightly; an age-encrypted copy to a Hetzner
+Storage Box (owner decisions 2026-11-04/05). Four independent reviews, the last with no blocking
+finding. Accepted by the owner 2026-11-05 ("Accept and commit") and committed on the worktree branch; not pushed, CI not run, not run on a server. The server files and runbook ([DEPLOY-006](tasks/DEPLOY-006-server-runbook.md),
 `deploy/`) are merged into main as `a9c3faa` and pushed; CI green; not run on any server, not
 accepted. The owner accepted [DEPLOY-002](tasks/DEPLOY-002-production-mode.md)
 ("Accept and commit"; `ATLAS_ENV=production` with its own refusals, no sign-up, `Secure`
@@ -61,7 +68,8 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   per-source right as the other provider paths and leaves refused postings out, counted
   (B63-001).
 - **Uploads:** `UPLOADS_ENABLED` gates the whole CV surface (every CV route, B22).
-- **Not beta:** no restore, no public deploy, no owner acceptance of the whole.
+- **Not beta:** no public deploy, no owner acceptance of the whole; restore is accepted
+  (DEPLOY-003) but has not run on a server.
 
 ## By area
 - **Sources:** himalayas and jobicy, owner-activated (S1-002 2026-09-24, S1-003
@@ -282,9 +290,12 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   ([DEPLOY-006](tasks/DEPLOY-006-server-runbook.md), pulled ahead of DEPLOY-003: `deploy/`
   with the runbook, Caddyfile, systemd units, an owner-run release script and a heartbeat) are
   written, checked by reading, merged into main as `a9c3faa` and pushed (CI green); not run
-  on any server, not accepted. Backups, restore
-  and the production CSP do not exist; the release script demands `--no-backup` until
-  DEPLOY-003.
+  on any server, not accepted. Backup and restore
+  ([DEPLOY-003](tasks/DEPLOY-003-backup-restore.md)) are accepted (2026-11-05) and not
+  yet run on a server; the owner orders the Storage Box (age + Storage Box decided 2026-11-04,
+  the 15-minute deletion export 2026-11-05). A restore rolls the AI spending ledger back
+  (guarded; [OPEN_GAPS](docs/OPEN_GAPS.md) B68, to fix before D6); the production CSP does not
+  exist.
 - **The first live extraction run happened (2026-10-07):** 5 himalayas postings, 5 calls
   settled on the first attempt, 5 records accepted, no hold left. It found B35 (fixed and
   accepted). B36-001 (a settlement releases its own hold only) is accepted too. The five
@@ -337,9 +348,11 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   unconfirmed experience). Scoring and letters stay closed. A role check in the rubric fixes the keyword traps but rejects
   neighbouring and same roles on held-out profiles: no-go ([MODEL-003](tasks/MODEL-003-role-aware-rubric.md));
   a next variant needs fresh owner-graded jobs.
-- Restore (SP-T22, a beta prerequisite): it must re-apply `account_deletions`. Account deletion
-  itself is done ([B11-001](tasks/B11-001-account-deletion.md), reviewed, owner-accepted
-  2026-10-13).
+- Restore (SP-T22, a beta prerequisite): implemented and tested locally, it re-applies
+  `account_deletions` ([DEPLOY-003](tasks/DEPLOY-003-backup-restore.md)); owner-accepted
+  2026-11-05; a drill on the server (DEPLOY-007) is open. Local `npm run test:db` and
+  `test:coverage` now need pg_dump 17: `PG_TOOLS_CONTAINER=nenaugad-db-1` in `.env`. Account deletion itself is done
+  ([B11-001](tasks/B11-001-account-deletion.md), reviewed, owner-accepted 2026-10-13).
 - Which design document is authoritative: settled by DS-002e — Signal 2.0 for the
   appearance, Atlas 1.1 for behaviour, in AGENTS.md, README, the pipeline and the archived
   brandbook's banner.

@@ -1,0 +1,58 @@
+# Nenaugad database backup (DEPLOY-003): `npm run db:backup` as the nenaugad user. Writes one
+# pg_dump custom-format file, mode 600, into BACKUP_DIR from /srv/nenaugad/app/.env
+# (/srv/nenaugad/backups), with PGDG's client from PG_BIN_DIR. Started nightly by
+# nenaugad-backup.timer and before every deploy by nenaugad-release; deploy/README.md, Backups.
+# Install a copy, never a symlink: the checkout belongs to the nenaugad user, unit files to root.
+#   sudo install -m 644 -o root -g root deploy/systemd/nenaugad-backup.service /etc/systemd/system/
+
+[Unit]
+Description=Nenaugad database backup (npm run db:backup)
+Documentation=file:///srv/nenaugad/app/deploy/README.md
+# Postgres runs in Docker (compose.yaml) and is reached over 127.0.0.1.
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=nenaugad
+Group=nenaugad
+WorkingDirectory=/srv/nenaugad/app
+Environment=NEXT_TELEMETRY_DISABLED=1
+Environment=NPM_CONFIG_UPDATE_NOTIFIER=false
+Environment=NPM_CONFIG_LOGS_MAX=0
+# The command's one JSON line (file, size, SHA-256; never a row, a URL or a password) lands in
+# the journal under this name: journalctl -t nenaugad-backup
+SyslogIdentifier=nenaugad-backup
+ExecStart=/usr/bin/npm run --silent db:backup
+# The measured database (83 MB, 13 MB dumped) takes seconds; a lock a migration holds fails the
+# dump after 60 s (--lock-wait-timeout). Anything slower is stuck: stop it.
+TimeoutStartSec=30min
+# Out of the web server's way at night.
+Nice=10
+IOSchedulingClass=idle
+
+# Hardening, as for web and worker. Not set on purpose: MemoryDenyWriteExecute (V8's JIT) and
+# SystemCallFilter (not tested against Node 26 yet).
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+UMask=0077
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+# The only place it writes. The directory must exist (deploy/README.md, Backups): a missing one
+# fails the unit at start instead of the dump landing elsewhere.
+ReadWritePaths=/srv/nenaugad/backups
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+# AF_NETLINK: glibc's getaddrinfo opens a netlink socket for AI_ADDRCONFIG, which Node sets.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK

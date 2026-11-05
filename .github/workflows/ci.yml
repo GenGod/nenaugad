@@ -77,6 +77,9 @@ jobs:
     timeout-minutes: 20
     env:
       TEST_DATABASE_URL: postgresql://atlas:atlas_ci_synthetic@127.0.0.1:5432/atlas_starter_test
+      # The backup and restore tests (DEPLOY-003) call pg_dump and pg_restore from here: the
+      # same PGDG package and path as the server (deploy/README.md, Backups).
+      PG_BIN_DIR: /usr/lib/postgresql/17/bin
     services:
       postgres:
         # Same image as compose.yaml: migration 0016 creates the pgvector extension.
@@ -100,6 +103,27 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - name: PostgreSQL 17 client from PGDG (DEPLOY-003)
+        # postgresql.org/download/linux/ubuntu, manual configuration: the project's signed
+        # repository, the key checked against its published fingerprint. Any PGDG entry the
+        # runner image carries is removed first, so two Signed-By values cannot conflict.
+        shell: bash
+        run: |
+          set -euo pipefail
+          key=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o "$key" https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          # grep -c reads to the end: under pipefail, an early exit (grep -q) can fail gpg.
+          [ "$(gpg --show-keys --with-colons "$key" | grep -c '^fpr:::::::::B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8:$')" -ge 1 ]
+          { grep -rl 'apt.postgresql.org' /etc/apt/sources.list.d/ || true; } | xargs -r sudo rm -f
+          # shellcheck source=/dev/null
+          . /etc/os-release
+          printf 'Types: deb\nURIs: https://apt.postgresql.org/pub/repos/apt\nSuites: %s-pgdg\nComponents: main\nArchitectures: %s\nSigned-By: %s\n' \
+            "$VERSION_CODENAME" "$(dpkg --print-architecture)" "$key" | sudo tee /etc/apt/sources.list.d/pgdg.sources
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends postgresql-client-17
+          "$PG_BIN_DIR/pg_dump" --version
+          "$PG_BIN_DIR/pg_restore" --version
       - name: Unit and DB tests with the coverage ratchet
         # The DB suite exercises the PostgreSQL backend; under the job's fixture
         # backend those services refuse with `fixture_backend`. The tests bring

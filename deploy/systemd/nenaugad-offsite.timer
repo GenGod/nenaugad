@@ -1,0 +1,17 @@
+# Nenaugad off-site backup copy every 15 minutes (DEPLOY-003); deploy/README.md, Off-site copy.
+#   sudo install -m 644 -o root -g root deploy/systemd/nenaugad-offsite.timer /etc/systemd/system/
+#   sudo systemctl enable --now nenaugad-offsite.timer
+# A run with no new dump makes no connection, so the nightly dump and a deploy's are on the box
+# within 15 minutes of being written.
+
+[Unit]
+Description=Nenaugad off-site backup copy, every 15 minutes
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=15min
+RandomizedDelaySec=1min
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

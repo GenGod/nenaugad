@@ -1,10 +1,10 @@
 {
-  "task_id": "DEPLOY-006",
-  "file": "tasks/DEPLOY-006-server-runbook.md",
-  "status": "implemented",
+  "task_id": "DEPLOY-003",
+  "file": "tasks/DEPLOY-003-backup-restore.md",
+  "status": "accepted",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "DEPLOY-006 (server files and runbook) started 2026-11-04, pulled ahead of DEPLOY-003 at the owner's request so the owner can prepare the Hetzner server now. Normal risk: docs and server config only, no app code. Implemented and checked by reading, bash -n and npm run check (446/446); committed as cd947b3 on feature/deploy-001-plan at the owner's word (\"Commit it\"), merged into main as a9c3faa and pushed (\"Merge and push\"); CI green on a9c3faa (run 41828211333: 587/587; 87.02 / 89.40 / 94.29; e2e 126/126). Not run on any server, not accepted. Last green CI: a9c3faa (run 41828211333). Previous task: DEPLOY-002 (production mode), accepted 2026-11-04, merged into main and pushed, CI green."
+  "note": "DEPLOY-003 (backup and restore, SP-T22) started 2026-11-04, high risk (deletion); accepted by the owner 2026-11-05 (\"Accept and commit\") and committed on the worktree branch claude/cranky-ramanujan-fd4612. db:backup, db:restore (re-applies every account deletion from the backup, the live database and newer ledgers of the same lineage; refuses without the newest ledger), db:export-deletions every 15 minutes, migration 0027 (database lineage), the release script's pre-deploy backup, age + Hetzner Storage Box off-site copy (owner decisions 2026-11-04 and 2026-11-05). Four independent reviews; the last found no blocking issue. npm run check 467/467; coverage run 622/622 (87.83 / 89.31 / 94.81, ratchet unchanged). Not pushed, not merged into main, CI not run, not run on any server. Previous task: DEPLOY-006 (server files and runbook), merged into main and pushed, CI green on a9c3faa."
 }
