@@ -14,7 +14,7 @@ server from the newest deletion export of the same database lineage, migration 0
 restored database can be used, and refuses without that newest ledger; `db:export-deletions`
 every 15 minutes; a backup before every deploy and nightly; an age-encrypted copy to a Hetzner
 Storage Box (owner decisions 2026-11-04/05). Four independent reviews, the last with no blocking
-finding. Accepted by the owner 2026-11-05 ("Accept and commit") and committed on the worktree branch; not pushed, CI not run, not run on a server. The server files and runbook ([DEPLOY-006](tasks/DEPLOY-006-server-runbook.md),
+finding. Accepted by the owner 2026-11-05 ("Accept and commit"), merged into main as `56e206d` and pushed; CI green (622/622; 87.81 / 89.40 / 94.81; e2e 126/126). Not run on a server. The server files and runbook ([DEPLOY-006](tasks/DEPLOY-006-server-runbook.md),
 `deploy/`) are merged into main as `a9c3faa` and pushed; CI green; not run on any server, not
 accepted. The owner accepted [DEPLOY-002](tasks/DEPLOY-002-production-mode.md)
 ("Accept and commit"; `ATLAS_ENV=production` with its own refusals, no sign-up, `Secure`

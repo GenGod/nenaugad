@@ -1,9 +1,9 @@
 # DEPLOY-003: backup and restore that re-applies account deletions (SP-T22)
 
 **Status: accepted by the owner, 2026-11-05 ("Accept and commit").** Implemented and tested
-locally; four independent reviews, the last with no blocking finding; committed on the
-worktree branch `claude/cranky-ramanujan-fd4612`; not pushed, CI not run, not run on any
-server. Slice of the
+locally; four independent reviews, the last with no blocking finding; committed as `18d04ff`,
+merged into main as `56e206d` and pushed at the owner's word ("Merge and push"); CI green on
+`56e206d` (run 42001897999). Not run on any server. Slice of the
 [single-VPS plan](DEPLOY-001-single-vps-plan.md) ("Slices", draft criteria 1–4), started
 after DEPLOY-002 and DEPLOY-006 were merged into `main` (`f824c64`, CI green).
 
@@ -433,6 +433,12 @@ script's `--no-backup` deploys without the backup units.
 
 **Owner acceptance:** 2026-11-05, "Accept and commit", given in this session.
 
-**Next small task.** Merge into main and push (the owner's word), watch the CI's PGDG step; then the heartbeat
+**Merge and CI (2026-11-05):** merged into main as `56e206d` and pushed ("Merge and push").
+CI run 42001897999 on `56e206d`: Tests, Build and Code quality green; the new PGDG step
+installed `pg_dump`/`pg_restore` 17.11 (Ubuntu 17.11-1.pgdg24.04+2); unit and DB tests with the
+coverage ratchet 622/622 (87.81 / 89.40 / 94.81); e2e 126/126. Workflow lint (actionlint and
+shellcheck on the new step) green.
+
+**Next small task.** The heartbeat
 could require a recent successful backup and copy (an alert instead of a weekly look); and the
 AI spending ledger carried forward through a restore (B68, money, before D6).
