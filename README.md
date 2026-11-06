@@ -54,7 +54,8 @@ line and Node 24.x. Node uses type stripping to run TypeScript directly;
 this does not replace `tsc`. The main UI is Next.js, not a home-grown HTTP framework.
 
 A first look needs Node/npm and npm access during installation.
-Docker is needed only for the PostgreSQL mode. Browser installation is needed for E2E.
+Docker is needed only for the PostgreSQL mode and for running the whole site in Docker.
+Browser installation is needed for E2E.
 On Windows WSL2 is convenient; the npm scripts themselves do not depend on Bash.
 
 ## First local run
@@ -79,6 +80,39 @@ After installation, keep `package-lock.json` in git. Subsequent clean installs a
 
 For the first installation it is useful to run `npm audit` and work through the result.
 Do not apply `npm audit fix --force` without understanding the version change.
+
+## Run everything in Docker
+
+The whole site can run in Docker instead of `npm run dev` (DEVX-005, this computer only;
+the server keeps its systemd units, see `deploy/README.md`). It needs the `.env` that
+`npm run setup` writes, once:
+
+```sh
+docker compose up -d --build
+```
+
+This starts PostgreSQL, applies the migrations and the synthetic seed (the one-shot `init`
+service), then the built site on `http://127.0.0.1:3000` and the import worker. The site and
+the worker read `.env` at run time, always use PostgreSQL and come back with the Docker
+engine, like the database. The site is a production build of the current code: after a code
+change, run the same command again to rebuild it.
+
+- `docker compose ps` shows the state; `docker compose logs -f web worker` the logs.
+- `docker compose stop web worker` stops the site and the worker; the database keeps
+  running. `docker compose down` stops everything and keeps the data; `down -v` deletes it,
+  do not use it without an owner decision.
+- `npm run db:restore` refuses while the site or the worker is connected
+  (`LIVE_DATABASE_IN_USE`): run `docker compose stop web worker` first, and
+  `docker compose up -d` after it.
+- `WEB_PORT=3001` in `.env` moves the site to another port. Port 3000 is taken while the
+  `web` container runs, so `npm run dev` on the host needs either `docker compose stop web`
+  or another port.
+- Live AI is off in the containers whatever `.env` says (`LIVE_AI_ENABLED=false`): the
+  worker runs unattended, and with live AI on it calls the provider after every import.
+  `npm run worker` on the host still follows `.env`.
+- `ATLAS_ENV` comes from `.env`; the stack forces a loopback `NEXTAUTH_URL`, so with
+  `ATLAS_ENV=production` the site refuses to start. Inside the containers PostgreSQL is
+  `127.0.0.1:5432`, forwarded to the `db` service, so the local-database rule holds.
 
 ## Checks
 

@@ -1,15 +1,10 @@
 {
-  "task_id": "DEPLOY-003",
-  "file": "tasks/DEPLOY-003-backup-restore.md",
-  "status": "accepted",
-  "repair_cycles_used": 1,
+  "task_id": "DEVX-005",
+  "file": "tasks/DEVX-005-site-in-docker.md",
+  "status": "implemented",
+  "repair_cycles_used": 0,
   "max_repair_cycles": 2,
-  "hypotheses": [
-    {
-      "text": "CI run 42007381527 failed (DELETIONS_SOURCE_NOT_NEWER at backup-restore.test.ts:458) because on CI's small test database the older and the newer backup are created within the same second; pg_dump archive times have whole seconds, so deletionSources sees newer <= older and refuses as designed. Testable: CI's log shows both backups in one second; making the newer backup start at least one second after the older one makes the test pass whatever the dump speed.",
-      "recorded_at": "2026-11-05T10:05:34.312Z"
-    }
-  ],
+  "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "DEPLOY-003 (backup and restore, SP-T22) started 2026-11-04, high risk (deletion); accepted by the owner 2026-11-05 (\"Accept and commit\"), committed as 18d04ff, merged into main as 56e206d and pushed (\"Merge and push\"); CI green on 56e206d (run 42001897999: 622/622; 87.81 / 89.40 / 94.81; e2e 126/126; PGDG pg_dump 17.11 installed). db:backup, db:restore (re-applies every account deletion from the backup, the live database and newer ledgers of the same lineage; refuses without the newest ledger), db:export-deletions every 15 minutes, migration 0027 (database lineage), the release script's pre-deploy backup, age + Hetzner Storage Box off-site copy (owner decisions 2026-11-04 and 2026-11-05). Four independent reviews; the last found no blocking issue. Not run on any server. Previous task: DEPLOY-006 (server files and runbook), merged into main and pushed, CI green on a9c3faa."
+  "note": "DEVX-005 (the whole site starts in Docker, local only) started 2026-11-06 at the owner's change request; owner chose a built app, this computer only, worker included. Implemented and tested locally: docker compose up -d --build runs db, init (migrate+seed), web on 127.0.0.1:3000 and worker; npm run check exit 0. Incident: the first run passed .env's LIVE_AI_ENABLED=true to the worker, which made 25 paid extraction calls (15 728 micro-USD); compose now forces LIVE_AI_ENABLED=false. Committed as c5062f7 on feature/deploy-001-plan (\"Commit the working tree changes\"), merged into main and pushed (\"Merge and push\"); CI on the merge not yet recorded. Not accepted; Docker Desktop restart not tested. Previous task: DEPLOY-003 (backup and restore), accepted 2026-11-05, merged into main as 56e206d and pushed, CI green (run 42001897999); not run on any server."
 }
