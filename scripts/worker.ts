@@ -260,6 +260,7 @@ async function main(): Promise<void> {
       // After imports: check if any user has new eligible jobs without scores.
       const staleUsers = await checkForStaleAnalyses(pool);
       for (const userId of staleUsers) {
+        if (shuttingDown) break;
         const submitted = await submitRelevanceBatch({ pool, userId });
         if (submitted) {
           log({ event: "batch_submitted", userId: userId.slice(0, 8) + "…",

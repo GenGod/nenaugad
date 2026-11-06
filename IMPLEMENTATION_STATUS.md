@@ -7,7 +7,9 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-11-05: backup and restore ([DEPLOY-003](tasks/DEPLOY-003-backup-restore.md),
+**Updated:** 2026-11-06: [B69-001](tasks/B69-001-worker-stop-and-db-restart.md) (normal risk) is
+implemented and tested locally, merged into main, not pushed: a worker tick with the batch path closed no longer
+scans every profile, and a database restart no longer crashes the worker. 2026-11-05: backup and restore ([DEPLOY-003](tasks/DEPLOY-003-backup-restore.md),
 SP-T22, high risk) are implemented and tested locally: `npm run db:backup`; `npm run db:restore`,
 which deletes again every account deleted after the backup (from the live ledger, or on a lost
 server from the newest deletion export of the same database lineage, migration 0027) before the
@@ -90,6 +92,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   The worker runs that retention for every source on each tick, imported or not, and a
   tombstone keeps no verbatim text (B62-001); clearing also deletes the posting's AI
   extraction and relevance scores, and nothing is written onto a cleared posting (B66-001).
+  A tick with the batch path closed queries nothing for it (it used to hold a stop for
+  minutes), and a connection the database ends while idle is logged by code and reopened
+  instead of crashing the worker; a restart in mid-query still ends it (B69-001).
   A worldwide jobicy label is checked against the posting text: a stated residence
   rule narrows it or leaves the countries unknown, and an exclusion is kept (B24-001).
   Other jobicy labels are read part by part: countries only make the complete list, and
@@ -176,6 +181,9 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
 
 ## Latest checks
+- 2026-11-06 ([B69-001](tasks/B69-001-worker-stop-and-db-restart.md)): `npm run check` exit 0
+  (unit 469/469); `test:db` equivalent exit 0 (157/157); `test:coverage` equivalent exit 0
+  (626/626; 87.86 / 89.32 / 94.94, ratchet unchanged). Merged into main, not pushed: no CI run.
 - 2026-11-04 ([DEPLOY-006](tasks/DEPLOY-006-server-runbook.md), server files, docs and config
   only): `npm run check` exit 0 (unit 446/446); `bash -n` on both scripts exit 0; a grep of
   `deploy/` finds no address, domain, e-mail or secret. Not run: `shellcheck` and
