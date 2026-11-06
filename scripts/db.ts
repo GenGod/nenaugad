@@ -2,14 +2,19 @@ import { Pool } from "pg";
 import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import { readConfig, localDatabaseUrl } from "../src/server/config.ts";
+import { logPoolErrors } from "../src/server/storage/pool-errors.ts";
 import { jobs } from "../src/data/fixtures.ts";
 
 export function localPool(url: string | undefined, testOnly = false): Pool {
   readConfig(process.env);
-  return new Pool({
+  const pool = new Pool({
     connectionString: localDatabaseUrl(url, testOnly), max: 2,
     connectionTimeoutMillis: 3000, statement_timeout: 10000
   });
+  // A connection the server ends while idle (a database restart) must not crash the worker
+  // or a script: the error is logged by code and the next query reconnects (B69-001).
+  logPoolErrors(pool);
+  return pool;
 }
 
 export async function migrate(pool: Pool): Promise<number> {

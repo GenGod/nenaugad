@@ -68,10 +68,7 @@ services:
 
   worker:
     <<: *app
-    # --no-batch skips only the batch relevance path, which is off in code
-    # (isBatchEnabled() returns false in src/server/ai/openai-batch.ts) but still matches
-    # every stored profile each tick first, about 2 s each. Drop the flag when it is enabled.
-    command: ["node", "--experimental-strip-types", "scripts/worker.ts", "--no-batch"]
+    command: ["node", "--experimental-strip-types", "scripts/worker.ts"]
     depends_on:
       init:
         condition: service_completed_successfully

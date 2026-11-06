@@ -174,7 +174,12 @@ export async function processPendingBatches(pool: Pool): Promise<Readonly<{
 
 // Check if any user has new eligible jobs without relevance scores
 // (called by the worker after each import cycle).
+// Closed with the rest of the path, before any query (B69-001): the scan runs
+// matchedForUser for every profile (about 2 s each), and every user it found was
+// handed to a submit that returns null, so a tick took minutes for nothing and the
+// worker missed its stop grace period. A3's re-enable must also bound the loop below.
 export async function checkForStaleAnalyses(pool: Pool): Promise<readonly string[]> {
+  if (!isBatchEnabled()) return [];
   // Find users with profiles that have eligible jobs lacking cached scores.
   const users = await pool.query(
     "SELECT DISTINCT user_id FROM candidate_profiles",
