@@ -1,10 +1,10 @@
 {
-  "task_id": "DEPLOY-006",
-  "file": "tasks/DEPLOY-006-server-runbook.md",
+  "task_id": "DEVX-005",
+  "file": "tasks/DEVX-005-site-in-docker.md",
   "status": "implemented",
   "repair_cycles_used": 0,
   "max_repair_cycles": 2,
   "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "DEPLOY-006 (server files and runbook) started 2026-11-04, pulled ahead of DEPLOY-003 at the owner's request so the owner can prepare the Hetzner server now. Normal risk: docs and server config only, no app code. Implemented and checked by reading, bash -n and npm run check (446/446); committed as cd947b3 on feature/deploy-001-plan at the owner's word (\"Commit it\"), merged into main as a9c3faa and pushed (\"Merge and push\"); CI green on a9c3faa (run 41828211333: 587/587; 87.02 / 89.40 / 94.29; e2e 126/126). Not run on any server, not accepted. Last green CI: a9c3faa (run 41828211333). Previous task: DEPLOY-002 (production mode), accepted 2026-11-04, merged into main and pushed, CI green."
+  "note": "DEVX-005 (the whole site starts in Docker, local only) started 2026-11-06 at the owner's change request; owner chose a built app, this computer only, worker included. Implemented and tested locally: docker compose up -d --build runs db, init (migrate+seed), web on 127.0.0.1:3000 and worker; npm run check exit 0 (446/446). Incident: the first run passed .env's LIVE_AI_ENABLED=true to the worker, which made 25 paid extraction calls (15 728 micro-USD); compose now forces LIVE_AI_ENABLED=false. Committed on feature/deploy-001-plan at the owner's word (\"Commit the working tree changes\"); not merged, not pushed, not accepted; Docker Desktop restart not tested. Previous task: DEPLOY-006 (server files and runbook), implemented, merged into main as a9c3faa and pushed, CI green (run 41828211333); not run on any server, not accepted. Last green CI: a9c3faa (run 41828211333)."
 }

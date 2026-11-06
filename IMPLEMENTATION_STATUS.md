@@ -7,7 +7,11 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-11-04: the server files and runbook ([DEPLOY-006](tasks/DEPLOY-006-server-runbook.md),
+**Updated:** 2026-11-06: the whole site runs in Docker on this computer
+([DEVX-005](tasks/DEVX-005-site-in-docker.md): `docker compose up -d --build` starts db,
+migrations and seed, the built site and the worker; live AI forced off in the containers
+after a first run made 25 paid extraction calls, about $0.016); tested locally, committed
+on `feature/deploy-001-plan`, not merged or pushed, not accepted. 2026-11-04: the server files and runbook ([DEPLOY-006](tasks/DEPLOY-006-server-runbook.md),
 `deploy/`) are merged into main as `a9c3faa` and pushed; CI green; not run on any server, not
 accepted. The owner accepted [DEPLOY-002](tasks/DEPLOY-002-production-mode.md)
 ("Accept and commit"; `ATLAS_ENV=production` with its own refusals, no sign-up, `Secure`
@@ -166,8 +170,14 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   reads results compactly (DEVX-002). A weekly `npm audit` and Dependabot for the
   Actions versions (DEVX-003). CI runs as three jobs (Code quality, Build, Tests), with a
   coverage ratchet and Biome's recommended rules failing on warnings (DEVX-004).
+  `docker compose up -d --build` runs the whole site locally without `npm run dev`
+  (DEVX-005, 2026-11-06; the server keeps its systemd units).
 
 ## Latest checks
+- 2026-11-06 ([DEVX-005](tasks/DEVX-005-site-in-docker.md), Docker files, compose and docs
+  only): `npm run check` exit 0 (unit 446/446); `docker compose up -d --build` exit 0, site
+  healthy on Postgres, worker imports all three sources; `restart db` and a clean worker
+  stop checked. Not run: e2e, `test:db`, a Docker Desktop restart.
 - 2026-11-04 ([DEPLOY-006](tasks/DEPLOY-006-server-runbook.md), server files, docs and config
   only): `npm run check` exit 0 (unit 446/446); `bash -n` on both scripts exit 0; a grep of
   `deploy/` finds no address, domain, e-mail or secret. Not run: `shellcheck` and

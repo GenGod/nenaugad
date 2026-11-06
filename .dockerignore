@@ -1,0 +1,15 @@
+# DEVX-005: an allowlist. Only the paths below reach the image build, so .env, models/,
+# tools/, data/, .claude/ (worktrees), Reference/, backups/, node_modules/ and .next/ never
+# do. A new top-level path the build needs fails the build until it is added here.
+*
+!package.json
+!package-lock.json
+!.npmrc
+!next.config.ts
+!next-env.d.ts
+!tsconfig.json
+!src/
+!public/
+!scripts/
+!migrations/
+!docker/

@@ -1,4 +1,27 @@
 name: nenaugad
+# DEVX-005: `docker compose up -d --build` starts the whole local site: db, a one-shot init
+# (migrations and the synthetic seed), the built web app on 127.0.0.1:${WEB_PORT:-3000} and
+# the import worker. This computer only; the server runs systemd units (deploy/README.md).
+# `docker compose up -d --wait db` still starts only the database, for `npm run dev`.
+
+# Shared by init, web and worker: one image, .env read at run time (never baked in).
+x-app: &app
+  build: .
+  image: nenaugad-app:local
+  init: true
+  env_file: .env
+  environment:
+    # Postgres is on the container's own loopback (docker/entrypoint.sh forwards it to db),
+    # so localDatabaseUrl's loopback rule holds unchanged. ATLAS_ENV stays .env's.
+    DATABASE_URL: "postgresql://${POSTGRES_USER:?Run npm run setup}:${POSTGRES_PASSWORD:?Run npm run setup}@127.0.0.1:5432/${POSTGRES_DB:-atlas_starter}"
+    DATA_BACKEND: postgres
+    # Loopback on purpose: production mode refuses it, so this stack never runs as production.
+    NEXTAUTH_URL: "http://127.0.0.1:${WEB_PORT:-3000}"
+    # No paid AI calls from containers that run unattended: with live AI on, the worker's
+    # extraction pass calls the provider after every import. Turning this on for the stack
+    # is a separate owner decision; `npm run worker` on the host still follows .env.
+    LIVE_AI_ENABLED: "false"
+
 services:
   db:
     image: pgvector/pgvector:0.8.6-pg17
@@ -18,5 +41,43 @@ services:
     # Dev convenience (owner decision 2026-09-25): the DB must come back
     # with the Docker engine; manual `docker compose stop db` still works.
     restart: unless-stopped
+
+  init:
+    <<: *app
+    command: ["sh", "-c", "node --experimental-strip-types scripts/migrate.ts && node --experimental-strip-types scripts/seed.ts"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  web:
+    <<: *app
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+  worker:
+    <<: *app
+    # --no-batch skips only the batch relevance path, which is off in code
+    # (isBatchEnabled() returns false in src/server/ai/openai-batch.ts) but still matches
+    # every stored profile each tick first, about 2 s each. Drop the flag when it is enabled.
+    command: ["node", "--experimental-strip-types", "scripts/worker.ts", "--no-batch"]
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    # The worker finishes the attempt in progress on SIGTERM (as the server unit allows).
+    stop_grace_period: 5m
+    restart: unless-stopped
+
 volumes:
   nenaugad_pgdata:
