@@ -3,6 +3,7 @@ import { firstSeenLabel } from "../domain/freshness.ts";
 import { hiringCountriesText } from "../domain/snapshot-projection.ts";
 import { availabilityNoteFor } from "../domain/survival.ts";
 import { Icon } from "./icon.tsx";
+import { SourceCredit } from "./source-credit.tsx";
 
 function geographyLabel(card: SnapshotCardView): string {
   if (card.geography.scope === "worldwide") return "По всему миру (по контракту источника)";
@@ -58,6 +59,7 @@ export function SnapshotCard({ card, now }: { card: SnapshotCardView; now: strin
       Источник: {card.source.displayName} · листинг от {publishedDate(card)} · данные обновляются регулярно ·
       {" "}<a className="source-link" href={card.apply.url} rel="nofollow noreferrer" target="_blank">
         Открыть на {card.source.displayName}</a></p>
+    <SourceCredit credit={card.source.creditLine} />
     {/* Cross-source provenance (item A4): the same posting on other boards is
         shown once, but never at the cost of the other source's attribution —
         each one keeps its own named backlink. */}

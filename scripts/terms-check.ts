@@ -12,14 +12,18 @@
 // source policy's `terms_hash` and version are updated by hand, and the offline
 // unit test (tests/unit/terms-fingerprint.test.ts) fails until they are.
 // `--source=<id>` limits the check, or the re-baseline, to one source: a human
-// may have re-read one page and not the other (B56-001).
+// may have re-read one page and not the other (B56-001). A source with several pages
+// (S1-007) keys the first by its id and the others `<id>:<page>`; `--source=<id>`
+// takes all of them, and `--write` prints the policy value they combine into.
 //
 // This command talks to the network on purpose and therefore is NOT part of
 // `npm run check`. It makes no rights decision: a changed fingerprint means
 // "re-read", never "still fine".
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { normalizeTermsText, termsFingerprint } from "../src/server/terms-fingerprint.ts";
+import {
+  normalizeTermsText, policyTermsHash, termsFingerprint, termsSourceOf,
+} from "../src/server/terms-fingerprint.ts";
 
 const MANIFEST = "docs/sources/terms/snapshots.json";
 const USER_AGENT =
@@ -55,7 +59,7 @@ async function run(): Promise<number> {
   }
 
   const entries = Object.entries(manifest.snapshots)
-    .filter(([sourceId]) => onlySource === null || sourceId === onlySource);
+    .filter(([key]) => onlySource === null || termsSourceOf(key) === onlySource);
   if (entries.length === 0) {
     console.error(onlySource === null
       ? `${MANIFEST} contains no snapshots — nothing to check.`
@@ -120,6 +124,9 @@ async function run(): Promise<number> {
     const next: Manifest = { note: manifest.note, snapshots: updated };
     await writeFile(MANIFEST, `${JSON.stringify(next, null, 2)}\n`, "utf8");
     console.log(`\nManifest updated: ${MANIFEST}`);
+    for (const sourceId of new Set(entries.map(([key]) => termsSourceOf(key)))) {
+      console.log(`${sourceId}: policy terms_hash ${policyTermsHash(updated, sourceId)}`);
+    }
     console.log("Next: read the new text, then update the source policy's terms_hash/version by hand");
     console.log("(tests/unit/terms-fingerprint.test.ts fails until the policy, manifest and snapshot agree).");
     return failed > 0 ? 2 : 0;

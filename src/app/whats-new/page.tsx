@@ -5,6 +5,7 @@ import { digestForUser, type DigestItem } from "../../server/digest-service.ts";
 import { lastFeedViewLabel } from "../../domain/digest.ts";
 import { SEEN_TTL_DAYS } from "../../domain/seen-set.ts";
 import { Icon } from "../../components/icon.tsx";
+import { SourceCredit } from "../../components/source-credit.tsx";
 
 export const metadata: Metadata = { title: "Что нового" };
 export const dynamic = "force-dynamic";
@@ -29,6 +30,7 @@ function DigestRow({ item }: { item: DigestItem }) {
     </p>
     <p className="source"><Icon name="source" size={16} />
       Источник: {item.sourceName} · переход ведёт на листинг источника, отклик не отправляется</p>
+    <SourceCredit credit={item.sourceCredit} />
   </article>;
 }
 

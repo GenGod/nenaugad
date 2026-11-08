@@ -4,7 +4,8 @@
 //   npm run worker                 — loop with a 60s tick
 //   npm run worker -- --once       — single scheduling pass and exit
 //   npm run worker -- --status     — per-source state and exit
-//   npm run worker -- --resume <source> — clear the failure streak and exit
+//   npm run worker -- --resume <source> — clear the failure streak and a stored
+//                                          Retry-After wait, and exit
 import { localPool, migrate } from "./db.ts";
 import { localDatabaseUrl, readConfig, ConfigurationError } from "../src/server/config.ts";
 import { getSourcePolicy, permissionFor } from "../src/server/source-policies.ts";
@@ -12,8 +13,10 @@ import { createPostgresPersistence, runSnapshotRetentionPass } from "../src/serv
 import { runHimalayasImport } from "../src/server/import/himalayas-adapter.ts";
 import { runJobicyImport } from "../src/server/import/jobicy-adapter.ts";
 import { runRemoteFirstJobsImport } from "../src/server/import/remote-first-jobs-adapter.ts";
+import { runRemoteJobsOrgImport } from "../src/server/import/remotejobs-org-adapter.ts";
 import {
   fetchHimalayasPage, fetchJobicyWindow, fetchJobicyStatuses, fetchRemoteFirstJobsPage,
+  fetchRemoteJobsOrgPage,
 } from "../src/server/import/fetcher.ts";
 import { SNAPSHOT_SOURCE_IDS } from "../src/domain/source-contracts.ts";
 import { runClosureCheckPass, closureStatus } from "../src/server/import/closure-checks.ts";
@@ -64,6 +67,10 @@ function importSource(setup: Setup, now: string) {
       return runRemoteFirstJobsImport({
         transport: page => fetchRemoteFirstJobsPage({ page }), persistence, policy, now,
       });
+    case "remotejobs_org":
+      return runRemoteJobsOrgImport({
+        transport: offset => fetchRemoteJobsOrgPage({ offset }), persistence, policy, now,
+      });
     default: {
       const unknown: never = setup.source;
       throw new ConfigurationError(`UNKNOWN_SOURCE:${String(unknown)}`);
@@ -92,6 +99,8 @@ async function attempt(setup: Setup): Promise<void> {
       recordsRejected: "recordsRejected" in report ? report.recordsRejected : undefined,
       pagesFetched: report.pagesFetched,
       traversal: "traversal" in report ? report.traversal : undefined,
+      // A 429's wait (RemoteJobs.org): when the next attempt may run.
+      nextEligibleAt: report.nextEligibleAt ?? undefined,
       changes: report.changes.length,
       tombstoned: report.tombstoned,
       consecutiveFailures: state?.consecutiveFailures ?? 0,
@@ -178,6 +187,7 @@ async function main(): Promise<void> {
                 lastRunAt: state.lastRunAt,
                 lastAttemptAt: state.lastAttemptAt ?? null,
                 consecutiveFailures: state.consecutiveFailures ?? 0,
+                retryNotBefore: state.retryNotBefore ?? null,
               },
               pollIntervalMs: setup.policy.min_poll_interval_seconds * 1000,
               nowMs,
@@ -209,6 +219,8 @@ async function main(): Promise<void> {
         lastRunAt: state?.lastRunAt ?? null,
         lastAttemptAt: state?.lastAttemptAt ?? null,
         consecutiveFailures: state?.consecutiveFailures ?? 0,
+        // A 429's Retry-After (RemoteJobs.org, S1-007): no attempt before it.
+        retryNotBefore: state?.retryNotBefore ?? null,
       };
       if (isPaused(schedulerState)) {
         if (!setup.pausedAnnounced) {

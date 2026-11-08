@@ -20,7 +20,7 @@ generated from `docs/solo/context/nenaugad.tokens.json`. Do not redesign Nenauga
 
 ## What exists
 One Next.js TypeScript app. Public read-only synthetic catalog plus snapshots from
-three approved live sources (Himalayas, Jobicy, Remote First Jobs). Fixture repository or local
+four approved live sources (Himalayas, Jobicy, Remote First Jobs, RemoteJobs.org). Fixture repository or local
 PostgreSQL, migrations/seed, import worker, tests and workflow instructions.
 Auth and private versioned profiles (S2), CV intake behind `UPLOADS_ENABLED` (S3),
 private letters (S4) and the guarded AI contour with its spending ledger

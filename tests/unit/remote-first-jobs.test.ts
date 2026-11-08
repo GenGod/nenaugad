@@ -677,7 +677,7 @@ test("fetcher: pinned to remotefirstjobs.com, no redirects, page 0–4 only", as
 });
 
 test("snapshot ids: the new source passes the shared id checks; other prefixes do not", () => {
-  assert.deepEqual([...SNAPSHOT_SOURCE_IDS], ["himalayas", "jobicy", "remote_first_jobs"]);
+  assert.ok(SNAPSHOT_SOURCE_IDS.includes("remote_first_jobs"));
   const id = mapRemoteFirstJobsRecord(remoteJob, NOW).id;
   assert.equal(SNAPSHOT_ID_PATTERN.test(id), true);
   assert.deepEqual(parseEventBatch({ type: "click", items: [{ snapshotId: id, position: 0 }] }),

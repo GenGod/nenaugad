@@ -394,6 +394,86 @@ test("remote_first_jobs rows share the snapshot tables after 0025; the catalog s
   }
 });
 
+test("remotejobs_org rows share the snapshot tables after 0028; the catalog shows only the confirmed remote one, credited; a 429's wait persists (S1-007)", async () => {
+  await migrate(pool);
+  const { remoteJobsOrgCandidatePolicy } = await import("../../src/server/source-policies.ts");
+  const { runRemoteJobsOrgImport } = await import("../../src/server/import/remotejobs-org-adapter.ts");
+  const { remoteJobsOrgContractFixture } = await import("../../src/server/import/remotejobs-org-fixture.ts");
+  const { readSnapshotCards } = await import("../../src/server/snapshot-catalog-service.ts");
+  const clear = async () => {
+    await pool.query("DELETE FROM job_snapshots WHERE source_id = 'remotejobs_org'");
+    await pool.query("DELETE FROM import_state WHERE source_id = 'remotejobs_org'");
+  };
+  await clear();
+  try {
+    // Rollback: the committed policy switched off refuses before any request.
+    const active = remoteJobsOrgCandidatePolicy; // approved and activated 2026-11-07
+    const off = { ...active, enabled: false };
+    let asked = 0;
+    const refused = await runRemoteJobsOrgImport({
+      transport: async () => { asked += 1; return { status: "ok" as const, jobs: [], hasMore: false }; },
+      persistence: createPostgresPersistence(pool, off), policy: off, now: "2026-11-07T12:00:00.000Z",
+    });
+    assert.equal(refused.result, "refused_disabled");
+    assert.equal(asked, 0);
+    assert.equal(await createPostgresPersistence(pool, off).loadImportState(), null);
+
+    const persistence = createPostgresPersistence(pool, active);
+    const now = "2026-11-07T12:00:00.000Z";
+    const report = await runRemoteJobsOrgImport({
+      transport: async () => ({ status: "ok" as const, jobs: [...remoteJobsOrgContractFixture], hasMore: false }),
+      persistence, policy: active, now,
+    });
+    assert.equal(report.result, "partial");
+    assert.equal(report.recordsMapped, 3);
+    const rows = await pool.query<{ id: string; excerpt: string }>(
+      "SELECT id, excerpt FROM job_snapshots WHERE source_id = 'remotejobs_org' ORDER BY id");
+    assert.deepEqual(rows.rows.map(row => row.id), remoteJobsOrgContractFixture.map(raw => `remotejobs_org:${raw.id}`).sort());
+    assert.ok(rows.rows.every(row => row.excerpt.length > 0));
+    // With the policy as committed, the catalog shows the confirmed remote posting with its
+    // attribution, the credit line and the listing link; the hybrid one and the one for
+    // review stay out.
+    const catalog = await readSnapshotCards({ pool });
+    assert.equal(catalog.unavailable, false);
+    const cards = catalog.cards.filter(card => card.id.startsWith("remotejobs_org:"));
+    assert.deepEqual(cards.map(card => card.id), [`remotejobs_org:${remoteJobsOrgContractFixture[0]!.id}`]);
+    assert.equal(cards[0]!.source.displayName, "RemoteJobs.org");
+    assert.equal(cards[0]!.source.backlinkRequired, true);
+    assert.deepEqual(cards[0]!.source.creditLine, { text: "Powered by RemoteJobs.org", url: "https://remotejobs.org" });
+    assert.equal(cards[0]!.apply.url, remoteJobsOrgContractFixture[0]!.url);
+    // Rollback: the same rows, the policy disabled, no card.
+    const { policyPublishes } = await import("../../src/domain/snapshot-projection.ts");
+    assert.equal(policyPublishes(off, now), false);
+
+    // A 429 on the next run's first page stores its wait; the window stays unused.
+    const later = "2026-11-07T18:30:00.000Z";
+    const limited = await runRemoteJobsOrgImport({
+      transport: async () => ({ status: "rate_limited" as const, retryAfterSeconds: 900 }),
+      persistence, policy: active, now: later,
+    });
+    assert.equal(limited.result, "retry_scheduled");
+    const state = await persistence.loadImportState();
+    assert.equal(state?.retryNotBefore, "2026-11-07T18:45:00.000Z");
+    assert.equal(state?.lastRunAt, now);
+    // The owner's resume lifts it (worker --resume), as a clean run does.
+    await persistence.resumeAttempts();
+    assert.equal((await persistence.loadImportState())?.retryNotBefore, null);
+    await runRemoteJobsOrgImport({
+      transport: async () => ({ status: "rate_limited" as const, retryAfterSeconds: 900 }),
+      persistence, policy: active, now: "2026-11-07T18:31:00.000Z",
+    });
+    assert.equal((await persistence.loadImportState())?.retryNotBefore, "2026-11-07T18:46:00.000Z");
+    // A clean run clears it.
+    await runRemoteJobsOrgImport({
+      transport: async () => ({ status: "ok" as const, jobs: [], hasMore: false }),
+      persistence, policy: active, now: "2026-11-07T18:46:00.000Z",
+    });
+    assert.equal((await persistence.loadImportState())?.retryNotBefore, null);
+  } finally {
+    await clear();
+  }
+});
+
 test("the /jobs query searches only the text an external card shows (B60)", async () => {
   await migrate(pool);
   const { jobicyCandidatePolicy } = await import("../../src/server/source-policies.ts");

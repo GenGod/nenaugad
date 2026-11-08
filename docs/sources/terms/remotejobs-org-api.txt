@@ -1,0 +1,297 @@
+Remote Jobs API — Free, No Signup Required | RemoteJobs.org
+Skip to content remotejobs .org Jobs Companies Career Agent
+Your account Post a job
+Loading page…
+remotejobs .org About Journal Developers Privacy Terms
+A little more possibility.
+Developers Overview JSON API MCP server
+For developers API v1
+Remote jobs.
+Ready for your
+next build.
+Put remote opportunities into your job board, community, or internal tool. Free access, useful filters, and structured JSON.
+Build your first request Explore the docs
+No signup. No API key. Just a GET request.
+Your next idea starts here v1 / JSON
+GET /api/v1/jobs?category=programming&limit=1
+Example response · abbreviated
+{
+"data" : [ {
+"title" : "Senior Frontend Engineer" ,
+"company" : { "name" : "Acme Corp" } ,
+"location" : "Remote (Worldwide)" ,
+"employment_types" : [ "FULL_TIME" ]
+} ] ,
+"pagination" : {
+"total" : 42 ,
+"limit" : 1 ,
+"offset" : 0 ,
+"has_more" : true
+}
+}
+Jobs, company details, and pagination in one response.
+Access
+Free to use
+Authentication
+No API key
+Response format
+JSON
+Page size
+Up to 50 jobs
+A job board with a focus
+Choose a category and job type to bring relevant opportunities to your audience.
+A feed for your community
+Find roles by keyword and link members to the full listing and application page.
+A tool of your own
+Work with structured job, company, location, and salary fields in your app or dashboard.
+The documentation
+01 Build a request 02 Query parameters 03 Response reference 04 Pagination 05 Structured discovery 06 Limits & caching 07 Attribution
+Building something bigger?
+Let’s talk
+01 / Quickstart
+Make it your own.
+Choose the jobs you want, update the request, then copy an example into your project.
+GET https://remotejobs.org/api/v1/jobs
+Category All categories General Programming Design Marketing Sales Customer Support Writing Data Science DevOps Product Management Human Resources Finance Legal Dental Healthcare Curriculum Development Education AI & Machine Learning AI Training Cybersecurity Financial Crimes & AML Environmental Health & Safety Quality Assurance Graphic Design Medical Records Compliance Environmental & Safety Cyber Security Fitness & Wellness Accounting Personal Training
+Job type All job types Full-time Part-time Contract Freelance Temporary Internship Volunteer Per-diem Other
+Keyword
+Jobs per page
+Offset
+Update request Reset
+cURL JavaScript Python
+Copy
+curl --fail 'https://remotejobs.org/api/v1/jobs?category=programming&limit=20&offset=0'
+Long lines scroll horizontally.
+Public catalog requests support browser CORS without credentials. You can also run these examples on your server. Cache results when fresh listings aren’t needed.
+Open JSON response
+02 / Query parameters
+Find the right opportunities.
+All parameters are optional. Combine them to narrow your results; active jobs are returned newest first.
+Scroll horizontally to read every column.
+Supported job query parameters, defaults, and usage Parameter
+Default
+How it works
+category string
+All categories
+A category slug, such as programming or design . Unknown slugs return an empty page. See available values below.
+type string
+All types
+full-time , part-time , contract , freelance , temporary , internship , volunteer , per-diem , other . The existing fulltime and parttime aliases are also accepted.
+q string
+No search
+Lexical search across titles, company names, requirements and description content. URL-encode your terms; use up to 500 characters.
+sort string
+recent
+recent (or newest ), relevance , salary-high , or salary-low . Relevance ranks lexical matches and does not promote paid listings.
+limit integer
+20
+Jobs per request, from 1 to 50 .
+offset integer
+0
+Number of jobs to skip. Use it with limit to fetch the next page.
+Geography, pay and selected facts Advanced filters Advanced job query parameters and their relationships Parameter
+How it works
+country
+A candidate country using an ISO two-letter code, such as US . Returns roles with supported current geographic evidence.
+subdivision
+An ISO subdivision, such as US-CA . Its country is inferred when omitted; a conflicting country returns 400.
+eligibility
+known by default. possible includes uncertain geographic evidence while still excluding explicit contradictions. Neither establishes legal work authorization or working-hour compatibility.
+workArrangement
+An explicit remote , hybrid , onsite , or unknown fact.
+salaryMin , salaryCurrency , salaryPeriod
+A minimum advertised lower pay bound. Supply a three-letter currency and hour , day , week , month , or year together. For example, salaryMin=150000&salaryCurrency=USD&salaryPeriod=year . A 120000–180000 range does not meet a 150000 lower-bound filter. Missing context does not match; amounts are not converted or annualized.
+roleFamily , seniority
+Supported identifiers from the selected search taxonomy. Unknown values return 400; missing selected facts do not match.
+skill , skillRequirement
+A supported canonical skill or alias. With skill , choose required , preferred , or any (default). A title mention alone is not a required skill.
+requestVersion
+Optionally send job-search-request/1 and require the matching meta.search.request_version when relying on additive filters. Unsupported request versions fail validation.
+Available category slugs 31 categories General general
+Programming programming
+Design design
+Marketing marketing
+Sales sales
+Customer Support customer-support
+Writing writing
+Data Science data-science
+DevOps devops
+Product Management product-management
+Human Resources human-resources
+Finance finance
+Legal legal
+Dental dental
+Healthcare healthcare
+Curriculum Development curriculum-development
+Education education
+AI & Machine Learning ai-machine-learning
+AI Training ai-training
+Cybersecurity cybersecurity
+Financial Crimes & AML financial-crimes
+Environmental Health & Safety ehs
+Quality Assurance quality-assurance
+Graphic Design graphic-design
+Medical Records medical-records
+Compliance compliance
+Environmental & Safety environmental-safety
+Cyber Security cyber-security
+Fitness & Wellness fitness-wellness
+Accounting accounting
+Personal Training personal-training
+03 / Response reference
+Useful data, without the guesswork.
+Each v1 response contains a data array of jobs, pagination with an exact indexed total , and meta with attribution and search metadata. Separate requests can observe different catalog states.
+Fields returned for each job Job fields
+What to expect
+id, title
+A job identifier and the listing title.
+url, apply_url
+Both point to the job’s RemoteJobs.org page. Use these links to let readers view the listing and apply.
+company, category
+Company name, logo_url, website, and profile url; category name and slug. Logo and website may be null.
+location
+The listing’s location text, or null. Remote roles can still have country or region restrictions.
+location_normalization
+Versioned geography with ISO country and subdivision codes, allowed and excluded areas, IANA timezone identifiers, original raw wording, and known, partial, unknown, or conflicting status. Bare Remote does not establish worldwide eligibility; working hours and legal eligibility require separate evidence.
+applicant_location_requirements
+Current semantic applicant geography from the full posting, with supported, uncertain or conflicting conditions. Null means no valid current interpretation is available.
+location_eligibility, search_facts
+When returned, geographic support for the requested location and current selected role, seniority and skill facts. These preserve unknown or partial status; private evidence is not exported.
+salary_min, salary_max, salary_text
+Native pay bounds and formatted pay text. Each bound may independently be null. Amounts are not annualized or converted between currencies.
+salary_currency, salary_period
+Recorded currency code and pay period: hour, day, week, month, or year. Either may be null. Compare amounts only when both currency and period are known and match.
+salary_source_text
+Retained source pay wording, or null. Missing currency or period stays unknown.
+type, employment_types
+type is a summary display label or null when unavailable. employment_types is the complete set of Google JobPosting classifications, or null; full-time and contractor can coexist. Type filters match this set.
+employer_job_id, direct_apply
+Employer-issued identifier and verified direct-application classification, or null. A working application URL alone does not establish direct_apply.
+description
+Sanitized HTML preserving supported description content, with a RemoteJobs.org application link appended. Apply your own HTML policy when displaying it in your application.
+posted_at
+The posting timestamp, returned as an ISO 8601 string.
+is_translated, original_language
+Whether the listing was translated, and its original language when recorded. The language may be null.
+View a full JSON example Illustrative data JSON
+Copy
+{
+"data" : [
+{
+"id" : "a1b2c3d4-5678-4abc-9012-3456789abcde" ,
+"title" : "Senior Frontend Engineer" ,
+"url" : "https://remotejobs.org/remote-jobs/senior-frontend-engineer-acme" ,
+"apply_url" : "https://remotejobs.org/remote-jobs/senior-frontend-engineer-acme" ,
+"company" : {
+"name" : "Acme Corp" ,
+"logo_url" : null ,
+"website" : "https://example.com" ,
+"url" : "https://remotejobs.org/companies/acme-corp"
+} ,
+"category" : {
+"name" : "Programming" ,
+"slug" : "programming"
+} ,
+"location" : "Remote (Worldwide)" ,
+"salary_min" : 120000 ,
+"location_normalization" : {
+"version" : "job-location/1" ,
+"reference_version" : "iso-3166@4.4.0" ,
+"raw" : "Remote (Worldwide)" ,
+"input" : { } ,
+"status" : "known" ,
+"scope" : "worldwide" ,
+"work_arrangement" : "remote" ,
+"allowed_countries" : [ ] ,
+"allowed_subdivisions" : [ ] ,
+"excluded_countries" : [ ] ,
+"excluded_subdivisions" : [ ] ,
+"timezones" : [ ] ,
+"regions" : [ ] ,
+"unresolved" : [ ]
+} ,
+"salary_max" : 160000 ,
+"salary_text" : "USD 120,000–160,000/year" ,
+"salary_source_text" : "$120,000–$160,000 USD per year" ,
+"salary_currency" : "USD" ,
+"salary_period" : "year" ,
+"type" : "Full-time" ,
+"employment_types" : [
+"FULL_TIME"
+] ,
+"employer_job_id" : null ,
+"direct_apply" : null ,
+"description" : "<p>Help us build our next product.</p>\n<p>Apply directly on <a href=\"https://remotejobs.org\">RemoteJobs.org</a>: https://remotejobs.org/remote-jobs/senior-frontend-engineer-acme</p>" ,
+"posted_at" : "2026-10-01T09:00:00Z" ,
+"is_translated" : false ,
+"original_language" : null
+}
+] ,
+"pagination" : {
+"total" : 42 ,
+"limit" : 1 ,
+"offset" : 0 ,
+"has_more" : true
+} ,
+"meta" : {
+"powered_by" : "RemoteJobs.org" ,
+"url" : "https://remotejobs.org" ,
+"docs" : "https://remotejobs.org/developers/api"
+}
+}
+Long lines scroll horizontally.
+04 / Pagination
+Keep the next page simple.
+Start with offset=0 . Increase it by your page size for each request, keeping the same filters.
+01 First page ?limit=20&offset=0
+02 Next page ?limit=20&offset=20
+03 Keep going ?limit=20&offset=40
+Know when to stop. Check pagination.has_more before continuing, and stop if data is empty. pagination.total counts matching indexed listings in that request. If a count cannot be retrieved, the request returns an error. Listings can change between requests; pagination isn’t a fixed snapshot.
+05 / Structured discovery
+Compact results for discovery.
+Use a structured text-and-filter request when you want compact job summaries and cursor continuation. The existing v1 GET endpoint remains available for exact indexed totals and full job responses.
+POST https://remotejobs.org/api/v2/jobs/discover
+cURL JavaScript
+Copy
+curl --fail 'https://remotejobs.org/api/v2/jobs/discover' \
+-H 'Content-Type: application/json' \
+--data '{"search":{"text":"react","filters":{"category":"programming"}},"take":10}'
+Long lines scroll horizontally.
+Send search with optional text and filters , plus take from 1 to 20 (default 10). Text accepts up to 500 characters. Filters include category, employment type, hiring country and salary criteria. Results contain jobs , next_cursor , previous_cursor , coverage , ranking metadata, and total: { kind: "unknown" } .
+Continue the same search. Pass next_cursor with the same search and take ; do not add an offset. Cursors expire after ten minutes. Restart without a cursor after 409 (results changed) or 410 (expired). A null next_cursor ends the retained result window, not the whole matching catalog.
+Discovery payloads are bounded to 32 KiB and may return fewer summaries than requested. Follow the listing URL for the full posting, or use MCP’s get_job for selected Markdown sections. v1 and v2 requests share the API limit of 200 requests per hour per IP address; MCP has a separate request limit.
+06 / Limits & caching
+A little care goes a long way.
+Request limits
+Keep usage below 200 requests per hour per IP address. Rate limiting is best-effort; this is not a guaranteed quota. API v1 and v2 share this limit; MCP requests are limited separately. v1 returns up to 50 jobs, while structured discovery returns up to 20 compact summaries per request. Cache results in your application and avoid polling on every page view.
+Fresh requests, changing listings
+New requests read current indexed listings. v1 pages can change between requests. Structured discovery retains a result window for up to ten minutes and validates returned jobs on continuation. Cache a response in your application when repeated requests do not need fresh results.
+Handle the response
+API response status codes and recommended handling Status
+Next step
+200 OK
+For v1, read data and pagination . For discovery, read jobs and its continuation cursor. An empty page is not an API failure.
+400 Invalid request
+Check parameter values and relationships. Use whole numbers for limit and offset , and send the required currency and period with a minimum salary.
+409 , 410 Discovery changed or expired
+Restart structured discovery without a cursor, keeping your intended search criteria.
+429 Rate limited
+Wait for the number of seconds in Retry-After before trying again.
+500 , 503 Server unavailable
+The API couldn’t fetch jobs. Retry later rather than treating the failure as an empty result.
+Rate-limit headers: X-RateLimit-Limit , X-RateLimit-Remaining , and X-RateLimit-Reset (a Unix timestamp in seconds).
+07 / Attribution
+Built with a little help.
+If you display listings from the API, please include a visible link back to RemoteJobs.org and keep the job’s application link intact. Here’s a simple attribution you can use.
+Powered by RemoteJobs.org
+HTML
+Copy
+< a href = "https://remotejobs.org" >
+Powered by RemoteJobs.org
+</ a >
+Long lines scroll horizontally.
+Use of the API and third-party content is covered by our terms of service .
+From an idea to an integration
+What will you build?
+Start with a request. Get in touch if you need help with a larger integration.
+Get started Talk to us

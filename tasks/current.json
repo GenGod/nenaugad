@@ -1,10 +1,15 @@
 {
-  "task_id": "B69-001",
-  "file": "tasks/B69-001-worker-stop-and-db-restart.md",
-  "status": "implemented",
-  "repair_cycles_used": 0,
+  "task_id": "S1-007",
+  "file": "tasks/S1-007-remotejobs-org-source.md",
+  "status": "activated",
+  "repair_cycles_used": 1,
   "max_repair_cycles": 2,
-  "hypotheses": [],
+  "hypotheses": [
+    {
+      "text": "Review S1-007 (should-fix 2, notes 4 and 7): the mapper widens or shortens what the source says in three places. A location condition other than a timezone requirement or context (e.g. kind license, effect require, areas US-UT) leaves a known list passing; a verified worldwide reading with regions or listed countries is still worldwide; Retry-After above 24 h is cut to 24 h. Fix: any such condition withholds the listed countries like an unresolved note and is kept as evidence; worldwide also needs no region and no country list; Retry-After is honoured in full (at least 1 s). Testable: the unit table gains a license-require case (GEO-01 unknown for US), a worldwide+region case (unspecified) and a 30-day Retry-After (stored as given); the 50-job sample's 25/24/1 split does not change because geography never moves a posting between catalog tiers.",
+      "recorded_at": "2026-11-07T08:11:17.946Z"
+    }
+  ],
   "coding_host_spend": "unknown",
-  "note": "B69-001 (worker robustness, normal risk) started 2026-11-06, implemented and tested locally the same day, committed as 91f0a73 and merged into main at the owner's word (\"commit and merge\"), not pushed, not accepted; found in DEVX-005's Docker run: a tick with the batch path closed scanned every profile (about 13 minutes over 365 profiles, so SIGTERM met the 5-minute grace period), and localPool had no error listener, so a database restart crashed the worker. The merge drops DEVX-005's --no-batch flag from compose.yaml, which this fix makes redundant. Previous task: DEVX-005 (the whole site in Docker, local only), merged into main as 712f4ce and pushed, CI green (run 42217947049); not accepted. Last green CI: 712f4ce (run 42217947049)."
+  "note": "S1-007 (the fourth source RemoteJobs.org, high risk: source rights) implemented and tested locally 2026-11-07; reviewed by a fresh-context reviewer (no blocking finding), repair cycle 1 used and re-reviewed (no regression). Owner decisions 2026-11-07: the 'Powered by RemoteJobs.org' credit line on every card, the permission matrix approved (decision 6), and activation as a separate decision: policy/remotejobs_org/1 v3 approved and enabled (rollback: enabled false). First live import 2026-11-07: 7 pages (the eighth failed once, cause unrecorded, B73), 349 stored, 1 rejected; 145 main / 186 needs-review / 18 excluded; 145 cards, 14 of them merged with Jobicy or Himalayas copies (131 new); request_version echoed; no provider transfer. The drafted question to RemoteJobs.org is still unsent. Not committed. Found on the way: B70, B71, B72 (the veto excludes on perks boilerplate) and B73 in docs/OPEN_GAPS.md; terms:check still exit 1 for Himalayas and Jobicy (changed pages await the owner's re-read, not re-baselined); Jobicy runs stop at the 10-page cap with 1,000 jobs. Previous task: B69-001, merged into main as 1c1fbfd, not pushed, not accepted. Last green CI: 712f4ce (run 42217947049)."
 }

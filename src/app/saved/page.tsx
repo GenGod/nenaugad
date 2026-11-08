@@ -7,6 +7,7 @@ import { snapshotPool } from "../../server/storage/snapshots.ts";
 import { SaveButton } from "../../components/save-button.tsx";
 import { AppliedToggle, UnhideButton } from "../../components/feedback-buttons.tsx";
 import { Icon } from "../../components/icon.tsx";
+import { SourceCredit } from "../../components/source-credit.tsx";
 import { isJobSnapshot } from "../../domain/source-contracts.ts";
 import { projectCard } from "../../domain/snapshot-projection.ts";
 import { getSourcePolicy } from "../../server/source-policies.ts";
@@ -64,6 +65,7 @@ export default async function Saved() {
               {row.publishes && `${card.salaryOriginalText ?? "Зарплата не опубликована"} · `}
               сохранено {row.savedAt.slice(0, 10)}
             </p>
+            <SourceCredit credit={card.source.creditLine} />
             {closed && <span className="badge review" style={{ marginTop: 8 }}>
               <Icon name="info" size={16} />Закрыта (источник)</span>}
             {!row.publishes && <span className="badge review" style={{ marginTop: 8 }}>
@@ -102,6 +104,7 @@ export default async function Saved() {
             </div>
             {row.excerpt && <p className="job-reason">{row.excerpt}</p>}
             {!row.publishes && <p className="small secondary">Источник отключён: описание скрыто</p>}
+            {row.listingUrl && <SourceCredit credit={policyForSnapshotId(row.snapshotId)?.attribution.credit_line} />}
             <div className="job-bottom">
               <span className="small secondary">Скрыто {row.createdAt.slice(0, 10)}</span>
               <div className="row" style={{ gap: 8 }}>

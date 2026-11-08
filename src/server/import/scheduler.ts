@@ -6,13 +6,16 @@
 export const BACKOFF_BASE_MS = 15 * 60 * 1000;
 export const BACKOFF_CAP_MS = 6 * 60 * 60 * 1000;
 export const PAUSE_AFTER_CONSECUTIVE_FAILURES = 5;
-// Retry-After from the feeds is documented as ~60s; the base backoff is 15
-// minutes, so the header is always over-respected, never violated.
+// Retry-After from the first three feeds is documented as ~60s; the base backoff is
+// 15 minutes, so the header is always over-respected, never violated. RemoteJobs.org
+// limits by the hour, so its adapter stores the wait it was given (retryNotBefore) and
+// no attempt is due before it (S1-007).
 
 export type SchedulerState = Readonly<{
   lastRunAt: string | null;
   lastAttemptAt: string | null;
   consecutiveFailures: number;
+  retryNotBefore?: string | null;
 }>;
 
 export function attemptBackoffMs(consecutiveFailures: number, jitter = Math.random): number {
@@ -39,6 +42,8 @@ export function nextDueAt(params: Readonly<{
   if (state.lastAttemptAt !== null && state.consecutiveFailures > 0) {
     candidates.push(Date.parse(state.lastAttemptAt) + attemptBackoffMs(state.consecutiveFailures));
   }
+  const retryNotBefore = state.retryNotBefore ? Date.parse(state.retryNotBefore) : Number.NaN;
+  if (Number.isFinite(retryNotBefore)) candidates.push(retryNotBefore);
   return Math.max(...candidates);
 }
 

@@ -252,11 +252,81 @@ export const remoteFirstJobsCandidatePolicy: SourcePolicy = {
   allowed_surfaces: ["public_web"],
 };
 
+// Fourth source (registry remotejobs_org), S1-007. Rights review 2026-11-07 of
+// remotejobs.org/developers/api and www.remotejobs.org/terms (dated October 24, 2026):
+// a free public API that tells integrators to cache results and asks those who display
+// listings for a visible link back and the job's application link intact. The terms
+// leave third-party job descriptions with their owners and authorize no use that
+// infringes their rights; RemoteJobs.org itself aggregates listings, with no
+// per-posting provenance. Owner decisions 1–5 of 2026-11-07 shaped the values below:
+// full text, derived fields and local ML allowed (nothing leaves the machine), only
+// workArrangement=remote requested with our office-vocabulary veto on top, their
+// structured geography used with its status and never widened to worldwide, every 6 h,
+// nofollow kept. Owner decision 2026-11-07 (attribution): every card of this source also
+// shows the API page's suggested credit, "Powered by RemoteJobs.org" linked to
+// https://remotejobs.org, in its own English words. Permission matrix approved by the
+// owner on 2026-11-07 as proposed (owner decision 6, after the reviewer pass and its
+// repair cycle). Activated by the owner on 2026-11-07 as a separate decision after the
+// matrix approval, with the question to RemoteJobs.org still unsent; rollback is
+// enabled: false.
+// terms_hash = policyTermsHash over the two committed pages (src/server/terms-fingerprint.ts):
+// docs/sources/terms/remotejobs-org-api.txt and remotejobs-org-terms.txt.
+export const remoteJobsOrgCandidatePolicy: SourcePolicy = {
+  kind: "source_policy",
+  schema_version: "1.0.0",
+  id: "policy/remotejobs_org/1",
+  version: 3,
+  source_id: "remotejobs_org",
+  status: "approved",
+  enabled: true,
+  terms_urls: [
+    "https://remotejobs.org/developers/api",
+    "https://www.remotejobs.org/terms",
+  ],
+  terms_hash: "9a46fd33af0530b9af9758cc1d939205b8501fb15f0451b2ee3c23b9d9962a88",
+  reviewed_at: "2026-11-07T00:00:00.000Z",
+  approved_by: "owner",
+  approval_reference:
+    "Owner-approved permission matrix 2026-11-07 (live review of the API page and terms, S1-007; " +
+    "reviewer pass with one repair cycle); owner decisions 1-5 2026-11-07: full text and local ML, " +
+    "workArrangement=remote under the office-vocabulary veto, structured geography never widened, " +
+    "6 h and 20 pages, nofollow; owner decision 2026-11-07: the \"Powered by RemoteJobs.org\" credit line " +
+    "on every card; activated by the owner 2026-11-07 as a separate decision; re-review by 2026-12-23",
+  valid_until: "2026-12-23T00:00:00.000Z",
+  permissions: {
+    fetch: "allowed",
+    cache: "allowed",
+    store_full_text: "allowed",
+    store_excerpt: "allowed",
+    derive_fields: "allowed",
+    process_with_ml: "allowed",
+    send_to_ai_provider: "unknown",
+    publish_full_text: "denied",
+    publish_excerpt: "allowed",
+    send_email: "denied",
+    index_web_page: "denied",
+    syndicate_google_jobs: "denied",
+    train_model: "denied",
+    direct_apply: "denied",
+    bulk_export: "denied",
+  },
+  max_retention_hours: 720,
+  min_poll_interval_seconds: 21600,
+  attribution: {
+    required: true, display_name: "RemoteJobs.org",
+    backlink_required: true, link_rel: ["nofollow"], logo_allowed: "unknown",
+    credit_line: { text: "Powered by RemoteJobs.org", url: "https://remotejobs.org" },
+  },
+  apply_route: "source_required",
+  allowed_surfaces: ["public_web"],
+};
+
 const policies: ReadonlyMap<string, SourcePolicy> = new Map([
   [atlasFixturesPolicy.source_id, atlasFixturesPolicy],
   [himalayasCandidatePolicy.source_id, himalayasCandidatePolicy],
   [jobicyCandidatePolicy.source_id, jobicyCandidatePolicy],
   [remoteFirstJobsCandidatePolicy.source_id, remoteFirstJobsCandidatePolicy],
+  [remoteJobsOrgCandidatePolicy.source_id, remoteJobsOrgCandidatePolicy],
 ]);
 
 export function getSourcePolicy(sourceId: string): SourcePolicy | undefined {

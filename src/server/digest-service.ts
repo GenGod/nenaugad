@@ -24,6 +24,8 @@ export type DigestItem = Readonly<{
   title: string;
   company: string;
   sourceName: string;
+  /** The credit line the source's policy asks for, or null (S1-007). */
+  sourceCredit: Readonly<{ text: string; url: string }> | null;
   applyUrl: string;
   firstSeenAt: string | undefined;
   /** Honest "found N days ago" label (A5), null when the age is unknown. */
@@ -67,6 +69,7 @@ export async function digestForUser(
     title: entry.job.card.title,
     company: entry.job.card.company,
     sourceName: entry.job.card.source.displayName,
+    sourceCredit: entry.job.card.source.creditLine,
     applyUrl: entry.job.card.apply.url,
     firstSeenAt: entry.job.card.firstSeenAt,
     ageLabel: firstSeenLabel(entry.job.card.firstSeenAt, now),

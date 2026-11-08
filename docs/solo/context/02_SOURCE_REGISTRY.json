@@ -472,7 +472,7 @@
         "https://weworkremotely.com/remote-job-rss-feed",
         "https://weworkremotely.com/api-terms-and-guidelines"
       ],
-      "notes": "RSS invitation and API competitor/application-path limits must be reconciled for actual commercial use.",
+      "notes": "Checked 2026-11-06 (tasks/S1-007): the RSS page invites use with links back, but the API Terms & Guidelines forbid using any WWR data for a job advertising or job search service and forbid storing it, and require applications to route through weworkremotely.com. Nenaugad is a job search service that stores text: skip without written permission.",
       "enabled": false,
       "runtime_policy_status": "pending_owner_review",
       "runtime_permissions": {
@@ -492,7 +492,7 @@
         "direct_apply": "unknown",
         "bulk_export": "denied"
       },
-      "checked_at": "2026-09-23",
+      "checked_at": "2026-11-06",
       "live_integration_tested": false,
       "owner_approval": null
     },
@@ -690,14 +690,25 @@
     {
       "id": "remotejobs_org",
       "name": "RemoteJobs.org",
-      "category": "remote_board",
-      "phase": "research_only",
-      "review_status": "not_reverified",
-      "endpoint": null,
+      "category": "remote_feed",
+      "phase": "M3",
+      "review_status": "public_integration_documented_owner_rights_reserved",
+      "method": "GET",
+      "endpoint": "https://remotejobs.org/api/v1/jobs",
+      "auth": "none",
+      "coverage_mode": "capped_query",
+      "page_limit": 50,
+      "max_pages": 20,
+      "first_page": 0,
+      "proposed_sync_hours": 6,
       "source_refs": [],
-      "notes": "API and commercial rights not independently confirmed in this specification.",
+      "documentation_urls": [
+        "https://remotejobs.org/developers/api",
+        "https://www.remotejobs.org/terms"
+      ],
+      "notes": "Checked 2026-11-07 (tasks/S1-007): a free public API (v1, offset paging, 50 a request, below 200 requests an hour per IP), about 20,200 active jobs, newest first. Attribution: a visible link back (\"Powered by RemoteJobs.org\") and the job application link intact. Terms (2026-10-24): use per the documented access, attribution and limits; third-party job descriptions belong to their owners and access does not authorize infringing uses; RemoteJobs.org is itself an aggregator with no per-listing provenance field. Not remote-only (26 of 50 sampled structurally remote; workArrangement=remote filter exists). Geography is structured (ISO allowed/excluded countries, status, worldwide never assumed) but derived by their LLM pipeline. posted_at is ISO 8601 with an offset, a zero time in the first sample and real times in the second. url and apply_url both point to the remotejobs.org listing. Adapter (S1-007; matrix approved and activated by the owner 2026-11-07): workArrangement=remote, sort=recent, requestVersion=job-search-request/1, up to 20 pages of 50 every 6 h, stopping at a page already stored; our office-vocabulary veto on top (50-job filtered sample: 25 main, 24 needs-review, 1 excluded; first live run 2026-11-07: 349 stored, 145 main, 186 needs-review, 18 excluded, 44 sharing a dedup key with Jobicy or Himalayas); a 429's Retry-After is stored and respected. Onboarding: tasks/S1-007.",
       "enabled": false,
-      "runtime_policy_status": "pending_owner_review",
+      "runtime_policy_status": "approved_activated",
       "runtime_permissions": {
         "fetch": "unknown",
         "cache": "unknown",
@@ -715,9 +726,14 @@
         "direct_apply": "unknown",
         "bulk_export": "denied"
       },
-      "checked_at": null,
-      "live_integration_tested": false,
-      "owner_approval": null
+      "checked_at": "2026-11-07",
+      "live_integration_tested": true,
+      "owner_approval": {
+        "matrix_approved_at": "2026-11-07",
+        "reference": "tasks/S1-007-remotejobs-org-source.md, owner decision 6 and the activation; policy/remotejobs_org/1 v3",
+        "activated": true,
+        "activated_at": "2026-11-07"
+      }
     },
     {
       "id": "working_nomads",
@@ -746,9 +762,10 @@
         "direct_apply": "unknown",
         "bulk_export": "denied"
       },
-      "checked_at": null,
+      "checked_at": "2026-11-06",
       "live_integration_tested": false,
-      "owner_approval": null
+      "owner_approval": null,
+      "notes": "Checked 2026-11-06 (tasks/S1-007): /api/exposed_jobs/ returns about 32 jobs (about 1 a day), free-text locations; terms (2025-03-11) forbid building a competitive product and commercial exploitation. Skip."
     },
     {
       "id": "flexjobs",

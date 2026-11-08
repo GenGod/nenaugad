@@ -388,6 +388,31 @@ function firstMatch(patterns: readonly RegExp[], ...views: readonly string[]): s
   return null;
 }
 
+/**
+ * Tiers 1 and 2 of the rule, and temporary remote work: what a posting's title and text
+ * say against remote work. `office` is a statement (the posting is excluded), `officeWord`
+ * any other office vocabulary (it waits for review), each the quote that matched or null.
+ * Shared with RemoteJobs.org (S1-007, owner decision 2 of 2026-11-07: the source's remote
+ * filter plus this veto), so both sources read one rule.
+ */
+export function readOfficeVocabulary(rawTitle: string, rawText: string): Readonly<{
+  office: string | null; officeWord: string | null; temporary: string | null;
+}> {
+  // The folded text first, so a quote keeps the posting's own characters.
+  const titles = [foldDashes(rawTitle), normalized(rawTitle)];
+  const texts = [foldDashes(rawText), normalized(rawText)];
+  const office = firstMatch(OFFICE_TITLE, ...titles) ?? firstMatch(OFFICE_STATEMENTS, ...texts);
+  const officeWord = office === null
+    ? firstMatch(OFFICE_WORDS, ...titles) ?? firstMatch(TITLE_QUALIFIERS, ...titles) ??
+      titles.map(unverifiedTitleQualifier).find(qualifier => qualifier !== null) ??
+      firstMatch(OFFICE_WORDS, ...texts)
+    : null;
+  const temporary = office === null
+    ? firstMatch(TEMPORARY_TEXT, ...titles) ?? firstMatch(TEMPORARY_TEXT, ...texts)
+    : null;
+  return { office, officeWord: officeWord ?? null, temporary };
+}
+
 // The feed's name ("Remote Jobs API") is the source's claim that a posting is remote;
 // the posting's own words decide whether that claim is confirmed, contradicted or open.
 // Exported so a re-map of stored postings reads this rule, not a copy of it.
@@ -396,20 +421,9 @@ export function remoteFirstJobsWorkplace(rawTitle: string, rawText: string, evid
 } {
   const title = foldDashes(rawTitle);
   const text = foldDashes(rawText);
-  // The folded text first, so a quote keeps the posting's own characters.
-  const titles = [title, normalized(rawTitle)];
-  const texts = [text, normalized(rawText)];
-  const office = firstMatch(OFFICE_TITLE, ...titles) ?? firstMatch(OFFICE_STATEMENTS, ...texts);
-  const officeWord = office === null
-    ? firstMatch(OFFICE_WORDS, ...titles) ?? firstMatch(TITLE_QUALIFIERS, ...titles) ??
-      titles.map(unverifiedTitleQualifier).find(qualifier => qualifier !== null) ??
-      firstMatch(OFFICE_WORDS, ...texts)
-    : null;
+  const { office, officeWord, temporary } = readOfficeVocabulary(rawTitle, rawText);
   const remote = office === null && officeWord === null
     ? REMOTE_TITLE.exec(title)?.[0]?.replace(/^[([|,/·-]?\s*/u, "") ?? firstMatch(REMOTE_TEXT, text)
-    : null;
-  const temporary = office === null
-    ? firstMatch(TEMPORARY_TEXT, ...titles) ?? firstMatch(TEMPORARY_TEXT, ...texts)
     : null;
   const state: Workplace["verification_state"] =
     office !== null ? "conflicting" : remote !== null ? "confirmed" : "unknown";

@@ -9,9 +9,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
-import { normalizeTermsText, sha256Hex, termsFingerprint } from "../../src/server/terms-fingerprint.ts";
+import {
+  normalizeTermsText, policyTermsHash, sha256Hex, termsFingerprint, termsSourceOf,
+} from "../../src/server/terms-fingerprint.ts";
 import {
   himalayasCandidatePolicy, jobicyCandidatePolicy, remoteFirstJobsCandidatePolicy,
+  remoteJobsOrgCandidatePolicy,
 } from "../../src/server/source-policies.ts";
 
 const ROOT = path.resolve(import.meta.dirname, "..", "..");
@@ -66,18 +69,43 @@ test("policies: terms_hash, manifest and committed snapshots agree offline", () 
   const policies = {
     himalayas: himalayasCandidatePolicy, jobicy: jobicyCandidatePolicy,
     remote_first_jobs: remoteFirstJobsCandidatePolicy,
+    remotejobs_org: remoteJobsOrgCandidatePolicy,
   };
-  for (const [sourceId, policy] of Object.entries(policies)) {
-    const entry = manifest.snapshots[sourceId];
-    assert.ok(entry, `${sourceId} must have a snapshot entry in ${MANIFEST_PATH}`);
+  // Every page in the manifest belongs to a policy, and every snapshot is intact.
+  for (const [key, entry] of Object.entries(manifest.snapshots)) {
+    assert.ok(termsSourceOf(key) in policies, `${key}: no policy for this snapshot`);
     const text = readFileSync(path.join(ROOT, entry.snapshot), "utf8");
     // A snapshot that is empty or nearly so would make the check meaningless.
     assert.ok(text.length > 1000, `${entry.snapshot} looks too small to be a terms page`);
-    // The snapshot holds already-normalized text, so integrity is a plain hash,
-    // and the policy must carry exactly that value.
-    assert.equal(sha256Hex(text), entry.sha256, `${sourceId}: snapshot does not match its manifest hash`);
-    assert.equal(policy.terms_hash, entry.sha256, `${sourceId}: policy terms_hash is stale — re-baseline or fix it`);
-    assert.match(entry.sha256, /^[0-9a-f]{64}$/u, `${sourceId}: manifest hash must be a sha256 hex digest`);
-    assert.match(entry.url, /^https:\/\//u, `${sourceId}: snapshot url must be https`);
+    // The snapshot holds already-normalized text, so integrity is a plain hash.
+    assert.equal(sha256Hex(text), entry.sha256, `${key}: snapshot does not match its manifest hash`);
+    assert.match(entry.sha256, /^[0-9a-f]{64}$/u, `${key}: manifest hash must be a sha256 hex digest`);
+    assert.match(entry.url, /^https:\/\//u, `${key}: snapshot url must be https`);
   }
+  // Each policy carries exactly the value of its pages: one page's own hash, or the hash
+  // of several (S1-007).
+  for (const [sourceId, policy] of Object.entries(policies)) {
+    const expected = policyTermsHash(manifest.snapshots, sourceId);
+    assert.ok(expected, `${sourceId} must have a snapshot entry in ${MANIFEST_PATH}`);
+    assert.equal(policy.terms_hash, expected, `${sourceId}: policy terms_hash is stale — re-baseline or fix it`);
+  }
+  // RemoteJobs.org: the API page and the terms page are both watched.
+  assert.deepEqual(Object.keys(manifest.snapshots).filter(key => termsSourceOf(key) === "remotejobs_org").sort()
+    .map(key => manifest.snapshots[key]!.url), ["https://remotejobs.org/developers/api", "https://www.remotejobs.org/terms"]);
+});
+
+test("policy terms hash: one page is its own hash; several combine in key order", () => {
+  const one = "a".repeat(64);
+  const two = "b".repeat(64);
+  assert.equal(policyTermsHash({ s: { sha256: one } }, "s"), one);
+  assert.equal(policyTermsHash({ "s:terms": { sha256: two }, s: { sha256: one } }, "s"), sha256Hex(`${one}
+${two}`));
+  // A change to either page changes the policy value.
+  assert.notEqual(policyTermsHash({ s: { sha256: one }, "s:terms": { sha256: one } }, "s"),
+    policyTermsHash({ s: { sha256: one }, "s:terms": { sha256: two } }, "s"));
+  // Another source's pages, or a source id that only starts the same, are not included.
+  assert.equal(policyTermsHash({ s: { sha256: one }, so: { sha256: two }, "so:terms": { sha256: two } }, "s"), one);
+  assert.equal(policyTermsHash({ so: { sha256: two } }, "s"), null);
+  assert.equal(termsSourceOf("remotejobs_org:terms"), "remotejobs_org");
+  assert.equal(termsSourceOf("jobicy"), "jobicy");
 });

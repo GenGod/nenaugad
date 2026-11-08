@@ -81,3 +81,26 @@ export function sha256Hex(text: string): string {
 export function termsFingerprint(html: string): string {
   return sha256Hex(normalizeTermsText(html));
 }
+
+/**
+ * The source a manifest key belongs to. A source may have several pages under review
+ * (S1-007: an API page and a terms page): the first is keyed by the source id, each
+ * further one by `<source id>:<page>`.
+ */
+export function termsSourceOf(manifestKey: string): string {
+  return manifestKey.split(":", 1)[0] ?? manifestKey;
+}
+
+/**
+ * The value a source policy stores as `terms_hash`, from the recorded hashes of its pages
+ * in manifest-key order: one page's own hash (as before S1-007), or for several pages the
+ * sha256 of their hashes joined by newlines, so a change to any one page changes it.
+ */
+export function policyTermsHash(
+  snapshots: Readonly<Record<string, Readonly<{ sha256: string }>>>, sourceId: string,
+): string | null {
+  const hashes = Object.keys(snapshots).filter(key => termsSourceOf(key) === sourceId).sort()
+    .map(key => snapshots[key]!.sha256);
+  if (hashes.length === 0) return null;
+  return hashes.length === 1 ? hashes[0]! : sha256Hex(hashes.join("\n"));
+}
