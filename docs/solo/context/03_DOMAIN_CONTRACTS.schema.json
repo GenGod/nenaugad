@@ -2183,6 +2183,27 @@
                 "denied",
                 "unknown"
               ]
+            },
+            "credit_line": {
+              "description": "A credit line the source asks for beside its listings, shown as given and linked (S1-007). Optional.",
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "url": {
+                  "type": "string",
+                  "format": "uri",
+                  "pattern": "^https://"
+                }
+              },
+              "required": [
+                "text",
+                "url"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [

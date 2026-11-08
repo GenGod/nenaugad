@@ -1,5 +1,5 @@
 {
-  "note": "Snapshots of the source terms pages under owner review, normalized by src/server/terms-fingerprint.ts. The offline test tests/unit/terms-fingerprint.test.ts checks that each source policy's terms_hash equals the sha256 recorded here and the committed snapshot's fingerprint. npm run terms:check compares them against the live pages (network, not part of npm run check).",
+  "note": "Snapshots of the source terms pages under owner review, normalized by src/server/terms-fingerprint.ts. A source's first page is keyed by its id, each further page by <source id>:<page> (S1-007). The offline test tests/unit/terms-fingerprint.test.ts checks each committed snapshot against the sha256 recorded here, and each source policy's terms_hash against policyTermsHash (one page: its sha256; several: the sha256 of their sha256s in key order). npm run terms:check compares them against the live pages (network, not part of npm run check).",
   "snapshots": {
     "himalayas": {
       "url": "https://himalayas.app/terms",
@@ -18,6 +18,18 @@
       "fetched_at": "2026-11-02T14:20:18.239Z",
       "snapshot": "docs/sources/terms/remote-first-jobs-api.txt",
       "sha256": "dc0e9c8922e109691077e9eb3622cc9fd8bc143f1cfd1f30a051b5aec7b17159"
+    },
+    "remotejobs_org": {
+      "url": "https://remotejobs.org/developers/api",
+      "fetched_at": "2026-11-07T07:46:27.385Z",
+      "snapshot": "docs/sources/terms/remotejobs-org-api.txt",
+      "sha256": "446b2f9cd70265217e9cdd505c6b4f9b8c3e4ea897beabaffca9cad136002623"
+    },
+    "remotejobs_org:terms": {
+      "url": "https://www.remotejobs.org/terms",
+      "fetched_at": "2026-11-07T07:46:27.385Z",
+      "snapshot": "docs/sources/terms/remotejobs-org-terms.txt",
+      "sha256": "c9696ee013b9f8274333c6845f2307c6ec33160c479f1d2c107edeecca6fb70a"
     }
   }
 }

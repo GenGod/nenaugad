@@ -94,6 +94,8 @@ export type CatalogCardProjection = Readonly<{
     displayName: string;
     attributionRequired: boolean;
     backlinkRequired: boolean;
+    /** The credit line the source's policy asks for, or null (S1-007). */
+    creditLine: Readonly<{ text: string; url: string }> | null;
   }>;
   // Cross-source provenance (item A4): the same posting carried by other
   // boards. The card keeps ONE text (no merging) and shows where else the
@@ -137,6 +139,7 @@ export function projectCard(
       displayName: policy.attribution.display_name,
       attributionRequired: policy.attribution.required,
       backlinkRequired: policy.attribution.backlink_required,
+      creditLine: policy.attribution.credit_line ?? null,
     },
     alsoListedAt,
     apply: directApply && snapshot.apply_url

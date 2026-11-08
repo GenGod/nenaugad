@@ -7,7 +7,7 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-11-06: [B69-001](tasks/B69-001-worker-stop-and-db-restart.md) (normal risk) is
+**Updated:** 2026-11-07: [S1-007](tasks/S1-007-remotejobs-org-source.md) (high risk, source rights) is implemented and tested locally, reviewed (one repair cycle), not committed: RemoteJobs.org as a fourth source; the owner **approved the matrix** 2026-11-07 (with a "Powered by RemoteJobs.org" line on every card) and **activated** it the same day as a separate decision (policy v3): the first live import stored 349 postings, 145 in the catalog (131 new cards, 14 merged with Jobicy or Himalayas). 2026-11-06: [B69-001](tasks/B69-001-worker-stop-and-db-restart.md) (normal risk) is
 implemented and tested locally, merged into main, not pushed: a worker tick with the batch path closed no longer
 scans every profile, and a database restart no longer crashes the worker. The whole site runs
 in Docker on this computer ([DEVX-005](tasks/DEVX-005-site-in-docker.md): `docker compose up -d
@@ -85,6 +85,12 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   in the catalog (remote confirmed only by the posting's own words; the rule's residual
   gaps closed by [B65-001](tasks/B65-001-remote-rule-residual.md), stored postings re-mapped
   2026-11-02, rollback in `backups/`), local ML only, no provider transfer, no closure checks.
+  RemoteJobs.org: matrix approved and **activated by the owner 2026-11-07**
+  ([S1-007](tasks/S1-007-remotejobs-org-source.md)): workArrangement=remote under the same
+  office-vocabulary veto, their structured geography only narrowing, up to 20 pages of 50 every
+  6 h, a 429's Retry-After stored (migration 0028). First live import 349 postings: 145 main /
+  186 review / 18 excluded (B72: about half the exclusions are perks boilerplate); local ML
+  only, no provider transfer, no closure checks.
 - **Import and catalog:** worker with schedules, backoff and a per-source circuit
   breaker (S1-004); jobicy closure checks (S1-005, the batch status endpoint since B56-001);
   the jobicy import follows the feed cursor through the 7-day window, up to 10 pages a run
@@ -187,6 +193,12 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   (DEVX-005, 2026-11-06; the server keeps its systemd units).
 
 ## Latest checks
+- 2026-11-07 ([S1-007](tasks/S1-007-remotejobs-org-source.md)): `npm run check` exit 0
+  (unit 492/492); `test:db` exit 0 (158/158, with `PG_TOOLS_CONTAINER=nenaugad-db-1`);
+  `test:coverage` exit 0 (650/650; 88.47 / 90.06 / 95.15, ratchet lines 88, functions 95);
+  `build` exit 0; `test:e2e` 126/126 (after the owner's "Powered by RemoteJobs.org" line).
+  After activation: `check` and `test:db` exit 0 again; `import:remotejobs-org` exit 0 (live,
+  7 pages, the eighth failed once and answered a minute later). Not committed: no CI run.
 - 2026-11-06 ([B69-001](tasks/B69-001-worker-stop-and-db-restart.md)): `npm run check` exit 0
   (unit 469/469); `test:db` equivalent exit 0 (157/157); `test:coverage` equivalent exit 0
   (626/626; 87.86 / 89.32 / 94.94, ratchet unchanged). Merged into main, not pushed: no CI run.

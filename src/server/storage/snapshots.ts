@@ -34,7 +34,7 @@ export function createPostgresPersistence(pool: Pool, policy: SourcePolicy): Sna
   return {
     async loadImportState(): Promise<ImportState | null> {
       const result = await pool.query(
-        "SELECT last_run_at, next_cursor, run_count, last_attempt_at, consecutive_failures FROM import_state WHERE source_id = $1",
+        "SELECT last_run_at, next_cursor, run_count, last_attempt_at, consecutive_failures, retry_not_before FROM import_state WHERE source_id = $1",
         [sourceId],
       );
       const row = result.rows[0];
@@ -45,12 +45,13 @@ export function createPostgresPersistence(pool: Pool, policy: SourcePolicy): Sna
         runCount: Number(row.run_count),
         lastAttemptAt: row.last_attempt_at ? new Date(row.last_attempt_at).toISOString() : null,
         consecutiveFailures: Number(row.consecutive_failures ?? 0),
+        retryNotBefore: row.retry_not_before ? new Date(row.retry_not_before).toISOString() : null,
       };
     },
     async saveImportState(state: ImportState): Promise<void> {
       await pool.query(
-        "INSERT INTO import_state (source_id, last_run_at, next_cursor, run_count) VALUES ($1, $2, $3, $4) ON CONFLICT (source_id) DO UPDATE SET last_run_at = EXCLUDED.last_run_at, next_cursor = EXCLUDED.next_cursor, run_count = EXCLUDED.run_count",
-        [sourceId, state.lastRunAt, state.nextCursor, state.runCount],
+        "INSERT INTO import_state (source_id, last_run_at, next_cursor, run_count, retry_not_before) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (source_id) DO UPDATE SET last_run_at = EXCLUDED.last_run_at, next_cursor = EXCLUDED.next_cursor, run_count = EXCLUDED.run_count, retry_not_before = EXCLUDED.retry_not_before",
+        [sourceId, state.lastRunAt, state.nextCursor, state.runCount, state.retryNotBefore ?? null],
       );
     },
     async recordAttempt(success: boolean, now: string): Promise<void> {
@@ -61,7 +62,9 @@ export function createPostgresPersistence(pool: Pool, policy: SourcePolicy): Sna
     },
     async resumeAttempts(): Promise<void> {
       await pool.query(
-        "UPDATE import_state SET consecutive_failures = 0 WHERE source_id = $1",
+        // The owner's resume also lifts a stored Retry-After wait (S1-007): a broken or
+        // hostile header must not park a source with no way out but SQL.
+        "UPDATE import_state SET consecutive_failures = 0, retry_not_before = NULL WHERE source_id = $1",
         [sourceId],
       );
     },

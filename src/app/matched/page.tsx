@@ -24,6 +24,7 @@ import { snapshotPool } from "../../server/storage/snapshots.ts";
 import type { RelevanceScore } from "../../server/relevance-service.ts";
 import { candidateOffsets, conditionStrip, zoneStrip } from "../../domain/condition-strip.ts";
 import { ConditionStrip, ZoneStrip } from "../../components/condition-strip.tsx";
+import { SourceCredit } from "../../components/source-credit.tsx";
 
 export const metadata: Metadata = { title: "Подбор" };
 export const dynamic = "force-dynamic";
@@ -152,6 +153,7 @@ function MatchedCard({ job, score, tone, now, feed, position, candidateZone }: {
     </div>
     <p className="source"><Icon name="source" size={16} />
       Источник: {card.source.displayName} · переход ведёт на листинг источника, отклик не отправляется</p>
+    <SourceCredit credit={card.source.creditLine} />
   </article>;
 }
 

@@ -22,6 +22,11 @@ export type ImportState = Readonly<{
   runCount: number;
   lastAttemptAt?: string | null;
   consecutiveFailures?: number;
+  /**
+   * No request before this time: a source's 429 asked for the wait (Retry-After, S1-007).
+   * Written by saveImportState; a source that never sets it saves null.
+   */
+  retryNotBefore?: string | null;
 }>;
 
 export type SnapshotPersistence = Readonly<{
@@ -66,7 +71,7 @@ export function createMemoryPersistence(retentionHours = 720): SnapshotPersisten
       };
     },
     async resumeAttempts() {
-      if (this.state) this.state = { ...this.state, consecutiveFailures: 0 };
+      if (this.state) this.state = { ...this.state, consecutiveFailures: 0, retryNotBefore: null };
     },
     async loadStore() { return { store: this.store, excerpts: this.excerpts }; },
     async saveStore(store, excerpts) {

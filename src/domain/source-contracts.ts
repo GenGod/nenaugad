@@ -11,10 +11,10 @@ export type TriState = "allowed" | "denied" | "unknown";
  * in the order the catalog and matching read them. A source here still shows
  * nothing until its policy is approved and enabled.
  */
-export const SNAPSHOT_SOURCE_IDS = ["himalayas", "jobicy", "remote_first_jobs"] as const;
+export const SNAPSHOT_SOURCE_IDS = ["himalayas", "jobicy", "remote_first_jobs", "remotejobs_org"] as const;
 
 /** A stored snapshot's id: `<source>:<record>`, for the ids a request may name. */
-export const SNAPSHOT_ID_PATTERN = /^(himalayas|jobicy|remote_first_jobs):[a-z0-9-]{1,150}$/u;
+export const SNAPSHOT_ID_PATTERN = /^(himalayas|jobicy|remote_first_jobs|remotejobs_org):[a-z0-9-]{1,150}$/u;
 
 export const SOURCE_POLICY_PERMISSIONS = [
   "fetch", "cache", "store_full_text", "store_excerpt", "derive_fields",
@@ -53,6 +53,11 @@ export type SourcePolicy = Readonly<{
     backlink_required: boolean;
     link_rel: readonly string[];
     logo_allowed: TriState;
+    /**
+     * A credit line the source asks for beside its listings, shown as given and linked
+     * (S1-007: RemoteJobs.org's "Powered by RemoteJobs.org"). Absent for the others.
+     */
+    credit_line?: Readonly<{ text: string; url: string }>;
   }>;
   apply_route: ApplyRoute;
   allowed_surfaces: readonly AllowedSurface[];
@@ -286,8 +291,13 @@ export function isSourcePolicy(value: unknown): value is SourcePolicy {
     value.min_poll_interval_seconds < 1) return false;
   const attribution = value.attribution;
   if (!isObject(attribution) || !hasOnlyKeys(attribution, [
-    "required", "display_name", "backlink_required", "link_rel", "logo_allowed",
+    "required", "display_name", "backlink_required", "link_rel", "logo_allowed", "credit_line",
   ])) return false;
+  // A credit line is plain text and an https link, nothing a policy could turn into script.
+  const credit = attribution.credit_line;
+  if (credit !== undefined && (!isObject(credit) || !hasOnlyKeys(credit, ["text", "url"]) ||
+    !isString(credit.text) || credit.text.trim().length === 0 || credit.text.length > 80 ||
+    !isString(credit.url) || !credit.url.startsWith("https://") || !isHttpUrl(credit.url))) return false;
   if (typeof attribution.required !== "boolean" ||
     !isString(attribution.display_name) ||
     typeof attribution.backlink_required !== "boolean" ||
