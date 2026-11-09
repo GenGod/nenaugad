@@ -24,12 +24,46 @@ export type PageRequest = Readonly<{
   timeoutMs?: number;
 }>;
 
+/**
+ * Why a page failed (B73), as a fixed code: the RemoteJobs.org import reports it. A
+ * network failure happened before a usable answer: refused before sending, no response
+ * headers within the deadline, a failed connection (DNS, TLS, reset, a refused redirect),
+ * or a body lost while it was read. A server failure is an answer we cannot use.
+ */
+export type NetworkFailureReason = "invalid_request" | "timeout" | "network" | "body_read";
+export type ServerFailureReason = "http_status" | "content_type" | "too_large" | "invalid_json";
+
+/**
+ * A failure's detail. Nothing the response said is kept beyond its HTTP status: no header
+ * value, no body. `errorCode` is the runtime's code for a failed connection (ECONNRESET,
+ * UND_ERR_SOCKET, …), kept only when it reads as one.
+ */
+type NetworkFailure = Readonly<{
+  status: "network_error"; reason: NetworkFailureReason; httpStatus?: number; errorCode?: string;
+}>;
+type ServerFailure<Reason extends string = ServerFailureReason> = Readonly<{
+  status: "server_error"; reason: Reason; httpStatus: number;
+}>;
+
 type PinnedJsonBody = Readonly<
-  | { status: "ok"; body: unknown }
+  | { status: "ok"; body: unknown; httpStatus: number }
   | { status: "rate_limited"; retryAfterSeconds: number | null }
-  | { status: "server_error" }
-  | { status: "network_error" }
+  | ServerFailure
+  | NetworkFailure
 >;
+
+const ERROR_CODE_PATTERN = /^[A-Z][A-Z0-9_]{1,63}$/u;
+
+/** The code of a failed fetch or body read: undici puts it on the cause. */
+function errorCodeOf(error: unknown): { errorCode?: string } {
+  const cause = error instanceof Error ? error.cause : undefined;
+  for (const candidate of [cause, error]) {
+    const code = candidate !== null && typeof candidate === "object"
+      ? (candidate as { code?: unknown }).code : undefined;
+    if (typeof code === "string" && ERROR_CODE_PATTERN.test(code)) return { errorCode: code };
+  }
+  return {};
+}
 
 /**
  * A 429's Retry-After in whole seconds: delta-seconds or an HTTP-date (RFC 9110), at
@@ -50,7 +84,7 @@ export function retryAfterSecondsOf(header: string | null, nowMs: number): numbe
 async function pinnedJsonBody(url: URL, timeoutMs: number): Promise<PinnedJsonBody> {
   // Defence in depth: a pinned base can never produce another host, and
   // redirects are refused outright.
-  if (url.protocol !== "https:") return { status: "network_error" };
+  if (url.protocol !== "https:") return { status: "network_error", reason: "invalid_request" };
   const timeout = new AbortController();
   const timer = setTimeout(() => timeout.abort(), timeoutMs);
   let response: Response;
@@ -61,24 +95,36 @@ async function pinnedJsonBody(url: URL, timeoutMs: number): Promise<PinnedJsonBo
       signal: timeout.signal,
       headers: { accept: "application/json" },
     });
-  } catch {
-    return { status: "network_error" };
+  } catch (error) {
+    return timeout.signal.aborted
+      ? { status: "network_error", reason: "timeout" }
+      : { status: "network_error", reason: "network", ...errorCodeOf(error) };
   } finally {
     clearTimeout(timer);
   }
-  if (response.status === 429) {
+  const httpStatus = response.status;
+  if (httpStatus === 429) {
     return { status: "rate_limited",
       retryAfterSeconds: retryAfterSecondsOf(response.headers.get("retry-after"), Date.now()) };
   }
-  if (!response.ok) return { status: "server_error" };
+  if (!response.ok) return { status: "server_error", reason: "http_status", httpStatus };
   const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) return { status: "server_error" };
-  const body = await response.text();
-  if (body.length > MAX_RESPONSE_BYTES) return { status: "server_error" };
+  if (!contentType.includes("application/json")) {
+    return { status: "server_error", reason: "content_type", httpStatus };
+  }
+  let body: string;
   try {
-    return { status: "ok", body: JSON.parse(body) };
+    body = await response.text();
+  } catch (error) {
+    // A connection lost mid-body is a failed page like any other. Thrown, it ended the
+    // whole run and dropped the pages already read (B73).
+    return { status: "network_error", reason: "body_read", httpStatus, ...errorCodeOf(error) };
+  }
+  if (body.length > MAX_RESPONSE_BYTES) return { status: "server_error", reason: "too_large", httpStatus };
+  try {
+    return { status: "ok", body: JSON.parse(body), httpStatus };
   } catch {
-    return { status: "server_error" };
+    return { status: "server_error", reason: "invalid_json", httpStatus };
   }
 }
 
@@ -86,7 +132,9 @@ async function pinnedJsonFetch(url: URL, timeoutMs: number): Promise<FetchPageRe
   const result = await pinnedJsonBody(url, timeoutMs);
   // These feeds document a wait of about a minute, inside the scheduler's backoff.
   if (result.status === "rate_limited") return { status: "rate_limited" };
-  if (result.status !== "ok") return result;
+  // Their reports do not carry a failure's reason (B73 covers RemoteJobs.org only).
+  if (result.status === "server_error") return { status: "server_error" };
+  if (result.status === "network_error") return { status: "network_error" };
   const parsed = result.body;
   if (!parsed || typeof parsed !== "object" || !Array.isArray((parsed as { jobs?: unknown }).jobs)) {
     return { status: "server_error" };
@@ -171,11 +219,15 @@ export const REMOTE_JOBS_ORG_PAGE_SIZE = 50;
 export const REMOTE_JOBS_ORG_MAX_PAGES = 20;
 export const REMOTE_JOBS_ORG_REQUEST_VERSION = "job-search-request/1";
 
+/** Which envelope check a RemoteJobs.org page failed (B73). */
+export type RemoteJobsOrgEnvelopeReason =
+  | "envelope_data" | "envelope_pagination" | "envelope_offset" | "envelope_version";
+
 export type RemoteJobsOrgPageResult = Readonly<
   | { status: "ok"; jobs: readonly unknown[]; hasMore: boolean }
   | { status: "rate_limited"; retryAfterSeconds: number | null }
-  | { status: "server_error" }
-  | { status: "network_error" }
+  | ServerFailure<ServerFailureReason | RemoteJobsOrgEnvelopeReason>
+  | NetworkFailure
 >;
 
 export async function fetchRemoteJobsOrgPage(request: Readonly<{
@@ -184,7 +236,7 @@ export async function fetchRemoteJobsOrgPage(request: Readonly<{
   const { offset } = request;
   if (!Number.isSafeInteger(offset) || offset < 0 || offset % REMOTE_JOBS_ORG_PAGE_SIZE !== 0 ||
     offset >= REMOTE_JOBS_ORG_PAGE_SIZE * REMOTE_JOBS_ORG_MAX_PAGES) {
-    return { status: "network_error" };
+    return { status: "network_error", reason: "invalid_request" };
   }
   const url = new URL(REMOTE_JOBS_ORG_FEED_URL);
   url.searchParams.set("workArrangement", "remote");
@@ -192,7 +244,7 @@ export async function fetchRemoteJobsOrgPage(request: Readonly<{
   url.searchParams.set("limit", String(REMOTE_JOBS_ORG_PAGE_SIZE));
   url.searchParams.set("offset", String(offset));
   url.searchParams.set("requestVersion", REMOTE_JOBS_ORG_REQUEST_VERSION);
-  if (url.host !== "remotejobs.org") return { status: "network_error" };
+  if (url.host !== "remotejobs.org") return { status: "network_error", reason: "invalid_request" };
   const result = await pinnedJsonBody(url, request.timeoutMs ?? DEFAULT_TIMEOUT_MS);
   if (result.status !== "ok") return result;
   const body = result.body as {
@@ -200,14 +252,20 @@ export async function fetchRemoteJobsOrgPage(request: Readonly<{
     meta?: { search?: { request_version?: unknown } };
   } | null;
   // The envelope must answer this request: its data, its offset, its version of the
-  // filters. Anything else is a failed page, never an empty one.
+  // filters. Anything else is a failed page, never an empty one; the failure names the
+  // first check it did not pass.
+  const failed = (reason: RemoteJobsOrgEnvelopeReason): RemoteJobsOrgPageResult =>
+    ({ status: "server_error", reason, httpStatus: result.httpStatus });
   if (!body || typeof body !== "object" || !Array.isArray(body.data) ||
-    body.data.length > REMOTE_JOBS_ORG_PAGE_SIZE ||
-    !body.pagination || typeof body.pagination !== "object" ||
-    body.pagination.offset !== offset || typeof body.pagination.has_more !== "boolean" ||
-    body.meta?.search?.request_version !== REMOTE_JOBS_ORG_REQUEST_VERSION) {
-    return { status: "server_error" };
+    body.data.length > REMOTE_JOBS_ORG_PAGE_SIZE) {
+    return failed("envelope_data");
   }
+  if (!body.pagination || typeof body.pagination !== "object" ||
+    typeof body.pagination.has_more !== "boolean") {
+    return failed("envelope_pagination");
+  }
+  if (body.pagination.offset !== offset) return failed("envelope_offset");
+  if (body.meta?.search?.request_version !== REMOTE_JOBS_ORG_REQUEST_VERSION) return failed("envelope_version");
   return { status: "ok", jobs: body.data, hasMore: body.pagination.has_more };
 }
 

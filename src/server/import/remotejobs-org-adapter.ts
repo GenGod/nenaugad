@@ -19,6 +19,31 @@ import type { SnapshotPersistence } from "./himalayas-adapter.ts";
 /** One page of the window, by its offset (0, 50, 100, …). */
 export type RemoteJobsOrgTransport = (offset: number) => Promise<RemoteJobsOrgPageResult>;
 
+type FailedPageResult = Exclude<RemoteJobsOrgPageResult, { status: "ok" }>;
+
+/**
+ * The page that ended the walk by failing, and why (B73): its offset, the outcome, the
+ * fetcher's reason code, the HTTP status when a response arrived and the runtime's code
+ * for a failed connection. A 429's wait is the report's `nextEligibleAt`.
+ */
+export type RemoteJobsOrgFailedPage = Readonly<{
+  offset: number;
+  status: FailedPageResult["status"];
+  reason?: Exclude<FailedPageResult, { status: "rate_limited" }>["reason"];
+  httpStatus?: number;
+  errorCode?: string;
+}>;
+
+// Field by field, so nothing else a failure object carries reaches the report or a log.
+function failedPageOf(offset: number, page: FailedPageResult): RemoteJobsOrgFailedPage {
+  if (page.status === "rate_limited") return { offset, status: page.status };
+  return {
+    offset, status: page.status, reason: page.reason,
+    ...(page.httpStatus !== undefined ? { httpStatus: page.httpStatus } : {}),
+    ...(page.status === "network_error" && page.errorCode !== undefined ? { errorCode: page.errorCode } : {}),
+  };
+}
+
 /**
  * The wait after a 429 that names none: the API limits requests per hour, so an hour
  * is the longest a window can still be closed.
@@ -36,6 +61,8 @@ export type RemoteJobsOrgReport = Readonly<{
    * before it are imported).
    */
   traversal: "complete" | "seen" | "page_cap" | "interrupted" | null;
+  /** Null unless a page failed: the first page (`retry_scheduled`) or a later one (`interrupted`). */
+  failedPage: RemoteJobsOrgFailedPage | null;
   recordsMapped: number;
   recordsRejected: number;
   changes: readonly { id: string; change: string; version: number }[];
@@ -56,7 +83,7 @@ export async function runRemoteJobsOrgImport(params: Readonly<{
   const maxPages = Math.min(REMOTE_JOBS_ORG_MAX_PAGES,
     Math.max(1, Math.floor(params.maxPages ?? REMOTE_JOBS_ORG_MAX_PAGES)));
   const empty: RemoteJobsOrgReport = {
-    result: "refused_disabled", pagesFetched: 0, traversal: null,
+    result: "refused_disabled", pagesFetched: 0, traversal: null, failedPage: null,
     recordsMapped: 0, recordsRejected: 0,
     changes: [], tombstoned: 0, nextEligibleAt: null,
   };
@@ -81,10 +108,13 @@ export async function runRemoteJobsOrgImport(params: Readonly<{
   let rejected = 0;
   let pagesFetched = 0;
   let retryNotBefore: string | null = null;
+  let failedPage: RemoteJobsOrgFailedPage | null = null;
   let traversal: "complete" | "seen" | "page_cap" | "interrupted" = "page_cap";
   while (pagesFetched < maxPages) {
-    const page = await transport(pagesFetched * REMOTE_JOBS_ORG_PAGE_SIZE);
+    const offset = pagesFetched * REMOTE_JOBS_ORG_PAGE_SIZE;
+    const page = await transport(offset);
     if (page.status !== "ok") {
+      failedPage = failedPageOf(offset, page);
       if (page.status === "rate_limited") {
         const seconds = page.retryAfterSeconds ?? REMOTE_JOBS_ORG_DEFAULT_RETRY_AFTER_SECONDS;
         retryNotBefore = new Date(Date.parse(now) + seconds * 1000).toISOString();
@@ -98,7 +128,7 @@ export async function runRemoteJobsOrgImport(params: Readonly<{
             runCount: state?.runCount ?? 0, retryNotBefore,
           });
         }
-        return { ...empty, result: "retry_scheduled", nextEligibleAt: retryNotBefore };
+        return { ...empty, result: "retry_scheduled", failedPage, nextEligibleAt: retryNotBefore };
       }
       traversal = "interrupted";
       break;
@@ -152,6 +182,7 @@ export async function runRemoteJobsOrgImport(params: Readonly<{
     result: "partial",
     pagesFetched,
     traversal,
+    failedPage,
     recordsMapped: snapshots.length,
     recordsRejected: rejected,
     changes: imported.changes,
