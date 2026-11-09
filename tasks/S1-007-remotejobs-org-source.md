@@ -3,7 +3,9 @@
 **Status: implemented and tested locally 2026-11-07, reviewed (one repair cycle used);
 matrix approved by the owner 2026-11-07 (decision 6) and activated by the owner the same
 day as a separate decision (decision 7): policy v3 `approved`, `enabled: true`; first live
-import run; not committed.** The owner asked to add new job sources (2026-11-06) and chose
+import run; committed as `dacd863`, merged into main as `230c48e` and pushed at the owner's
+word ("Merge into main", "Push main"); CI green on `230c48e` (run 42439213313). Not
+accepted.** The owner asked to add new job sources (2026-11-06) and chose
 RemoteJobs.org after a live review of the remaining registry candidates and several new
 ones (this file's "Candidate review"). See "Activation and first live run" under "Result".
 
@@ -526,6 +528,12 @@ app run this tree; the worker's next RemoteJobs.org run is due 6 h after the fir
 
 **Live requests by the activation:** 7 import pages (plus the one that failed) and 2 manual
 requests of page 8; `X-RateLimit-Remaining` 191 of 200 afterwards.
+
+**Merge and CI (2026-11-08):** committed as `dacd863` on `feature/s1-007-remotejobs-org-source`,
+merged into main as `230c48e` and pushed ("Merge into main", "Push main"). CI run 42439213313
+on `230c48e`: Code quality, Build and Tests green; unit and DB tests with the coverage ratchet
+650/650 (88.45 / 90.09 / 95.15); e2e 126/126. CI runs on fixtures and makes no request to
+RemoteJobs.org.
 
 **Next.**
 1. Send the question to RemoteJobs.org (the owner).

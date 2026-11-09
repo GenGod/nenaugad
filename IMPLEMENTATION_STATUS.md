@@ -7,8 +7,8 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-11-07: [S1-007](tasks/S1-007-remotejobs-org-source.md) (high risk, source rights) is implemented and tested locally, reviewed (one repair cycle), not committed: RemoteJobs.org as a fourth source; the owner **approved the matrix** 2026-11-07 (with a "Powered by RemoteJobs.org" line on every card) and **activated** it the same day as a separate decision (policy v3): the first live import stored 349 postings, 145 in the catalog (131 new cards, 14 merged with Jobicy or Himalayas). 2026-11-06: [B69-001](tasks/B69-001-worker-stop-and-db-restart.md) (normal risk) is
-implemented and tested locally, merged into main, not pushed: a worker tick with the batch path closed no longer
+**Updated:** 2026-11-07: [S1-007](tasks/S1-007-remotejobs-org-source.md) (high risk, source rights) is implemented and tested locally, reviewed (one repair cycle), merged into main as `230c48e` and pushed, CI green; not accepted: RemoteJobs.org as a fourth source; the owner **approved the matrix** 2026-11-07 (with a "Powered by RemoteJobs.org" line on every card) and **activated** it the same day as a separate decision (policy v3): the first live import stored 349 postings, 145 in the catalog (131 new cards, 14 merged with Jobicy or Himalayas). 2026-11-06: [B69-001](tasks/B69-001-worker-stop-and-db-restart.md) (normal risk) is
+implemented and tested locally, merged into main as `1c1fbfd` and pushed, CI green; not accepted: a worker tick with the batch path closed no longer
 scans every profile, and a database restart no longer crashes the worker. The whole site runs
 in Docker on this computer ([DEVX-005](tasks/DEVX-005-site-in-docker.md): `docker compose up -d
 --build` starts db, migrations and seed, the built site and the worker; live AI forced off in
@@ -198,10 +198,12 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   `test:coverage` exit 0 (650/650; 88.47 / 90.06 / 95.15, ratchet lines 88, functions 95);
   `build` exit 0; `test:e2e` 126/126 (after the owner's "Powered by RemoteJobs.org" line).
   After activation: `check` and `test:db` exit 0 again; `import:remotejobs-org` exit 0 (live,
-  7 pages, the eighth failed once and answered a minute later). Not committed: no CI run.
+  7 pages, the eighth failed once and answered a minute later). CI green on the merge
+  `230c48e` (run 42439213313; 650/650; 88.45 / 90.09 / 95.15; e2e 126/126).
 - 2026-11-06 ([B69-001](tasks/B69-001-worker-stop-and-db-restart.md)): `npm run check` exit 0
   (unit 469/469); `test:db` equivalent exit 0 (157/157); `test:coverage` equivalent exit 0
-  (626/626; 87.86 / 89.32 / 94.94, ratchet unchanged). Merged into main, not pushed: no CI run.
+  (626/626; 87.86 / 89.32 / 94.94, ratchet unchanged). CI green on the merge `1c1fbfd`
+  (run 42220247988).
 - 2026-11-06 ([DEVX-005](tasks/DEVX-005-site-in-docker.md), Docker files, compose and docs
   only): `npm run check` exit 0 (unit 446/446; 467/467 after the merge with DEPLOY-003);
   `docker compose up -d --build` exit 0, site healthy on Postgres, worker imports all three

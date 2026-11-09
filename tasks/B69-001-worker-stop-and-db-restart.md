@@ -1,6 +1,6 @@
 # B69-001 — the worker stops on time and survives a database restart
 
-**Status: implemented and tested locally, 2026-11-06; committed at the owner's word ("commit and merge") and merged into `main`; not pushed, not accepted.** The merge also drops the worker's
+**Status: implemented and tested locally, 2026-11-06; committed at the owner's word ("commit and merge") and merged into `main` as `1c1fbfd`; pushed, CI green on `1c1fbfd` (run 42220247988); not accepted.** The merge also drops the worker's
 `--no-batch` flag from `compose.yaml` (DEVX-005), which this fix makes redundant. Started from [docs/OPEN_GAPS.md](../docs/OPEN_GAPS.md)
 B69, found while running the worker in Docker for DEVX-005 (2026-11-06) and kept out of that
 task on purpose: these are application changes, DEVX-005 changes only Docker files.
