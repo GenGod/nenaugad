@@ -4,8 +4,8 @@
 matrix approved by the owner 2026-11-07 (decision 6) and activated by the owner the same
 day as a separate decision (decision 7): policy v3 `approved`, `enabled: true`; first live
 import run; committed as `dacd863`, merged into main as `230c48e` and pushed at the owner's
-word ("Merge into main", "Push main"); CI green on `230c48e` (run 42439213313). Not
-accepted.** The owner asked to add new job sources (2026-11-06) and chose
+word ("Merge into main", "Push main"); CI green on `230c48e` (run 42439213313). Accepted
+by the owner 2026-11-09 ("accepted S1-007").** The owner asked to add new job sources (2026-11-06) and chose
 RemoteJobs.org after a live review of the remaining registry candidates and several new
 ones (this file's "Candidate review"). See "Activation and first live run" under "Result".
 
@@ -533,7 +533,12 @@ requests of page 8; `X-RateLimit-Remaining` 191 of 200 afterwards.
 merged into main as `230c48e` and pushed ("Merge into main", "Push main"). CI run 42439213313
 on `230c48e`: Code quality, Build and Tests green; unit and DB tests with the coverage ratchet
 650/650 (88.45 / 90.09 / 95.15); e2e 126/126. CI runs on fixtures and makes no request to
-RemoteJobs.org.
+RemoteJobs.org. The record of this merge went in as `89d9c40`, merged as `bb42259` and
+pushed; CI green on `bb42259` (run 42573095044).
+
+**Owner acceptance:** 2026-11-09, "accepted S1-007", given in this session. Open at
+acceptance: the question to RemoteJobs.org is unsent, and B70–B73 are open. By then the
+worker had run the import 6 times with 0 failures (last run 2026-11-09 00:30 UTC).
 
 **Next.**
 1. Send the question to RemoteJobs.org (the owner).
