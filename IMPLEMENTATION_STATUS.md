@@ -7,7 +7,7 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-11-09: the owner **accepted** [S1-007](tasks/S1-007-remotejobs-org-source.md) (high risk, source rights; implemented and tested locally, reviewed with one repair cycle, merged into main as `230c48e` and pushed, CI green): RemoteJobs.org as a fourth source; the owner **approved the matrix** 2026-11-07 (with a "Powered by RemoteJobs.org" line on every card) and **activated** it the same day as a separate decision (policy v3): the first live import stored 349 postings, 145 in the catalog (131 new cards, 14 merged with Jobicy or Himalayas). 2026-11-06: [B69-001](tasks/B69-001-worker-stop-and-db-restart.md) (normal risk) is
+**Updated:** 2026-11-09: [B73-001](tasks/B73-001-failed-page-reason.md) (normal risk) is implemented and tested locally, not committed: a RemoteJobs.org import names the page that failed and why (offset, reason code, HTTP status, connection error code) in its report and the worker's log, and a body lost mid-read is a failed page instead of an exception that dropped the pages read (all four sources). The same day the owner **accepted** [S1-007](tasks/S1-007-remotejobs-org-source.md) (high risk, source rights; implemented and tested locally, reviewed with one repair cycle, merged into main as `230c48e` and pushed, CI green): RemoteJobs.org as a fourth source; the owner **approved the matrix** 2026-11-07 (with a "Powered by RemoteJobs.org" line on every card) and **activated** it the same day as a separate decision (policy v3): the first live import stored 349 postings, 145 in the catalog (131 new cards, 14 merged with Jobicy or Himalayas). 2026-11-06: [B69-001](tasks/B69-001-worker-stop-and-db-restart.md) (normal risk) is
 implemented and tested locally, merged into main as `1c1fbfd` and pushed, CI green; not accepted: a worker tick with the batch path closed no longer
 scans every profile, and a database restart no longer crashes the worker. The whole site runs
 in Docker on this computer ([DEVX-005](tasks/DEVX-005-site-in-docker.md): `docker compose up -d
@@ -96,6 +96,8 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   the jobicy import follows the feed cursor through the 7-day window, up to 10 pages a run
   ([B57-001](tasks/B57-001-jobicy-feed-paging.md)); a page cursor in an unexpected format
   fails the run instead of ending it as a complete pass ([B58-001](tasks/B58-001-rejected-cursor-is-a-failure.md));
+  a RemoteJobs.org report names a failed page and why (`failedPage`), and a body lost
+  mid-read is a failed page, not an exception ([B73-001](tasks/B73-001-failed-page-reason.md));
   cross-source dedup with provenance
   (A4); a cross-language near-dup queue for a human, nothing merged automatically
   (B5-001); expired records become tombstones, and the journal keeps 12 months (RET-001).
@@ -193,6 +195,10 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   (DEVX-005, 2026-11-06; the server keeps its systemd units).
 
 ## Latest checks
+- 2026-11-09 ([B73-001](tasks/B73-001-failed-page-reason.md)): `npm run check` exit 0
+  (unit 494/494); `test:coverage` exit 0 (652/652; 88.53 / 90.09 / 95.27, ratchet
+  unchanged; with `PG_TOOLS_CONTAINER=nenaugad-db-1`). Not run: `build`, `test:e2e`, a live
+  import (no page changed; the worker's next run shows the field).
 - 2026-11-07 ([S1-007](tasks/S1-007-remotejobs-org-source.md)): `npm run check` exit 0
   (unit 492/492); `test:db` exit 0 (158/158, with `PG_TOOLS_CONTAINER=nenaugad-db-1`);
   `test:coverage` exit 0 (650/650; 88.47 / 90.06 / 95.15, ratchet lines 88, functions 95);

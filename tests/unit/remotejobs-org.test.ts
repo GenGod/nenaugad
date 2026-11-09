@@ -20,6 +20,7 @@ import { mapJobicyFixture } from "../../src/server/import/jobicy-fixture.ts";
 import { mapRemoteFirstJobsFixture } from "../../src/server/import/remote-first-jobs-fixture.ts";
 import { createMemoryPersistence } from "../../src/server/import/himalayas-adapter.ts";
 import {
+  fetchHimalayasPage, fetchJobicyWindow, fetchRemoteFirstJobsPage,
   fetchRemoteJobsOrgPage, REMOTE_JOBS_ORG_MAX_PAGES, REMOTE_JOBS_ORG_PAGE_SIZE,
   retryAfterSecondsOf, type RemoteJobsOrgPageResult,
 } from "../../src/server/import/fetcher.ts";
@@ -85,6 +86,28 @@ function pagedFeed(pages: readonly RemoteJobsOrgPageResult[]) {
       return pages[offset / REMOTE_JOBS_ORG_PAGE_SIZE] ?? { status: "ok", jobs: [], hasMore: false };
     },
   };
+}
+
+// Stand-ins for what `fetch` answers, for the tests that run the real fetcher.
+function jsonResponse(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
+  return new Response(JSON.stringify(body), {
+    status, headers: { "content-type": "application/json; charset=utf-8", ...headers },
+  });
+}
+
+function envelopeBody(offset: number, patch: Record<string, unknown> = {}) {
+  return {
+    data: [{ id: "synthetic" }], pagination: { total: 51, limit: 50, offset, has_more: true },
+    meta: { powered_by: "RemoteJobs.org", search: { request_version: "job-search-request/1" } }, ...patch,
+  };
+}
+
+// A 200 whose body fails while it is read, as undici reports a connection the other side closed.
+function failingBody(): Response {
+  const cause = Object.assign(new Error("other side closed"), { code: "UND_ERR_SOCKET" });
+  return new Response(new ReadableStream({
+    start(controller) { controller.error(Object.assign(new TypeError("terminated"), { cause })); },
+  }), { status: 200, headers: { "content-type": "application/json" } });
 }
 
 // A full page of distinct synthetic postings, so the walk does not stop early.
@@ -480,6 +503,7 @@ test("window import: pages in order until the feed ends; always partial, idempot
   const first = await runRemoteJobsOrgImport({ transport: feed.transport, persistence, policy: activePolicy, now: NOW });
   assert.equal(first.result, "partial");
   assert.equal(first.traversal, "complete");
+  assert.equal(first.failedPage, null);
   assert.deepEqual(feed.asked, [0, 50]);
   assert.equal(first.recordsMapped, REMOTE_JOBS_ORG_PAGE_SIZE + 3);
   const stored = await persistence.loadStore();
@@ -562,25 +586,86 @@ test("window import: a page stored by an earlier run ends the walk; the 20-page 
 });
 
 test("window import: a failed first page imports nothing; a failed later page keeps what was read", async () => {
-  for (const status of ["server_error", "network_error"] as const) {
+  for (const failure of [
+    { status: "server_error", reason: "http_status", httpStatus: 502 },
+    { status: "network_error", reason: "timeout" },
+  ] as const) {
     const persistence = createMemoryPersistence();
     const report = await runRemoteJobsOrgImport({
-      transport: pagedFeed([{ status }]).transport, persistence, policy: activePolicy, now: NOW,
+      transport: pagedFeed([failure]).transport, persistence, policy: activePolicy, now: NOW,
     });
     assert.equal(report.result, "retry_scheduled");
+    // B73: the report names the page and why it failed.
+    assert.deepEqual(report.failedPage, { offset: 0, ...failure });
     assert.equal(persistence.state, null); // the window is not used
     assert.deepEqual((await persistence.loadStore()).store.records, {});
   }
   const persistence = createMemoryPersistence();
   const interrupted = await runRemoteJobsOrgImport({
-    transport: pagedFeed([fullPage(0), { status: "server_error" }]).transport,
+    transport: pagedFeed([fullPage(0), { status: "server_error", reason: "envelope_version", httpStatus: 200 }]).transport,
     persistence, policy: activePolicy, now: NOW,
   });
   assert.equal(interrupted.result, "partial");
   assert.equal(interrupted.traversal, "interrupted");
   assert.equal(interrupted.pagesFetched, 1);
+  assert.deepEqual(interrupted.failedPage,
+    { offset: 50, status: "server_error", reason: "envelope_version", httpStatus: 200 });
   assert.equal(Object.keys((await persistence.loadStore()).store.records).length, REMOTE_JOBS_ORG_PAGE_SIZE);
   assert.equal(persistence.state?.lastRunAt, NOW);
+
+  // Only the named fields reach the report (and the worker's log line), whatever else a
+  // failure object carries.
+  const extra = { status: "network_error", reason: "network", errorCode: "ECONNRESET", body: "<html>" };
+  const picked = await runRemoteJobsOrgImport({
+    transport: pagedFeed([extra as RemoteJobsOrgPageResult]).transport,
+    persistence: createMemoryPersistence(), policy: activePolicy, now: NOW,
+  });
+  assert.deepEqual(picked.failedPage, { offset: 0, status: "network_error", reason: "network", errorCode: "ECONNRESET" });
+});
+
+test("window import through the real fetcher: the report names the page that failed and why (B73)", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    const first = fullPage(0);
+    const jobs = first.status === "ok" ? first.jobs : [];
+    let second: () => Response = () => jsonResponse(envelopeBody(100)); // another page's offset
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const offset = Number(new URL(String(input)).searchParams.get("offset"));
+      return offset === 0 ? jsonResponse(envelopeBody(0, { data: jobs })) : second();
+    }) as typeof fetch;
+    const transport = (offset: number) => fetchRemoteJobsOrgPage({ offset });
+
+    const report = await runRemoteJobsOrgImport({
+      transport, persistence: createMemoryPersistence(), policy: activePolicy, now: NOW,
+    });
+    assert.equal(report.result, "partial");
+    assert.equal(report.traversal, "interrupted");
+    assert.equal(report.pagesFetched, 1);
+    assert.deepEqual(report.failedPage,
+      { offset: 50, status: "server_error", reason: "envelope_offset", httpStatus: 200 });
+
+    // A connection lost while page 2's body is read is a failed page, not an exception:
+    // page 1 is stored (before B73 the run threw and stored nothing).
+    second = failingBody;
+    const persistence = createMemoryPersistence();
+    const cut = await runRemoteJobsOrgImport({ transport, persistence, policy: activePolicy, now: NOW });
+    assert.equal(cut.result, "partial");
+    assert.equal(cut.traversal, "interrupted");
+    assert.deepEqual(cut.failedPage,
+      { offset: 50, status: "network_error", reason: "body_read", httpStatus: 200, errorCode: "UND_ERR_SOCKET" });
+    assert.equal(Object.keys((await persistence.loadStore()).store.records).length, REMOTE_JOBS_ORG_PAGE_SIZE);
+    assert.equal(persistence.state?.lastRunAt, NOW);
+
+    // A clean run names no failed page.
+    second = () => jsonResponse(envelopeBody(50, { data: [], pagination: { offset: 50, has_more: false } }));
+    const clean = await runRemoteJobsOrgImport({
+      transport, persistence: createMemoryPersistence(), policy: activePolicy, now: NOW,
+    });
+    assert.equal(clean.traversal, "complete");
+    assert.equal(clean.failedPage, null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("window import: Retry-After is respected across runs, and an invalid record is one rejection", async () => {
@@ -589,6 +674,7 @@ test("window import: Retry-After is respected across runs, and an invalid record
   const limited = pagedFeed([{ status: "rate_limited", retryAfterSeconds: 1800 }]);
   const refused = await runRemoteJobsOrgImport({ transport: limited.transport, persistence, policy: activePolicy, now: NOW });
   assert.equal(refused.result, "retry_scheduled");
+  assert.deepEqual(refused.failedPage, { offset: 0, status: "rate_limited" });
   assert.equal(refused.nextEligibleAt, "2026-11-07T12:30:00.000Z");
   assert.equal(persistence.state?.retryNotBefore, "2026-11-07T12:30:00.000Z");
   assert.equal(persistence.state?.lastRunAt, null);
@@ -641,6 +727,7 @@ test("window import: Retry-After is respected across runs, and an invalid record
   });
   assert.equal(laterPage.result, "partial");
   assert.equal(laterPage.traversal, "interrupted");
+  assert.deepEqual(laterPage.failedPage, { offset: 50, status: "rate_limited" });
   assert.equal(laterPage.nextEligibleAt, "2026-11-07T12:10:00.000Z");
   assert.equal(later.state?.retryNotBefore, "2026-11-07T12:10:00.000Z");
   assert.equal(later.state?.lastRunAt, NOW);
@@ -665,11 +752,8 @@ test("fetcher: pinned to remotejobs.org, no redirects, documented parameters, th
     return answer();
   }) as typeof fetch;
   const json = (body: unknown, status = 200, headers: Record<string, string> = {}) => () =>
-    new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", ...headers } });
-  const envelope = (offset: number, patch: Record<string, unknown> = {}) => ({
-    data: [{ id: "synthetic" }], pagination: { total: 51, limit: 50, offset, has_more: true },
-    meta: { powered_by: "RemoteJobs.org", search: { request_version: "job-search-request/1" } }, ...patch,
-  });
+    jsonResponse(body, status, headers);
+  const envelope = envelopeBody;
 
   answer = json(envelope(100));
   assert.deepEqual(await fetchRemoteJobsOrgPage({ offset: 100 }), { status: "ok", jobs: [{ id: "synthetic" }], hasMore: true });
@@ -682,39 +766,99 @@ test("fetcher: pinned to remotejobs.org, no redirects, documented parameters, th
   ]);
   assert.equal(seen[0]!.redirect, "error");
 
-  // Only the offsets of the first 20 pages.
+  // Only the offsets of the first 20 pages; refused before anything is sent.
   for (const offset of [-50, 25, 1000, 1.5, Number.NaN]) {
-    assert.equal((await fetchRemoteJobsOrgPage({ offset })).status, "network_error", String(offset));
+    assert.deepEqual(await fetchRemoteJobsOrgPage({ offset }),
+      { status: "network_error", reason: "invalid_request" }, String(offset));
   }
   assert.equal(seen.length, 1);
 
-  // An envelope that does not answer this request is a failed page, never an empty one.
-  for (const body of [
-    envelope(50), // another offset
-    envelope(100, { meta: { search: { request_version: "job-search-request/2" } } }),
-    envelope(100, { meta: undefined }),
-    envelope(100, { pagination: undefined }),
-    envelope(100, { pagination: { offset: 100, has_more: "yes" } }),
-    envelope(100, { data: undefined }),
-    envelope(100, { data: Array.from({ length: 51 }, () => ({})) }),
-    null,
-    [],
-  ]) {
+  // An envelope that does not answer this request is a failed page, never an empty one,
+  // and the failure names the check (B73).
+  for (const [body, reason] of [
+    [envelope(50), "envelope_offset"], // another offset
+    [envelope(100, { meta: { search: { request_version: "job-search-request/2" } } }), "envelope_version"],
+    [envelope(100, { meta: undefined }), "envelope_version"],
+    [envelope(100, { meta: "job-search-request/1" }), "envelope_version"],
+    [envelope(100, { pagination: undefined }), "envelope_pagination"],
+    [envelope(100, { pagination: { offset: 100, has_more: "yes" } }), "envelope_pagination"],
+    [envelope(100, { data: undefined }), "envelope_data"],
+    [envelope(100, { data: Array.from({ length: 51 }, () => ({})) }), "envelope_data"],
+    [null, "envelope_data"],
+    [[], "envelope_data"],
+  ] as const) {
     answer = json(body);
-    assert.equal((await fetchRemoteJobsOrgPage({ offset: 100 })).status, "server_error", JSON.stringify(body)?.slice(0, 80));
+    assert.deepEqual(await fetchRemoteJobsOrgPage({ offset: 100 }),
+      { status: "server_error", reason, httpStatus: 200 }, JSON.stringify(body)?.slice(0, 80));
   }
+  // What arrived is named with its HTTP status; nothing else of the response is kept.
   answer = () => new Response("<html></html>", { headers: { "content-type": "text/html" } });
-  assert.equal((await fetchRemoteJobsOrgPage({ offset: 0 })).status, "server_error");
-  answer = json({}, 503);
-  assert.equal((await fetchRemoteJobsOrgPage({ offset: 0 })).status, "server_error");
+  assert.deepEqual(await fetchRemoteJobsOrgPage({ offset: 0 }),
+    { status: "server_error", reason: "content_type", httpStatus: 200 });
+  for (const status of [503, 404, 500]) {
+    answer = json({ error: "synthetic" }, status);
+    assert.deepEqual(await fetchRemoteJobsOrgPage({ offset: 0 }),
+      { status: "server_error", reason: "http_status", httpStatus: status });
+  }
+  answer = () => new Response("{\"data\": [", { headers: { "content-type": "application/json" } });
+  assert.deepEqual(await fetchRemoteJobsOrgPage({ offset: 0 }),
+    { status: "server_error", reason: "invalid_json", httpStatus: 200 });
+  answer = () => new Response(" ".repeat(8 * 1024 * 1024 + 1), { headers: { "content-type": "application/json" } });
+  assert.deepEqual(await fetchRemoteJobsOrgPage({ offset: 0 }),
+    { status: "server_error", reason: "too_large", httpStatus: 200 });
 
   // A 429 carries its Retry-After; without one the adapter chooses the wait.
   answer = json({ error: "rate_limited" }, 429, { "retry-after": "120" });
   assert.deepEqual(await fetchRemoteJobsOrgPage({ offset: 0 }), { status: "rate_limited", retryAfterSeconds: 120 });
   answer = json({ error: "rate_limited" }, 429);
   assert.deepEqual(await fetchRemoteJobsOrgPage({ offset: 0 }), { status: "rate_limited", retryAfterSeconds: null });
+
+  // A failed connection keeps the runtime's code when it is a clean one (the cause's first).
+  const failedWith = (code: unknown, on: "cause" | "error" = "cause") => () => {
+    const coded = (message: string) => Object.assign(new Error(message), { code });
+    throw on === "cause" ? new TypeError("fetch failed", { cause: coded("synthetic") }) : coded("synthetic");
+  };
   answer = () => { throw new TypeError("redirect"); };
-  assert.equal((await fetchRemoteJobsOrgPage({ offset: 0 })).status, "network_error");
+  assert.deepEqual(await fetchRemoteJobsOrgPage({ offset: 0 }), { status: "network_error", reason: "network" });
+  answer = failedWith("ECONNRESET");
+  assert.deepEqual(await fetchRemoteJobsOrgPage({ offset: 0 }),
+    { status: "network_error", reason: "network", errorCode: "ECONNRESET" });
+  answer = failedWith("ENOTFOUND", "error");
+  assert.deepEqual(await fetchRemoteJobsOrgPage({ offset: 0 }),
+    { status: "network_error", reason: "network", errorCode: "ENOTFOUND" });
+  for (const unclean of ["econnreset", "BAD CODE", "X\nY", 104, `E${"X".repeat(64)}`, ""]) {
+    answer = failedWith(unclean);
+    assert.deepEqual(await fetchRemoteJobsOrgPage({ offset: 0 }),
+      { status: "network_error", reason: "network" }, JSON.stringify(unclean));
+  }
+  // A body that fails while it is read is a failed page, not an exception.
+  answer = failingBody;
+  assert.deepEqual(await fetchRemoteJobsOrgPage({ offset: 0 }),
+    { status: "network_error", reason: "body_read", httpStatus: 200, errorCode: "UND_ERR_SOCKET" });
+  // No answer within the deadline.
+  globalThis.fetch = ((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+    init?.signal?.addEventListener("abort", () => reject(new DOMException("This operation was aborted", "AbortError")));
+  })) as typeof fetch;
+  assert.deepEqual(await fetchRemoteJobsOrgPage({ offset: 0, timeoutMs: 5 }), { status: "network_error", reason: "timeout" });
+});
+
+test("fetcher: the other sources answer the bare status as before; a failed body read no longer throws", async () => {
+  const originalFetch = globalThis.fetch;
+  let answer: () => Response = () => jsonResponse({}, 503);
+  globalThis.fetch = (async () => answer()) as typeof fetch;
+  try {
+    assert.deepEqual(await fetchHimalayasPage(), { status: "server_error" });
+    assert.deepEqual(await fetchJobicyWindow(), { status: "server_error" });
+    assert.deepEqual(await fetchRemoteFirstJobsPage({ page: 0 }), { status: "server_error" });
+    answer = () => { throw new TypeError("fetch failed", { cause: Object.assign(new Error("x"), { code: "ECONNRESET" }) }); };
+    assert.deepEqual(await fetchHimalayasPage(), { status: "network_error" });
+    answer = failingBody;
+    assert.deepEqual(await fetchHimalayasPage(), { status: "network_error" });
+    assert.deepEqual(await fetchJobicyWindow(), { status: "network_error" });
+    assert.deepEqual(await fetchRemoteFirstJobsPage({ page: 0 }), { status: "network_error" });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("Retry-After: seconds or an HTTP date, at least a second and never shortened; anything else is unread", () => {

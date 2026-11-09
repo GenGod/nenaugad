@@ -1,15 +1,10 @@
 {
-  "task_id": "S1-007",
-  "file": "tasks/S1-007-remotejobs-org-source.md",
-  "status": "accepted",
-  "repair_cycles_used": 1,
+  "task_id": "B73-001",
+  "file": "tasks/B73-001-failed-page-reason.md",
+  "status": "implemented",
+  "repair_cycles_used": 0,
   "max_repair_cycles": 2,
-  "hypotheses": [
-    {
-      "text": "Review S1-007 (should-fix 2, notes 4 and 7): the mapper widens or shortens what the source says in three places. A location condition other than a timezone requirement or context (e.g. kind license, effect require, areas US-UT) leaves a known list passing; a verified worldwide reading with regions or listed countries is still worldwide; Retry-After above 24 h is cut to 24 h. Fix: any such condition withholds the listed countries like an unresolved note and is kept as evidence; worldwide also needs no region and no country list; Retry-After is honoured in full (at least 1 s). Testable: the unit table gains a license-require case (GEO-01 unknown for US), a worldwide+region case (unspecified) and a 30-day Retry-After (stored as given); the 50-job sample's 25/24/1 split does not change because geography never moves a posting between catalog tiers.",
-      "recorded_at": "2026-11-07T08:11:17.946Z"
-    }
-  ],
+  "hypotheses": [],
   "coding_host_spend": "unknown",
-  "note": "S1-007 (the fourth source RemoteJobs.org, high risk: source rights) implemented and tested locally 2026-11-07; reviewed by a fresh-context reviewer (no blocking finding), repair cycle 1 used and re-reviewed (no regression). Owner decisions 2026-11-07: the 'Powered by RemoteJobs.org' credit line on every card, the permission matrix approved (decision 6), and activation as a separate decision: policy/remotejobs_org/1 v3 approved and enabled (rollback: enabled false). First live import 2026-11-07: 7 pages (the eighth failed once, cause unrecorded, B73), 349 stored, 1 rejected; 145 main / 186 needs-review / 18 excluded; 145 cards, 14 of them merged with Jobicy or Himalayas copies (131 new); request_version echoed; no provider transfer. The drafted question to RemoteJobs.org is still unsent. Committed as dacd863, merged into main as 230c48e and pushed (\"Merge into main\", \"Push main\"); CI green on 230c48e (run 42439213313: 650/650; 88.45 / 90.09 / 95.15; e2e 126/126); the record merged as bb42259, CI green (run 42573095044). Accepted by the owner 2026-11-09 (\"accepted S1-007\"). Found on the way: B70, B71, B72 (the veto excludes on perks boilerplate) and B73 in docs/OPEN_GAPS.md; terms:check still exit 1 for Himalayas and Jobicy (changed pages await the owner's re-read, not re-baselined); Jobicy runs stop at the 10-page cap with 1,000 jobs. Previous task: B69-001, merged into main as 1c1fbfd and pushed, CI green (run 42220247988), not accepted."
+  "note": "B73-001 (normal risk): a RemoteJobs.org import names the page that failed and why (offset, status, reason code, HTTP status, runtime error code) in its report and the worker's log line; a body that fails mid-read becomes a failed page instead of an exception that drops the pages read. Started 2026-11-09 at the owner's request (\"implement B73\"); implemented and tested locally the same day, not committed: npm run check exit 0 (unit 494/494), test:coverage exit 0 with PG_TOOLS_CONTAINER=nenaugad-db-1 (652/652; 88.53 / 90.09 / 95.27); no repair cycle; no live call. Baseline 2026-11-09: npm run check:agent exit 0 (unit 492/492). Previous task: S1-007 (the fourth source RemoteJobs.org, high risk), merged into main as 230c48e and pushed, CI green, accepted by the owner 2026-11-09; open after it: the question to RemoteJobs.org (unsent), B70, B71, B72."
 }

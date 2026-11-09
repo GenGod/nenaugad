@@ -99,6 +99,8 @@ async function attempt(setup: Setup): Promise<void> {
       recordsRejected: "recordsRejected" in report ? report.recordsRejected : undefined,
       pagesFetched: report.pagesFetched,
       traversal: "traversal" in report ? report.traversal : undefined,
+      // Which page failed and why (RemoteJobs.org, B73); absent when none did.
+      failedPage: "failedPage" in report ? report.failedPage ?? undefined : undefined,
       // A 429's wait (RemoteJobs.org): when the next attempt may run.
       nextEligibleAt: report.nextEligibleAt ?? undefined,
       changes: report.changes.length,
