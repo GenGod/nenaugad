@@ -1,6 +1,7 @@
 # B73-001 — a RemoteJobs.org import says why a page failed
 
-**Status: implemented and tested locally 2026-11-09; not committed, not accepted.** Found by [S1-007](S1-007-remotejobs-org-source.md) on
+**Status: implemented and tested locally 2026-11-09; committed as `8fbf376`, merged into
+main as `adc8a96` and pushed, CI green (run 42622788152); not accepted.** Found by [S1-007](S1-007-remotejobs-org-source.md) on
 the first live RemoteJobs.org run (its "Next" item 2); the owner asked to start it
 ("implement B73").
 
@@ -146,6 +147,16 @@ Not run: `build` and `test:e2e` (no page changed), a live import. The worker's n
 RemoteJobs.org run will show the field, and only a page that fails fills it. No live call,
 no spend; coding-host spend unknown. The ratchet is unchanged: no metric crossed a new whole
 percent.
+
+### Merge and CI (2026-11-09)
+
+At the owner's request, the change was committed as `8fbf376` on
+`fix/b73-failed-page-reason`, merged into main as `adc8a96` (no fast-forward) and pushed
+("Commit the working tree changes", "Merge into main", "Push main"). main had not moved since
+the branch was cut, so the merged tree is the one tested above. CI run 42622788152 on
+`adc8a96`: Code quality, Build and Tests green; unit and DB tests with the coverage ratchet
+652/652 (88.51 / 90.18 / 95.27); e2e 126/126. CI runs on fixtures and makes no request to
+RemoteJobs.org.
 
 ### Changed files
 
