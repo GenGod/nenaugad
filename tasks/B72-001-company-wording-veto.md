@@ -2,8 +2,9 @@
 
 **Status: implemented and tested locally 2026-11-10, two repair cycles (the limit) after the
 independent review, final review: criteria 1–4 met with recorded residual risk; accepted by
-the owner 2026-11-10 with that residual risk ("Accept B72-001", given in this session); not
-committed, not activated (the worker's image still runs the old rule), not re-mapped.**
+the owner 2026-11-10 with that residual risk ("Accept B72-001", given in this session);
+committed as `f74c661`, merged into main as `0cc51d3` and pushed, CI green (run 42776194322);
+not activated (the worker's image still runs the old rule), not re-mapped.**
 Started 2026-11-09. Found by [S1-007](S1-007-remotejobs-org-source.md)
 on the first live RemoteJobs.org run ("The exclusions read by their trigger"), recorded as B72
 in [OPEN_GAPS](../docs/OPEN_GAPS.md). Started from the session that closed B73, at the owner's
@@ -397,6 +398,12 @@ first group is the place to start; it would need its own role-subject guard.
 you accept B72-001 with its recorded residual risk?". The judgment calls above stand as
 implemented. Acceptance is not a commit, a push or an activation: each waits for its own word.
 
-**Next.** Commit (the owner's word); rebuild the Docker image so the worker runs the rule
+**Merge and CI (2026-11-10):** committed as `f74c661` on `fix/b72-company-wording-veto`,
+merged into main as `0cc51d3` and pushed ("Commit the working tree changes", "Merge into
+main", "Push main"). CI run 42776194322 on `0cc51d3`: Build, Code quality and Tests green;
+unit and DB tests with the coverage ratchet 654/654 (88.59 / 90.29 / 95.30); e2e 126/126. CI
+runs on fixtures and makes no request to either source.
+
+**Next.** Rebuild the Docker image so the worker runs the rule
 (its imports re-map the rows each feed still carries); decide whether the rows no feed
 carries any more need B65's guarded one-off re-map. Then B74 (the false negation), B70, B71.
