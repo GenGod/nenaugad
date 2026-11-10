@@ -4,7 +4,8 @@
 independent review, final review: criteria 1–4 met with recorded residual risk; accepted by
 the owner 2026-11-10 with that residual risk ("Accept B72-001", given in this session);
 committed as `f74c661`, merged into main as `0cc51d3` and pushed, CI green (run 42776194322);
-not activated (the worker's image still runs the old rule), not re-mapped.**
+activated locally 2026-11-10 by rebuilding the Docker image ("Rebuild Docker"); the stored
+rows are re-mapped by the worker's next imports, not by a one-off script.**
 Started 2026-11-09. Found by [S1-007](S1-007-remotejobs-org-source.md)
 on the first live RemoteJobs.org run ("The exclusions read by their trigger"), recorded as B72
 in [OPEN_GAPS](../docs/OPEN_GAPS.md). Started from the session that closed B73, at the owner's
@@ -404,6 +405,16 @@ main", "Push main"). CI run 42776194322 on `0cc51d3`: Build, Code quality and Te
 unit and DB tests with the coverage ratchet 654/654 (88.59 / 90.29 / 95.30); e2e 126/126. CI
 runs on fixtures and makes no request to either source.
 
-**Next.** Rebuild the Docker image so the worker runs the rule
-(its imports re-map the rows each feed still carries); decide whether the rows no feed
-carries any more need B65's guarded one-off re-map. Then B74 (the false negation), B70, B71.
+**Activation (2026-11-10, "Rebuild Docker"):** `docker compose up -d --build` from main at
+`6169a11` (exit 0): web and worker recreated, init (migrations, seed) exited 0, the site
+answers 200, and both images carry the rule (`aboutTheCompany`, `ROLE_IS_REMOTE`). The worker
+started at 07:41:45 UTC with all four sources. Remote First Jobs and RemoteJobs.org last ran
+at 07:16 UTC under the old image and poll every 6 h, so their first imports under B72 are due
+from about 13:16 UTC. Stored at activation, still the old reading: Remote First Jobs 335
+confirmed / 1,377 unknown / 491 conflicting, RemoteJobs.org 321 / 340 / 32 (both feeds grew
+since the replay). An import re-maps only the rows its window still carries; the others keep
+the old, excluded reading until they leave.
+
+**Next.** After the first imports under B72, read the per-source counts; decide whether the
+rows no feed carries any more need B65's guarded one-off re-map. Then B74 (the false
+negation), B70, B71.
