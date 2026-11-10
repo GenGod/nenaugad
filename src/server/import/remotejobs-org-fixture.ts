@@ -207,7 +207,8 @@ function sourceArrangementOf(raw: RemoteJobsOrgRawRecord): Readonly<{
 // (the Remote First Jobs rule, B65). Errors may only run toward hiding a remote posting:
 //   1. the source's own hybrid/onsite field, or an office statement in the title or text,
 //      excludes the posting (an unresolved contradiction, spec 10.3);
-//   2. any other office word sends it to needs-review;
+//   2. any other office word sends it to needs-review, and so does a statement about the
+//      company, other roles, a condition, an option, a perk or a preference (B72);
 //   3. only then does the source's remote field confirm it.
 export function remoteJobsOrgWorkplace(raw: RemoteJobsOrgRawRecord, text: string, recordId: string): {
   workplace: Workplace; conflict: string | null; evidence: Evidence;

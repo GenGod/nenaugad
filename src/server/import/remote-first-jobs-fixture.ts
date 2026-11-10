@@ -85,7 +85,9 @@ const EXCERPT_CHARS = 300;
 // The rule has three tiers (owner decision 2026-11-02, review H1). Errors may only run
 // toward hiding a remote posting, never toward showing an office one as remote.
 //   1. An office STATEMENT (title or text) excludes the posting, even beside a remote
-//      statement: an unresolved contradiction is quarantined (spec 10.3).
+//      statement: an unresolved contradiction is quarantined (spec 10.3). Since B72 a
+//      statement in the text about the company, other roles, a condition, an option, a
+//      perk or a preference is not one: it is an office word (tier 2).
 //   2. Any other office WORD blocks confirmation: the posting goes to needs-review.
 //      Since B65 also: office words in other languages or inside a longer word, other
 //      places of work, presence by the calendar, and in the title anything attached to
@@ -166,18 +168,19 @@ const OFFICE_TITLE = [
   new RegExp(String.raw`\b(?:${HYBRID}|on[- ]?site|in[- ]office|office[- ]based)\b`, "iu"),
   ...NEGATED_REMOTE,
 ] as const;
-const OFFICE_STATEMENTS = [
-  /\bhybrid (?:role|position|job|work|working|schedule|model|setup|set-up|arrangement|policy|opportunity)\b/iu,
-  /\b(?:role|position|job) is hybrid\b/iu,
-  /\b(?:on[- ]?site|in[- ]office|in[- ]person) (?:role|position|job)\b/iu,
-  /\b(?:days?|times?) (?:a|per|each) week (?:in|at|from) (?:the |our |an? )?[^.]{0,40}?\boffice\b/iu,
-  /\boffice\b[^.]{0,40}?\b(?:[1-5]|one|two|three|four|five) days? (?:a|per|each) week\b/iu,
-  /\bin[- ]office (?:\w+ )?(?:days?|requirement|presence|attendance)\b/iu,
+// Statements of a work arrangement in the text. Since B72 each occurrence is read in its
+// sentence (`aboutTheCompany`), so the patterns are global; the negations are not.
+const ARRANGEMENT_STATEMENTS = [
+  /\bhybrid (?:role|position|job|work|working|schedule|model|setup|set-up|arrangement|policy|opportunity)\b/giu,
+  /\b(?:role|position|job) is hybrid\b/giu,
+  /\b(?:on[- ]?site|in[- ]office|in[- ]person) (?:role|position|job)\b/giu,
+  /\b(?:days?|times?) (?:a|per|each) week (?:in|at|from) (?:the |our |an? )?[^.]{0,40}?\boffice\b/giu,
+  /\boffice\b[^.]{0,40}?\b(?:[1-5]|one|two|three|four|five) days? (?:a|per|each) week\b/giu,
+  /\bin[- ]office (?:\w+ )?(?:days?|requirement|presence|attendance)\b/giu,
   // An obligation, not a history or a joke: "one year of work onsite in Germany" is
   // experience, and "don't ask to work in our office (we don't have one)" is remote.
-  /\b(?:will|must|(?:required|expected|needs?) to) (?:work|be|report) (?:on[- ]?site|in[- ]office|in (?:the|our) office)\b/iu,
-  /\bin[- ]person \d+ days?\b/iu,
-  ...NEGATED_REMOTE,
+  /\b(?:will|must|(?:required|expected|needs?) to) (?:work|be|report) (?:on[- ]?site|in[- ]office|in (?:the|our) office)\b/giu,
+  /\bin[- ]person \d+ days?\b/giu,
 ] as const;
 // ANY office vocabulary blocks a confirmation and sends the posting to a human. Listing
 // office phrasings one by one always missed some ("work from our London office", "the
@@ -388,6 +391,142 @@ function firstMatch(patterns: readonly RegExp[], ...views: readonly string[]): s
   return null;
 }
 
+// B72: an arrangement statement in the text is read in its sentence. Wording about the
+// company, about other roles, a condition, an option, a perk or a preference does not state
+// this role's arrangement, so it does not exclude: it is an office word (tier 2), and the
+// posting waits for review. It can never confirm one. A statement about the role still
+// excludes, and so does any other statement in the text.
+// What is read: the sentence up to the statement (at most SENTENCE_BEFORE characters) and
+// after it (at most SENTENCE_AFTER). A sentence ends at ". ", "! ", "? ", "; " or a line
+// break; an abbreviation ("U.S. Remote") cuts it short, so fewer words are read on that side
+// (fewer markers, and fewer office words for the presence check below). Either way the
+// posting stays out of the main catalog.
+const SENTENCE_BEFORE = 160;
+const SENTENCE_AFTER = 120;
+const SENTENCE_END = /[.!?;](?:\s|$)|\n/u;
+// Remote work as one of several modes: "remote and hybrid", "on-site, in a hybrid model, or
+// fully remotely", "a remote or hybrid position". A menu without remote work in it ("an
+// on-site or hybrid role") is not one, nor is a remote culture ("remote-first culture").
+const REMOTE_MODE = String.raw`(?:(?:fully|100\s?%)[- ])?(?:remote(?:ly)?|distributed|work(?:ing)? from (?:home|anywhere))(?![- ](?:first|friendly)\b)`;
+const BESIDE = String.raw`\s*(?:,\s*(?:(?:and|or)\s+)?|(?:and\/or|and|or|&|\/)\s*)(?:(?:in|on)\s+)?(?:an?\s+)?`;
+const REMOTE_BEFORE = new RegExp(String.raw`(?<![\p{L}\p{N}])${REMOTE_MODE}(?:\s+work(?:ing)?)?${BESIDE}$`, "iu");
+// Not the breakdown of a hybrid week (reviews of cycles 0 and 1): "a hybrid role, remote 2
+// days a week", "working from home on Mondays", "remote work is permitted up to two days per
+// week", "remote twice a week", "remote most days", "remote on alternate weeks", "remote work
+// is allowed occasionally".
+const NOT_A_BREAKDOWN = String.raw`(?![^.;!?]{0,40}?(?:(?<![\p{L}\p{N}])(?:\d+|one|two|three|four|five)\s*(?:-\s*\d+\s*)?(?:days?|times?)(?![\p{L}\p{N}])|\b(?:mon|tues|wednes|thurs|fri)days?\b|\b(?:twice|once|most days|some days|alternate|every other|half (?:of )?the|occasional(?:ly)?)\b))`;
+const REMOTE_AFTER = new RegExp(String.raw`^(?:\s+(?:work(?:ing)?|model|arrangements?|options?|roles?|positions?|setup|schedule))?${BESIDE}${REMOTE_MODE}(?![\p{L}\p{N}])${NOT_A_BREAKDOWN}`, "iu");
+// An option: "an opportunity to work a hybrid schedule", "optional in-office days", "hybrid
+// work options", "hybrid work arrangements, where possible". Not "the ability" or "the
+// flexibility" to work one, and nothing the sentence requires ("must have …").
+const OPTION_BEFORE = /(?:\b(?:options?|opportunit(?:y|ies)|choice|possibility)\s+(?:(?:to|for)\s+)?(?:work\s+)?(?:(?:in|on)\s+)?(?:an?\s+)?|\boptional\s+)$/iu;
+const OPTION_AFTER = /^(?:\s+(?:work(?:ing)?|model|schedule|arrangements?))?,?\s+(?:options?|opportunities|where possible|if (?:preferred|desired|you prefer)|(?:is|are) (?:also )?(?:an? )?(?:option|optional|possible))\b/iu;
+// A bare "required" is not one ("No relocation required, with optional in-office days").
+const REQUIREMENT = /\b(?:requires?|required to|must|needs? to|expected to|mandatory)\b/iu;
+// Some other roles, as the sentence's subject: "Some roles in our GTM team", "many
+// positions", "Positions that are not required to be onsite …". Not "other teams", "most
+// roles" or "other roles", which are about this role too (review of cycle 0), and not when a
+// contrast follows before the statement: "Many of our roles are remote, but this is a hybrid
+// role", "While many positions are remote, this one requires …" (review of cycle 1).
+const CONTRAST = /\b(?:but|however|whereas|yet|this\s+(?:is|one|role|position|job)|you(?:['’]ll|\s+will))\b/iu;
+const SOME_ROLES = [
+  /\b(?:some|many|certain|select)\s+(?:of\s+(?:our|the)\s+)?(?:roles|positions|jobs|openings)\b/iu,
+  /^\W*(?:positions|roles|jobs)\s+(?:that|which)\b/iu,
+] as const;
+// A condition, anywhere in the sentence before: "If this role is remote, there will be …",
+// "If you are based within 35 miles of …", "For employees near an office, …"; or "if this "
+// right before "role is hybrid".
+const CONDITIONS = [
+  /\b(?:if|when|whether|unless)\s+(?:(?:this|the|a|your)\s+(?:role|position|job)\s+is\b|you\s+(?:(?:are\s+)?(?:based|located)|live|reside)\s+(?:within|near|in|close to|around)\b)/iu,
+  /\bfor\s+(?:those|candidates|employees|people|team members|staff)\b[^.;!?]{0,30}?\b(?:near|within|close to)\b/iu,
+] as const;
+const IF_THIS = /\b(?:if|when|whether|unless)\s+(?:this|the|a|your)\s+$/iu;
+const ROLE_FIRST = /^(?:role|position|job)\b/iu;
+// A sentence whose subject is this role is about the role, whatever else it says: "Some roles
+// … are hybrid, and this role is a hybrid role", "This role follows our hybrid work model",
+// "This position is subject to Acme's hybrid work policy". A condition ("if this role is")
+// is not one, nor is a sentence that states the role remote ("This position is 100%
+// remote, with an opportunity to work a hybrid schedule", review of cycle 1).
+const ROLE_IS_REMOTE = /\b(?:this|the|your)\s+(?:role|position|job)\s+is\s+(?:an?\s+)?(?:(?:fully|100\s?%|completely|entirely)\s+)?remote\b/iu;
+const ROLE_SUBJECT = /(?<!\b(?:if|when|whether|unless)\s+)\b(?:this|the|your)\s+(?:role|position|job)\s+(?:is|will|would|requires?|follows?|includes?|offers?|operates?|has|involves?|can|must|sits|comes)\b/iu;
+// Negated, or the candidate's preference: "This is not a hybrid role" (unless presence
+// follows: "This is not a hybrid role; it is fully on-site"), "if you prefer an in-person
+// role over remote"; not the employer's ("We prefer a hybrid schedule").
+const NEGATED_BEFORE = /(?:\b(?:not|never)|n['’]t)\s+(?:be\s+)?(?:an?\s+)?$/iu;
+const PREFERENCE_BEFORE = /\b(?:you|candidates?|applicants?|people|those)\s+(?:who\s+)?(?:\p{L}+\s+)?prefer(?:s|red)?\s+(?:an?\s+)?$/iu;
+// Only for a bare "hybrid work / working / model / …" phrase: the company's own model ("In
+// our hybrid work environment", "Acme's hybrid working model"), not hiring for it ("based
+// in Dublin for our hybrid working model"), adopting or joining it ("part of our", "subject
+// to Acme's", "in line with our", "You'll join our") or the role's own ("This role's hybrid
+// work model"); or a perk
+// ("Benefits: Hybrid working model", "competitive compensation, hybrid work model, and …").
+const BARE_HYBRID = /^hybrid (?:work|working|schedule|model|setup|set-up|arrangement|policy|opportunity)$/iu;
+const COMPANY_OWNER = /(?<!\b(?:for|follows?|following|of|to|under|with|within|per|join(?:s|ing)?)\s+)(?<![\p{L}\p{N}&.'’-])(?!(?:role|position|job)['’]s)(?:our|its|their|\p{L}[\p{L}\p{N}&.-]{0,40}['’]s)\s+(?:(?:flexible|collaborative)\s+)?$/iu;
+const COMPANY_MODEL = /^hybrid\s+(?:work(?:ing)?\s+)?(?:model|environment|policy|approach|culture|framework|philosophy|programm?e?|structure|strategy|workplace|setup|set-up)\b/iu;
+const PERK = String.raw`(?:compensation|salary|salaries|pay|bonus(?:es)?|equity|stock options|benefits?|perks?|insurance|health(?:care)?|dental|vision|pto|paid time off|time off|holidays?|vacation|leave|401\(?k\)?|pension|retirement|stipends?|allowances?|meals?|lunch(?:es)?|snacks?|gym|wellness|well-?being|career growth|growth|learning|training|development|equipment|laptop)`;
+const PERKS_HEADER = /\b(?:benefits?|perks?|what we offer|we offer|what['’]s in it for you|why (?:join|work)|we provide)\b/iu;
+const PERK_BEFORE = new RegExp(String.raw`\b${PERK}\s*[,;+&]\s*(?:and\s+)?(?:an?\s+)?(?:flexible\s+)?$`, "iu");
+const PERK_AFTER = new RegExp(String.raw`^(?:\s+(?:work(?:ing)?|model|arrangements?|setup))?\s*[,;+&]\s*(?:and\s+)?(?:[\p{L}-]+\s+){0,3}?${PERK}\b`, "iu");
+// A model, a perk or a negation that names presence is the role's arrangement: "Hybrid
+// working (3 days in our Cardiff office)", "Our hybrid work model … three days a week in our
+// Lisbon office", "We offer a hybrid work schedule; you'll be in the office Monday to
+// Wednesday". Presence is read in the raw text after it (PRESENCE_AFTER characters, across
+// sentence ends). So is the role's own location or work-model line, with or without a colon
+// ("Location: London (hybrid working model)", "Work model Hybrid schedule"), read in the raw
+// LOCATION_BEFORE characters before it, so an abbreviation ("Washington, D.C. (our hybrid
+// work model)") cannot cut it off.
+const PRESENCE_AFTER = 160;
+const LOCATION_BEFORE = 50;
+const ROLE_LOCATION = /\b(?:location|work(?:ing)?\s+(?:model|arrangements?|mode|style|location|type|setup)|workplace\s+type)\b/iu;
+
+function aboutTheCompany(text: string, index: number, quote: string): boolean {
+  const end = index + quote.length;
+  const before = text.slice(Math.max(0, index - SENTENCE_BEFORE), index).split(SENTENCE_END).slice(-1).join("");
+  const after = text.slice(end, end + SENTENCE_AFTER).split(SENTENCE_END, 1).join("");
+  const presence = () => firstMatch(OFFICE_WORDS, before.slice(-60), text.slice(end, end + PRESENCE_AFTER)) !== null;
+  // Remote work beside it, a condition, or the candidate's preference: never about the role.
+  if (REMOTE_BEFORE.test(before) || REMOTE_AFTER.test(after) ||
+    CONDITIONS.some(pattern => pattern.test(before)) || (IF_THIS.test(before) && ROLE_FIRST.test(quote)) ||
+    PREFERENCE_BEFORE.test(before) || (NEGATED_BEFORE.test(before) && !presence())) {
+    return true;
+  }
+  // The rest yields to a sentence about this role, unless it says the role is remote.
+  if (ROLE_SUBJECT.test(before) && !ROLE_IS_REMOTE.test(before)) return false;
+  if (SOME_ROLES.some(pattern => someOtherRoles(pattern, before)) ||
+    ((OPTION_BEFORE.test(before) || OPTION_AFTER.test(after)) && !REQUIREMENT.test(before))) {
+    return true;
+  }
+  if (!BARE_HYBRID.test(quote)) return false;
+  const companyModel = COMPANY_OWNER.test(before) && COMPANY_MODEL.test(`${quote}${after}`);
+  const perk = PERKS_HEADER.test(before) || PERK_BEFORE.test(before) || PERK_AFTER.test(after);
+  return (companyModel || perk) && !presence() &&
+    !ROLE_LOCATION.test(text.slice(Math.max(0, index - LOCATION_BEFORE), index));
+}
+
+// A subset phrase with no contrast between it and the statement.
+function someOtherRoles(pattern: RegExp, before: string): boolean {
+  const match = pattern.exec(before);
+  return match !== null && !CONTRAST.test(before.slice(match.index + match[0].length));
+}
+
+// Tier 1 in the text: the first statement of an arrangement that is about the role, or the
+// first negation, in the order the patterns were always read (so an unaffected posting keeps
+// its quote); and the first statement that was about the company, which is an office word.
+function readStatements(views: readonly string[]): Readonly<{ office: string | null; companyLevel: string | null }> {
+  let companyLevel: string | null = null;
+  for (const view of views) {
+    for (const pattern of ARRANGEMENT_STATEMENTS) {
+      for (const match of view.matchAll(pattern)) {
+        if (!aboutTheCompany(view, match.index, match[0])) return { office: match[0], companyLevel };
+        companyLevel ??= match[0];
+      }
+    }
+    const negation = firstMatch(NEGATED_REMOTE, view);
+    if (negation !== null) return { office: negation, companyLevel };
+  }
+  return { office: null, companyLevel };
+}
+
 /**
  * Tiers 1 and 2 of the rule, and temporary remote work: what a posting's title and text
  * say against remote work. `office` is a statement (the posting is excluded), `officeWord`
@@ -401,11 +540,15 @@ export function readOfficeVocabulary(rawTitle: string, rawText: string): Readonl
   // The folded text first, so a quote keeps the posting's own characters.
   const titles = [foldDashes(rawTitle), normalized(rawTitle)];
   const texts = [foldDashes(rawText), normalized(rawText)];
-  const office = firstMatch(OFFICE_TITLE, ...titles) ?? firstMatch(OFFICE_STATEMENTS, ...texts);
+  const titleOffice = firstMatch(OFFICE_TITLE, ...titles);
+  const { office: textOffice, companyLevel } = titleOffice === null
+    ? readStatements(texts) : { office: null, companyLevel: null };
+  const office = titleOffice ?? textOffice;
+  // A statement about the company (B72) is an office word: it blocks a confirmation.
   const officeWord = office === null
     ? firstMatch(OFFICE_WORDS, ...titles) ?? firstMatch(TITLE_QUALIFIERS, ...titles) ??
       titles.map(unverifiedTitleQualifier).find(qualifier => qualifier !== null) ??
-      firstMatch(OFFICE_WORDS, ...texts)
+      companyLevel ?? firstMatch(OFFICE_WORDS, ...texts)
     : null;
   const temporary = office === null
     ? firstMatch(TEMPORARY_TEXT, ...titles) ?? firstMatch(TEMPORARY_TEXT, ...texts)

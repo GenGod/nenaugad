@@ -32,6 +32,7 @@ import { classifySnapshot, policyPublishes } from "../../src/domain/snapshot-pro
 import { evaluateJob } from "../../src/domain/matching.ts";
 import { parseManualProfileInput } from "../../src/domain/profile.ts";
 import { parseEventBatch } from "../../src/domain/events.ts";
+import { COMPANY_WORDING_REVIEW, PERKS_MENU_TEXT, ROLE_STATEMENT_EXCLUDED } from "../support/company-wording-cases.ts";
 
 const NOW = "2026-11-07T12:00:00.000Z";
 const LISTING = "https://remotejobs.org/remote-jobs/";
@@ -244,6 +245,38 @@ test("remote rule: the source's remote field under our office-vocabulary veto", 
   const travel = posting("Field Engineer", "Travel up to 50% of the time is required.");
   assert.equal(travel.workplace.mandatory_travel, "required");
   assert.equal(rule(travel, "REMOTE-01"), "fail");
+});
+
+test("remote rule: wording about the company, not the role, waits for review (B72)", () => {
+  // The cases of the first live run (S1-007), paraphrased. Each text alone and after a
+  // strong remote statement: company wording never confirms.
+  const wrong = [...COMPANY_WORDING_REVIEW, ...ROLE_STATEMENT_EXCLUDED].flatMap(({ text, outcome, quote }) =>
+    [text, `This is a fully remote position. ${text}`].flatMap(description => {
+      const snapshot = posting("Account Manager", description);
+      assert.equal(isJobSnapshot(snapshot), true, description);
+      const evidence = snapshot.evidence.find(item => item.id.endsWith(":workplace"));
+      const actual = [classifySnapshot(snapshot), quote === undefined ? undefined : evidence?.quote];
+      const expected = [outcome, quote];
+      return JSON.stringify(actual) === JSON.stringify(expected) ? []
+        : [`${description}: ${actual.join(" / ")}, expected ${expected.join(" / ")}`];
+    }));
+  assert.deepEqual(wrong, []);
+  // Review, not a contradiction: the source's claim is unverified, not refuted.
+  const review = posting("Account Manager", PERKS_MENU_TEXT);
+  assert.equal(review.workplace.verification_state, "unknown");
+  assert.equal(review.workplace.mandatory_onsite, "unknown");
+  assert.deepEqual(review.conflicts, []);
+  const evidence = review.evidence.find(item => item.id.endsWith(":workplace"));
+  assert.equal(evidence?.method, "rule");
+  assert.equal(evidence?.confidence, 0.5);
+  // The source's own hybrid field still excludes, whatever the text says.
+  const contradicted = posting("Account Manager", PERKS_MENU_TEXT, {
+    location_normalization: { work_arrangement: "hybrid" },
+  });
+  assert.equal(classifySnapshot(contradicted), "excluded");
+  assert.deepEqual(contradicted.conflicts, ["remote-claim-vs-source-arrangement"]);
+  // So does a title statement.
+  assert.equal(classifySnapshot(posting("Account Manager (Hybrid)", PERKS_MENU_TEXT)), "excluded");
 });
 
 test("geography: their structured reading with its status, never wider than it says", () => {
