@@ -24,6 +24,7 @@ import { classifySnapshot, policyPublishes } from "../../src/domain/snapshot-pro
 import { evaluateJob } from "../../src/domain/matching.ts";
 import { parseManualProfileInput } from "../../src/domain/profile.ts";
 import { parseEventBatch } from "../../src/domain/events.ts";
+import { COMPANY_WORDING_REVIEW, PERKS_MENU_TEXT, ROLE_STATEMENT_EXCLUDED } from "../support/company-wording-cases.ts";
 
 const NOW = "2026-11-02T12:00:00.000Z";
 // The policy as activated 2026-11-02; tests derive the switched-off forms from it.
@@ -464,6 +465,30 @@ test("remote rule: the posting's own words confirm, contradict or leave it open"
     return actual === expected ? [] : [`${title} | ${description}: ${actual}, expected ${expected}`];
   });
   assert.deepEqual(wrong, []);
+});
+
+test("remote rule: wording about the company, not the role, waits for review (B72)", () => {
+  // Each text alone and after a strong remote statement: company wording never confirms.
+  const wrong = [...COMPANY_WORDING_REVIEW, ...ROLE_STATEMENT_EXCLUDED].flatMap(({ text, outcome, quote }) =>
+    [text, `This is a fully remote position. ${text}`].flatMap(description => {
+      const snapshot = posting("Engineer (Remote)", description);
+      assert.equal(isJobSnapshot(snapshot), true, description);
+      const evidence = snapshot.evidence.find(item => item.id.endsWith(":workplace"));
+      const actual = [classifySnapshot(snapshot), quote === undefined ? undefined : evidence?.quote];
+      const expected = [outcome, quote];
+      return JSON.stringify(actual) === JSON.stringify(expected) ? []
+        : [`${description}: ${actual.join(" / ")}, expected ${expected.join(" / ")}`];
+    }));
+  assert.deepEqual(wrong, []);
+  // Review, not a contradiction: the source's claim is unverified, not refuted.
+  const review = posting("Engineer (Remote)", PERKS_MENU_TEXT);
+  assert.equal(review.workplace.verification_state, "unknown");
+  assert.equal(review.workplace.mandatory_onsite, "unknown");
+  assert.equal(review.workplace.permanence, "permanent");
+  assert.deepEqual(review.conflicts, []);
+  assert.equal(review.evidence.find(item => item.id.endsWith(":workplace"))?.confidence, 0.5);
+  // A title statement still excludes, whatever the text says.
+  assert.equal(classifySnapshot(posting("Engineer (Hybrid)", PERKS_MENU_TEXT)), "excluded");
 });
 
 test("geography: up to three countries are never the whole list; empty is unspecified", () => {

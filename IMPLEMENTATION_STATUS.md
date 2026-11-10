@@ -7,7 +7,7 @@ lines it changed and does not append history: details belong in its task file un
 with evidence: [docs/OPEN_GAPS.md](docs/OPEN_GAPS.md).
 `implemented` != `tested locally` != `verified with provider` != `accepted` != `activated`.
 
-**Updated:** 2026-11-09: [B73-001](tasks/B73-001-failed-page-reason.md) (normal risk) is implemented and tested locally, merged into main as `adc8a96` and pushed, CI green; not accepted: a RemoteJobs.org import names the page that failed and why (offset, reason code, HTTP status, connection error code) in its report and the worker's log, and a body lost mid-read is a failed page instead of an exception that dropped the pages read (all four sources). The same day the owner **accepted** [S1-007](tasks/S1-007-remotejobs-org-source.md) (high risk, source rights; implemented and tested locally, reviewed with one repair cycle, merged into main as `230c48e` and pushed, CI green): RemoteJobs.org as a fourth source; the owner **approved the matrix** 2026-11-07 (with a "Powered by RemoteJobs.org" line on every card) and **activated** it the same day as a separate decision (policy v3): the first live import stored 349 postings, 145 in the catalog (131 new cards, 14 merged with Jobicy or Himalayas). 2026-11-06: [B69-001](tasks/B69-001-worker-stop-and-db-restart.md) (normal risk) is
+**Updated:** 2026-11-10: [B72-001](tasks/B72-001-company-wording-veto.md) (high risk) is implemented and tested locally, reviewed independently with two repair cycles (the limit; residual risk recorded), and **accepted by the owner** 2026-11-10 with that residual risk; not committed, not activated (the worker's image still runs the old rule): an office statement in a posting's text that is about the company, other roles, a condition, an option, a perk or a preference sends a remote posting to needs-review instead of excluding it (both sources that share the veto); a statement about the role still excludes, nothing can confirm on it; the stored postings are not re-mapped before acceptance. [B73-001](tasks/B73-001-failed-page-reason.md) (normal risk) is implemented and tested locally, merged into main as `adc8a96` and pushed, CI green; not accepted: a RemoteJobs.org import names the page that failed and why (offset, reason code, HTTP status, connection error code) in its report and the worker's log, and a body lost mid-read is a failed page instead of an exception that dropped the pages read (all four sources). The same day the owner **accepted** [S1-007](tasks/S1-007-remotejobs-org-source.md) (high risk, source rights; implemented and tested locally, reviewed with one repair cycle, merged into main as `230c48e` and pushed, CI green): RemoteJobs.org as a fourth source; the owner **approved the matrix** 2026-11-07 (with a "Powered by RemoteJobs.org" line on every card) and **activated** it the same day as a separate decision (policy v3): the first live import stored 349 postings, 145 in the catalog (131 new cards, 14 merged with Jobicy or Himalayas). 2026-11-06: [B69-001](tasks/B69-001-worker-stop-and-db-restart.md) (normal risk) is
 implemented and tested locally, merged into main as `1c1fbfd` and pushed, CI green; not accepted: a worker tick with the batch path closed no longer
 scans every profile, and a database restart no longer crashes the worker. The whole site runs
 in Docker on this computer ([DEVX-005](tasks/DEVX-005-site-in-docker.md): `docker compose up -d
@@ -89,8 +89,10 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   2026-11-09 ([S1-007](tasks/S1-007-remotejobs-org-source.md)): workArrangement=remote under the same
   office-vocabulary veto, their structured geography only narrowing, up to 20 pages of 50 every
   6 h, a 429's Retry-After stored (migration 0028). First live import 349 postings: 145 main /
-  186 review / 18 excluded (B72: about half the exclusions are perks boilerplate); local ML
-  only, no provider transfer, no closure checks.
+  186 review / 18 excluded; local ML only, no provider transfer, no closure checks. Company
+  wording in the text (perks, other roles, a condition, an option) waits for review instead of
+  excluding, for both sources ([B72-001](tasks/B72-001-company-wording-veto.md), accepted
+  2026-11-10, not yet committed or applied to stored postings).
 - **Import and catalog:** worker with schedules, backoff and a per-source circuit
   breaker (S1-004); jobicy closure checks (S1-005, the batch status endpoint since B56-001);
   the jobicy import follows the feed cursor through the 7-day window, up to 10 pages a run
@@ -195,6 +197,11 @@ when the profile has no country) and [B41-001](tasks/B41-001-matched-page-latenc
   (DEVX-005, 2026-11-06; the server keeps its systemd units).
 
 ## Latest checks
+- 2026-11-10 ([B72-001](tasks/B72-001-company-wording-veto.md), final code after two repair
+  cycles): `npm run check` exit 0 (unit 496/496); `test:coverage` exit 0 (654/654; 88.62 /
+  90.20 / 95.30, ratchet unchanged; with `PG_TOOLS_CONTAINER=nenaugad-db-1`); a read-only replay
+  of the 2,718 stored postings of both sources (excluded → needs-review only; main catalog
+  unchanged). Not run: `build`, `test:e2e`, a live import, the re-map (held for acceptance).
 - 2026-11-09 ([B73-001](tasks/B73-001-failed-page-reason.md)): `npm run check` exit 0
   (unit 494/494); `test:coverage` exit 0 (652/652; 88.53 / 90.09 / 95.27, ratchet
   unchanged; with `PG_TOOLS_CONTAINER=nenaugad-db-1`). Not run: `build`, `test:e2e`, a live
